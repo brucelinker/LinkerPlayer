@@ -135,30 +135,30 @@ public class MusicLibrary
         return false;
     }
 
-    public static async Task ConvertToMp3(string path, string ffmpegDir)
-    {
-        string newPath = Path.ChangeExtension(path, ".mp3");
+    //public static async Task ConvertToMp3(string path, string ffmpegDir)
+    //{
+    //    string newPath = Path.ChangeExtension(path, ".mp3");
 
-        if (File.Exists(newPath))
-        {
-            File.Delete(newPath);
-        }
+    //    if (File.Exists(newPath))
+    //    {
+    //        File.Delete(newPath);
+    //    }
 
-        ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(ffmpegDir, "ffmpeg.exe"))
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            Arguments = $" -i \"{path}\" -vn -ar 44100 -ac 2 -ab 192k -f mp3 \"{newPath}\""
-        };
+    //    ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(ffmpegDir, "ffmpeg.exe"))
+    //    {
+    //        UseShellExecute = false,
+    //        CreateNoWindow = true,
+    //        Arguments = $" -i \"{path}\" -vn -ar 44100 -ac 2 -ab 192k -f mp3 \"{newPath}\""
+    //    };
 
-        Process process = new Process { StartInfo = psi };
+    //    Process process = new Process { StartInfo = psi };
 
-        process.Start();
+    //    process.Start();
 
-        await process.WaitForExitAsync();
+    //    await process.WaitForExitAsync();
 
-        process.Dispose();
-    }
+    //    process.Dispose();
+    //}
 
     public static void RemoveSong(string songId)
     {

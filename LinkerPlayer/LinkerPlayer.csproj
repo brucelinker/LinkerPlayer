@@ -8,93 +8,49 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Binaries\ffmpeg\bin\avcodec-60.dll" />
-    <None Remove="Binaries\ffmpeg\bin\avdevice-60.dll" />
-    <None Remove="Binaries\ffmpeg\bin\avfilter-9.dll" />
-    <None Remove="Binaries\ffmpeg\bin\avformat-60.dll" />
-    <None Remove="Binaries\ffmpeg\bin\avutil-58.dll" />
-    <None Remove="Binaries\ffmpeg\bin\ffmpeg.exe" />
-    <None Remove="Binaries\ffmpeg\bin\ffplay.exe" />
-    <None Remove="Binaries\ffmpeg\bin\ffprobe.exe" />
-    <None Remove="Binaries\ffmpeg\bin\postproc-57.dll" />
-    <None Remove="Binaries\ffmpeg\bin\swresample-4.dll" />
-    <None Remove="Binaries\ffmpeg\bin\swscale-7.dll" />
-    <None Remove="Binaries\ffmpeg\lib\avcodec.lib" />
-    <None Remove="Binaries\ffmpeg\lib\avdevice.lib" />
-    <None Remove="Binaries\ffmpeg\lib\avfilter.lib" />
-    <None Remove="Binaries\ffmpeg\lib\avformat.lib" />
-    <None Remove="Binaries\ffmpeg\lib\avutil.lib" />
-    <None Remove="Binaries\ffmpeg\lib\postproc.lib" />
-    <None Remove="Binaries\ffmpeg\lib\swresample.lib" />
-    <None Remove="Binaries\ffmpeg\lib\swscale.lib" />
-    <None Remove="Binaries\yt-dlp.exe" />
-    <None Remove="Resources\Fonts\Montserrat.ttf" />
-    <None Remove="Resources\Images\app.png" />
-    <None Remove="Resources\Images\app32.ico" />
-    <None Remove="Resources\Images\app64.ico" />
-    <None Remove="Resources\Images\close.png" />
-    <None Remove="Resources\Images\convert.png" />
-    <None Remove="Resources\Images\download.png" />
-    <None Remove="Resources\Images\equalizer.png" />
-    <None Remove="Resources\Images\expand.png" />
-    <None Remove="Resources\Images\loop.png" />
-    <None Remove="Resources\Images\loop1.png" />
-    <None Remove="Resources\Images\maximize.png" />
-    <None Remove="Resources\Images\mic.png" />
-    <None Remove="Resources\Images\minimize.png" />
-    <None Remove="Resources\Images\next.png" />
-    <None Remove="Resources\Images\noloop.png" />
-    <None Remove="Resources\Images\pause.png" />
-    <None Remove="Resources\Images\play.png" />
-    <None Remove="Resources\Images\plus.png" />
-    <None Remove="Resources\Images\prev.png" />
-    <None Remove="Resources\Images\reload.png" />
-    <None Remove="Resources\Images\restore.png" />
-    <None Remove="Resources\Images\save.png" />
-    <None Remove="Resources\Images\settings.png" />
-    <None Remove="Resources\Images\shuffle.png" />
-    <None Remove="Resources\Images\speaker.png" />
-    <None Remove="Resources\Images\tray32.ico" />
-    <None Remove="Resources\Images\tray64.ico" />
+    <Compile Remove="Binaries\**" />
+    <EmbeddedResource Remove="Binaries\**" />
+    <None Remove="Binaries\**" />
+    <Page Remove="Binaries\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Binaries\ffmpeg\bin\avcodec-60.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\avdevice-60.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\avfilter-9.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\avformat-60.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\avutil-58.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\ffmpeg.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\ffplay.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\ffprobe.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\postproc-57.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\swresample-4.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\ffmpeg\bin\swscale-7.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Binaries\yt-dlp.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Compile Remove="View\Windows\DownloadsWindow.xaml.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Fonts\Montserrat.ttf" />
+    <None Remove="Images\app.png" />
+    <None Remove="Images\app32.ico" />
+    <None Remove="Images\app64.ico" />
+    <None Remove="Images\close.png" />
+    <None Remove="Images\convert.png" />
+    <None Remove="Images\download.png" />
+    <None Remove="Images\equalizer.png" />
+    <None Remove="Images\expand.png" />
+    <None Remove="Images\loop.png" />
+    <None Remove="Images\loop1.png" />
+    <None Remove="Images\maximize.png" />
+    <None Remove="Images\mic.png" />
+    <None Remove="Images\minimize.png" />
+    <None Remove="Images\next.png" />
+    <None Remove="Images\noloop.png" />
+    <None Remove="Images\pause.png" />
+    <None Remove="Images\play.png" />
+    <None Remove="Images\plus.png" />
+    <None Remove="Images\prev.png" />
+    <None Remove="Images\reload.png" />
+    <None Remove="Images\restore.png" />
+    <None Remove="Images\save.png" />
+    <None Remove="Images\settings.png" />
+    <None Remove="Images\shuffle.png" />
+    <None Remove="Images\speaker.png" />
+    <None Remove="Images\tray32.ico" />
+    <None Remove="Images\tray64.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Page Remove="View\Windows\DownloadsWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -108,112 +64,88 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Binaries\ffmpeg\lib\avcodec.lib">
+    <Resource Include="Fonts\Montserrat.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\avdevice.lib">
+    <Resource Include="Images\app.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\avfilter.lib">
+    <Resource Include="Images\app32.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\avformat.lib">
+    <Resource Include="Images\app64.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\avutil.lib">
+    <Resource Include="Images\close.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\postproc.lib">
+    <Resource Include="Images\convert.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\swresample.lib">
+    <Resource Include="Images\download.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Binaries\ffmpeg\lib\swscale.lib">
+    <Resource Include="Images\equalizer.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Fonts\Montserrat.ttf">
+    <Resource Include="Images\expand.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\app.png">
+    <Resource Include="Images\loop.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\app32.ico">
+    <Resource Include="Images\loop1.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\app64.ico">
+    <Resource Include="Images\maximize.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\close.png">
+    <Resource Include="Images\mic.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\convert.png">
+    <Resource Include="Images\minimize.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\download.png">
+    <Resource Include="Images\next.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\equalizer.png">
+    <Resource Include="Images\noloop.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\expand.png">
+    <Resource Include="Images\pause.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\loop.png">
+    <Resource Include="Images\play.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\loop1.png">
+    <Resource Include="Images\plus.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\maximize.png">
+    <Resource Include="Images\prev.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\mic.png">
+    <Resource Include="Images\reload.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\minimize.png">
+    <Resource Include="Images\restore.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\next.png">
+    <Resource Include="Images\save.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\noloop.png">
+    <Resource Include="Images\settings.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\pause.png">
+    <Resource Include="Images\shuffle.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\play.png">
+    <Resource Include="Images\speaker.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\plus.png">
+    <Resource Include="Images\tray32.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Resources\Images\prev.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\reload.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\restore.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\save.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\settings.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\shuffle.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\speaker.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\tray32.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Resources\Images\tray64.ico">
+    <Resource Include="Images\tray64.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>

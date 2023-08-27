@@ -44,8 +44,8 @@ public partial class BottomControlPanel : INotifyPropertyChanged
         Loop
     }
 
-    private string _buttonStateImagePath = string.Empty;
-    private string _playbackModeImagePath = string.Empty;
+    private string _buttonStateImagePath;
+    private string _playbackModeImagePath;
     private ButtonState _buttonState = ButtonState.Stopped;
     private PlaybackMode _playbackMode = PlaybackMode.NoLoop;
 
@@ -79,11 +79,11 @@ public partial class BottomControlPanel : INotifyPropertyChanged
             switch (value)
             {
                 case ButtonState.Paused:
-                    ButtonStateImagePath = "/Resources/Images/play.png";
+                    ButtonStateImagePath = "/Images/play.png";
                     _buttonState = value;
                     break;
                 case ButtonState.Playing:
-                    ButtonStateImagePath = "/Resources/Images/pause.png";
+                    ButtonStateImagePath = "/Images/pause.png";
                     _buttonState = value;
                     break;
             }
@@ -98,15 +98,15 @@ public partial class BottomControlPanel : INotifyPropertyChanged
             switch (value)
             {
                 case PlaybackMode.Loop:
-                    PlaybackModeImagePath = "/Resources/Images/Loop.png";
+                    PlaybackModeImagePath = "/Images/Loop.png";
                     _playbackMode = value;
                     break;
                 case PlaybackMode.Loop1:
-                    PlaybackModeImagePath = "/Resources/Images/Loop1.png";
+                    PlaybackModeImagePath = "/Images/Loop1.png";
                     _playbackMode = value;
                     break;
                 case PlaybackMode.NoLoop:
-                    PlaybackModeImagePath = "/Resources/Images/NoLoop.png";
+                    PlaybackModeImagePath = "/Images/NoLoop.png";
                     _playbackMode = value;
                     break;
             }

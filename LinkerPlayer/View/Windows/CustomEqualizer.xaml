@@ -229,7 +229,7 @@
                     </EventTrigger>
                 </Button.Triggers>
 
-                <Image Source="/Resources/Images/reload.png" Width="15" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,0.5">
+                <Image Source="/Images/reload.png" Width="15" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,0.5">
                     <Image.RenderTransform>
                         <RotateTransform Angle="0" x:Name="RotateAnim"/>
                     </Image.RenderTransform>

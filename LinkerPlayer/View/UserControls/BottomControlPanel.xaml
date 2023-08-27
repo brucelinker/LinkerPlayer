@@ -78,13 +78,13 @@
                 </Grid.ColumnDefinitions>
 
                 <Button Grid.Column="0" Name="PrevButton" Style="{StaticResource NoStylingButton}">
-                    <Image Source="\Images\Icons\prev.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.7"/>
+                    <Image Source="\Resources\Images\prev.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.7"/>
                 </Button>
                 
                 <Button Grid.Column="1" Name="PlayPauseButton" Style="{StaticResource PlayPauseButton}"/>
                 
                 <Button Grid.Column="2" Name="NextButton" Style="{StaticResource NoStylingButton}">
-                    <Image Source="\Images\Icons\next.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.7"/>
+                    <Image Source="\Resources\Images\next.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.7"/>
                 </Button>
             </Grid>
 
@@ -149,7 +149,7 @@
                 </Button>
 
                 <Button Style="{StaticResource NoStylingButton}" Grid.Column="2" Grid.RowSpan="3" Click="ToggleVolumeSliders" Width="20" HorizontalAlignment="Left" Height="40">
-                    <Image  Name="ExpanderImage" Source="\Images\Icons\expand.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.7"/>
+                    <Image  Name="ExpanderImage" Source="\Resources\Images\expand.png" RenderOptions.BitmapScalingMode="HighQuality" Opacity="0.7"/>
                 </Button>
             </Grid>
         </Grid>

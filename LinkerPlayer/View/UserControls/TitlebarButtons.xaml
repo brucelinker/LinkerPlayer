@@ -65,17 +65,17 @@
 
             <Button Name="MinimizeButton" Style="{DynamicResource MaximizeMinimizeButton}" MouseEnter="ButtonMouseEnter" MouseLeave="ButtonMouseLeave"
                     Click="MinimizeButton_Click">
-                <Image Name="MinimizeButtonImage" Source="/Resources/Images/minimize.png" Width="10" Height="10" Opacity="0.6"/>
+                <Image Name="MinimizeButtonImage" Source="/Images/minimize.png" Width="10" Height="10" Opacity="0.6"/>
             </Button>
 
             <Button Name="MaximizeButton" Style="{DynamicResource MaximizeMinimizeButton}" MouseEnter="ButtonMouseEnter" MouseLeave="ButtonMouseLeave"
                     Click="MaximizeButton_Click">
-                <Image Name="MaximizeButtonImage" Source="/Resources/Images/maximize.png" Width="10" Height="10" Opacity="0.6"/>
+                <Image Name="MaximizeButtonImage" Source="/Images/maximize.png" Width="10" Height="10" Opacity="0.6"/>
             </Button>
 
             <Button Name="CloseButton" Style="{DynamicResource CloseButton}" MouseEnter="ButtonMouseEnter" MouseLeave="ButtonMouseLeave"
                     Click="CloseButton_Click">
-                <Image Name="CloseButtonImage" Source="/Resources/Images/close.png" Width="10" Height="10" Opacity="0.6"/>
+                <Image Name="CloseButtonImage" Source="/Images/close.png" Width="10" Height="10" Opacity="0.6"/>
             </Button>
         </StackPanel>
     </Grid>

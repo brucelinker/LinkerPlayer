@@ -19,8 +19,8 @@ public partial class FunctionButtons
     private bool _isSettingsWindowOpen;
     private SettingsWindow? _settingsWin;
 
-    private bool _isDownloadsWindowOpen;
-    private DownloadsWindow? _downloadsWin;
+    //private bool _isDownloadsWindowOpen;
+    //private DownloadsWindow? _downloadsWin;
 
     private bool _isEqualizerWindowOpen;
     private CustomEqualizer? _equalizerWin;
@@ -49,29 +49,29 @@ public partial class FunctionButtons
         _settingsWin.Show();
     }
 
-    private void DownloadButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_isDownloadsWindowOpen)
-        {
-            if (_downloadsWin is { WindowState: WindowState.Minimized })
-            {
-                _downloadsWin.WindowState = WindowState.Normal;
-            }
+    //private void DownloadButton_Click(object sender, RoutedEventArgs e)
+    //{
+    //    if (_isDownloadsWindowOpen)
+    //    {
+    //        if (_downloadsWin is { WindowState: WindowState.Minimized })
+    //        {
+    //            _downloadsWin.WindowState = WindowState.Normal;
+    //        }
 
-            return;
-        }
+    //        return;
+    //    }
 
-        _downloadsWin = new DownloadsWindow
-        {
-            Owner = Window.GetWindow(this),
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
-        _downloadsWin.Closed += (_, _) => { _isDownloadsWindowOpen = false; };
-        _downloadsWin.Closing += (_, _) => { _downloadsWin.Owner = null; };
-        _isDownloadsWindowOpen = true;
+    //    _downloadsWin = new DownloadsWindow
+    //    {
+    //        Owner = Window.GetWindow(this),
+    //        WindowStartupLocation = WindowStartupLocation.CenterOwner
+    //    };
+    //    _downloadsWin.Closed += (_, _) => { _isDownloadsWindowOpen = false; };
+    //    _downloadsWin.Closing += (_, _) => { _downloadsWin.Owner = null; };
+    //    _isDownloadsWindowOpen = true;
 
-        _downloadsWin.Show();
-    }
+    //    _downloadsWin.Show();
+    //}
 
     private async void ConvertButton_Click(object sender, RoutedEventArgs e)
     {
@@ -85,7 +85,7 @@ public partial class FunctionButtons
             // because ShowDialog blocks animations
             openFileDialog = new OpenFileDialog
             {
-                Filter = "All Supported Formats (*.wav;*.aiff;*.flac;*.ogg;*.aac;*.wma;*.m4a;*.ac3;*.amr;*.mp2;*.avi;*.mpeg;*.wmv;*.mp4;*.mov;*.flv;*.mkv;*.3gp;*.asf;*.gxf;*.m2ts;*.ts;*.mxf;*.ogv)|*.wav;*.aiff;*.flac;*.ogg;*.aac;*.wma;*.m4a;*.ac3;*.amr;*.mp2;*.avi;*.mpeg;*.wmv;*.mp4;*.mov;*.flv;*.mkv;*.3gp;*.asf;*.gxf;*.m2ts;*.ts;*.mxf;*.ogv|All files (*.*)|*.*",
+                Filter = "All Supported Formats (*.mp3;*.wav;*.aiff;*.flac;*.ogg;*.aac;*.wma;*.m4a;*.ac3;*.amr;*.mp2;*.avi;*.mpeg;*.wmv;*.mp4;*.mov;*.flv;*.mkv;*.3gp;*.asf;*.gxf;*.m2ts;*.ts;*.mxf;*.ogv)|*.wav;*.aiff;*.flac;*.ogg;*.aac;*.wma;*.m4a;*.ac3;*.amr;*.mp2;*.avi;*.mpeg;*.wmv;*.mp4;*.mov;*.flv;*.mkv;*.3gp;*.asf;*.gxf;*.m2ts;*.ts;*.mxf;*.ogv|All files (*.*)|*.*",
                 Multiselect = true,
                 Title = "Select file(s)"
             };
@@ -95,8 +95,8 @@ public partial class FunctionButtons
 
         ConvertButton.IsHitTestVisible = true;
 
-        string binariesDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Binaries");
-        string ffmpegLocation = Path.Combine(binariesDirPath, @"ffmpeg\bin");
+        //string binariesDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Binaries");
+        //string ffmpegLocation = Path.Combine(binariesDirPath, @"ffmpeg\bin");
 
         if (fileDialogRes == true)
         {
@@ -104,13 +104,13 @@ public partial class FunctionButtons
             {
                 ConvertingProgress.Visibility = Visibility.Visible;
 
-                await MusicLibrary.ConvertToMp3(fileName, ffmpegLocation);
+                //await MusicLibrary.ConvertToMp3(fileName, ffmpegLocation);
 
-                string newFileName = Path.ChangeExtension(fileName, ".mp3");
+                //string newFileName = Path.ChangeExtension(fileName, ".mp3");
 
-                if (File.Exists(newFileName))
+                if (File.Exists(fileName))
                 {
-                    Song song = new Song { Path = newFileName };
+                    Song song = new Song { Path = fileName };
 
                     if (MusicLibrary.AddSong(song))
                     {

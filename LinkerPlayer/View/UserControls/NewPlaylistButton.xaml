@@ -10,7 +10,7 @@
                     HorizontalAlignment="Left" Margin="15" Background="#212128" 
                     Padding="15" BorderBrush="Transparent" Click="AddButtonClick">
 
-            <Image Source="/Resources/Images/plus.png" Width="20" Height="20"/>
+            <Image Source="/Images/plus.png" Width="20" Height="20"/>
         </Button>
 
         <TextBlock Text="New Playlist" FontFamily="/Fonts/#Montserrat" FontSize="22" FontWeight="DemiBold" 

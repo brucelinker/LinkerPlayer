@@ -18,7 +18,7 @@
             <ListViewItem Padding="5">
                 <Button x:Name="SettingsButton" Width="50" Height="50" Background="#212128" BorderBrush="Transparent" Padding="15"
                         Click="SettingsButton_Click">
-                    <Image Source="/Resources/Images/settings.png" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,0.5">
+                    <Image Source="/Images/settings.png" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,0.5">
                         <Image.RenderTransform>
                             <RotateTransform Angle="0" x:Name="CogRotateAnim"/>
                         </Image.RenderTransform>
@@ -43,13 +43,13 @@
                 </Button>
             </ListViewItem>
 
-            <ListViewItem Padding="5">
+            <!--<ListViewItem Padding="5">
                 <Button x:Name="DownloadButton" Width="50" Height="50" Background="#212128" BorderBrush="Transparent" Padding="15"
                         Click="DownloadButton_Click">
                     <Grid>
                         <ProgressBar Name="DownloadingProgress" Style="{StaticResource MaterialDesignCircularProgressBar}"
                                      Width="40" Height="40" Value="0" Maximum="100" Margin="-15" Visibility="Collapsed"/>
-                        <Image Source="/Resources/Images/download.png" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,1">
+                        <Image Source="/Images/download.png" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,1">
                             <Image.RenderTransform>
                                 <ScaleTransform x:Name="DownloadArrowAnim"/>
                             </Image.RenderTransform>
@@ -81,8 +81,8 @@
                             </EventTrigger.Actions>
                         </EventTrigger>
                     </Button.Triggers>
-                </Button>
-            </ListViewItem>
+                </Button>-->
+            <!--</ListViewItem>-->
 
             <ListViewItem Padding="5">
                 <Button x:Name="ConvertButton" Width="50" Height="50" Background="#212128" BorderBrush="Transparent" Padding="10"
@@ -90,7 +90,7 @@
                     <Grid>
                         <ProgressBar Name="ConvertingProgress" Style="{StaticResource MaterialDesignCircularProgressBar}"
                                      Width="40" Height="40" Margin="-15" Visibility="Collapsed" IsIndeterminate="True"/>
-                        <Image Source="/Resources/Images/convert.png" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,0.5">
+                        <Image Source="/Images/convert.png" RenderOptions.BitmapScalingMode ="HighQuality" RenderTransformOrigin="0.5,0.5">
                             <Image.RenderTransform>
                                 <RotateTransform Angle="0" x:Name="ConvertRotateAnim"/>
                             </Image.RenderTransform>
