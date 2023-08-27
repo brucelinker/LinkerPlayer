@@ -1,5 +1,5 @@
 ﻿using LinkerPlayer.Audio;
-using LinkerPlayer.View.Windows;
+using LinkerPlayer.Windows;
 using Microsoft.Win32;
 using System;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class FunctionButtons
 {
@@ -114,7 +114,7 @@ public partial class FunctionButtons
 
                     if (MusicLibrary.AddSong(song))
                     {
-                        Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
+                        MainWindow win = (MainWindow)Window.GetWindow(this)!;
 
                         Playlist? selectedPlaylist = win.SelectedPlaylist;
 
@@ -124,7 +124,7 @@ public partial class FunctionButtons
 
                             if (selectedPlaylist != null)
                             {
-                                win.SelectPlaylistByName(selectedPlaylist.Name);
+                                win.SelectPlaylistByName(selectedPlaylist.Name!);
 
                                 MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
                                 win.SongList.List.Items.Add(song);
@@ -139,7 +139,7 @@ public partial class FunctionButtons
                 }
                 else
                 {
-                    Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
+                    MainWindow win = (MainWindow)Window.GetWindow(this)!;
                     win.InfoSnackbar.MessageQueue?.Clear();
                     win.InfoSnackbar.MessageQueue?.Enqueue($"Error while converting {fileName}", null, null, null,
                         false, true, TimeSpan.FromSeconds(2));
@@ -173,7 +173,7 @@ public partial class FunctionButtons
 
         _equalizerWin.Show();
 
-        Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
+        MainWindow win = (MainWindow)Window.GetWindow(this)!;
 
         _equalizerWin.StartStopText.Text = win.AudioStreamControl.MainMusic!.IsEqualizerWorking ? "Stop" : "Start";
 

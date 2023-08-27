@@ -1,4 +1,7 @@
-﻿using System;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Utils;
+using MaterialDesignThemes.Wpf;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,16 +11,13 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
-using MaterialDesignThemes.Wpf;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using WinForms = System.Windows.Forms;
 
-namespace LinkerPlayer.View.Windows;
+namespace LinkerPlayer.Windows;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow
 {
     public SettingsWindow()
     {
@@ -30,16 +30,16 @@ public partial class SettingsWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        var win = (Owner as MainWindow);
+        MainWindow? win = (Owner as MainWindow);
 
-        foreach (var device in DeviceControl.GetOutputDevicesList())
+        foreach (string device in DeviceControl.GetOutputDevicesList())
         {
             MainOutputDevicesList.Items.Add(device);
             AdditionalOutputDevicesList.Items.Add(device);
             MicOutputDevicesList.Items.Add(device);
         }
 
-        foreach (var device in DeviceControl.GetInputDevicesList())
+        foreach (string device in DeviceControl.GetInputDevicesList())
         {
             InputDevicesList.Items.Add(device);
         }
@@ -50,7 +50,7 @@ public partial class SettingsWindow : Window
         }
         else
         {
-            MainOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(win.AudioStreamControl.MainMusic.GetOutputDeviceId());
+            MainOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(win!.AudioStreamControl.MainMusic!.GetOutputDeviceId());
         }
 
         if (AdditionalOutputDevicesList.Items.Contains(Properties.Settings.Default.AdditionalOutputDevice))
@@ -96,12 +96,12 @@ public partial class SettingsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        var win = (Owner as MainWindow);
+        MainWindow? win = (Owner as MainWindow);
 
-        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || MainOutputDevicesList.SelectedItem.ToString() != DeviceControl.GetOutputDeviceNameById(win.AudioStreamControl.MainMusic.GetOutputDeviceId()))
+        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || MainOutputDevicesList.SelectedItem.ToString() != DeviceControl.GetOutputDeviceNameById(win!.AudioStreamControl.MainMusic!.GetOutputDeviceId()))
         {
             Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
-            win.AudioStreamControl.MainMusic.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice);
+            win!.AudioStreamControl.MainMusic!.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
         }
 
         if (MicOutputDevicesList.SelectedItem != null)
@@ -128,7 +128,7 @@ public partial class SettingsWindow : Window
             }
 
             win.AudioStreamControl.ActivateMic(Properties.Settings.Default.InputDevice, Properties.Settings.Default.MicOutputDevice);
-            win.AudioStreamControl.Microphone.InputDeviceVolume = (float)Properties.Settings.Default.MicVolumeSliderValue / 100;
+            win.AudioStreamControl.Microphone!.InputDeviceVolume = (float)Properties.Settings.Default.MicVolumeSliderValue / 100;
         }
         else
         {
@@ -146,7 +146,6 @@ public partial class SettingsWindow : Window
         win.BottomControlPanel.MicVolumeButton.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
 
         bool changedAdditionalDevice = false;
-        bool changedAdditionalEnabled = false;
 
         if (AdditionalOutputDevicesList.SelectedItem != null)
         {
@@ -155,7 +154,7 @@ public partial class SettingsWindow : Window
             Properties.Settings.Default.AdditionalOutputDevice = AdditionalOutputDevicesList.SelectedItem.ToString();
         }
 
-        changedAdditionalEnabled = AdditionalOutputEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.AdditionalOutputEnabled;
+        bool changedAdditionalEnabled = AdditionalOutputEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.AdditionalOutputEnabled;
 
         if ((changedAdditionalDevice && AdditionalOutputEnabled.IsChecked.GetValueOrDefault()) ||
             (changedAdditionalEnabled && AdditionalOutputEnabled.IsChecked.GetValueOrDefault()))
@@ -165,9 +164,9 @@ public partial class SettingsWindow : Window
             {
                 Properties.Settings.Default.AdditionalOutputEnabled = true;
 
-                win.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice);
-                win.AudioStreamControl.AdditionalMusic.MusicVolume = (float)win.BottomControlPanel.AdditionalVolumeSlider.Value / 100;
-                win.AudioStreamControl.AdditionalMusic.StoppedEvent += win.Music_StoppedEvent;
+                win.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
+                win.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)win.BottomControlPanel.AdditionalVolumeSlider.Value / 100;
+                win.AudioStreamControl.AdditionalMusic.StoppedEvent += win.Music_StoppedEvent!;
             }
             else
             {
@@ -208,11 +207,11 @@ public partial class SettingsWindow : Window
             }
         }
 
-        foreach (KeyValuePair<string, string> prop in tempHotkeys)
+        foreach (KeyValuePair<string, string> prop in _tempHotkeys)
         {
             if (prop.Key.EndsWith("Hotkey"))
             {
-                Properties.Settings.Default[prop.Key] = tempHotkeys[prop.Key];
+                Properties.Settings.Default[prop.Key] = _tempHotkeys[prop.Key];
             }
         }
 
@@ -224,10 +223,10 @@ public partial class SettingsWindow : Window
 
     private void EditDownloadsFolder(object sender, RoutedEventArgs e)
     {
-        var dialog = new WinForms.FolderBrowserDialog();
+        WinForms.FolderBrowserDialog dialog = new WinForms.FolderBrowserDialog();
         dialog.InitialDirectory = DownloadsFolder.Text;
 
-        var res = dialog.ShowDialog();
+        WinForms.DialogResult res = dialog.ShowDialog();
 
         if (res == WinForms.DialogResult.OK)
         {
@@ -235,19 +234,19 @@ public partial class SettingsWindow : Window
         }
     }
 
-    string editedHotkey = "";
-    Dictionary<string, string> tempHotkeys = new Dictionary<string, string>();
+    string _editedHotkey = "";
+    private readonly Dictionary<string, string> _tempHotkeys = new();
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (string.IsNullOrEmpty(editedHotkey))
+        if (string.IsNullOrEmpty(_editedHotkey))
         {
             return;
         }
 
         if (!IsModifierKey(e.Key))
         {
-            var newHotkey = "";
+            string newHotkey;
 
             if (e.KeyboardDevice.Modifiers != ModifierKeys.None)
             {
@@ -258,16 +257,16 @@ public partial class SettingsWindow : Window
                 newHotkey = e.Key.ToString();
             }
 
-            if (tempHotkeys[editedHotkey] == newHotkey)
+            if (_tempHotkeys[_editedHotkey] == newHotkey)
             {
-                editedHotkey = "";
+                _editedHotkey = "";
                 e.Handled = true;
                 return;
             }
 
             bool hotkeyIsUsed = false;
 
-            foreach (KeyValuePair<string, string> prop in tempHotkeys)
+            foreach (KeyValuePair<string, string> prop in _tempHotkeys)
             {
                 if (prop.Key.EndsWith("Hotkey"))
                 {
@@ -285,9 +284,9 @@ public partial class SettingsWindow : Window
 
             if (!hotkeyIsUsed)
             {
-                (FindName(editedHotkey) as TextBlock).Text = newHotkey;
-                tempHotkeys[editedHotkey] = newHotkey;
-                editedHotkey = "";
+                ((FindName(_editedHotkey) as TextBlock)!).Text = newHotkey;
+                _tempHotkeys[_editedHotkey] = newHotkey;
+                _editedHotkey = "";
             }
         }
 
@@ -296,8 +295,8 @@ public partial class SettingsWindow : Window
 
     private void EditHotkey(object sender, RoutedEventArgs e)
     {
-        string name = (sender as Button).Name;
-        editedHotkey = name.Substring(0, name.Length - 3); // e.g. PlayPauseHotkeyBtn -> PlayPauseHotkey
+        string name = (sender as Button)!.Name;
+        _editedHotkey = name.Substring(0, name.Length - 3); // e.g. PlayPauseHotkeyBtn -> PlayPauseHotkey
 
         InfoSnackbar.MessageQueue?.Clear();
         InfoSnackbar.MessageQueue?.Enqueue("Press new key combination", null, null, null, false, true, TimeSpan.FromSeconds(1));
@@ -326,7 +325,7 @@ public partial class SettingsWindow : Window
                 "Decrease Main Volume"
             };
 
-        foreach (var hk in hotkeys)
+        foreach (string hk in hotkeys)
         {
             string name = Regex.Replace(hk, @"[^a-zA-Z0-9_]", ""); // e.g. Play/Pause -> PlayPause
 
@@ -339,9 +338,14 @@ public partial class SettingsWindow : Window
             Grid.SetColumn(tb1, 0);
             grid.Children.Add(tb1);
 
-            TextBlock tb2 = new TextBlock() { Name = name + "Hotkey", Style = (Style)TabControl.FindResource(typeof(TextBlock)), TextAlignment = TextAlignment.Center };
-            tb2.Text = Properties.Settings.Default[name + "Hotkey"].ToString();
-            tempHotkeys[name + "Hotkey"] = tb2.Text;
+            TextBlock tb2 = new TextBlock
+            {
+                Name = name + "Hotkey", Style = (Style)TabControl.FindResource(typeof(TextBlock)),
+                TextAlignment = TextAlignment.Center,
+                Text = Properties.Settings.Default[name + "Hotkey"].ToString()
+            };
+
+            _tempHotkeys[name + "Hotkey"] = tb2.Text!;
             Grid.SetColumn(tb2, 1);
             grid.Children.Add(tb2);
             HotkeyStackPanel.RegisterName(tb2.Name, tb2);
@@ -383,6 +387,6 @@ public partial class SettingsWindow : Window
 
     private void Window_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        Helper.FindVisualChildren<Grid>(this).FirstOrDefault().Focus();
+        Helper.FindVisualChildren<Grid>(this).FirstOrDefault()!.Focus();
     }
 }

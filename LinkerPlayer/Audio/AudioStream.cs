@@ -9,8 +9,8 @@ namespace LinkerPlayer.Audio;
 
 public class AudioStream
 {
-    protected WaveOutEvent? outputDevice;
-    protected ILog log = LogSettings.SelectedLog;
+    protected WaveOutEvent? OutputDevice;
+    protected ILog Log = LogSettings.SelectedLog;
 
     public event EventHandler<EventArgs>? StoppedEvent;
 
@@ -18,27 +18,27 @@ public class AudioStream
     {
         get
         {
-            if (outputDevice != null) return outputDevice.Volume;
+            if (OutputDevice != null) return OutputDevice.Volume;
             return 0f;
         }
         set
         {
             if (value < 0f || value > 1f)
             {
-                log.Print("Volume < 0.0 or > 1.0", LogInfoType.Error);
+                Log.Print("Volume < 0.0 or > 1.0", LogInfoType.Error);
 
                 if (value < 0)
                 {
-                    if (outputDevice != null) outputDevice.Volume = 0f;
+                    if (OutputDevice != null) OutputDevice.Volume = 0f;
                 }
                 else
                 {
-                    if (outputDevice != null) outputDevice.Volume = 1f;
+                    if (OutputDevice != null) OutputDevice.Volume = 1f;
                 }
             }
             else
             {
-                if (outputDevice != null) outputDevice.Volume = value;
+                if (OutputDevice != null) OutputDevice.Volume = value;
             }
         }
     }
@@ -52,20 +52,20 @@ public class AudioStream
     {
         if (String.IsNullOrWhiteSpace(deviceName))
         {
-            log.Print("Device name can`t be null", LogInfoType.Error);
+            Log.Print("Device name can`t be null", LogInfoType.Error);
 
             throw new ArgumentNullException(nameof(deviceName));
         }
         else
         {
-            outputDevice = new WaveOutEvent()
+            OutputDevice = new WaveOutEvent()
             {
                 DeviceNumber = DeviceControl.GetOutputDeviceId(deviceName)
             };
 
-            outputDevice.PlaybackStopped += PlaybackStopped;
+            OutputDevice.PlaybackStopped += PlaybackStopped;
 
-            log.Print("Device has been selected", LogInfoType.Info);
+            Log.Print("Device has been selected", LogInfoType.Info);
         }
     }
 
@@ -92,49 +92,49 @@ public class AudioStream
 
     public virtual void Play()
     {
-        if (outputDevice != null)
+        if (OutputDevice != null)
         {
-            log.Print($"Playing to {DeviceControl.GetOutputDeviceNameById(outputDevice.DeviceNumber)}.", LogInfoType.Info);
+            Log.Print($"Playing to {DeviceControl.GetOutputDeviceNameById(OutputDevice.DeviceNumber)}.", LogInfoType.Info);
 
-            outputDevice?.Play();
+            OutputDevice?.Play();
         }
     }
 
     public virtual void Stop()
     {
-        if (outputDevice != null)
+        if (OutputDevice != null)
         {
-            log.Print($"Stopped {DeviceControl.GetOutputDeviceNameById(outputDevice.DeviceNumber)}.", LogInfoType.Info);
+            Log.Print($"Stopped {DeviceControl.GetOutputDeviceNameById(OutputDevice.DeviceNumber)}.", LogInfoType.Info);
 
-            outputDevice?.Stop();
+            OutputDevice?.Stop();
         }
     }
 
     public virtual void Pause()
     {
-        if (outputDevice != null)
+        if (OutputDevice != null)
         {
-            log.Print($"Paused {DeviceControl.GetOutputDeviceNameById(outputDevice.DeviceNumber)}.", LogInfoType.Info);
+            Log.Print($"Paused {DeviceControl.GetOutputDeviceNameById(OutputDevice.DeviceNumber)}.", LogInfoType.Info);
 
-            outputDevice?.Pause();
+            OutputDevice?.Pause();
         }
     }
 
     public virtual void CloseStream()
     {
-        log.Print("Stream was closed", LogInfoType.Info);
-        outputDevice?.Dispose();
+        Log.Print("Stream was closed", LogInfoType.Info);
+        OutputDevice?.Dispose();
     }
 
-    public bool IsPlaying => outputDevice is { PlaybackState: PlaybackState.Playing };
+    public bool IsPlaying => OutputDevice is { PlaybackState: PlaybackState.Playing };
 
-    public bool IsPaused => outputDevice is { PlaybackState: PlaybackState.Paused };
+    public bool IsPaused => OutputDevice is { PlaybackState: PlaybackState.Paused };
 
-    public bool IsStopped => outputDevice is { PlaybackState: PlaybackState.Stopped };
+    public bool IsStopped => OutputDevice is { PlaybackState: PlaybackState.Stopped };
 
     public int GetOutputDeviceId()
     {
-        if (outputDevice != null) return outputDevice.DeviceNumber;
+        if (OutputDevice != null) return OutputDevice.DeviceNumber;
 
         return -1;
     }
@@ -158,25 +158,16 @@ public class MusicStream : AudioStream
             {
                 return _audioFile.Volume;
             }
-            else
-            {
-                return _musicVolume;
-            }
+
+            return _musicVolume;
         }
         set
         {
             if (value < 0f || value > 1f)
             {
-                log.Print("Volume < 0.0 or > 1.0", LogInfoType.Error);
+                Log.Print("Volume < 0.0 or > 1.0", LogInfoType.Error);
 
-                if (value < 0)
-                {
-                    _musicVolume = 0f;
-                }
-                else
-                {
-                    _musicVolume = 1f;
-                }
+                _musicVolume = value < 0 ? 0f : 1f;
             }
             else
             {
@@ -204,11 +195,11 @@ public class MusicStream : AudioStream
                 if (_equalizer != null)
                 {
                     _equalizer = new Equalizer(_audioFile, _bands);
-                    outputDevice?.Init(_equalizer);
+                    OutputDevice?.Init(_equalizer);
                 }
                 else
                 {
-                    outputDevice?.Init(_audioFile);
+                    OutputDevice?.Init(_audioFile);
                 }
             }
 
@@ -230,11 +221,11 @@ public class MusicStream : AudioStream
             if (_equalizer != null)
             {
                 _equalizer = new Equalizer(_audioFile, _bands);
-                outputDevice?.Init(_equalizer);
+                OutputDevice?.Init(_equalizer);
             }
             else
             {
-                outputDevice?.Init(_audioFile);
+                OutputDevice?.Init(_audioFile);
             }
 
             MusicVolume = oldVol;
@@ -268,12 +259,12 @@ public class MusicStream : AudioStream
 
     public string? PathToMusic
     {
-        get { return _pathToMusic; }
+        get => _pathToMusic;
         set
         {
             if (!File.Exists(value))
             {
-                log.Print("File does not exist", LogInfoType.Warning);
+                Log.Print("File does not exist", LogInfoType.Warning);
 
                 throw new FileNotFoundException("File does not exist");
             }
@@ -344,7 +335,7 @@ public class MusicStream : AudioStream
 
             _equalizer = new Equalizer(_audioFile, _bands);
 
-            log.Print("Initialize equalizer", LogInfoType.Info);
+            Log.Print("Initialize equalizer", LogInfoType.Info);
         }
     }
 
@@ -354,13 +345,10 @@ public class MusicStream : AudioStream
 
         _equalizer = null;
 
-        log.Print("Stop equalizer", LogInfoType.Info);
+        Log.Print("Stop equalizer", LogInfoType.Info);
     }
 
-    public bool IsEqualizerWorking
-    {
-        get { return _equalizer != null; }
-    }
+    public bool IsEqualizerWorking => _equalizer != null;
 
     public float MinimumGain => -30;
 
@@ -368,7 +356,7 @@ public class MusicStream : AudioStream
 
     public float GetBandGain(int index)
     {
-        if (_bands != null && index >= 0 && index <= 7)
+        if (_bands != null && index is >= 0 and <= 7)
         {
             return _bands[index].Gain;
         }
@@ -380,7 +368,7 @@ public class MusicStream : AudioStream
 
     public void SetBandGain(int index, float value)
     {
-        if (_bands != null && index >= 0 && index <= 7)
+        if (_bands != null && index is >= 0 and <= 7)
         {
             if (Math.Abs(_bands[index].Gain - value) > 0)
             {
@@ -429,7 +417,7 @@ public class MusicStream : AudioStream
 
             Stop();
 
-            outputDevice?.Dispose();
+            OutputDevice?.Dispose();
 
             SelectOutputDevice(deviceName);
 
@@ -440,7 +428,7 @@ public class MusicStream : AudioStream
         }
         else
         {
-            outputDevice?.Dispose();
+            OutputDevice?.Dispose();
 
             SelectOutputDevice(deviceName);
         }
@@ -471,7 +459,7 @@ public class MicrophoneStream : AudioStream
         {
             if (value < 0f || value > 1f)
             {
-                log.Print("Volume < 0.0 or > 1.0", LogInfoType.Error);
+                Log.Print("Volume < 0.0 or > 1.0", LogInfoType.Error);
 
                 if (value < 0)
                 {
@@ -498,7 +486,7 @@ public class MicrophoneStream : AudioStream
     {
         if (String.IsNullOrWhiteSpace(deviceName))
         {
-            log.Print("Name of input device can`t be null", LogInfoType.Error);
+            Log.Print("Name of input device can`t be null", LogInfoType.Error);
 
             throw new ArgumentNullException(nameof(deviceName));
         }
@@ -512,7 +500,7 @@ public class MicrophoneStream : AudioStream
             _waveSource.WaveFormat = new WaveFormat(44100,
                 WaveIn.GetCapabilities(DeviceControl.GetInputDeviceId(deviceName)).Channels);
 
-            log.Print("Input device has been selected", LogInfoType.Info);
+            Log.Print("Input device has been selected", LogInfoType.Info);
         }
     }
 
@@ -540,7 +528,7 @@ public class MicrophoneStream : AudioStream
             _waveIn = new WaveInProvider(_waveSource);
             _waveInVolume = new VolumeWaveProvider16(_waveIn);
 
-            outputDevice?.Init(_waveInVolume);
+            OutputDevice?.Init(_waveInVolume);
         }
 
         _waveSource?.StartRecording();

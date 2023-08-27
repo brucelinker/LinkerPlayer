@@ -1,4 +1,4 @@
-﻿namespace LinkerPlayer.View.UserControls;
+﻿namespace LinkerPlayer.UserControls;
 
 /// <summary>
 /// Interaction logic for PlaylistText.xaml

@@ -3,7 +3,7 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class NewPlaylistButton
 {
@@ -22,7 +22,7 @@ public partial class NewPlaylistButton
     {
         if (e.Key == Key.Enter)
         {
-            string? popupTextBoxText = PopupTextBox.Text.Trim();
+            string popupTextBoxText = PopupTextBox.Text.Trim();
 
             if (!string.IsNullOrEmpty(popupTextBoxText))
             {

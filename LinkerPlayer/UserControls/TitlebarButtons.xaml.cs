@@ -2,7 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class TitlebarButtons
 {

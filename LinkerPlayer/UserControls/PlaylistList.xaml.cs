@@ -1,15 +1,15 @@
-﻿using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
-using Microsoft.Win32;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using LinkerPlayer.Audio;
+using LinkerPlayer.Utils;
+using Microsoft.Win32;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class PlaylistList
 {
@@ -24,11 +24,11 @@ public partial class PlaylistList
     private void ListViewItem_Drop(object sender, DragEventArgs e)
     {
         Song? droppedData = e.Data.GetData(typeof(Song)) as Song;
-        string? target = (((ListViewItem)(sender)).DataContext as Playlist)?.Name;
+        string target = (((ListViewItem)(sender)).DataContext as Playlist)!.Name!;
 
         Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
-        if (droppedData != null && target != null)
+        if (droppedData != null && target != null!)
         {
             if (target != win.SelectedPlaylist?.Name)
             {
@@ -69,7 +69,7 @@ public partial class PlaylistList
 
                     if (win.SelectedPlaylist == null)
                     {
-                        win.SelectPlaylistByName(target);
+                        win.SelectPlaylistByName(target!);
                     }
                     else if (win.SelectedPlaylist.Name == target)
                     {
@@ -77,7 +77,7 @@ public partial class PlaylistList
                     }
                     else
                     {
-                        win.SelectPlaylistByName(target);
+                        win.SelectPlaylistByName(target!);
                     }
                 }
             }
@@ -181,7 +181,7 @@ public partial class PlaylistList
 
                             if (win.SelectedPlaylist == null)
                             {
-                                win.SelectPlaylistByName(playlistName);
+                                win.SelectPlaylistByName(playlistName!);
                             }
                             else if (win.SelectedPlaylist.Name == playlistName)
                             {
@@ -189,7 +189,7 @@ public partial class PlaylistList
                             }
                             else
                             {
-                                win.SelectPlaylistByName(playlistName);
+                                win.SelectPlaylistByName(playlistName!);
                             }
                         }
                     }

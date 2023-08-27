@@ -1,25 +1,26 @@
-﻿<Window x:Class="LinkerPlayer.View.Windows.SettingsWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        xmlns:userControls="clr-namespace:LinkerPlayer.View.UserControls"
-        mc:Ignorable="d"
-        WindowStyle="None"
-        Title="Settings" Height="600" Width="500"
-        MinHeight="250" MinWidth="500"
-        AllowsTransparency="True"
-        
-        StateChanged="Window_StateChanged"
-        Closing="Window_Closing"
-        
-        MouseDown="Window_MouseDown"
-        
-        Loaded="Window_Loaded">
+﻿<Window
+    x:Class="LinkerPlayer.Windows.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+    Title="Settings"
+    Width="500"
+    Height="600"
+    MinWidth="500"
+    MinHeight="250"
+    AllowsTransparency="True"
+    Closing="Window_Closing"
+    Loaded="Window_Loaded"
+    MouseDown="Window_MouseDown"
+    StateChanged="Window_StateChanged"
+    WindowStyle="None"
+    mc:Ignorable="d">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="25"/>
+        <WindowChrome CaptionHeight="25" />
     </WindowChrome.WindowChrome>
 
     <Window.Resources>
@@ -27,58 +28,61 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="Transparent" CornerRadius="10">
-                            <ContentPresenter/>
+                        <Border
+                            x:Name="border"
+                            Background="Transparent"
+                            CornerRadius="10">
+                            <ContentPresenter />
                         </Border>
 
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="#3b3b42"/>
+                                <Setter TargetName="border" Property="Background" Value="#3b3b42" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-            
+
         </Style>
     </Window.Resources>
 
     <Grid Focusable="True">
         <Grid.RowDefinitions>
-            <RowDefinition Height="35"/>
-            <RowDefinition/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="35" />
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        
+
         <Grid.Background>
-            <SolidColorBrush Color="#212128"/>
+            <SolidColorBrush Color="#212128" />
         </Grid.Background>
 
-        <userControls:TitlebarButtons x:Name="TitlebarButtons" Panel.ZIndex="1"/>
+        <userControls:TitlebarButtons x:Name="TitlebarButtons" Panel.ZIndex="1" />
 
-        <TabControl Grid.Row="1" Name="TabControl">
+        <TabControl Name="TabControl" Grid.Row="1">
             <TabControl.Resources>
                 <Style TargetType="TextBlock">
-                    <Setter Property="FontFamily" Value="/Fonts/#Montserrat"/>
-                    <Setter Property="FontSize" Value="16"/>
-                    <Setter Property="Foreground" Value="#BDBDBD"/>
-                    <Setter Property="VerticalAlignment" Value="Center"/>
+                    <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
+                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="Foreground" Value="#BDBDBD" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
                 </Style>
 
-                <Style TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
-                    <Setter Property="FontFamily" Value="/Fonts/#Montserrat"/>
-                    <Setter Property="FontSize" Value="16"/>
-                    <Setter Property="VerticalAlignment" Value="Center"/>
-                    <Setter Property="Height" Value="27"/>
+                <Style BasedOn="{StaticResource MaterialDesignComboBox}" TargetType="ComboBox">
+                    <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
+                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                    <Setter Property="Height" Value="27" />
                 </Style>
 
                 <Style TargetType="Grid">
-                    <Setter Property="Margin" Value="0,0,0,20"/>
+                    <Setter Property="Margin" Value="0,0,0,20" />
                 </Style>
 
                 <Style TargetType="materialDesign:PackIcon">
-                    <Setter Property="VerticalAlignment" Value="Center"/>
-                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                    <Setter Property="VerticalAlignment" Value="Center" />
+                    <Setter Property="HorizontalAlignment" Value="Center" />
                 </Style>
             </TabControl.Resources>
 
@@ -91,82 +95,98 @@
                     <StackPanel Margin="30,50,30,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="265"/>
-                                <ColumnDefinition/>
+                                <ColumnDefinition Width="265" />
+                                <ColumnDefinition />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Select main output device</TextBlock>
 
-                            <ComboBox Grid.Column="1" Name="MainOutputDevicesList" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Foreground="#BDBDBD">
+                            <ComboBox
+                                Name="MainOutputDevicesList"
+                                Grid.Column="1"
+                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                                Foreground="#BDBDBD">
                                 <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128"/>
+                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
                                 </ComboBox.Resources>
                             </ComboBox>
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="265"/>
-                                <ColumnDefinition/>
+                                <ColumnDefinition Width="265" />
+                                <ColumnDefinition />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Select additional output device</TextBlock>
 
-                            <ComboBox Grid.Column="1" Name="AdditionalOutputDevicesList" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Foreground="#BDBDBD">
+                            <ComboBox
+                                Name="AdditionalOutputDevicesList"
+                                Grid.Column="1"
+                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                                Foreground="#BDBDBD">
                                 <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128"/>
+                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
                                 </ComboBox.Resources>
                             </ComboBox>
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="265"/>
-                                <ColumnDefinition/>
+                                <ColumnDefinition Width="265" />
+                                <ColumnDefinition />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Select mic input device</TextBlock>
 
-                            <ComboBox Grid.Column="1" Name="InputDevicesList" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Foreground="#BDBDBD">
+                            <ComboBox
+                                Name="InputDevicesList"
+                                Grid.Column="1"
+                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                                Foreground="#BDBDBD">
                                 <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128"/>
+                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
                                 </ComboBox.Resources>
                             </ComboBox>
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="265"/>
-                                <ColumnDefinition/>
+                                <ColumnDefinition Width="265" />
+                                <ColumnDefinition />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Select mic output device</TextBlock>
 
-                            <ComboBox Grid.Column="1" Name="MicOutputDevicesList" BorderBrush="{DynamicResource PrimaryHueMidBrush}" Foreground="#BDBDBD">
+                            <ComboBox
+                                Name="MicOutputDevicesList"
+                                Grid.Column="1"
+                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+                                Foreground="#BDBDBD">
                                 <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128"/>
+                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
                                 </ComboBox.Resources>
                             </ComboBox>
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Enable output to additional device</TextBlock>
-                            <ToggleButton Grid.Column="1" Name="AdditionalOutputEnabled"/>
+                            <ToggleButton Name="AdditionalOutputEnabled" Grid.Column="1" />
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Enable mic output</TextBlock>
-                            <ToggleButton Grid.Column="1" Name="MicOutputEnabled"/>
+                            <ToggleButton Name="MicOutputEnabled" Grid.Column="1" />
                         </Grid>
                     </StackPanel>
                 </TabItem.Content>
@@ -178,7 +198,7 @@
                 </TabItem.Header>
 
                 <TabItem.Content>
-                    <StackPanel Margin="30,50,30,0" Name="HotkeyStackPanel"/>
+                    <StackPanel Name="HotkeyStackPanel" Margin="30,50,30,0" />
                 </TabItem.Content>
             </TabItem>
 
@@ -191,53 +211,67 @@
                     <StackPanel Margin="30,50,30,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition Width="180" />
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Downloads folder</TextBlock>
-                            <TextBlock Grid.Column="1" Name="DownloadsFolder"/>
-                            <Button Grid.Column="2" Style="{StaticResource NoStylingButton}" Click="EditDownloadsFolder">
-                                <materialDesign:PackIcon Kind="PencilOutline" Foreground="White"/>
+                            <TextBlock Name="DownloadsFolder" Grid.Column="1" />
+                            <Button
+                                Grid.Column="2"
+                                Click="EditDownloadsFolder"
+                                Style="{StaticResource NoStylingButton}">
+                                <materialDesign:PackIcon Foreground="White" Kind="PencilOutline" />
                             </Button>
                         </Grid>
-                        
+
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Enable sound wave visualization</TextBlock>
-                            <ToggleButton Grid.Column="1" Name="VisualizationEnabled"/>
+                            <ToggleButton Name="VisualizationEnabled" Grid.Column="1" />
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">On Close, minimize to Tray</TextBlock>
-                            <ToggleButton Grid.Column="1" Name="MinimizeToTrayEnabled"/>
+                            <ToggleButton Name="MinimizeToTrayEnabled" Grid.Column="1" />
                         </Grid>
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="40"/>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="40" />
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0">Enable equalizer on start</TextBlock>
-                            <ToggleButton Grid.Column="1" Name="EqualizerOnStartEnabled"/>
+                            <ToggleButton Name="EqualizerOnStartEnabled" Grid.Column="1" />
                         </Grid>
                     </StackPanel>
                 </TabItem.Content>
             </TabItem>
         </TabControl>
 
-        <Button Grid.Row="2" Click="Save_Click" Content="Save" Background="Transparent" Width="150" HorizontalAlignment="Right" Margin="15"/>
-        <materialDesign:Snackbar Grid.Row="1" Name="InfoSnackbar" MessageQueue="{materialDesign:MessageQueue}" IsActive="False"/>
+        <Button
+            Grid.Row="2"
+            Width="150"
+            Margin="15"
+            HorizontalAlignment="Right"
+            Background="Transparent"
+            Click="Save_Click"
+            Content="Save" />
+        <materialDesign:Snackbar
+            Name="InfoSnackbar"
+            Grid.Row="1"
+            IsActive="False"
+            MessageQueue="{materialDesign:MessageQueue}" />
     </Grid>
 </Window>

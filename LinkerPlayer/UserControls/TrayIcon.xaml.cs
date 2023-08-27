@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class TrayIcon
 {
@@ -50,7 +50,7 @@ public partial class TrayIcon
 
         if (Window.GetWindow(this) is Windows.MainWindow win)
         {
-            win.Window_Closed(null, null); // saves settings
+            win.Window_Closed(null!, null!); // saves settings
             win.Close();
         }
 

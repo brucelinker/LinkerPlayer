@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using MaterialDesignThemes.Wpf;
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -11,9 +12,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using MaterialDesignThemes.Wpf;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class BottomControlPanel : INotifyPropertyChanged
 {
@@ -44,8 +44,8 @@ public partial class BottomControlPanel : INotifyPropertyChanged
         Loop
     }
 
-    private string _buttonStateImagePath;
-    private string _playbackModeImagePath;
+    private string _buttonStateImagePath = null!;
+    private string _playbackModeImagePath = null!;
     private ButtonState _buttonState = ButtonState.Stopped;
     private PlaybackMode _playbackMode = PlaybackMode.NoLoop;
 

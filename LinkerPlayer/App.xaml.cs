@@ -1,6 +1,5 @@
-﻿using System.Windows;
+﻿namespace LinkerPlayer;
 
-namespace LinkerPlayer;
-
-public partial class App : Application {
+public partial class App
+{
 }

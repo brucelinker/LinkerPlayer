@@ -3,10 +3,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace LinkerPlayer.Audio;
 
@@ -340,7 +338,7 @@ public class EqualizerLibrary
 {
     public static List<BandsSettings>? BandsSettings = new();
     private static readonly string JsonFilePath;
-    protected static ILog log = LogSettings.SelectedLog;
+    protected static ILog Log = LogSettings.SelectedLog;
 
     static EqualizerLibrary()
     {
@@ -361,10 +359,10 @@ public class EqualizerLibrary
             }
             else
             {
-                log.Print("Json is empty", LogInfoType.Warning);
+                Log.Print("Json is empty", LogInfoType.Warning);
             }
 
-            log.Print("Load from json", LogInfoType.Info);
+            Log.Print("Load from json", LogInfoType.Info);
         }
         else
         {
@@ -379,6 +377,6 @@ public class EqualizerLibrary
         string json = JsonConvert.SerializeObject(BandsSettings, Formatting.Indented, settings);
         File.WriteAllText(JsonFilePath, json);
 
-        log.Print("Save to json", LogInfoType.Info);
+        Log.Print("Save to json", LogInfoType.Info);
     }
 }

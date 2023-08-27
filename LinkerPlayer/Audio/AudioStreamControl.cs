@@ -8,7 +8,7 @@ namespace LinkerPlayer.Audio;
 
 public class AudioStreamControl
 {
-    protected ILog log = LogSettings.SelectedLog;
+    protected ILog Log = LogSettings.SelectedLog;
 
     public MusicStream? MainMusic;
     public MusicStream? AdditionalMusic;
@@ -22,7 +22,7 @@ public class AudioStreamControl
     {
         if (string.IsNullOrWhiteSpace(mainOutputDevice))
         {
-            log.Print("Device name can`t be null", LogInfoType.Error);
+            Log.Print("Device name can`t be null", LogInfoType.Error);
         }
         else
         {
@@ -34,7 +34,7 @@ public class AudioStreamControl
     {
         if (string.IsNullOrWhiteSpace(additionalOutputDevice))
         {
-            log.Print("Device name can`t be null", LogInfoType.Error);
+            Log.Print("Device name can`t be null", LogInfoType.Error);
         }
         else
         {
@@ -61,7 +61,7 @@ public class AudioStreamControl
             }
             else
             {
-                log.Print("MainMusic should be initialized", LogInfoType.Error);
+                Log.Print("MainMusic should be initialized", LogInfoType.Error);
             }
         }
     }
@@ -70,7 +70,7 @@ public class AudioStreamControl
     {
         if (String.IsNullOrWhiteSpace(inputDevice) || String.IsNullOrWhiteSpace(outputDevice))
         {
-            log.Print("Device name can`t be null", LogInfoType.Error);
+            Log.Print("Device name can`t be null", LogInfoType.Error);
         }
         else
         {
@@ -127,13 +127,13 @@ public class AudioStreamControl
             {
                 EqualizerLibrary.LoadFromJson();
 
-                var band = EqualizerLibrary.BandsSettings.FirstOrDefault(n => n.Name == _selectedBandName);
+                var band = EqualizerLibrary.BandsSettings!.FirstOrDefault(n => n.Name == _selectedBandName);
 
                 if (band != null)
                 {
                     SetBandsList(band.EqualizerBands);
 
-                    log.Print("Profile has been selected", LogInfoType.Info);
+                    Log.Print("Profile has been selected", LogInfoType.Info);
                 }
             }
         }

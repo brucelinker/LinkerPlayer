@@ -1,6 +1,4 @@
-﻿using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,8 +7,10 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using LinkerPlayer.Audio;
+using LinkerPlayer.Utils;
 
-namespace LinkerPlayer.View.UserControls;
+namespace LinkerPlayer.UserControls;
 
 public partial class SongList
 {
