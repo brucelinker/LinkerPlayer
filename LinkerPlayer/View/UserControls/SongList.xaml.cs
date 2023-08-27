@@ -1,4 +1,6 @@
-﻿using System;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Utils;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,107 +9,131 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
 
 namespace LinkerPlayer.View.UserControls;
 
-public partial class SongList : UserControl {
-
-    public SongList() {
+public partial class SongList
+{
+    public SongList()
+    {
         DataContext = this;
         InitializeComponent();
     }
 
-    public RoutedEventHandler ClickRowElement;
+    public RoutedEventHandler? ClickRowElement;
 
-    private bool _isDragging = false;
+    private bool _isDragging;
     private Point? _startPoint;
-    private string _oldTextBoxText;
+    private string _oldTextBoxText = string.Empty;
 
-    private void ListView_SizeChanged(object sender, SizeChangedEventArgs e) {
-        var listView = sender as ListView;
-        var gridView = listView.View as GridView;
+    private void ListView_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        ListView? listView = sender as ListView;
+        GridView? gridView = listView?.View as GridView;
 
-        var workingWidth = listView.ActualWidth - SystemParameters.VerticalScrollBarWidth; // take into account vertical scrollbar
-        workingWidth -= gridView.Columns.Last().Width;
+        if (listView != null)
+        {
+            double workingWidth =
+                listView.ActualWidth - SystemParameters.VerticalScrollBarWidth; // take into account vertical scrollbar
+            if (gridView != null)
+            {
+                workingWidth -= gridView.Columns.Last().Width;
 
-        gridView.Columns[1].Width = workingWidth * 0.4;
-        gridView.Columns[2].Width = workingWidth * 0.6;
+                gridView.Columns[1].Width = workingWidth * 0.4;
+                gridView.Columns[2].Width = workingWidth * 0.6;
+            }
+        }
     }
 
-    private void StartDrag(object sender, MouseEventArgs e) {
+    private void StartDrag(object sender)
+    {
         _isDragging = true;
 
-        var draggedItem = sender as ListViewItem;
-        if (draggedItem != null) {
+        if (sender is ListViewItem draggedItem)
+        {
             DragDrop.DoDragDrop(draggedItem, draggedItem.DataContext, DragDropEffects.Move);
         }
 
         _isDragging = false;
     }
 
-    private void ListViewItem_PreviewMouseMove(object sender, MouseEventArgs e) {
-        if (e.LeftButton == MouseButtonState.Pressed && !_isDragging) {
+    private void ListViewItem_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed && !_isDragging)
+        {
             Point position = e.GetPosition(null);
 
-            if (_startPoint != null) {
+            if (_startPoint != null)
+            {
                 if (Math.Abs(position.X - ((Point)_startPoint).X) > SystemParameters.MinimumHorizontalDragDistance ||
-                    Math.Abs(position.Y - ((Point)_startPoint).Y) > SystemParameters.MinimumVerticalDragDistance) {
+                    Math.Abs(position.Y - ((Point)_startPoint).Y) > SystemParameters.MinimumVerticalDragDistance)
+                {
                     _startPoint = null;
-                    StartDrag(sender, e);
+                    StartDrag(sender);
                 }
             }
         }
     }
 
-    private void ListViewItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e) {
+    private void ListViewItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
         _startPoint = e.GetPosition(null);
     }
 
-    private void ListViewItem_Drop(object sender, DragEventArgs e) {
-        var droppedData = e.Data.GetData(typeof(Song)) as Song;
-        var target = ((ListViewItem)(sender)).DataContext as Song;
+    private void ListViewItem_Drop(object sender, DragEventArgs e)
+    {
+        Song? droppedData = e.Data.GetData(typeof(Song)) as Song;
+        Song? target = ((ListViewItem)(sender)).DataContext as Song;
 
-        var win = (Windows.MainWindow)Window.GetWindow(this);
+        Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
-        if (droppedData != null && target != null) {
+        if (droppedData != null && target != null)
+        {
             int removedIdx = List.Items.IndexOf(droppedData);
             int targetIdx = List.Items.IndexOf(target);
 
-            if (removedIdx != targetIdx) {
+            if (removedIdx != targetIdx)
+            {
                 List.Items.RemoveAt(removedIdx);
                 List.Items.Insert(targetIdx, droppedData);
 
-                MusicLibrary.RemoveSongFromPlaylist(droppedData.Id, win.SelectedPlaylist.Name);
-                MusicLibrary.AddSongToPlaylist(droppedData.Id, win.SelectedPlaylist.Name, targetIdx);
+                MusicLibrary.RemoveSongFromPlaylist(droppedData.Id, win.SelectedPlaylist?.Name);
+                MusicLibrary.AddSongToPlaylist(droppedData.Id, win.SelectedPlaylist?.Name, targetIdx);
             }
         }
-        else if (e.Data.GetDataPresent(DataFormats.FileDrop)) {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            int targetIdx = List.Items.IndexOf(target);
+        else if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop)!;
+            if (target != null)
+            {
+                int targetIdx = List.Items.IndexOf(target);
 
-            List<string> mp3Files = Helper.GetAllMp3Files(files);
-            mp3Files.Reverse();
+                List<string> mp3Files = Helper.GetAllMp3Files(files);
+                mp3Files.Reverse();
 
-            foreach (var mp3File in mp3Files) {
-                var songToAdd = new Song() { Path = mp3File };
+                foreach (string mp3File in mp3Files)
+                {
+                    Song songToAdd = new Song() { Path = mp3File };
 
-                if (MusicLibrary.AddSong(songToAdd)) {
-                    MusicLibrary.AddSongToPlaylist(songToAdd.Id, win.SelectedPlaylist.Name, targetIdx);
-                    List.Items.Insert(targetIdx, songToAdd);
+                    if (MusicLibrary.AddSong(songToAdd))
+                    {
+                        MusicLibrary.AddSongToPlaylist(songToAdd.Id, win.SelectedPlaylist?.Name, targetIdx);
+                        List.Items.Insert(targetIdx, songToAdd);
+                    }
                 }
             }
         }
 
-        var button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
+        Button button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
         button.BorderBrush = new SolidColorBrush(Colors.Transparent);
         button.BorderThickness = new Thickness(0);
 
         e.Handled = true; // prevents ListView_Drop from being raised
 
-        if (droppedData != null) {
-            if (droppedData.Id == win.SelectedSong.Id) {
+        if (droppedData != null)
+        {
+            if (droppedData.Id == win.SelectedSong?.Id)
+            {
                 List.Items.Refresh();
 
                 OutlineSelectedSong();
@@ -115,72 +141,79 @@ public partial class SongList : UserControl {
         }
     }
 
-    private async void OutlineSelectedSong() {
-        var win = (Windows.MainWindow)Window.GetWindow(this);
+    private async void OutlineSelectedSong()
+    {
+        Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
         await Task.Delay(10);
 
-        foreach (var buttonToChange in Helper.FindVisualChildren<Button>(List)) {
-            if (((buttonToChange.Content as GridViewRowPresenter).Content as Song).Id == win.SelectedSong.Id) {
+        foreach (Button buttonToChange in Helper.FindVisualChildren<Button>(List))
+        {
+            if (((buttonToChange.Content as GridViewRowPresenter)?.Content as Song)?.Id == win.SelectedSong?.Id)
+            {
                 buttonToChange.FontWeight = FontWeights.ExtraBold;
                 break;
             }
         }
     }
 
-    private void ListViewItem_PreviewDragEnter(object sender, DragEventArgs e) {
-        var button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
+    private void ListViewItem_PreviewDragEnter(object sender, DragEventArgs e)
+    {
+        Button button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
 
-        var droppedData = e.Data.GetData(typeof(Song)) as Song;
-        var target = ((ListViewItem)(sender)).DataContext as Song;
+        Song? target = ((ListViewItem)(sender)).DataContext as Song;
 
-        if (droppedData != null && target != null) {
+        if (e.Data.GetData(typeof(Song)) is Song droppedData && target != null)
+        {
             int removedIdx = List.Items.IndexOf(droppedData);
             int targetIdx = List.Items.IndexOf(target);
 
-            if (removedIdx != targetIdx) {
+            if (removedIdx != targetIdx)
+            {
                 button.BorderBrush = new SolidColorBrush(Colors.White) { Opacity = 0.4 };
 
-                if (removedIdx > targetIdx) {
-                    button.BorderThickness = new Thickness(0, 2, 0, 0);
-                }
-                else {
-                    button.BorderThickness = new Thickness(0, 0, 0, 2);
-                }
+                button.BorderThickness = removedIdx > targetIdx ? new Thickness(0, 2, 0, 0) : new Thickness(0, 0, 0, 2);
             }
         }
 
-        if (e.Data.GetDataPresent(DataFormats.FileDrop)) {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
             button.BorderBrush = new SolidColorBrush(Colors.White) { Opacity = 0.4 };
             button.BorderThickness = new Thickness(0, 2, 0, 0);
         }
     }
 
-    private void ListViewItem_PreviewDragLeave(object sender, DragEventArgs e) {
-        var button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
+    private void ListViewItem_PreviewDragLeave(object sender, DragEventArgs e)
+    {
+        Button button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
 
         button.BorderBrush = new SolidColorBrush(Colors.Transparent);
         button.BorderThickness = new Thickness(0);
     }
 
-    private void TextBox_PreviewDragOver(object sender, DragEventArgs e) {
+    private void TextBox_PreviewDragOver(object sender, DragEventArgs e)
+    {
         e.Effects = DragDropEffects.Move;
         e.Handled = true; // allows objects to be dropped on TextBox
     }
 
-    private void ListView_Drop(object sender, DragEventArgs e) {
-        var win = (Windows.MainWindow)Window.GetWindow(this);
-        Playlist selectedPlaylist = win.SelectedPlaylist;
+    private void ListView_Drop(object sender, DragEventArgs e)
+    {
+        Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
+        Playlist? selectedPlaylist = win.SelectedPlaylist;
 
-        if (e.Data.GetDataPresent(DataFormats.FileDrop) && selectedPlaylist != null) {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+        if (e.Data.GetDataPresent(DataFormats.FileDrop) && selectedPlaylist != null)
+        {
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop)!;
 
             List<string> mp3Files = Helper.GetAllMp3Files(files);
 
-            foreach (var mp3File in mp3Files) {
-                var songToAdd = new Song() { Path = mp3File };
+            foreach (string mp3File in mp3Files)
+            {
+                Song songToAdd = new Song() { Path = mp3File };
 
-                if (MusicLibrary.AddSong(songToAdd)) {
+                if (MusicLibrary.AddSong(songToAdd))
+                {
                     MusicLibrary.AddSongToPlaylist(songToAdd.Id, selectedPlaylist.Name);
                     List.Items.Add(songToAdd);
                 }
@@ -188,30 +221,35 @@ public partial class SongList : UserControl {
         }
     }
 
-        
 
-    private void MenuItem_Click(object sender, RoutedEventArgs e) {
-        MenuItem menuItem = sender as MenuItem;
-        if (menuItem != null) {
-            var win = (Windows.MainWindow)Window.GetWindow(this);
+    private void MenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem)
+        {
+            Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
-            if (Equals(menuItem.Header, "Remove from playlist")) {
-                MusicLibrary.RemoveSongFromPlaylist((menuItem.DataContext as Song).Id, win.SelectedPlaylist.Name);
-                MusicLibrary.RemoveSong((menuItem.DataContext as Song).Id);
+            if (Equals(menuItem.Header, "Remove from playlist"))
+            {
+                MusicLibrary.RemoveSongFromPlaylist((menuItem.DataContext as Song)!.Id, win.SelectedPlaylist?.Name);
+                MusicLibrary.RemoveSong((menuItem.DataContext as Song)!.Id);
 
-                if (win.SelectedSong != null) {
-                    if ((menuItem.DataContext as Song).Id == win.SelectedSong.Id) {
+                if (win.SelectedSong != null)
+                {
+                    if ((menuItem.DataContext as Song)!.Id == win.SelectedSong.Id)
+                    {
                         win.SelectedSongRemoved();
                     }
                 }
 
                 List.Items.Remove(menuItem.DataContext as Song);
             }
-            else if (Equals(menuItem.Header, "Rename")) {
-                var button = ((ContextMenu)menuItem.Parent).PlacementTarget as Button;
-                var buttonGVRP = button.Content as GridViewRowPresenter;
+            else if (Equals(menuItem.Header, "Rename"))
+            {
+                Button? button = ((ContextMenu)menuItem.Parent).PlacementTarget as Button;
+                GridViewRowPresenter? buttonGridViewRowPresenter = button?.Content as GridViewRowPresenter;
 
-                var textBox = Helper.FindVisualChildren<TextBox>(buttonGVRP).First(); // we only have 1 textbox in button
+                TextBox textBox =
+                    Helper.FindVisualChildren<TextBox>(buttonGridViewRowPresenter).First(); // we only have 1 textBox in button
 
                 textBox.IsReadOnly = false;
                 textBox.Cursor = Cursors.IBeam;
@@ -229,65 +267,79 @@ public partial class SongList : UserControl {
         }
     }
 
-    private void SetTextBoxToDefaultAndSaveText(object sender) {
-        var textBox = sender as TextBox;
+    private void SetTextBoxToDefaultAndSaveText(object sender)
+    {
+        if (sender is TextBox textBox)
+        {
+            textBox.IsReadOnly = true;
+            textBox.Cursor = Cursors.Hand;
 
-        textBox.IsReadOnly = true;
-        textBox.Cursor = Cursors.Hand;
+            textBox.SelectionLength = 0;
 
-        textBox.SelectionLength = 0;
+            textBox.Focusable = false;
 
-        textBox.Focusable = false;
+            //textBox.FontWeight = FontWeights.Normal;
 
-        //textBox.FontWeight = FontWeights.Normal;
+            string textBoxText = textBox.Text.Trim();
 
-        var textBoxText = textBox.Text.Trim();
+            if (textBoxText != _oldTextBoxText)
+            {
+                if (!MusicLibrary.RenameSong((textBox.DataContext as Song)!.Id, textBoxText))
+                {
+                    textBox.Text = _oldTextBoxText;
+                }
+                else
+                {
+                    textBox.Text = textBoxText;
+                    ((textBox.DataContext as Song)!).Name = textBoxText;
 
-        if (textBoxText != _oldTextBoxText) {
-            if (!MusicLibrary.RenameSong((textBox.DataContext as Song).Id, textBoxText)) {
-                textBox.Text = _oldTextBoxText;
-            }
-            else {
-                textBox.Text = textBoxText;
-                (textBox.DataContext as Song).Name = textBoxText;
+                    Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
-                var win = (Windows.MainWindow)Window.GetWindow(this);
-
-                if (win.SelectedSong != null) {
-                    if (win.SelectedSong.Id == (textBox.DataContext as Song).Id) {
-                        win.RenameSelectedSong(textBoxText);
+                    if (win.SelectedSong != null)
+                    {
+                        if (win.SelectedSong.Id == (textBox.DataContext as Song)!.Id)
+                        {
+                            win.RenameSelectedSong(textBoxText);
+                        }
                     }
                 }
             }
-        }
-        else {
-            textBox.Text = _oldTextBoxText;
+            else
+            {
+                textBox.Text = _oldTextBoxText;
+            }
         }
 
         _isDragging = false;
     }
 
-    private void TextBox_KeyDown(object sender, KeyEventArgs e) {
-        if (e.Key == Key.Enter) {
+    private void TextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
             SetTextBoxToDefaultAndSaveText(sender);
         }
     }
 
-    private void TextBox_LostFocus(object sender, RoutedEventArgs e) {
+    private void TextBox_LostFocus(object sender, RoutedEventArgs e)
+    {
         SetTextBoxToDefaultAndSaveText(sender);
     }
 }
 
-public class DurationConverter : IValueConverter {
-    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
-        var ts = (TimeSpan)value;
+public class DurationConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        TimeSpan ts = (TimeSpan)value;
 
-        var output = string.Format("{0}:{1}", (int)ts.TotalMinutes, ts.Seconds.ToString("D2"));
+        string output = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
 
         return output;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture) {
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
         return Binding.DoNothing;
     }
 }

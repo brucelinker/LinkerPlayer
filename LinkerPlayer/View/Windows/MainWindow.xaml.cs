@@ -17,14 +17,14 @@ namespace LinkerPlayer.View.Windows;
 
 public partial class MainWindow : Window {
     public AudioStreamControl AudioStreamControl;
-    private DispatcherTimer SeekBarTimer = new DispatcherTimer();
+    private DispatcherTimer _seekBarTimer = new DispatcherTimer();
 
     public Playlist? SelectedPlaylist;
     public Song? SelectedSong = null;
     public string? BackgroundPlaylistName = null;
 
     public bool VisualizationEnabled = LinkerPlayer.Properties.Settings.Default.VisualizationEnabled;
-    private string? CurrentlyVisualizedPath = null;
+    private string? _currentlyVisualizedPath = null;
 
     public BandsSettings SelectedBandsSettings = null;
 
@@ -34,23 +34,23 @@ public partial class MainWindow : Window {
         WinMax.DoSourceInitialized(this);
 
         if (string.IsNullOrEmpty(LinkerPlayer.Properties.Settings.Default.MainOutputDevice)) {
-            LinkerPlayer.Properties.Settings.Default.MainOutputDevice = DeviceControll.GetOutputDeviceNameById(0);
+            LinkerPlayer.Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(0);
         }
-        else if (!DeviceControll.GetOutputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.MainOutputDevice)) {
-            LinkerPlayer.Properties.Settings.Default.MainOutputDevice = DeviceControll.GetOutputDeviceNameById(0);
+        else if (!DeviceControl.GetOutputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.MainOutputDevice)) {
+            LinkerPlayer.Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(0);
         }
 
         if (string.IsNullOrEmpty(LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice)) {
-            foreach (string outputDevice in DeviceControll.GetOutputDevicesList()) {
+            foreach (string outputDevice in DeviceControl.GetOutputDevicesList()) {
                 if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase)) {
                     LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice = outputDevice;
                 }
             }
         }
-        else if (!DeviceControll.GetOutputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice)) {
+        else if (!DeviceControl.GetOutputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice)) {
             LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice = "";
 
-            foreach (string outputDevice in DeviceControll.GetOutputDevicesList()) {
+            foreach (string outputDevice in DeviceControl.GetOutputDevicesList()) {
                 if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase)) {
                     LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice = outputDevice;
                 }
@@ -58,10 +58,10 @@ public partial class MainWindow : Window {
         }
 
         if (string.IsNullOrEmpty(LinkerPlayer.Properties.Settings.Default.InputDevice)) {
-            LinkerPlayer.Properties.Settings.Default.InputDevice = DeviceControll.GetInputDeviceNameById(0);
+            LinkerPlayer.Properties.Settings.Default.InputDevice = DeviceControl.GetInputDeviceNameById(0);
         }
-        else if (!DeviceControll.GetInputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.InputDevice)) {
-            LinkerPlayer.Properties.Settings.Default.InputDevice = DeviceControll.GetInputDeviceNameById(0);
+        else if (!DeviceControl.GetInputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.InputDevice)) {
+            LinkerPlayer.Properties.Settings.Default.InputDevice = DeviceControl.GetInputDeviceNameById(0);
         }
 
         if (string.IsNullOrEmpty(LinkerPlayer.Properties.Settings.Default.MicOutputDevice)) {
@@ -69,7 +69,7 @@ public partial class MainWindow : Window {
                 LinkerPlayer.Properties.Settings.Default.MicOutputDevice = LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice;
             }
         }
-        else if (!DeviceControll.GetOutputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.MicOutputDevice)) {
+        else if (!DeviceControl.GetOutputDevicesList().Contains(LinkerPlayer.Properties.Settings.Default.MicOutputDevice)) {
             LinkerPlayer.Properties.Settings.Default.MicOutputDevice = "";
         }
 
@@ -126,8 +126,8 @@ public partial class MainWindow : Window {
 
         PlaylistList.ClickRowElement += (s, e) => { SelectPlaylistByName((((s as Button).Content as ContentPresenter).Content as Playlist).Name.ToString()); };
 
-        SeekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
-        SeekBarTimer.Tick += timer_Tick;
+        _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
+        _seekBarTimer.Tick += timer_Tick;
 
         LinkerPlayer.Properties.Settings.Default.Save();
     }
@@ -198,14 +198,14 @@ public partial class MainWindow : Window {
     public void Music_StoppedEvent(object sender, EventArgs e) {
         if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength) {
             BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
-            SeekBarTimer.Stop();
+            _seekBarTimer.Stop();
 
             NextButton_Click(null, null);
         }else if (sender == null) {
             AudioStreamControl.Pause();
 
             BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
-            SeekBarTimer.Stop();
+            _seekBarTimer.Stop();
         }
     }
 
@@ -243,7 +243,7 @@ public partial class MainWindow : Window {
             AudioStreamControl.PathToMusic = SelectedSong.Path;
 
             AudioStreamControl.StopAndPlayFromPosition(0);
-            SeekBarTimer.Start();
+            _seekBarTimer.Start();
 
             BottomControlPanel.State = BottomControlPanel.ButtonState.Playing;
 
@@ -274,7 +274,7 @@ public partial class MainWindow : Window {
             AudioStreamControl.StopAndPlayFromPosition(posInSeekBar);
 
             BottomControlPanel.State = BottomControlPanel.ButtonState.Playing;
-            SeekBarTimer.Start();
+            _seekBarTimer.Start();
         }
     }
 
@@ -299,13 +299,13 @@ public partial class MainWindow : Window {
 
                 AudioStreamControl.StopAndPlayFromPosition((BottomControlPanel.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
 
-                SeekBarTimer.Start();
+                _seekBarTimer.Start();
             }
             else {
                 BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
 
                 AudioStreamControl.Pause();
-                SeekBarTimer.Stop();
+                _seekBarTimer.Stop();
             }
         }
     }
@@ -424,12 +424,12 @@ public partial class MainWindow : Window {
         }
     }
 
-    private void SelectWithSkipping(Song song, Action<object, RoutedEventArgs> NextPrevButton_Click) { // skips if song doesn't exist
+    private void SelectWithSkipping(Song song, Action<object, RoutedEventArgs> nextPrevButtonClick) { // skips if song doesn't exist
         if (!File.Exists(song.Path)) {
             InfoSnackbar.MessageQueue?.Clear();
             InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Name}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
             SelectedSong = song.Clone();
-            NextPrevButton_Click(null, null);
+            nextPrevButtonClick(null, null);
         }
         else {
             SelectSong(song);
@@ -444,12 +444,12 @@ public partial class MainWindow : Window {
         }
     }
 
-    public void SelectPlaylistByName(string name) {
+    public void SelectPlaylistByName(string? name) {
         foreach (var playlist in MusicLibrary.GetPlaylists()) {
             if (playlist.Name == name) {
                 SelectedPlaylist = playlist;
 
-                DisplaySelectedPlaylist();
+                DisplaySelectedPlaylist().Wait();
 
                 break;
             }
@@ -484,7 +484,7 @@ public partial class MainWindow : Window {
             AudioStreamControl.Stop();
             SelectedSong = null;
             BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
-            SeekBarTimer.Stop();
+            _seekBarTimer.Stop();
             BottomControlPanel.CurrentSongName.Text = "Song not selected";
             BottomControlPanel.TotalTime.Text = "0:00";
             BottomControlPanel.CurrentTime.Text = "0:00";
@@ -505,7 +505,7 @@ public partial class MainWindow : Window {
         }
     }
 
-    public void RenameSelectedPlaylist(string newName) {
+    public void RenameSelectedPlaylist(string? newName) {
         if (SelectedPlaylist != null) {
             SelectedPlaylist.Name = newName;
             PlaylistText.CurrentPlaylistName.Text = newName;
@@ -521,8 +521,8 @@ public partial class MainWindow : Window {
 
     public void StartVisualization() {
         if (VisualizationEnabled && SelectedSong != null) {
-            if (CurrentlyVisualizedPath != SelectedSong.Path) {
-                CurrentlyVisualizedPath = SelectedSong.Path;
+            if (_currentlyVisualizedPath != SelectedSong.Path) {
+                _currentlyVisualizedPath = SelectedSong.Path;
 
                 BottomControlPanel.VisualizeAudio(SelectedSong.Path);
             }
@@ -534,7 +534,7 @@ public partial class MainWindow : Window {
         BottomControlPanel.ShowSeekBarHideBorders();
         BottomControlPanel.UniGrid.Children.Clear();
 
-        CurrentlyVisualizedPath = null;
+        _currentlyVisualizedPath = null;
     }
 
     private void Window_MouseDown(object sender, MouseButtonEventArgs e) {
@@ -554,7 +554,7 @@ public partial class MainWindow : Window {
         }
     }
 
-    public void Window_Closed(object sender, EventArgs e) {
+    public void Window_Closed(object? sender, EventArgs? e) {
         LinkerPlayer.Properties.Settings.Default.MainVolumeSliderValue = BottomControlPanel.MainVolumeSlider.Value;
         LinkerPlayer.Properties.Settings.Default.MicVolumeSliderValue = BottomControlPanel.MicVolumeSlider.Value;
         LinkerPlayer.Properties.Settings.Default.AdditionalVolumeSliderValue = BottomControlPanel.AdditionalVolumeSlider.Value;
@@ -576,15 +576,15 @@ public partial class MainWindow : Window {
             }
         }
 
-        LinkerPlayer.Properties.Settings.Default.MainOutputDevice = DeviceControll.GetOutputDeviceNameById(AudioStreamControl.MainMusic.GetOutputDeviceId());
+        LinkerPlayer.Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.MainMusic.GetOutputDeviceId());
 
         if (AudioStreamControl.AdditionalMusic != null) {
-            LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice = DeviceControll.GetOutputDeviceNameById(AudioStreamControl.AdditionalMusic.GetOutputDeviceId());
+            LinkerPlayer.Properties.Settings.Default.AdditionalOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.AdditionalMusic.GetOutputDeviceId());
         }
 
         if (AudioStreamControl.Microphone != null) {
-            LinkerPlayer.Properties.Settings.Default.MicOutputDevice = DeviceControll.GetOutputDeviceNameById(AudioStreamControl.Microphone.GetOutputDeviceId());
-            LinkerPlayer.Properties.Settings.Default.InputDevice = DeviceControll.GetInputDeviceNameById(AudioStreamControl.Microphone.GetInputDeviceId());
+            LinkerPlayer.Properties.Settings.Default.MicOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.Microphone.GetOutputDeviceId());
+            LinkerPlayer.Properties.Settings.Default.InputDevice = DeviceControl.GetInputDeviceNameById(AudioStreamControl.Microphone.GetInputDeviceId());
         }
 
         LinkerPlayer.Properties.Settings.Default.Save();

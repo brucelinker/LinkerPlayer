@@ -22,7 +22,7 @@ namespace LinkerPlayer.View.Windows;
 
 public partial class DownloadsWindow : Window, INotifyPropertyChanged {
 
-    private Process process;
+    private Process _process;
 
     private static ILog _log = LogSettings.SelectedLog;
 
@@ -96,25 +96,25 @@ public partial class DownloadsWindow : Window, INotifyPropertyChanged {
             return;
         }
 
-        var BinariesDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Binaries");
-        var ffmpegLocation = Path.Combine(BinariesDirPath, @"ffmpeg\bin");
+        var binariesDirPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Binaries");
+        var ffmpegLocation = Path.Combine(binariesDirPath, @"ffmpeg\bin");
 
         string downloadedFileDir = SelectedDirectory;
-        string downloadedFileID = Guid.NewGuid().ToString();
+        string downloadedFileId = Guid.NewGuid().ToString();
 
-        var psi = new ProcessStartInfo(Path.Combine(BinariesDirPath, "yt-dlp.exe")) {
+        var psi = new ProcessStartInfo(Path.Combine(binariesDirPath, "yt-dlp.exe")) {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true,
-            Arguments = $" --ffmpeg-location \"{ffmpegLocation}\" -x --audio-format mp3 -o \"{downloadedFileDir}\\[{downloadedFileID}]%(title)s.%(ext)s\" \"{LinkTextBox.Text}\""
+            Arguments = $" --ffmpeg-location \"{ffmpegLocation}\" -x --audio-format mp3 -o \"{downloadedFileDir}\\[{downloadedFileId}]%(title)s.%(ext)s\" \"{LinkTextBox.Text}\""
         };
 
-        process = new Process { StartInfo = psi };
+        _process = new Process { StartInfo = psi };
 
         var isDownloading = false;
 
-        process.OutputDataReceived += (_, e) => {
+        _process.OutputDataReceived += (_, e) => {
             if (!string.IsNullOrEmpty(e.Data)) {
                 yt_dlp_Output.Dispatcher.Invoke(() => {
                     var match = Regex.Match(e.Data, @"\[download\]\s*(\d+\.?\d*)%\s*of[\s~]*(\d+\.?\d*\wiB)");
@@ -158,7 +158,7 @@ public partial class DownloadsWindow : Window, INotifyPropertyChanged {
         var hadErrors = false;
         string errorMessage = "\n";
 
-        process.ErrorDataReceived += (_, e) => {
+        _process.ErrorDataReceived += (_, e) => {
             if (!string.IsNullOrEmpty(e.Data)) {
                 if (e.Data.StartsWith("ERROR"))
                     hadErrors = true;
@@ -167,28 +167,28 @@ public partial class DownloadsWindow : Window, INotifyPropertyChanged {
             }
         };
 
-        process.Start();
-        process.BeginOutputReadLine();
-        process.BeginErrorReadLine();
+        _process.Start();
+        _process.BeginOutputReadLine();
+        _process.BeginErrorReadLine();
 
         DownloadColumn.Width = new GridLength(0, GridUnitType.Star);
         CancelColumn.Width = new GridLength(100, GridUnitType.Star);
 
-        await process.WaitForExitAsync();
+        await _process.WaitForExitAsync();
 
-        process.Dispose();
+        _process.Dispose();
 
         yt_dlp_Output.Text = "";
 
         if (!hadErrors) {
             yt_dlp_Output.Inlines.Add(new Run("[Downloading finished]") { Foreground = Brushes.LawnGreen });
 
-            AddSongToSelectedPlaylist(downloadedFileDir, downloadedFileID);
+            AddSongToSelectedPlaylist(downloadedFileDir, downloadedFileId);
         }
         else {
             yt_dlp_Output.Inlines.Add(new Run("[Error while downloading]") { Foreground = Brushes.IndianRed });
 
-            _log.Print(errorMessage, LogInfoType.ERROR);
+            _log.Print(errorMessage, LogInfoType.Error);
 
             if (!(_log is LogIntoFile)) {
                 yt_dlp_Output.Inlines.Add(new Run("\nSee logs for more info"));
@@ -229,9 +229,9 @@ public partial class DownloadsWindow : Window, INotifyPropertyChanged {
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) { // is also called when window is closed
-        if (process != null) {
-            process.Close();
-            process.Dispose();
+        if (_process != null) {
+            _process.Close();
+            _process.Dispose();
         }
 
         yt_dlp_Output.Text = "";
@@ -254,9 +254,9 @@ public partial class DownloadsWindow : Window, INotifyPropertyChanged {
         }
     }
 
-    private void AddSongToSelectedPlaylist(string downloadedFileDir, string downloadedFileID) {
-        string downloadedFilePathOld = (new DirectoryInfo(downloadedFileDir)).GetFiles($"[{downloadedFileID}]*")[0].FullName;
-        string downloadedFilePath = Regex.Replace(downloadedFilePathOld, @$"\[{downloadedFileID}\]", "");
+    private void AddSongToSelectedPlaylist(string downloadedFileDir, string downloadedFileId) {
+        string downloadedFilePathOld = (new DirectoryInfo(downloadedFileDir)).GetFiles($"[{downloadedFileId}]*")[0].FullName;
+        string downloadedFilePath = Regex.Replace(downloadedFilePathOld, @$"\[{downloadedFileId}\]", "");
 
         if (File.Exists(downloadedFilePath)) {
             File.Delete(downloadedFilePath);

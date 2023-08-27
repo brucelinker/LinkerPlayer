@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NAudio.Wave;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -6,17 +7,20 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using NAudio.Wave;
+using MaterialDesignThemes.Wpf;
 
 namespace LinkerPlayer.View.UserControls;
 
-public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
-    public bool Rendering = false;
+public partial class BottomControlPanel : INotifyPropertyChanged
+{
+    public bool Rendering;
 
-    public BottomControlPanel() {
+    public BottomControlPanel()
+    {
         DataContext = this;
         InitializeComponent();
 
@@ -26,46 +30,54 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public enum ButtonState {
+    public enum ButtonState
+    {
+        Stopped,
         Playing,
         Paused
     }
 
-    public enum PlaybackMode {
-        Loop,
+    public enum PlaybackMode
+    {
+        NoLoop,
         Loop1,
-        NoLoop
+        Loop
     }
 
-    private string _buttonStateImagePath;
-    private string _playbackModeImagePath;
-    private ButtonState _buttonState;
-    private PlaybackMode _playbackMode;
+    private string _buttonStateImagePath = string.Empty;
+    private string _playbackModeImagePath = string.Empty;
+    private ButtonState _buttonState = ButtonState.Stopped;
+    private PlaybackMode _playbackMode = PlaybackMode.NoLoop;
 
-    public string ButtonStateImagePath {
-        get { return _buttonStateImagePath; }
-        set {
+    public string ButtonStateImagePath
+    {
+        get => _buttonStateImagePath;
+        set
+        {
             _buttonStateImagePath = value;
 
             OnPropertyChanged();
         }
     }
 
-    public string PlaybackModeImagePath {
-        get { return _playbackModeImagePath; }
-        set {
+    public string PlaybackModeImagePath
+    {
+        get => _playbackModeImagePath;
+        set
+        {
             _playbackModeImagePath = value;
 
             OnPropertyChanged();
         }
     }
 
-    public ButtonState State {
-        get {
-            return _buttonState;
-        }
-        set {
-            switch (value) {
+    public ButtonState State
+    {
+        get => _buttonState;
+        set
+        {
+            switch (value)
+            {
                 case ButtonState.Paused:
                     ButtonStateImagePath = "/Resources/Images/play.png";
                     _buttonState = value;
@@ -78,12 +90,13 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
         }
     }
 
-    public PlaybackMode Mode {
-        get {
-            return _playbackMode;
-        }
-        set {
-            switch (value) {
+    public PlaybackMode Mode
+    {
+        get => _playbackMode;
+        set
+        {
+            switch (value)
+            {
                 case PlaybackMode.Loop:
                     PlaybackModeImagePath = "/Resources/Images/Loop.png";
                     _playbackMode = value;
@@ -100,8 +113,10 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
         }
     }
 
-    private void PlaybackModeButton_Click(object sender, RoutedEventArgs e) {
-        switch (Mode) {
+    private void PlaybackModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        switch (Mode)
+        {
             case PlaybackMode.Loop:
                 Mode = PlaybackMode.Loop1;
                 break;
@@ -114,62 +129,77 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
         }
     }
 
-    DispatcherTimer VSHeightTimer;
-    private bool _isToggling = false;
+    DispatcherTimer? _vsHeightTimer;
+    private bool _isToggling;
 
-    private void VSExpandTimer_Tick(object sender, EventArgs e) {
-        var rowHeight = VolumeSlidersGrid.RowDefinitions[0].Height;
+    private void VSExpandTimer_Tick(object sender, EventArgs e)
+    {
+        GridLength rowHeight = VolumeSlidersGrid.RowDefinitions[0].Height;
 
-        if (rowHeight.Value < 100) {
+        if (rowHeight.Value < 100)
+        {
             VolumeSlidersGrid.RowDefinitions[0].Height = new GridLength(rowHeight.Value + 5, GridUnitType.Star);
             VolumeSlidersGrid.RowDefinitions[1].Height = new GridLength(rowHeight.Value + 5, GridUnitType.Star);
         }
-        else {
+        else
+        {
             _isToggling = false;
-            VSHeightTimer.Stop();
+            _vsHeightTimer?.Stop();
         }
     }
 
-    private void VSContractTimer_Tick(object sender, EventArgs e) {
-        var rowHeight = VolumeSlidersGrid.RowDefinitions[0].Height;
+    private void VSContractTimer_Tick(object sender, EventArgs e)
+    {
+        GridLength rowHeight = VolumeSlidersGrid.RowDefinitions[0].Height;
 
-        if (rowHeight.Value > 0) {
+        if (rowHeight.Value > 0)
+        {
             VolumeSlidersGrid.RowDefinitions[0].Height = new GridLength(rowHeight.Value - 5, GridUnitType.Star);
             VolumeSlidersGrid.RowDefinitions[1].Height = new GridLength(rowHeight.Value - 5, GridUnitType.Star);
         }
-        else {
+        else
+        {
             _isToggling = false;
-            VSHeightTimer.Stop();
+            _vsHeightTimer?.Stop();
         }
     }
 
-    private void ToggleVolumeSliders(object sender, RoutedEventArgs e) {
-        if (!_isToggling) {
-            VSHeightTimer = new DispatcherTimer();
-            VSHeightTimer.Interval = TimeSpan.FromMilliseconds(5);
+    private void ToggleVolumeSliders(object sender, RoutedEventArgs e)
+    {
+        if (!_isToggling)
+        {
+            _vsHeightTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(5)
+            };
 
-            if (VolumeSlidersGrid.RowDefinitions[0].Height.Value == 0) {
-                VSHeightTimer.Tick += VSExpandTimer_Tick;
+            if (VolumeSlidersGrid.RowDefinitions[0].Height.Value == 0)
+            {
+                _vsHeightTimer.Tick += VSExpandTimer_Tick!;
 
                 RotateToggle(0, -180);
             }
-            else {
-                VSHeightTimer.Tick += VSContractTimer_Tick;
+            else
+            {
+                _vsHeightTimer.Tick += VSContractTimer_Tick!;
 
                 RotateToggle(-180, 0);
             }
 
             _isToggling = true;
-            VSHeightTimer.Start();
+            _vsHeightTimer.Start();
         }
     }
 
-    private void RotateToggle(double from, double to) {
-        DoubleAnimation rotateAnimation = new DoubleAnimation();
-        rotateAnimation.From = from;
-        rotateAnimation.To = to;
-        rotateAnimation.Duration = TimeSpan.FromMilliseconds(300);
-        rotateAnimation.EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut };
+    private void RotateToggle(double from, double to)
+    {
+        DoubleAnimation rotateAnimation = new DoubleAnimation
+        {
+            From = from,
+            To = to,
+            Duration = TimeSpan.FromMilliseconds(300),
+            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
+        };
 
         ExpanderImage.RenderTransformOrigin = new Point(0.5, 0.5);
 
@@ -179,29 +209,25 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
         rotateTransform.BeginAnimation(RotateTransform.AngleProperty, rotateAnimation);
     }
 
-    public void ShowSeekBarHideBorders() {
-        DoubleAnimation seekBarOpacityAnimation;
-        Storyboard storyboardSeekBarOpacity;
-
-        DoubleAnimation uniGridScaleAnimation;
-        Storyboard storyboardUniGridScale;
-
+    public void ShowSeekBarHideBorders()
+    {
         // reset SeekBar scaling to 1
         SeekBar.RenderTransformOrigin = new Point(0.5, 0.5);
         SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 1 };
 
         // animate SeekBar opacity from 0 to SeekBar.Opacity
-        seekBarOpacityAnimation = new DoubleAnimation {
+        DoubleAnimation seekBarOpacityAnimation = new DoubleAnimation
+        {
             From = SeekBar.Opacity,
             To = 1,
             Duration = TimeSpan.FromSeconds(1),
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        storyboardSeekBarOpacity = new Storyboard();
+        Storyboard storyboardSeekBarOpacity = new Storyboard();
 
         Storyboard.SetTarget(seekBarOpacityAnimation, SeekBar);
-        Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(Control.OpacityProperty));
+        Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(OpacityProperty));
         storyboardSeekBarOpacity.Children.Add(seekBarOpacityAnimation);
 
         storyboardSeekBarOpacity.Begin();
@@ -210,91 +236,98 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
         UniGrid.RenderTransformOrigin = new Point(0.5, 0.5);
         UniGrid.RenderTransform = new ScaleTransform() { ScaleY = 1 };
 
-        uniGridScaleAnimation = new DoubleAnimation {
+        DoubleAnimation uniGridScaleAnimation = new DoubleAnimation
+        {
             From = 1,
             To = 0,
             Duration = TimeSpan.FromSeconds(0.3),
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        storyboardUniGridScale = new Storyboard();
+        Storyboard storyboardUniGridScale = new Storyboard();
 
         Storyboard.SetTarget(uniGridScaleAnimation, UniGrid);
-        Storyboard.SetTargetProperty(uniGridScaleAnimation, new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
+        Storyboard.SetTargetProperty(uniGridScaleAnimation,
+            new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
         storyboardUniGridScale.Children.Add(uniGridScaleAnimation);
         storyboardUniGridScale.Begin();
     }
 
-    public void HideSeekBarShowBorders() {
-        DoubleAnimation seekBarOpacityAnimation;
-        Storyboard storyboardSeekBarOpacity;
-
-        DoubleAnimation uniGridScaleAnimation;
-        Storyboard storyboardUniGridScale;
-
+    public void HideSeekBarShowBorders()
+    {
         SeekBar.RenderTransformOrigin = new Point(0.5, 0.5);
         SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 1 };
 
         // animate SeekBar opacity from 1 to 0
-        seekBarOpacityAnimation = new DoubleAnimation {
+        DoubleAnimation seekBarOpacityAnimation = new DoubleAnimation
+        {
             From = SeekBar.Opacity,
             To = 0,
             Duration = TimeSpan.FromSeconds(0.3),
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        storyboardSeekBarOpacity = new Storyboard();
+        Storyboard storyboardSeekBarOpacity = new Storyboard();
 
         Storyboard.SetTarget(seekBarOpacityAnimation, SeekBar);
-        Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(Control.OpacityProperty));
+        Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(OpacityProperty));
         storyboardSeekBarOpacity.Children.Add(seekBarOpacityAnimation);
         storyboardSeekBarOpacity.Begin();
 
         // animate UniGrid scaleY from 0 to 1
         UniGrid.RenderTransformOrigin = new Point(0.5, 0.5);
         UniGrid.RenderTransform = new ScaleTransform() { ScaleY = 1 };
-        uniGridScaleAnimation = new DoubleAnimation {
+        DoubleAnimation uniGridScaleAnimation = new DoubleAnimation
+        {
             From = 0,
             To = 1,
             Duration = TimeSpan.FromSeconds(0.3),
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        uniGridScaleAnimation.Completed += (_, _) => {
+        uniGridScaleAnimation.Completed += (_, _) =>
+        {
             // set SeekBar scaling to 2
             SeekBar.RenderTransformOrigin = new Point(0.5, 0.5);
             SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 2 };
         };
 
-        storyboardUniGridScale = new Storyboard();
+        Storyboard storyboardUniGridScale = new Storyboard();
 
         Storyboard.SetTarget(uniGridScaleAnimation, UniGrid);
-        Storyboard.SetTargetProperty(uniGridScaleAnimation, new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
+        Storyboard.SetTargetProperty(uniGridScaleAnimation,
+            new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
         storyboardUniGridScale.Children.Add(uniGridScaleAnimation);
         storyboardUniGridScale.Begin();
     }
 
-    public async void VisualizeAudio(string path) {
-        if (Rendering) {
+    public async void VisualizeAudio(string? path)
+    {
+        if (Rendering)
+        {
             Rendering = false;
             await Task.Delay(10);
         }
-        else {
+        else
+        {
             ShowSeekBarHideBorders();
         }
 
-        var peaks = new List<float>();
+        List<float> peaks = new List<float>();
 
         await Render(path, peaks);
 
-        if (peaks.Count == 0) {
+        if (peaks.Count == 0)
+        {
             return;
         }
 
         UniGrid.Children.Clear();
 
-        foreach (var peak in peaks) {
-            UniGrid.Children.Add(new Border() {
+        foreach (float peak in peaks)
+        {
+            UniGrid.Children.Add(new Border()
+            {
                 CornerRadius = new CornerRadius(2),
                 Height = peak,
                 Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#673ab7")),
@@ -309,207 +342,247 @@ public partial class BottomControlPanel : UserControl, INotifyPropertyChanged {
         HideSeekBarShowBorders();
     }
 
-    private async Task Render(string path, List<float> peaks) {
-        await Task.Run(() => {
+    private async Task Render(string? path, List<float> peaks)
+    {
+        await Task.Run(() =>
+        {
             Rendering = true;
 
-            using (var mp3 = new Mp3FileReader(path)) {
-                int peakCount = 300;
+            using Mp3FileReader mp3 = new Mp3FileReader(path);
+            int peakCount = 300;
 
-                int bytesPerSample = (mp3.WaveFormat.BitsPerSample / 8) * mp3.WaveFormat.Channels;
-                int samplesPerPeak = (int)(mp3.Length / (double)(peakCount * bytesPerSample));
-                int bytesPerPeak = bytesPerSample * samplesPerPeak;
+            int bytesPerSample = (mp3.WaveFormat.BitsPerSample / 8) * mp3.WaveFormat.Channels;
+            int samplesPerPeak = (int)(mp3.Length / (double)(peakCount * bytesPerSample));
+            int bytesPerPeak = bytesPerSample * samplesPerPeak;
 
-                var buffer = new byte[bytesPerPeak];
+            byte[] buffer = new byte[bytesPerPeak];
 
-                for (int x = 0; x < peakCount; x++) {
-                    if (!Rendering) {
+            for (int x = 0; x < peakCount; x++)
+            {
+                if (!Rendering)
+                {
+                    peaks.Clear();
+
+                    return;
+                }
+
+                int bytesRead = mp3.Read(buffer, 0, bytesPerPeak);
+                if (bytesRead == 0)
+                    break;
+
+                float sum = 0;
+
+                for (int n = 0; n < bytesRead; n += 2)
+                {
+                    if (!Rendering)
+                    {
                         peaks.Clear();
 
                         return;
                     }
 
-                    int bytesRead = mp3.Read(buffer, 0, bytesPerPeak);
-                    if (bytesRead == 0)
-                        break;
-
-                    float sum = 0;
-
-                    for (int n = 0; n < bytesRead; n += 2) {
-                        if (!Rendering) {
-                            peaks.Clear();
-
-                            return;
-                        }
-
-                        sum += Math.Abs(BitConverter.ToInt16(buffer, n));
-                    }
-
-                    float average = sum / (bytesRead / 2);
-
-                    peaks.Add(average);
+                    sum += Math.Abs(BitConverter.ToInt16(buffer, n));
                 }
 
-                if (peaks.Count != 0) {
-                    float peaksMax = peaks.Max();
-                    for (int i = 0; i < peaks.Count; i++) {
-                        if (!Rendering) {
-                            peaks.Clear();
+                // ReSharper disable once PossibleLossOfFraction
+                float average = sum / (bytesRead / 2);
 
-                            return;
-                        }
-
-                        peaks[i] = (peaks[i] / peaksMax) * (int)(UniGrid.ActualHeight * 0.95); // peak height
-
-                        if (peaks[i] < 2) {
-                            peaks[i] = 2;
-                        }
-                    }
-                }
-
-                Rendering = false;
+                peaks.Add(average);
             }
+
+            if (peaks.Count != 0)
+            {
+                float peaksMax = peaks.Max();
+                for (int i = 0; i < peaks.Count; i++)
+                {
+                    if (!Rendering)
+                    {
+                        peaks.Clear();
+
+                        return;
+                    }
+
+                    peaks[i] = (peaks[i] / peaksMax) * (int)(UniGrid.ActualHeight * 0.95); // peak height
+
+                    if (peaks[i] < 2)
+                    {
+                        peaks[i] = 2;
+                    }
+                }
+            }
+
+            Rendering = false;
         });
     }
-    private void UniGrid_SizeChanged(object sender, SizeChangedEventArgs e) {
 
+    private void UniGrid_SizeChanged(object? sender, SizeChangedEventArgs? e)
+    {
         int n = UniGrid.Children.Count;
 
-        if (n == 0) {
+        if (n == 0)
+        {
             return;
         }
 
         int k = (int)UniGrid.ActualWidth / 6;
 
         List<int> numbers = new List<int>();
-        for (int i = 0; i < n; i++) {
+        for (int i = 0; i < n; i++)
+        {
             numbers.Add(i);
         }
 
         List<int> reducedList = numbers.EvenlySpacedSubset(k);
 
-        for (int i = 0; i < UniGrid.Children.Count; i++) {
-            var border = UniGrid.Children[i] as Border;
-
-            if (reducedList.Contains(i)) {
-                border.Visibility = Visibility.Visible;
-            }
-            else {
-                border.Visibility = Visibility.Collapsed;
+        for (int i = 0; i < UniGrid.Children.Count; i++)
+        {
+            if (UniGrid.Children[i] is Border border)
+            {
+                border.Visibility = reducedList.Contains(i) ? Visibility.Visible : Visibility.Collapsed;
             }
         }
     }
 
-    private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
-        var val = SeekBar.Value;
-        var borders = UniGrid.Children;
+    private void SeekBar_ValueChanged(object? sender, RoutedPropertyChangedEventArgs<double>? e)
+    {
+        double val = SeekBar.Value;
+        UIElementCollection borders = UniGrid.Children;
 
-        var before = (int)(borders.Count * val / 100);
+        int before = (int)(borders.Count * val / 100);
 
-        for (int i = 0; i < borders.Count; i++) {
+        for (int i = 0; i < borders.Count; i++)
+        {
             if (i < before)
-                (borders[i] as Border).Opacity = 1;
+                ((borders[i] as Border)!).Opacity = 1;
             else
-                (borders[i] as Border).Opacity = 0.4;
+                ((borders[i] as Border)!).Opacity = 0.4;
         }
     }
 
-    private void OnPropertyChanged([CallerMemberName] string propertyName = null) {
+    private void OnPropertyChanged([CallerMemberName] string propertyName = null!)
+    {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private void MainVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e){
-        var icon = MainVolumeButton.Content as MaterialDesignThemes.Wpf.PackIcon;
-        var val = MainVolumeSlider.Value;
+    private void MainVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        PackIcon? icon = MainVolumeButton.Content as PackIcon;
+        double val = MainVolumeSlider.Value;
 
-        if (val == 0) {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.VolumeMute;
+        if (val == 0)
+        {
+            if (icon != null) icon.Kind = PackIconKind.VolumeMute;
         }
-        else if (val < 50) {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.VolumeMedium;
+        else if (val < 50)
+        {
+            if (icon != null) icon.Kind = PackIconKind.VolumeMedium;
         }
-        else if (val >= 50) {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.VolumeHigh;
+        else if (val >= 50)
+        {
+            if (icon != null) icon.Kind = PackIconKind.VolumeHigh;
         }
     }
 
-    double mainVolumeSliderBeforeMuteValue = 0;
-    private void MainVolumeButton_Click(object sender, RoutedEventArgs e) {
-        if (MainVolumeSlider.Value != 0) {
-            mainVolumeSliderBeforeMuteValue = MainVolumeSlider.Value;
+    double _mainVolumeSliderBeforeMuteValue;
+
+    private void MainVolumeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (MainVolumeSlider.Value != 0)
+        {
+            _mainVolumeSliderBeforeMuteValue = MainVolumeSlider.Value;
             //MainVolumeSlider.Value = 0;
 
             AnimateVolumeSliderValue(MainVolumeSlider, 0);
         }
-        else {
+        else
+        {
             //MainVolumeSlider.Value = mainVolumeSliderBeforeMuteValue;
 
-            AnimateVolumeSliderValue(MainVolumeSlider, mainVolumeSliderBeforeMuteValue);
+            AnimateVolumeSliderValue(MainVolumeSlider, _mainVolumeSliderBeforeMuteValue);
         }
     }
 
-    private void MicVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
-        var icon = MicVolumeButton.Content as MaterialDesignThemes.Wpf.PackIcon;
+    private void MicVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        PackIcon? icon = MicVolumeButton.Content as PackIcon;
 
-        if (MicVolumeSlider.Value == 0) {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.MicrophoneOff;
+        if (MicVolumeSlider.Value == 0)
+        {
+            if (icon != null) icon.Kind = PackIconKind.MicrophoneOff;
         }
-        else {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.Microphone;
+        else
+        {
+            if (icon != null) icon.Kind = PackIconKind.Microphone;
         }
     }
 
-    double micVolumeSliderBeforeMuteValue = 0;
-    private void MicVolumeButton_Click(object sender, RoutedEventArgs e) {
-        if (MicVolumeSlider.Value != 0) {
-            micVolumeSliderBeforeMuteValue = MicVolumeSlider.Value;
+    double _micVolumeSliderBeforeMuteValue;
+
+    private void MicVolumeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (MicVolumeSlider.Value != 0)
+        {
+            _micVolumeSliderBeforeMuteValue = MicVolumeSlider.Value;
             //MicVolumeSlider.Value = 0;
 
             AnimateVolumeSliderValue(MicVolumeSlider, 0);
         }
-        else {
+        else
+        {
             //MicVolumeSlider.Value = micVolumeSliderBeforeMuteValue;
 
-            AnimateVolumeSliderValue(MicVolumeSlider, micVolumeSliderBeforeMuteValue);
+            AnimateVolumeSliderValue(MicVolumeSlider, _micVolumeSliderBeforeMuteValue);
         }
     }
 
-    private void AdditionalVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) {
-        var icon = AdditionalVolumeButton.Content as MaterialDesignThemes.Wpf.PackIcon;
+    private void AdditionalVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        PackIcon? icon = AdditionalVolumeButton.Content as PackIcon;
 
-        if (AdditionalVolumeSlider.Value == 0) {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.MicrophoneVariantOff;
+        if (AdditionalVolumeSlider.Value == 0)
+        {
+            if (icon != null) icon.Kind = PackIconKind.MicrophoneVariantOff;
         }
-        else {
-            icon.Kind = MaterialDesignThemes.Wpf.PackIconKind.MicrophoneVariant;
+        else
+        {
+            if (icon != null) icon.Kind = PackIconKind.MicrophoneVariant;
         }
     }
 
-    double AdditionalVolumeSliderBeforeMuteValue = 0;
-    private void AdditionalVolumeButton_Click(object sender, RoutedEventArgs e) {
-        if (AdditionalVolumeSlider.Value != 0) {
-            AdditionalVolumeSliderBeforeMuteValue = AdditionalVolumeSlider.Value;
+    double _additionalVolumeSliderBeforeMuteValue;
+
+    private void AdditionalVolumeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (AdditionalVolumeSlider.Value != 0)
+        {
+            _additionalVolumeSliderBeforeMuteValue = AdditionalVolumeSlider.Value;
 
             AnimateVolumeSliderValue(AdditionalVolumeSlider, 0);
         }
-        else {
-            AnimateVolumeSliderValue(AdditionalVolumeSlider, AdditionalVolumeSliderBeforeMuteValue);
+        else
+        {
+            AnimateVolumeSliderValue(AdditionalVolumeSlider, _additionalVolumeSliderBeforeMuteValue);
         }
     }
 
-    private void AnimateVolumeSliderValue(Slider slider, double newVal) {
-        DoubleAnimation doubleAnimation = new DoubleAnimation();
-        doubleAnimation.From = slider.Value;
-        doubleAnimation.To = newVal;
-        doubleAnimation.Duration = TimeSpan.FromMilliseconds(300);
-        doubleAnimation.EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut };
+    private void AnimateVolumeSliderValue(Slider slider, double newVal)
+    {
+        DoubleAnimation doubleAnimation = new DoubleAnimation
+        {
+            From = slider.Value,
+            To = newVal,
+            Duration = TimeSpan.FromMilliseconds(300),
+            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
+        };
 
-        slider.BeginAnimation(Slider.ValueProperty, doubleAnimation);
+        slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
     }
 }
 
-public static class ListExtensions {
-    public static List<T> EvenlySpacedSubset<T>(this List<T> list, int count) {
+public static class ListExtensions
+{
+    public static List<T> EvenlySpacedSubset<T>(this List<T> list, int count)
+    {
         int length = list.Count;
         int[] indices = Enumerable.Range(0, count)
             .Select(i => (int)Math.Round((double)(i * (length - 1)) / (count - 1)))

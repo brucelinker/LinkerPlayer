@@ -1,23 +1,26 @@
-﻿using System;
+﻿using LinkerPlayer.Audio.Log;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using LinkerPlayer.Audio.Log;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace LinkerPlayer.Audio;
 
-public class Song {
-    public string Id { get; set; }
-    public string Name { get; set; }
-    public string Path { get; set; }
+public class Song
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Path { get; set; }
     public TimeSpan Duration { get; set; }
 
-    public Song Clone() {
-        return new Song {
+    public Song Clone()
+    {
+        return new Song
+        {
             Id = this.Id,
             Name = this.Name,
             Path = this.Path,
@@ -25,84 +28,104 @@ public class Song {
         };
     }
 }
-public class Playlist {
-    public string Name { get; set; }
+
+public class Playlist
+{
+    public string? Name { get; set; } = string.Empty;
     public List<string> SongIds { get; set; }
-    public Playlist() {
+
+    public Playlist()
+    {
         SongIds = new List<string>();
     }
 
-    public Playlist Clone() {
-        return new Playlist {
+    public Playlist Clone()
+    {
+        return new Playlist
+        {
             Name = this.Name,
             SongIds = this.SongIds.ToList()
         };
     }
 }
-public class MusicLibrary {
-    private static string _jsonFilePath;
-    private static List<Song> _songs = new List<Song>();
-    private static List<Playlist> _playlists = new List<Playlist>();
-    private static ILog _log = LogSettings.SelectedLog;
 
-    static MusicLibrary() {
-        _jsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinkerPlayer", "music_library.json");
+public class MusicLibrary
+{
+    private static readonly string JsonFilePath;
+    private static List<Song>? _songs = new();
+    private static List<Playlist>? _playlists = new();
+    private static readonly ILog Log = LogSettings.SelectedLog;
+
+    static MusicLibrary()
+    {
+        JsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "LinkerPlayer", "music_library.json");
 
         LoadFromJson();
     }
 
-    private static void LoadFromJson() {
-        if (File.Exists(_jsonFilePath)) {
-            string json = File.ReadAllText(_jsonFilePath);
-            var settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
-            var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(json, settings);
+    private static void LoadFromJson()
+    {
+        if (File.Exists(JsonFilePath))
+        {
+            string json = File.ReadAllText(JsonFilePath);
+            JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
+            Dictionary<string, object>? data = JsonConvert.DeserializeObject<Dictionary<string, object>>(json, settings);
 
-            if (data != null) {
+            if (data != null)
+            {
                 _songs = ((JArray)data["songs"]).ToObject<List<Song>>();
                 _playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>();
 
-                _log.Print("Data loaded from json", LogInfoType.INFO);
+                Log.Print("Data loaded from json", LogInfoType.Info);
             }
         }
-        else {
-            Directory.CreateDirectory(Path.GetDirectoryName(_jsonFilePath));
-            File.Create(_jsonFilePath).Close();
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(JsonFilePath) ?? string.Empty);
+            File.Create(JsonFilePath).Close();
 
-            _log.Print("Empty json file created", LogInfoType.INFO);
+            Log.Print("Empty json file created", LogInfoType.Info);
         }
     }
-    private static void SaveToJson() {
-        var data = new Dictionary<string, object>
+
+    private static void SaveToJson()
+    {
+        if (_songs != null)
         {
-            { "songs", JArray.FromObject(_songs) },
-            { "playlists", JArray.FromObject(_playlists) }
-        };
+            if (_playlists != null)
+            {
+                Dictionary<string, object> data = new Dictionary<string, object>
+                {
+                    { "songs", JArray.FromObject(_songs) },
+                    { "playlists", JArray.FromObject(_playlists) }
+                };
 
-        var settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
-        string json = JsonConvert.SerializeObject(data, Formatting.Indented, settings);
-        File.WriteAllText(_jsonFilePath, json);
+                JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
+                string json = JsonConvert.SerializeObject(data, Formatting.Indented, settings);
+                File.WriteAllText(JsonFilePath, json);
+            }
+        }
 
-        _log.Print("Data saved to json", LogInfoType.INFO);
+        Log.Print("Data saved to json", LogInfoType.Info);
     }
-    public static bool AddSong(Song song) {
-        if (File.Exists(song.Path) && Path.GetExtension(song.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase)) {
+
+    public static bool AddSong(Song song)
+    {
+        if (File.Exists(song.Path) && Path.GetExtension(song.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
+        {
             // Generate a unique ID for the song
             song.Id = Guid.NewGuid().ToString();
 
-            var tagFile = TagLib.File.Create(song.Path);
+            TagLib.File? tagFile = TagLib.File.Create(song.Path);
 
-            if (tagFile.Tag.Title == null) {
-                song.Name = Path.GetFileNameWithoutExtension(song.Path);
-            }
-            else {
-                song.Name = tagFile.Tag.Title;
-            }
-                
+            song.Name = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(song.Path);
+
             song.Duration = tagFile.Properties.Duration;
 
-            _songs.Add(song.Clone());
+            _songs?.Add(song.Clone());
 
-            _log.Print($"New song with id {song.Id} added", LogInfoType.INFO);
+            Log.Print($"New song with id {song.Id} added", LogInfoType.Info);
 
             SaveToJson();
 
@@ -112,20 +135,23 @@ public class MusicLibrary {
         return false;
     }
 
-    public static async Task ConvertToMp3(string path, string ffmpegDir) {
+    public static async Task ConvertToMp3(string path, string ffmpegDir)
+    {
         string newPath = Path.ChangeExtension(path, ".mp3");
 
-        if (File.Exists(newPath)) {
+        if (File.Exists(newPath))
+        {
             File.Delete(newPath);
         }
 
-        var psi = new ProcessStartInfo(Path.Combine(ffmpegDir, "ffmpeg.exe")) {
+        ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(ffmpegDir, "ffmpeg.exe"))
+        {
             UseShellExecute = false,
             CreateNoWindow = true,
             Arguments = $" -i \"{path}\" -vn -ar 44100 -ac 2 -ab 192k -f mp3 \"{newPath}\""
         };
 
-        var process = new Process { StartInfo = psi };
+        Process process = new Process { StartInfo = psi };
 
         process.Start();
 
@@ -134,23 +160,28 @@ public class MusicLibrary {
         process.Dispose();
     }
 
-    public static void RemoveSong(string songId) {
-        _songs.RemoveAll(s => s.Id == songId);
+    public static void RemoveSong(string songId)
+    {
+        _songs?.RemoveAll(s => s.Id == songId);
 
-        foreach (var playlist in _playlists) {
-            playlist.SongIds.Remove(songId);
-        }
+        if (_playlists != null)
+            foreach (Playlist playlist in _playlists)
+            {
+                playlist.SongIds.Remove(songId);
+            }
 
-        _log.Print($"Song with id {songId} removed", LogInfoType.INFO);
+        Log.Print($"Song with id {songId} removed", LogInfoType.Info);
 
         SaveToJson();
     }
 
-    public static bool AddPlaylist(Playlist playlist) {
-        if (_playlists.Find(p => p.Name == playlist.Name) == null) {
-            _playlists.Add(playlist.Clone());
+    public static bool AddPlaylist(Playlist playlist)
+    {
+        if (_playlists?.Find(p => p.Name == playlist.Name) == null)
+        {
+            _playlists?.Add(playlist.Clone());
 
-            _log.Print($"New playlist \'{playlist.Name}\' added", LogInfoType.INFO);
+            Log.Print($"New playlist \'{playlist.Name}\' added", LogInfoType.Info);
 
             SaveToJson();
 
@@ -160,66 +191,80 @@ public class MusicLibrary {
         return false;
     }
 
-    public static void RemovePlaylist(string playlistName) {
-        _playlists.RemoveAll(p => p.Name == playlistName);
+    public static void RemovePlaylist(string? playlistName)
+    {
+        _playlists?.RemoveAll(p => p.Name == playlistName);
 
-        _log.Print($"Playlist \'{playlistName}\' removed", LogInfoType.INFO);
+        Log.Print($"Playlist \'{playlistName}\' removed", LogInfoType.Info);
 
         SaveToJson();
     }
 
-    public static void AddSongToPlaylist(string songId, string playlistName, int position=-1) {
-        var playlist = _playlists.Find(p => p.Name == playlistName);
+    public static void AddSongToPlaylist(string songId, string? playlistName, int position = -1)
+    {
+        Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
 
-        if (playlist != null) {
-            if (!playlist.SongIds.Contains(songId)) {
-                if (position == -1) {
+        if (playlist != null)
+        {
+            if (!playlist.SongIds.Contains(songId))
+            {
+                if (position == -1)
+                {
                     playlist.SongIds.Add(songId);
                 }
-                else {
-                    if (position >= 0 && position <= playlist.SongIds.Count) {
+                else
+                {
+                    if (position >= 0 && position <= playlist.SongIds.Count)
+                    {
                         playlist.SongIds.Insert(position, songId);
                     }
                 }
 
-                _log.Print($"Song with id {songId} added to playlist \'{playlistName}\'", LogInfoType.INFO);
+                Log.Print($"Song with id {songId} added to playlist \'{playlistName}\'", LogInfoType.Info);
 
                 SaveToJson();
             }
         }
     }
 
-    public static void RemoveSongFromPlaylist(string songId, string playlistName) {
-        var playlist = _playlists.Find(p => p.Name == playlistName);
+    public static void RemoveSongFromPlaylist(string songId, string? playlistName)
+    {
+        Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
 
-        if (playlist != null) {
+        if (playlist != null)
+        {
             playlist.SongIds.Remove(songId);
 
-            _log.Print($"Song with id {songId} removed from playlist \'{playlistName}\'", LogInfoType.INFO);
+            Log.Print($"Song with id {songId} removed from playlist \'{playlistName}\'", LogInfoType.Info);
 
             SaveToJson();
         }
     }
 
-    public static void MoveSongToPlaylist(string songId, string fromPlaylist, string toPlaylist) {
-        var from = _playlists.Find(p => p.Name == fromPlaylist);
-        var to = _playlists.Find(p => p.Name == toPlaylist);
+    // ReSharper disable once UnusedMember.Global
+    public static void MoveSongToPlaylist(string songId, string fromPlaylist, string toPlaylist)
+    {
+        Playlist? from = _playlists?.Find(p => p.Name == fromPlaylist);
+        Playlist? to = _playlists?.Find(p => p.Name == toPlaylist);
 
-        if (from != null && to != null) {
+        if (from != null && to != null)
+        {
             from.SongIds.Remove(songId);
             to.SongIds.Add(songId);
 
-            _log.Print($"Song with id {songId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'", LogInfoType.INFO);
+            Log.Print($"Song with id {songId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'", LogInfoType.Info);
 
             SaveToJson();
         }
     }
 
-    public static bool RenameSong(string songId, string newName) {
-        var song = _songs.Find(s => s.Id == songId);
+    public static bool RenameSong(string songId, string newName)
+    {
+        Song? song = _songs?.Find(s => s.Id == songId);
 
-        if (song != null && !string.IsNullOrEmpty(newName)) {
-            _log.Print($"Song with id {songId} has been renamed", LogInfoType.INFO);
+        if (song != null && !string.IsNullOrEmpty(newName))
+        {
+            Log.Print($"Song with id {songId} has been renamed", LogInfoType.Info);
 
             song.Name = newName;
             SaveToJson();
@@ -230,11 +275,13 @@ public class MusicLibrary {
         return false;
     }
 
-    public static bool RenamePlaylist(string oldName, string newName) {
-        var playlist = _playlists.Find(s => s.Name == oldName);
+    public static bool RenamePlaylist(string oldName, string? newName)
+    {
+        Playlist? playlist = _playlists?.Find(s => s.Name == oldName);
 
-        if (playlist != null && !string.IsNullOrEmpty(newName) && _playlists.Find(s => s.Name == newName) == null) {
-            _log.Print($"Playlist with name {oldName} has been renamed to {newName}", LogInfoType.INFO);
+        if (playlist != null && !string.IsNullOrEmpty(newName) && _playlists?.Find(s => s.Name == newName) == null)
+        {
+            Log.Print($"Playlist with name {oldName} has been renamed to {newName}", LogInfoType.Info);
 
             playlist.Name = newName;
             SaveToJson();
@@ -245,33 +292,43 @@ public class MusicLibrary {
         return false;
     }
 
-    public static List<Song> GetSongs() {
-        var songs = new List<Song>();
+    // ReSharper disable once UnusedMember.Global
+    public static List<Song> GetSongs()
+    {
+        List<Song> songs = new List<Song>();
 
-        foreach (var song in _songs) {
-            songs.Add(song.Clone());
-        }
+        if (_songs != null)
+            foreach (Song song in _songs)
+            {
+                songs.Add(song.Clone());
+            }
 
         return songs;
     }
 
-    public static List<Playlist> GetPlaylists() {
-        var playlists = new List<Playlist>();
+    public static List<Playlist> GetPlaylists()
+    {
+        List<Playlist> playlists = new List<Playlist>();
 
-        foreach (var playlist in _playlists) {
-            playlists.Add(playlist.Clone());
-        }
+        if (_playlists != null)
+            foreach (Playlist playlist in _playlists)
+            {
+                playlists.Add(playlist.Clone());
+            }
 
         return playlists;
     }
 
-    public static List<Song> GetSongsFromPlaylist(string playlistName) {
-        var playlist = _playlists.Find(p => p.Name == playlistName);
-        var songsFromPlaylist = new List<Song>();
+    public static List<Song> GetSongsFromPlaylist(string? playlistName)
+    {
+        Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
+        List<Song> songsFromPlaylist = new List<Song>();
 
-        if (playlist != null) {
-            foreach (var songId in playlist.SongIds) {
-                songsFromPlaylist.Add(_songs.Find(p => p.Id == songId).Clone());
+        if (playlist != null)
+        {
+            foreach (string songId in playlist.SongIds)
+            {
+                songsFromPlaylist.Add(_songs?.Find(p => p.Id == songId)?.Clone()!);
             }
         }
 
@@ -279,40 +336,49 @@ public class MusicLibrary {
     }
 }
 
-public class EqualizerLibrary {
-    public static List<BandsSettings> BandsSettings = new List<BandsSettings>();
-    private static string _jsonFilePath;
-    protected static ILog _log = LogSettings.SelectedLog;
+public class EqualizerLibrary
+{
+    public static List<BandsSettings>? BandsSettings = new();
+    private static readonly string JsonFilePath;
+    protected static ILog log = LogSettings.SelectedLog;
 
-    static EqualizerLibrary(){
-        _jsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinkerPlayer", "bandsSettings.json");
+    static EqualizerLibrary()
+    {
+        JsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "LinkerPlayer", "bandsSettings.json");
     }
 
-    public static void LoadFromJson() {
-        if (File.Exists(_jsonFilePath)) {
-            string jsonString = File.ReadAllText(_jsonFilePath);
+    public static void LoadFromJson()
+    {
+        if (File.Exists(JsonFilePath))
+        {
+            string jsonString = File.ReadAllText(JsonFilePath);
 
-            var tempBands = JsonConvert.DeserializeObject<List<BandsSettings>>(jsonString);
-            if (tempBands != null) {
+            List<BandsSettings>? tempBands = JsonConvert.DeserializeObject<List<BandsSettings>>(jsonString);
+            if (tempBands != null)
+            {
                 BandsSettings = JsonConvert.DeserializeObject<List<BandsSettings>>(jsonString);
             }
-            else {
-                _log.Print("Json is empty", LogInfoType.WARNING);
+            else
+            {
+                log.Print("Json is empty", LogInfoType.Warning);
             }
 
-            _log.Print("Load from json", LogInfoType.INFO);
+            log.Print("Load from json", LogInfoType.Info);
         }
-        else {
-            Directory.CreateDirectory(Path.GetDirectoryName(_jsonFilePath));
-            File.Create(_jsonFilePath).Close();
+        else
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(JsonFilePath)!);
+            File.Create(JsonFilePath).Close();
         }
     }
 
-    public static void SaveToJson() {
-        var settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
+    public static void SaveToJson()
+    {
+        JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
         string json = JsonConvert.SerializeObject(BandsSettings, Formatting.Indented, settings);
-        File.WriteAllText(_jsonFilePath, json);
+        File.WriteAllText(JsonFilePath, json);
 
-        _log.Print("Save to json", LogInfoType.INFO);
+        log.Print("Save to json", LogInfoType.Info);
     }
 }

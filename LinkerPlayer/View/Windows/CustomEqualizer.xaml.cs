@@ -17,7 +17,7 @@ using LinkerPlayer.Utils;
 namespace LinkerPlayer.View.Windows;
 
 public partial class CustomEqualizer : Window, INotifyPropertyChanged {
-    protected ILog _log = LogSettings.SelectedLog;
+    protected ILog log = LogSettings.SelectedLog;
 
     public CustomEqualizer() {
         InitializeComponent();
@@ -166,7 +166,7 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
 
                 (Owner as MainWindow).SelectedBandsSettings = null;
 
-                _log.Print("Delete profile", LogInfoType.INFO);
+                log.Print("Delete profile", LogInfoType.Info);
 
                 EqualizerLibrary.SaveToJson();
             }
@@ -200,12 +200,12 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
                     AnimationChangingSliderValue(i, band.EqualizerBands[i].Gain);
                 }
 
-                _log.Print("Profile has been selected", LogInfoType.INFO);
+                log.Print("Profile has been selected", LogInfoType.Info);
             }
         }
     }
 
-    private void UpdateProfiles(string bandNameToSelect = null) {
+    private void UpdateProfiles(string? bandNameToSelect = null) {
         Profiles.Items.Clear();
 
         foreach (var profile in EqualizerLibrary.BandsSettings) {
@@ -225,7 +225,7 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
 
     private void NamePopupTextBox_KeyDown(object sender, KeyEventArgs e) {
         if (e.Key == Key.Enter) {
-            string popupTextBoxText = NamePopupTextBox.Text.Trim();
+            string? popupTextBoxText = NamePopupTextBox.Text.Trim();
 
             if (!string.IsNullOrEmpty(popupTextBoxText)) {
                 if (EqualizerLibrary.BandsSettings.FirstOrDefault(n => n.Name == popupTextBoxText) == null) {
@@ -236,7 +236,7 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
 
                     EqualizerLibrary.BandsSettings.Add(band);
 
-                    _log.Print("New profile created", LogInfoType.INFO);
+                    log.Print("New profile created", LogInfoType.Info);
 
                     EqualizerLibrary.SaveToJson();
 
@@ -253,13 +253,13 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
 
     private void ReNamePopupTextBox_KeyDown(object sender, KeyEventArgs e){
         if (e.Key == Key.Enter) {
-            string popupTextBoxText = ReNamePopupTextBox.Text.Trim();
+            string? popupTextBoxText = ReNamePopupTextBox.Text.Trim();
 
             if (!string.IsNullOrEmpty(popupTextBoxText)) {
                 var band = EqualizerLibrary.BandsSettings.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
 
                 if (band != null && EqualizerLibrary.BandsSettings.FirstOrDefault(n => n.Name == popupTextBoxText) == null) {
-                    _log.Print($"Profile \"{band.Name}\" was renamed to \"{popupTextBoxText}\"", LogInfoType.INFO);
+                    log.Print($"Profile \"{band.Name}\" was renamed to \"{popupTextBoxText}\"", LogInfoType.Info);
 
                     band.Name = popupTextBoxText;
 
@@ -267,7 +267,7 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
 
                     (Owner as MainWindow).SelectedBandsSettings = band;
 
-                    _log.Print("Profile has been selected", LogInfoType.INFO);
+                    log.Print("Profile has been selected", LogInfoType.Info);
 
                     UpdateProfiles(band.Name);
                 }
@@ -341,7 +341,7 @@ public partial class CustomEqualizer : Window, INotifyPropertyChanged {
             EqGrid.RegisterName(slider.Name, slider);
         }
 
-        _log.Print("Sliders was created", LogInfoType.INFO);
+        log.Print("Sliders was created", LogInfoType.Info);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

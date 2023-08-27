@@ -1,112 +1,139 @@
-﻿using System;
+﻿using LinkerPlayer.Audio.Log;
+using NAudio.Extras;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using LinkerPlayer.Audio.Log;
-using NAudio.Extras;
 
 namespace LinkerPlayer.Audio;
 
-public class AudioStreamControl {
-    protected ILog _log = LogSettings.SelectedLog;
+public class AudioStreamControl
+{
+    protected ILog log = LogSettings.SelectedLog;
 
-    public MusicStream MainMusic;
-    public MusicStream AdditionalMusic;
+    public MusicStream? MainMusic;
+    public MusicStream? AdditionalMusic;
 
-    public MicrophoneStream Microphone;
+    public MicrophoneStream? Microphone;
 
-    private bool _delayedEqualizerInitialization = false;
-    private string _selectedBandName;
+    private bool _delayedEqualizerInitialization;
+    private string? _selectedBandName;
 
-    public AudioStreamControl(string mainOutputDevice) {
-        if (String.IsNullOrWhiteSpace(mainOutputDevice)) {
-            _log.Print("Device name can`t be null", LogInfoType.ERROR);
+    public AudioStreamControl(string mainOutputDevice)
+    {
+        if (string.IsNullOrWhiteSpace(mainOutputDevice))
+        {
+            log.Print("Device name can`t be null", LogInfoType.Error);
         }
-        else {
+        else
+        {
             MainMusic = new MusicStream(mainOutputDevice);
         }
     }
 
-    public void ActivateAdditionalMusic(string additionalOutputDevice) {
-        if (String.IsNullOrWhiteSpace(additionalOutputDevice)) {
-            _log.Print("Device name can`t be null", LogInfoType.ERROR);
+    public void ActivateAdditionalMusic(string additionalOutputDevice)
+    {
+        if (string.IsNullOrWhiteSpace(additionalOutputDevice))
+        {
+            log.Print("Device name can`t be null", LogInfoType.Error);
         }
-        else {
-            if (MainMusic != null) {
-                if (AdditionalMusic == null) {
+        else
+        {
+            if (MainMusic != null)
+            {
+                if (AdditionalMusic == null)
+                {
                     AdditionalMusic = new MusicStream(additionalOutputDevice);
 
-                    if (PathToMusic != null) {
+                    if (PathToMusic != null)
+                    {
                         AdditionalMusic.PathToMusic = PathToMusic;
 
-                        if (MainMusic.IsPlaying) {
+                        if (MainMusic.IsPlaying)
+                        {
                             StopAndPlayFromPosition(CurrentTrackPosition);
                         }
                     }
                 }
-                else {
+                else
+                {
                     AdditionalMusic.ReselectOutputDevice(additionalOutputDevice);
                 }
             }
-            else {
-                _log.Print("MainMusic should be initialised", LogInfoType.ERROR);
+            else
+            {
+                log.Print("MainMusic should be initialized", LogInfoType.Error);
             }
         }
     }
 
-    public void ActivateMic(string inputDevice, string outputDevice) {
-        if (String.IsNullOrWhiteSpace(inputDevice) || String.IsNullOrWhiteSpace(outputDevice)) {
-            _log.Print("Device name can`t be null", LogInfoType.ERROR);
+    public void ActivateMic(string inputDevice, string outputDevice)
+    {
+        if (String.IsNullOrWhiteSpace(inputDevice) || String.IsNullOrWhiteSpace(outputDevice))
+        {
+            log.Print("Device name can`t be null", LogInfoType.Error);
         }
-        else {
+        else
+        {
             Microphone = new MicrophoneStream(inputDevice, outputDevice);
 
             Microphone.Play();
         }
     }
 
-    public void Stop() {
-        MainMusic.Stop();
+    public void Stop()
+    {
+        MainMusic?.Stop();
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.Stop();
         }
     }
 
-    public void Play() {
-        MainMusic.Play();
+    public void Play()
+    {
+        MainMusic?.Play();
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.Play();
         }
     }
 
-    public void Pause() {
-        MainMusic.Pause();
+    public void Pause()
+    {
+        MainMusic?.Pause();
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.Pause();
         }
     }
 
-    public void StopAndPlayFromPosition(double startingPosition) {
-        MainMusic.StopAndPlayFromPosition(startingPosition);
+    public void StopAndPlayFromPosition(double startingPosition)
+    {
+        MainMusic?.StopAndPlayFromPosition(startingPosition);
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.StopAndPlayFromPosition(startingPosition);
         }
 
-        if (_delayedEqualizerInitialization && !String.IsNullOrEmpty(_selectedBandName)) {
+        if (_delayedEqualizerInitialization && !String.IsNullOrEmpty(_selectedBandName))
+        {
             InitializeEqualizer();
 
-            if (MainMusic.IsEqualizerWorking) {
+            if (MainMusic is { IsEqualizerWorking: true })
+            {
                 EqualizerLibrary.LoadFromJson();
 
                 var band = EqualizerLibrary.BandsSettings.FirstOrDefault(n => n.Name == _selectedBandName);
 
-                if (band != null) {
+                if (band != null)
+                {
                     SetBandsList(band.EqualizerBands);
 
-                    _log.Print("Profile has been selected", LogInfoType.INFO);
+                    log.Print("Profile has been selected", LogInfoType.Info);
                 }
             }
         }
@@ -114,79 +141,99 @@ public class AudioStreamControl {
         _delayedEqualizerInitialization = false;
     }
 
-    public string PathToMusic {
-        get {
-            return MainMusic.PathToMusic;
-        }
-        set {
-            MainMusic.PathToMusic = value;
+    public string? PathToMusic
+    {
+        get => MainMusic?.PathToMusic;
+        set
+        {
+            if (MainMusic != null) MainMusic.PathToMusic = value;
 
-            if (AdditionalMusic != null) {
+            if (AdditionalMusic != null)
+            {
                 AdditionalMusic.PathToMusic = value;
             }
         }
     }
 
-    public double CurrentTrackLength {
-        get {
-            return MainMusic.CurrentTrackLength;
+    public double CurrentTrackLength
+    {
+        get
+        {
+            if (MainMusic != null) return MainMusic.CurrentTrackLength;
+            return 0;
         }
     }
 
-    public double CurrentTrackPosition {
-        get {
-            return MainMusic.CurrentTrackPosition;
+    public double CurrentTrackPosition
+    {
+        get
+        {
+            if (MainMusic != null) return MainMusic.CurrentTrackPosition;
+            return 0;
         }
-        set {
-            MainMusic.CurrentTrackPosition = value;
+        set
+        {
+            if (MainMusic != null) MainMusic.CurrentTrackPosition = value;
 
-            if (AdditionalMusic != null) {
+            if (AdditionalMusic != null)
+            {
                 AdditionalMusic.CurrentTrackPosition = value;
             }
         }
     }
 
-    public void Seek(double offset) {
-        MainMusic.Seek(offset);
+    public void Seek(double offset)
+    {
+        MainMusic?.Seek(offset);
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.Seek(offset);
         }
     }
 
-    public void InitializeEqualizer(string selectedBandName = null) {
-        MainMusic.InitializeEqualizer();
+    public void InitializeEqualizer(string? selectedBandName = null)
+    {
+        MainMusic?.InitializeEqualizer();
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.InitializeEqualizer();
         }
 
-        if (!MainMusic.IsEqualizerWorking) {
+        if (MainMusic is { IsEqualizerWorking: false })
+        {
             _delayedEqualizerInitialization = true;
             _selectedBandName = selectedBandName;
         }
     }
 
-    public void StopEqualizer() {
-        MainMusic.StopEqualizer();
+    public void StopEqualizer()
+    {
+        MainMusic?.StopEqualizer();
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.StopEqualizer();
         }
     }
 
-    public void SetBandGain(int index, float value) {
-        MainMusic.SetBandGain(index, value);
+    public void SetBandGain(int index, float value)
+    {
+        MainMusic?.SetBandGain(index, value);
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.SetBandGain(index, value);
         }
     }
 
-    public void SetBandsList(List<EqualizerBand> equalizerBandsToAdd) {
-        MainMusic.SetBandsList(equalizerBandsToAdd);
+    public void SetBandsList(List<EqualizerBand>? equalizerBandsToAdd)
+    {
+        MainMusic?.SetBandsList(equalizerBandsToAdd);
 
-        if (AdditionalMusic != null) {
+        if (AdditionalMusic != null)
+        {
             AdditionalMusic.SetBandsList(equalizerBandsToAdd);
         }
     }

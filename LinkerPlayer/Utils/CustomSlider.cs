@@ -5,37 +5,45 @@ using System.Windows.Input;
 
 namespace LinkerPlayer.Utils;
 
-public class CustomSlider : Slider {
-    private Thumb _thumb = null;
+public class CustomSlider : Slider
+{
+    private Thumb? _thumb;
 
-    public CustomSlider() {
+    public CustomSlider()
+    {
         Style = FindResource("MaterialDesignSlider") as Style;
     }
 
-    public override void OnApplyTemplate() {
+    public override void OnApplyTemplate()
+    {
         base.OnApplyTemplate();
 
-        if (_thumb != null) {
+        if (_thumb != null)
+        {
             _thumb.MouseEnter -= thumb_MouseEnter;
         }
 
-        _thumb = (GetTemplateChild("PART_Track") as Track).Thumb;
+        _thumb = (GetTemplateChild("PART_Track") as Track)?.Thumb;
 
-        if (_thumb != null) {
+        if (_thumb != null)
+        {
             _thumb.MouseEnter += thumb_MouseEnter;
         }
     }
 
-    private void thumb_MouseEnter(object sender, MouseEventArgs e) {
-        if (e.LeftButton == MouseButtonState.Pressed) {
+    private void thumb_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed)
+        {
             // the left button is pressed on mouse enter so the thumb must have been moved under the mouse
             // in response to a click on the track. Generate a MouseLeftButtonDown event.
 
-            MouseButtonEventArgs args = new MouseButtonEventArgs(e.MouseDevice, e.Timestamp, MouseButton.Left);
+            MouseButtonEventArgs args = new MouseButtonEventArgs(e.MouseDevice, e.Timestamp, MouseButton.Left)
+            {
+                RoutedEvent = MouseLeftButtonDownEvent
+            };
 
-            args.RoutedEvent = MouseLeftButtonDownEvent;
-
-            (sender as Thumb).RaiseEvent(args);
+            (sender as Thumb)?.RaiseEvent(args);
         }
     }
 }
