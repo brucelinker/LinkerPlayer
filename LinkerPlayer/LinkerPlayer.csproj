@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="View\Windows\DownloadsWindow.xaml.cs" />
+    <Compile Remove="Windows\DownloadsWindow.xaml.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -50,7 +50,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Page Remove="View\Windows\DownloadsWindow.xaml" />
+    <Page Remove="Windows\DownloadsWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
