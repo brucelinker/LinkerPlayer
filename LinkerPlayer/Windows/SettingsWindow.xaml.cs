@@ -1,5 +1,4 @@
 ﻿using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
 using MaterialDesignThemes.Wpf;
 using System;
 using System.Collections.Generic;
@@ -11,6 +10,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using LinkerPlayer.Core;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using WinForms = System.Windows.Forms;

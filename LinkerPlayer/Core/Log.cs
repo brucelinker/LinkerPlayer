@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.CompilerServices;
 
-namespace LinkerPlayer.Audio
+namespace LinkerPlayer.Core
 {
     namespace Log
     {

@@ -1,51 +1,13 @@
-﻿using LinkerPlayer.Audio.Log;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Core.Log;
+using LinkerPlayer.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
-namespace LinkerPlayer.Audio;
-
-public class Song
-{
-    public string Id { get; set; } = string.Empty;
-    public string Name { get; set; } = string.Empty;
-    public string? Path { get; set; }
-    public TimeSpan Duration { get; set; }
-
-    public Song Clone()
-    {
-        return new Song
-        {
-            Id = this.Id,
-            Name = this.Name,
-            Path = this.Path,
-            Duration = this.Duration
-        };
-    }
-}
-
-public class Playlist
-{
-    public string? Name { get; set; } = string.Empty;
-    public List<string> SongIds { get; set; }
-
-    public Playlist()
-    {
-        SongIds = new List<string>();
-    }
-
-    public Playlist Clone()
-    {
-        return new Playlist
-        {
-            Name = this.Name,
-            SongIds = this.SongIds.ToList()
-        };
-    }
-}
+namespace LinkerPlayer.Core;
 
 public class MusicLibrary
 {
@@ -110,7 +72,7 @@ public class MusicLibrary
 
     public static bool AddSong(Song song)
     {
-        if (File.Exists(song.Path) && Path.GetExtension(song.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(song.Path) && Path.GetExtension(song.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
             // Generate a unique ID for the song
             song.Id = Guid.NewGuid().ToString();
@@ -132,31 +94,6 @@ public class MusicLibrary
 
         return false;
     }
-
-    //public static async Task ConvertToMp3(string path, string ffmpegDir)
-    //{
-    //    string newPath = Path.ChangeExtension(path, ".mp3");
-
-    //    if (File.Exists(newPath))
-    //    {
-    //        File.Delete(newPath);
-    //    }
-
-    //    ProcessStartInfo psi = new ProcessStartInfo(Path.Combine(ffmpegDir, "ffmpeg.exe"))
-    //    {
-    //        UseShellExecute = false,
-    //        CreateNoWindow = true,
-    //        Arguments = $" -i \"{path}\" -vn -ar 44100 -ac 2 -ab 192k -f mp3 \"{newPath}\""
-    //    };
-
-    //    Process process = new Process { StartInfo = psi };
-
-    //    process.Start();
-
-    //    await process.WaitForExitAsync();
-
-    //    process.Dispose();
-    //}
 
     public static void RemoveSong(string songId)
     {

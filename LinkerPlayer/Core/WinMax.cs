@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace LinkerPlayer.Utils;
+namespace LinkerPlayer.Core;
 
 internal class WinMax
 {

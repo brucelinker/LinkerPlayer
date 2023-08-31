@@ -1,8 +1,9 @@
-﻿using LinkerPlayer.Audio.Log;
-using NAudio.Extras;
+﻿using NAudio.Extras;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using LinkerPlayer.Core;
+using LinkerPlayer.Core.Log;
 
 namespace LinkerPlayer.Audio;
 

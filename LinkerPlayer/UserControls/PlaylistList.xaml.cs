@@ -6,7 +6,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
+using LinkerPlayer.Core;
+using LinkerPlayer.Models;
 using Microsoft.Win32;
 
 namespace LinkerPlayer.UserControls;

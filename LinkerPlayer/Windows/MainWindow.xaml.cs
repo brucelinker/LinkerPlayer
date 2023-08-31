@@ -1,6 +1,5 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.UserControls;
-using LinkerPlayer.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,6 +11,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using LinkerPlayer.Core;
+using LinkerPlayer.Models;
 
 namespace LinkerPlayer.Windows;
 

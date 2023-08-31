@@ -5,7 +5,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 
-namespace LinkerPlayer.Utils;
+namespace LinkerPlayer.Core;
 
 internal class Helper
 {

@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 
-namespace LinkerPlayer.Utils;
+namespace LinkerPlayer.Core;
 
 public class CustomSlider : Slider
 {

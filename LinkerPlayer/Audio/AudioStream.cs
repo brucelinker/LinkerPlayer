@@ -1,9 +1,9 @@
-﻿using LinkerPlayer.Audio.Log;
-using NAudio.Extras;
+﻿using NAudio.Extras;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using LinkerPlayer.Core.Log;
 
 namespace LinkerPlayer.Audio;
 
