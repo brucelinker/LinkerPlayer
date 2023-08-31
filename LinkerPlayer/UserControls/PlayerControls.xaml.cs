@@ -15,11 +15,11 @@ using System.Windows.Threading;
 
 namespace LinkerPlayer.UserControls;
 
-public partial class BottomControlPanel : INotifyPropertyChanged
+public partial class PlayerControls : INotifyPropertyChanged
 {
     public bool Rendering;
 
-    public BottomControlPanel()
+    public PlayerControls()
     {
         DataContext = this;
         InitializeComponent();

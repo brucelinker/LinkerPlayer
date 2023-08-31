@@ -142,8 +142,8 @@ public partial class SettingsWindow
             MicOutputEnabled.IsChecked = false;
         }
 
-        win.BottomControlPanel.MicVolumeSlider.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
-        win.BottomControlPanel.MicVolumeButton.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
+        win.PlayerControls.MicVolumeSlider.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
+        win.PlayerControls.MicVolumeButton.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
 
         bool changedAdditionalDevice = false;
 
@@ -165,7 +165,7 @@ public partial class SettingsWindow
                 Properties.Settings.Default.AdditionalOutputEnabled = true;
 
                 win.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
-                win.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)win.BottomControlPanel.AdditionalVolumeSlider.Value / 100;
+                win.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)win.PlayerControls.AdditionalVolumeSlider.Value / 100;
                 win.AudioStreamControl.AdditionalMusic.StoppedEvent += win.Music_StoppedEvent!;
             }
             else
@@ -185,8 +185,8 @@ public partial class SettingsWindow
             }
         }
 
-        win.BottomControlPanel.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
-        win.BottomControlPanel.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        win.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        win.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
         Properties.Settings.Default.DownloadsFolder = DownloadsFolder.Text;
         Properties.Settings.Default.MinimizeToTrayEnabled = MinimizeToTrayEnabled.IsChecked.GetValueOrDefault();

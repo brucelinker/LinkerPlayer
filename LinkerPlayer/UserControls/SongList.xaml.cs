@@ -1,14 +1,13 @@
-﻿using System;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Utils;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using LinkerPlayer.Audio;
-using LinkerPlayer.Utils;
 
 namespace LinkerPlayer.UserControls;
 
@@ -221,7 +220,6 @@ public partial class SongList
         }
     }
 
-
     private void MenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem menuItem)
@@ -325,21 +323,5 @@ public partial class SongList
     {
         SetTextBoxToDefaultAndSaveText(sender);
     }
-}
 
-public class DurationConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
-        TimeSpan ts = (TimeSpan)value;
-
-        string output = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-
-        return output;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-    {
-        return Binding.DoNothing;
-    }
 }

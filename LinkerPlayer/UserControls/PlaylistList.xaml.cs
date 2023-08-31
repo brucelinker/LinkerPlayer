@@ -256,7 +256,7 @@ public partial class PlaylistList
 
             List.Items.Refresh(); // list item goes to state before renaming without this line :)
 
-            OutlineBackgroundPlaylist(textBox.Text).Wait();
+            Task unused = OutlineBackgroundPlaylist(textBox.Text);
         }
     }
 

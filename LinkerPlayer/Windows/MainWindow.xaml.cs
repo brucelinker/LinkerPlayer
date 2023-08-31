@@ -113,20 +113,20 @@ public partial class MainWindow
 
         DisplayPlaylists();
 
-        BottomControlPanel.PlayPauseButton.Click += PlayPauseButton_Click;
-        BottomControlPanel.PrevButton.Click += PrevButton_Click;
-        BottomControlPanel.NextButton.Click += NextButton_Click;
-        BottomControlPanel.SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
-        BottomControlPanel.SeekBar.ValueChanged += SeekBar_ValueChanged;
+        PlayerControls.PlayPauseButton.Click += PlayPauseButton_Click;
+        PlayerControls.PrevButton.Click += PrevButton_Click;
+        PlayerControls.NextButton.Click += NextButton_Click;
+        PlayerControls.SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
+        PlayerControls.SeekBar.ValueChanged += SeekBar_ValueChanged;
 
-        BottomControlPanel.MicVolumeSlider.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
-        BottomControlPanel.MicVolumeButton.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
-        BottomControlPanel.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
-        BottomControlPanel.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        PlayerControls.MicVolumeSlider.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
+        PlayerControls.MicVolumeButton.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
+        PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
-        BottomControlPanel.MainVolumeSlider.Value = Properties.Settings.Default.MainVolumeSliderValue;
-        BottomControlPanel.MicVolumeSlider.Value = Properties.Settings.Default.MicVolumeSliderValue;
-        BottomControlPanel.AdditionalVolumeSlider.Value = Properties.Settings.Default.AdditionalVolumeSliderValue;
+        PlayerControls.MainVolumeSlider.Value = Properties.Settings.Default.MainVolumeSliderValue;
+        PlayerControls.MicVolumeSlider.Value = Properties.Settings.Default.MicVolumeSliderValue;
+        PlayerControls.AdditionalVolumeSlider.Value = Properties.Settings.Default.AdditionalVolumeSliderValue;
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
@@ -138,13 +138,16 @@ public partial class MainWindow
             }
         }
 
-        BottomControlPanel.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
-        BottomControlPanel.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
-        BottomControlPanel.MicVolumeSlider.ValueChanged += MicVolumeSlider_ValueChanged;
+        PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
+        PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
+        PlayerControls.MicVolumeSlider.ValueChanged += MicVolumeSlider_ValueChanged;
 
         SongList.ClickRowElement += Song_Click;
 
-        PlaylistList.ClickRowElement += (s, _) => { SelectPlaylistByName((((s as Button)!.Content as ContentPresenter)!.Content as Playlist)!.Name!.ToString()); };
+        PlaylistList.ClickRowElement += (s, _) =>
+        {
+            SelectPlaylistByName((((s as Button)!.Content as ContentPresenter)!.Content as Playlist)!.Name!.ToString());
+        };
 
         _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
         _seekBarTimer.Tick += timer_Tick!;
@@ -198,7 +201,7 @@ public partial class MainWindow
 
                             AudioStreamControl.CurrentTrackPosition = AudioStreamControl.CurrentTrackLength * Properties.Settings.Default.LastSeekBarValue / 100;
 
-                            BottomControlPanel.SeekBar.Value = Properties.Settings.Default.LastSeekBarValue;
+                            PlayerControls.SeekBar.Value = Properties.Settings.Default.LastSeekBarValue;
                         }
                         else
                         {
@@ -209,31 +212,31 @@ public partial class MainWindow
             }
         }
 
-        BottomControlPanel.Mode = (BottomControlPanel.PlaybackMode)Properties.Settings.Default.LastPlaybackMode;
+        PlayerControls.Mode = (PlayerControls.PlaybackMode)Properties.Settings.Default.LastPlaybackMode;
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
 
     private void MainVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        AudioStreamControl.MainMusic!.MusicVolume = (float)BottomControlPanel.MainVolumeSlider.Value / 100;
+        AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.MainVolumeSlider.Value / 100;
     }
 
     private void AdditionalVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        AudioStreamControl.AdditionalMusic!.MusicVolume = (float)BottomControlPanel.AdditionalVolumeSlider.Value / 100;
+        AudioStreamControl.AdditionalMusic!.MusicVolume = (float)PlayerControls.AdditionalVolumeSlider.Value / 100;
     }
 
     private void MicVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        AudioStreamControl.Microphone!.InputDeviceVolume = (float)BottomControlPanel.MicVolumeSlider.Value / 100;
+        AudioStreamControl.Microphone!.InputDeviceVolume = (float)PlayerControls.MicVolumeSlider.Value / 100;
     }
 
     public void Music_StoppedEvent(object sender, EventArgs e)
     {
         if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength)
         {
-            BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
+            PlayerControls.State = PlayerControls.ButtonState.Paused;
             _seekBarTimer.Stop();
 
             NextButton_Click(null!, null!);
@@ -242,12 +245,12 @@ public partial class MainWindow
         {
             AudioStreamControl.Pause();
 
-            BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
+            PlayerControls.State = PlayerControls.ButtonState.Paused;
             _seekBarTimer.Stop();
         }
     }
 
-    private void Song_Click(object sender, RoutedEventArgs e)
+    public void Song_Click(object sender, RoutedEventArgs e)
     {
         string idBefore = SelectedSong != null ? SelectedSong.Id : "";
 
@@ -291,12 +294,12 @@ public partial class MainWindow
             AudioStreamControl.StopAndPlayFromPosition(0);
             _seekBarTimer.Start();
 
-            BottomControlPanel.State = BottomControlPanel.ButtonState.Playing;
+            PlayerControls.State = PlayerControls.ButtonState.Playing;
 
-            BottomControlPanel.CurrentSongName.Text = SelectedSong.Name;
+            PlayerControls.CurrentSongName.Text = SelectedSong.Name;
             TimeSpan ts = SelectedSong.Duration;
-            BottomControlPanel.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-            BottomControlPanel.CurrentTime.Text = "0:00";
+            PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
+            PlayerControls.CurrentTime.Text = "0:00";
 
             foreach (Button button in Helper.FindVisualChildren<Button>(SongList.List))
             { // outline selected song
@@ -318,13 +321,13 @@ public partial class MainWindow
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        double posInSeekBar = (BottomControlPanel.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100;
+        double posInSeekBar = (PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100;
 
         if (AudioStreamControl.PathToMusic != null && Math.Abs(AudioStreamControl.CurrentTrackPosition - posInSeekBar) > 0 && !AudioStreamControl.MainMusic!.IsPaused)
         {
             AudioStreamControl.StopAndPlayFromPosition(posInSeekBar);
 
-            BottomControlPanel.State = BottomControlPanel.ButtonState.Playing;
+            PlayerControls.State = PlayerControls.ButtonState.Playing;
             _seekBarTimer.Start();
         }
     }
@@ -333,17 +336,17 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            double posInSeekBar = (BottomControlPanel.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100;
+            double posInSeekBar = (PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100;
             TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
-            BottomControlPanel.CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
+            PlayerControls.CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
         }
     }
 
     private void timer_Tick(object sender, EventArgs e)
     {
-        if (!(BottomControlPanel.SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
+        if (!(PlayerControls.SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            BottomControlPanel.SeekBar.Value = (AudioStreamControl.CurrentTrackPosition * 100) / AudioStreamControl.CurrentTrackLength;
+            PlayerControls.SeekBar.Value = (AudioStreamControl.CurrentTrackPosition * 100) / AudioStreamControl.CurrentTrackLength;
         }
     }
 
@@ -351,17 +354,17 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            if (BottomControlPanel.State == BottomControlPanel.ButtonState.Paused)
+            if (PlayerControls.State == PlayerControls.ButtonState.Paused)
             {
-                BottomControlPanel.State = BottomControlPanel.ButtonState.Playing;
+                PlayerControls.State = PlayerControls.ButtonState.Playing;
 
-                AudioStreamControl.StopAndPlayFromPosition((BottomControlPanel.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
+                AudioStreamControl.StopAndPlayFromPosition((PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
 
                 _seekBarTimer.Start();
             }
             else
             {
-                BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
+                PlayerControls.State = PlayerControls.ButtonState.Paused;
 
                 AudioStreamControl.Pause();
                 _seekBarTimer.Stop();
@@ -380,9 +383,9 @@ public partial class MainWindow
 
             if (selectedSongIndex == -1)
             { // changed displayed playlist
-                switch (BottomControlPanel.Mode)
+                switch (PlayerControls.Mode)
                 {
-                    case BottomControlPanel.PlaybackMode.Loop:
+                    case PlayerControls.PlaybackMode.Loop:
 
                         List<Song> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
                         selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
@@ -401,20 +404,20 @@ public partial class MainWindow
 
                         break;
 
-                    case BottomControlPanel.PlaybackMode.Loop1:
+                    case PlayerControls.PlaybackMode.Loop1:
                         SelectSong(SelectedSong);
                         break;
 
-                    case BottomControlPanel.PlaybackMode.NoLoop:
+                    case PlayerControls.PlaybackMode.NoLoop:
                         break;
                 }
 
                 return;
             }
 
-            switch (BottomControlPanel.Mode)
+            switch (PlayerControls.Mode)
             {
-                case BottomControlPanel.PlaybackMode.Loop:
+                case PlayerControls.PlaybackMode.Loop:
                     if (selectedSongIndex == SongList.List.Items.Count - 1)
                     {
                         SelectWithSkipping((SongList.List.Items[0] as Song)!, NextButton_Click);
@@ -425,11 +428,11 @@ public partial class MainWindow
                     }
                     break;
 
-                case BottomControlPanel.PlaybackMode.Loop1:
+                case PlayerControls.PlaybackMode.Loop1:
                     SelectSong(SelectedSong);
                     break;
 
-                case BottomControlPanel.PlaybackMode.NoLoop:
+                case PlayerControls.PlaybackMode.NoLoop:
                     break;
             }
         }
@@ -446,9 +449,9 @@ public partial class MainWindow
 
             if (selectedSongIndex == -1)
             { // changed displayed playlist
-                switch (BottomControlPanel.Mode)
+                switch (PlayerControls.Mode)
                 {
-                    case BottomControlPanel.PlaybackMode.Loop:
+                    case PlayerControls.PlaybackMode.Loop:
 
                         List<Song> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
                         selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
@@ -467,11 +470,11 @@ public partial class MainWindow
 
                         break;
 
-                    case BottomControlPanel.PlaybackMode.Loop1:
+                    case PlayerControls.PlaybackMode.Loop1:
                         SelectSong(SelectedSong);
                         break;
 
-                    case BottomControlPanel.PlaybackMode.NoLoop:
+                    case PlayerControls.PlaybackMode.NoLoop:
                         SelectSong(SelectedSong);
                         break;
                 }
@@ -479,9 +482,9 @@ public partial class MainWindow
                 return;
             }
 
-            switch (BottomControlPanel.Mode)
+            switch (PlayerControls.Mode)
             {
-                case BottomControlPanel.PlaybackMode.Loop:
+                case PlayerControls.PlaybackMode.Loop:
                     if (selectedSongIndex == 0)
                     {
                         SelectWithSkipping((SongList.List.Items[^1] as Song)!, PrevButton_Click);
@@ -492,11 +495,11 @@ public partial class MainWindow
                     }
                     break;
 
-                case BottomControlPanel.PlaybackMode.Loop1:
+                case PlayerControls.PlaybackMode.Loop1:
                     SelectSong(SelectedSong);
                     break;
 
-                case BottomControlPanel.PlaybackMode.NoLoop:
+                case PlayerControls.PlaybackMode.NoLoop:
                     SelectSong(SelectedSong);
                     break;
             }
@@ -578,12 +581,12 @@ public partial class MainWindow
         {
             AudioStreamControl.Stop();
             SelectedSong = null;
-            BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
+            PlayerControls.State = PlayerControls.ButtonState.Paused;
             _seekBarTimer.Stop();
-            BottomControlPanel.CurrentSongName.Text = "Song not selected";
-            BottomControlPanel.TotalTime.Text = "0:00";
-            BottomControlPanel.CurrentTime.Text = "0:00";
-            BottomControlPanel.SeekBar.Value = 0;
+            PlayerControls.CurrentSongName.Text = "Song not selected";
+            PlayerControls.TotalTime.Text = "0:00";
+            PlayerControls.CurrentTime.Text = "0:00";
+            PlayerControls.SeekBar.Value = 0;
 
             foreach (Button button in Helper.FindVisualChildren<Button>(PlaylistList.List))
             { // remove outlining from playlist
@@ -616,7 +619,7 @@ public partial class MainWindow
         if (SelectedSong != null)
         {
             SelectedSong.Name = newName;
-            BottomControlPanel.CurrentSongName.Text = newName;
+            PlayerControls.CurrentSongName.Text = newName;
         }
     }
 
@@ -628,16 +631,16 @@ public partial class MainWindow
             {
                 _currentlyVisualizedPath = SelectedSong.Path;
 
-                BottomControlPanel.VisualizeAudio(SelectedSong.Path);
+                PlayerControls.VisualizeAudio(SelectedSong.Path);
             }
         }
     }
 
     public void StopVisualization()
     {
-        BottomControlPanel.Rendering = false;
-        BottomControlPanel.ShowSeekBarHideBorders();
-        BottomControlPanel.UniGrid.Children.Clear();
+        PlayerControls.Rendering = false;
+        PlayerControls.ShowSeekBarHideBorders();
+        PlayerControls.UniGrid.Children.Clear();
 
         _currentlyVisualizedPath = null;
     }
@@ -665,17 +668,17 @@ public partial class MainWindow
 
     public void Window_Closed(object sender, EventArgs e)
     {
-        Properties.Settings.Default.MainVolumeSliderValue = BottomControlPanel.MainVolumeSlider.Value;
-        Properties.Settings.Default.MicVolumeSliderValue = BottomControlPanel.MicVolumeSlider.Value;
-        Properties.Settings.Default.AdditionalVolumeSliderValue = BottomControlPanel.AdditionalVolumeSlider.Value;
+        Properties.Settings.Default.MainVolumeSliderValue = PlayerControls.MainVolumeSlider.Value;
+        Properties.Settings.Default.MicVolumeSliderValue = PlayerControls.MicVolumeSlider.Value;
+        Properties.Settings.Default.AdditionalVolumeSliderValue = PlayerControls.AdditionalVolumeSlider.Value;
 
         Properties.Settings.Default.LastSelectedPlaylistName = SelectedPlaylist != null ? SelectedPlaylist.Name : "";
         Properties.Settings.Default.LastBackgroundPlaylistName = BackgroundPlaylistName ?? "";
         Properties.Settings.Default.LastSelectedSongId = SelectedSong != null ? SelectedSong.Id : "";
 
-        Properties.Settings.Default.LastSeekBarValue = BottomControlPanel.SeekBar.Value;
+        Properties.Settings.Default.LastSeekBarValue = PlayerControls.SeekBar.Value;
 
-        Properties.Settings.Default.LastPlaybackMode = (int)BottomControlPanel.Mode;
+        Properties.Settings.Default.LastPlaybackMode = (int)PlayerControls.Mode;
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
@@ -771,14 +774,14 @@ public partial class MainWindow
             }
             else if (enteredHotkey == Properties.Settings.Default["IncreaseMainVolumeHotkey"].ToString())
             {
-                double val = BottomControlPanel.MainVolumeSlider.Value;
-                BottomControlPanel.MainVolumeSlider.Value = val + 5 > 100 ? 100 : val + 5;
+                double val = PlayerControls.MainVolumeSlider.Value;
+                PlayerControls.MainVolumeSlider.Value = val + 5 > 100 ? 100 : val + 5;
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["DecreaseMainVolumeHotkey"].ToString())
             {
-                double val = BottomControlPanel.MainVolumeSlider.Value;
-                BottomControlPanel.MainVolumeSlider.Value = val - 5 < 0 ? 0 : val - 5;
+                double val = PlayerControls.MainVolumeSlider.Value;
+                PlayerControls.MainVolumeSlider.Value = val - 5 < 0 ? 0 : val - 5;
                 e.Handled = true;
             }
         }
