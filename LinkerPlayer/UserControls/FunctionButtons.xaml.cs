@@ -1,11 +1,12 @@
 ﻿using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Windows;
+using PlaylistsNET.Content;
+using PlaylistsNET.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 
@@ -13,6 +14,10 @@ namespace LinkerPlayer.UserControls;
 
 public partial class FunctionButtons
 {
+    private const string SupportedAudioFormats = "(*.mp3)|*.mp3";
+    private const string SupportedPlaylistFormats = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
+    const string SupportedExtensions = $"Audio Formats {SupportedAudioFormats}|Playlist Files {SupportedPlaylistFormats}|All files (*.*)|*.*";
+
     public FunctionButtons()
     {
         InitializeComponent();
@@ -48,64 +53,149 @@ public partial class FunctionButtons
         _settingsWin.Show();
     }
 
-    private async void ConvertButton_Click(object sender, RoutedEventArgs e)
+    private void LoadFileButton_Click(object sender, RoutedEventArgs e)
     {
-        ConvertButton.IsHitTestVisible = false;
-        DialogResult fileDialogResult = DialogResult.None;
-        FolderBrowserDialog folderDialog = new FolderBrowserDialog()
+        LoadFileButton.IsHitTestVisible = false;
+
+        using OpenFileDialog openFileDialog = new OpenFileDialog();
+        openFileDialog.Filter = SupportedExtensions;
+        openFileDialog.Multiselect = true;
+        openFileDialog.Title = "Select file(s)";
+
+        DialogResult fileDialogRes = openFileDialog.ShowDialog();
+
+        LoadFileButton.IsHitTestVisible = true;
+
+        if (fileDialogRes != DialogResult.OK) return;
+
+        foreach (string fileName in openFileDialog.FileNames)
         {
-            RootFolder = Environment.SpecialFolder.MyMusic
-        };
+            var extension = Path.GetExtension(fileName);
 
-        await Task.Run(() =>
-        {
-            // because ShowDialog blocks animations
-            fileDialogResult = folderDialog.ShowDialog();
-        });
-
-        ConvertButton.IsHitTestVisible = true;
-
-        if (fileDialogResult == DialogResult.OK)
-        {
-            string selectedFolderPath = folderDialog.SelectedPath;
-            DirectoryInfo dirInfo = new DirectoryInfo(selectedFolderPath);
-            List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
-
-            if (!files.Any())
+            if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
             {
-                MainWindow win = (MainWindow)Window.GetWindow(this)!;
-                win.InfoSnackbar.MessageQueue?.Clear();
-                win.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
-                    false, true, TimeSpan.FromSeconds(3));
+                LoadAudioFile(fileName);
             }
 
-            foreach (FileInfo? file in files)
+            if (string.Equals(".m3u", extension, StringComparison.OrdinalIgnoreCase))
             {
-                Song song = new Song { Path = file.FullName };
+                LoadPlaylistFile(fileName);
+            }
+        }
+    }
 
-                if (MusicLibrary.AddSong(song))
+    private void LoadFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        LoadFolderButton.IsHitTestVisible = false;
+
+        using FolderBrowserDialog folderDialog = new FolderBrowserDialog();
+        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
+
+        DialogResult fileDialogResult = folderDialog.ShowDialog();
+
+        LoadFolderButton.IsHitTestVisible = true;
+
+        if (fileDialogResult != DialogResult.OK) return;
+
+        string selectedFolderPath = folderDialog.SelectedPath;
+        DirectoryInfo dirInfo = new DirectoryInfo(selectedFolderPath);
+        List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
+
+        if (!files.Any())
+        {
+            MainWindow win = (MainWindow)Window.GetWindow(this)!;
+            win.InfoSnackbar.MessageQueue?.Clear();
+            win.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
+                false, true, TimeSpan.FromSeconds(3));
+        }
+
+        foreach (FileInfo? file in files)
+        {
+            Song song = new Song { Path = file.FullName };
+
+            if (MusicLibrary.AddSong(song))
+            {
+                MainWindow win = (MainWindow)Window.GetWindow(this)!;
+
+                Playlist? selectedPlaylist = win.SelectedPlaylist;
+
+                if (selectedPlaylist == null)
                 {
-                    MainWindow win = (MainWindow)Window.GetWindow(this)!;
+                    selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
 
-                    Playlist? selectedPlaylist = win.SelectedPlaylist;
-
-                    if (selectedPlaylist == null)
+                    if (selectedPlaylist != null)
                     {
-                        selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
+                        win.SelectPlaylistByName(selectedPlaylist.Name!);
 
-                        if (selectedPlaylist != null)
-                        {
-                            win.SelectPlaylistByName(selectedPlaylist.Name!);
-
-                            MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                            win.SongList.List.Items.Add(song);
-                        }
-                    }
-                    else
-                    {
                         MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
                         win.SongList.List.Items.Add(song);
                     }
+                }
+                else
+                {
+                    MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
+                    win.SongList.List.Items.Add(song);
+                }
+            }
+        }
+    }
+
+    private void LoadAudioFile(string fileName)
+    {
+        if (File.Exists(fileName))
+        {
+            Song song = new Song { Path = fileName };
+
+            if (MusicLibrary.AddSong(song))
+            {
+                MainWindow win = (MainWindow)Window.GetWindow(this)!;
+
+                Playlist? selectedPlaylist = win.SelectedPlaylist;
+
+                if (selectedPlaylist == null)
+                {
+                    selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
+
+                    if (selectedPlaylist != null)
+                    {
+                        win.SelectPlaylistByName(selectedPlaylist.Name!);
+
+                        MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
+                        win.SongList.List.Items.Add(song);
+                    }
+                }
+                else
+                {
+                    MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
+                    win.SongList.List.Items.Add(song);
+                }
+            }
+        }
+        else
+        {
+            MainWindow win = (MainWindow)Window.GetWindow(this)!;
+            win.InfoSnackbar.MessageQueue?.Clear();
+            win.InfoSnackbar.MessageQueue?.Enqueue($"Error while converting {fileName}", null, null, null, false, true, TimeSpan.FromSeconds(2));
+        }
+    }
+
+    private void LoadPlaylistFile(string fileName)
+    {
+        if (File.Exists(fileName))
+        {
+            if (fileName.EndsWith("m3u"))
+            {
+                string directoryName = Path.GetDirectoryName(fileName)!;
+
+                M3uContent content = new M3uContent();
+                FileStream stream = File.OpenRead(fileName);
+                M3uPlaylist playlist = content.GetFromStream(stream);
+
+                List<string> paths = playlist.GetTracksPaths();
+
+                foreach (string path in paths)
+                {
+                    LoadAudioFile($"{directoryName}\\{path}");
                 }
             }
         }

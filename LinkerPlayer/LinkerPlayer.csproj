@@ -24,7 +24,8 @@
     <None Remove="Images\app32.ico" />
     <None Remove="Images\app64.ico" />
     <None Remove="Images\close.png" />
-    <None Remove="Images\convert.png" />
+    <None Remove="Images\loadfile.png" />
+    <None Remove="Images\loadfolder.png" />
     <None Remove="Images\download.png" />
     <None Remove="Images\equalizer.png" />
     <None Remove="Images\expand.png" />
@@ -62,6 +63,7 @@
     <PackageReference Include="NAudio.Extras" Version="2.2.0" />
     <PackageReference Include="NAudio.WinForms" Version="2.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="PlaylistsNET" Version="1.4.0" />
     <PackageReference Include="taglib-sharp-netstandard2.0" Version="2.1.0" />
   </ItemGroup>
 
@@ -81,7 +83,10 @@
     <Resource Include="Images\close.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="Images\convert.png">
+    <Resource Include="Images\loadfile.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\loadfolder.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\download.png">

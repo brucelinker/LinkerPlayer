@@ -62,16 +62,16 @@
 
             <ListViewItem Padding="5">
                 <Button
-                    x:Name="ConvertButton"
+                    x:Name="LoadFolderButton"
                     Width="50"
                     Height="50"
                     Padding="10"
                     Background="#212128"
                     BorderBrush="Transparent"
-                    Click="ConvertButton_Click">
+                    Click="LoadFolderButton_Click">
                     <Grid>
                         <ProgressBar
-                            Name="ConvertingProgress"
+                            Name="LoadingFolderProgress"
                             Width="40"
                             Height="40"
                             Margin="-15"
@@ -81,9 +81,9 @@
                         <Image
                             RenderOptions.BitmapScalingMode="HighQuality"
                             RenderTransformOrigin="0.5,0.5"
-                            Source="/Images/convert.png">
+                            Source="/Images/loadfolder.png">
                             <Image.RenderTransform>
-                                <RotateTransform x:Name="ConvertRotateAnim" Angle="0" />
+                                <RotateTransform x:Name="LoadingFolderRotateAnim" Angle="0" />
                             </Image.RenderTransform>
                         </Image>
                     </Grid>
@@ -94,7 +94,58 @@
                                 <BeginStoryboard>
                                     <Storyboard>
                                         <DoubleAnimation
-                                            Storyboard.TargetName="ConvertRotateAnim"
+                                            Storyboard.TargetName="LoadingFolderRotateAnim"
+                                            Storyboard.TargetProperty="(RotateTransform.Angle)"
+                                            From="0"
+                                            To="360"
+                                            Duration="0:0:0.5">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger.Actions>
+                        </EventTrigger>
+                    </Button.Triggers>
+                </Button>
+            </ListViewItem>            
+            
+            <ListViewItem Padding="5">
+                <Button
+                    x:Name="LoadFileButton"
+                    Width="50"
+                    Height="50"
+                    Padding="10"
+                    Background="#212128"
+                    BorderBrush="Transparent"
+                    Click="LoadFileButton_Click">
+                    <Grid>
+                        <ProgressBar
+                            Name="LoadingFileProgress"
+                            Width="40"
+                            Height="40"
+                            Margin="-15"
+                            IsIndeterminate="True"
+                            Style="{StaticResource MaterialDesignCircularProgressBar}"
+                            Visibility="Collapsed" />
+                        <Image
+                            RenderOptions.BitmapScalingMode="HighQuality"
+                            RenderTransformOrigin="0.5,0.5"
+                            Source="/Images/loadfile.png">
+                            <Image.RenderTransform>
+                                <RotateTransform x:Name="LoadingFileRotateAnim" Angle="0" />
+                            </Image.RenderTransform>
+                        </Image>
+                    </Grid>
+
+                    <Button.Triggers>
+                        <EventTrigger RoutedEvent="Button.Click">
+                            <EventTrigger.Actions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation
+                                            Storyboard.TargetName="LoadingFileRotateAnim"
                                             Storyboard.TargetProperty="(RotateTransform.Angle)"
                                             From="0"
                                             To="360"

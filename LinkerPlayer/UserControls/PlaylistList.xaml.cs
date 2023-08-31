@@ -1,14 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using LinkerPlayer.Core;
+using LinkerPlayer.Models;
+using Microsoft.Win32;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using LinkerPlayer.Audio;
-using LinkerPlayer.Core;
-using LinkerPlayer.Models;
-using Microsoft.Win32;
 
 namespace LinkerPlayer.UserControls;
 
