@@ -8,9 +8,9 @@
     xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
     Title="Settings"
     Width="610"
-    Height="600"
+    Height="400"
     MinWidth="610"
-    MinHeight="475"
+    MinHeight="400"
     AllowsTransparency="True"
     Closing="Window_Closing"
     Loaded="Window_Loaded"
@@ -109,9 +109,6 @@
                                 Grid.Column="1"
                                 BorderBrush="{DynamicResource PrimaryHueMidBrush}"
                                 Foreground="#BDBDBD">
-                                <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
-                                </ComboBox.Resources>
                             </ComboBox>
                         </Grid>
 
@@ -129,49 +126,6 @@
                                 Grid.Column="1"
                                 BorderBrush="{DynamicResource PrimaryHueMidBrush}"
                                 Foreground="#BDBDBD">
-                                <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
-                                </ComboBox.Resources>
-                            </ComboBox>
-                        </Grid>
-
-                        <!-- Mic Input Device -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="265" />
-                                <ColumnDefinition />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0">Select mic input device</TextBlock>
-
-                            <ComboBox
-                                Name="InputDevicesList"
-                                Grid.Column="1"
-                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
-                                Foreground="#BDBDBD">
-                                <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
-                                </ComboBox.Resources>
-                            </ComboBox>
-                        </Grid>
-
-                        <!-- Mic Output Device -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="265" />
-                                <ColumnDefinition />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0">Select mic output device</TextBlock>
-
-                            <ComboBox
-                                Name="MicOutputDevicesList"
-                                Grid.Column="1"
-                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
-                                Foreground="#BDBDBD">
-                                <ComboBox.Resources>
-                                    <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
-                                </ComboBox.Resources>
                             </ComboBox>
                         </Grid>
 
@@ -186,16 +140,6 @@
                             <ToggleButton Name="AdditionalOutputEnabled" Grid.Column="1" />
                         </Grid>
 
-                        <!-- Enable Mic Output -->
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition />
-                                <ColumnDefinition Width="40" />
-                            </Grid.ColumnDefinitions>
-
-                            <TextBlock Grid.Column="0">Enable mic output</TextBlock>
-                            <ToggleButton Name="MicOutputEnabled" Grid.Column="1" />
-                        </Grid>
                     </StackPanel>
                 </TabItem.Content>
             </TabItem>
@@ -278,6 +222,7 @@
             Width="150"
             Margin="15"
             HorizontalAlignment="Right"
+            Foreground="{DynamicResource PrimaryHueMidBrush}"
             Background="Transparent"
             Click="Save_Click"
             Content="Save" />

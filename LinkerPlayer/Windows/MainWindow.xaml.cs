@@ -1,4 +1,6 @@
 ﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
+using LinkerPlayer.Models;
 using LinkerPlayer.UserControls;
 using System;
 using System.Collections.Generic;
@@ -11,8 +13,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using LinkerPlayer.Core;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.Windows;
 
@@ -68,28 +68,7 @@ public partial class MainWindow
             }
         }
 
-        if (string.IsNullOrEmpty(Properties.Settings.Default.InputDevice))
-        {
-            Properties.Settings.Default.InputDevice = DeviceControl.GetInputDeviceNameById(0);
-        }
-        else if (!DeviceControl.GetInputDevicesList().Contains(Properties.Settings.Default.InputDevice))
-        {
-            Properties.Settings.Default.InputDevice = DeviceControl.GetInputDeviceNameById(0);
-        }
-
-        if (string.IsNullOrEmpty(Properties.Settings.Default.MicOutputDevice))
-        {
-            if (!string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
-            {
-                Properties.Settings.Default.MicOutputDevice = Properties.Settings.Default.AdditionalOutputDevice;
-            }
-        }
-        else if (!DeviceControl.GetOutputDevicesList().Contains(Properties.Settings.Default.MicOutputDevice))
-        {
-            Properties.Settings.Default.MicOutputDevice = "";
-        }
-
-        AudioStreamControl = new AudioStreamControl(Properties.Settings.Default.MainOutputDevice);
+        AudioStreamControl = new AudioStreamControl(Properties.Settings.Default.MainOutputDevice, null!);
 
         AudioStreamControl.MainMusic!.MusicVolume = (float)Properties.Settings.Default.MainVolumeSliderValue / 100;
 
@@ -97,12 +76,6 @@ public partial class MainWindow
         {
             AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice);
             AudioStreamControl.AdditionalMusic!.MusicVolume = (float)Properties.Settings.Default.AdditionalVolumeSliderValue / 100;
-        }
-
-        if (Properties.Settings.Default.MicOutputEnabled && !string.IsNullOrEmpty(Properties.Settings.Default.MicOutputDevice) && !string.IsNullOrEmpty(Properties.Settings.Default.InputDevice))
-        {
-            AudioStreamControl.ActivateMic(Properties.Settings.Default.InputDevice, Properties.Settings.Default.MicOutputDevice);
-            AudioStreamControl.Microphone!.InputDeviceVolume = (float)Properties.Settings.Default.MicVolumeSliderValue / 100;
         }
 
         AudioStreamControl.MainMusic.StoppedEvent += Music_StoppedEvent!;
@@ -141,7 +114,6 @@ public partial class MainWindow
 
         PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
         PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
-        PlayerControls.MicVolumeSlider.ValueChanged += MicVolumeSlider_ValueChanged;
 
         SongList.ClickRowElement += Song_Click;
 
@@ -226,11 +198,6 @@ public partial class MainWindow
     private void AdditionalVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
         AudioStreamControl.AdditionalMusic!.MusicVolume = (float)PlayerControls.AdditionalVolumeSlider.Value / 100;
-    }
-
-    private void MicVolumeSlider_ValueChanged(object sender, EventArgs e)
-    {
-        AudioStreamControl.Microphone!.InputDeviceVolume = (float)PlayerControls.MicVolumeSlider.Value / 100;
     }
 
     public void Music_StoppedEvent(object sender, EventArgs e)
@@ -698,12 +665,6 @@ public partial class MainWindow
         if (AudioStreamControl.AdditionalMusic != null)
         {
             Properties.Settings.Default.AdditionalOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.AdditionalMusic.GetOutputDeviceId());
-        }
-
-        if (AudioStreamControl.Microphone != null)
-        {
-            Properties.Settings.Default.MicOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.Microphone.GetOutputDeviceId());
-            Properties.Settings.Default.InputDevice = DeviceControl.GetInputDeviceNameById(AudioStreamControl.Microphone.GetInputDeviceId());
         }
 
         Properties.Settings.Default.Save();

@@ -14,7 +14,7 @@ namespace LinkerPlayer.UserControls;
 
 public partial class FunctionButtons
 {
-    private const string SupportedAudioFormats = "(*.mp3)|*.mp3";
+    private const string SupportedAudioFormats = "(*.mp3)|*.mp3;(*.flac)|*.flac";
     private const string SupportedPlaylistFormats = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
     const string SupportedExtensions = $"Audio Formats {SupportedAudioFormats}|Playlist Files {SupportedPlaylistFormats}|All files (*.*)|*.*";
 

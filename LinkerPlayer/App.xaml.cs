@@ -1,26 +1,51 @@
 ﻿using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
-using System.Text;
+using Microsoft.Extensions.Hosting;
+using Serilog;
 using System.Windows;
 
 namespace LinkerPlayer;
 
 public partial class App
 {
-    protected override void OnStartup(StartupEventArgs e)
+    public static IHost? AppHost { get; set; }
+
+    public App()
     {
-        ServiceCollection serviceCollection = new ServiceCollection();
-        ConfigureServices(serviceCollection);
+        AppHost = Host.CreateDefaultBuilder()
+            .UseSerilog((host, configuration) =>
+            {
+                configuration.WriteTo.File("Logs/LinkerPlayer-{Date}.txt")
+                    .WriteTo.Debug()
+                    .WriteTo.Console();
+            })
+            .ConfigureServices((_, services) =>
+            {
+                services.AddSingleton<MainWindow>();
+            })
+            .Build();
 
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-
-        ServiceProvider serviceProvider = serviceCollection.BuildServiceProvider();
-        MainWindow mainWindow = serviceProvider.GetRequiredService<MainWindow>();
-        mainWindow.Show();
+        // Global logger
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.File("Logs/LinkerPlayer-.txt", rollingInterval:RollingInterval.Day)
+            .CreateLogger();
     }
 
-    private void ConfigureServices(ServiceCollection serviceCollection)
+    protected override async void OnStartup(StartupEventArgs e)
     {
-        serviceCollection.AddTransient<MainWindow>();
+        await AppHost!.StartAsync();
+
+        MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
+        mainWindow.Show();
+
+        base.OnStartup(e);
+    }
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        await AppHost!.StopAsync();
+        AppHost.Dispose();
+        base.OnExit(e);
     }
 }

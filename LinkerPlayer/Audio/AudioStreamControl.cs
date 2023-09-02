@@ -1,29 +1,28 @@
-﻿using NAudio.Extras;
+﻿using LinkerPlayer.Core;
+using Microsoft.Extensions.Logging;
+using NAudio.Extras;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using LinkerPlayer.Core;
-using LinkerPlayer.Core.Log;
 
 namespace LinkerPlayer.Audio;
 
 public class AudioStreamControl
 {
-    protected ILog Log = LogSettings.SelectedLog;
-
     public MusicStream? MainMusic;
     public MusicStream? AdditionalMusic;
 
-    public MicrophoneStream? Microphone;
-
     private bool _delayedEqualizerInitialization;
     private string? _selectedBandName;
+    private readonly ILogger<AudioStreamControl> _logger;
 
-    public AudioStreamControl(string mainOutputDevice)
+    public AudioStreamControl(string mainOutputDevice, ILogger<AudioStreamControl> logger)
     {
+        _logger = logger;
+
         if (string.IsNullOrWhiteSpace(mainOutputDevice))
         {
-            Log.Print("Device name can`t be null", LogInfoType.Error);
+            _logger.Log(LogLevel.Error, "Device name can`t be null");
         }
         else
         {
@@ -35,7 +34,7 @@ public class AudioStreamControl
     {
         if (string.IsNullOrWhiteSpace(additionalOutputDevice))
         {
-            Log.Print("Device name can`t be null", LogInfoType.Error);
+            _logger.Log(LogLevel.Error, "Device name can`t be null");
         }
         else
         {
@@ -62,63 +61,34 @@ public class AudioStreamControl
             }
             else
             {
-                Log.Print("MainMusic should be initialized", LogInfoType.Error);
+                _logger.Log(LogLevel.Error, "MainMusic should be initialized");
             }
-        }
-    }
-
-    public void ActivateMic(string inputDevice, string outputDevice)
-    {
-        if (String.IsNullOrWhiteSpace(inputDevice) || String.IsNullOrWhiteSpace(outputDevice))
-        {
-            Log.Print("Device name can`t be null", LogInfoType.Error);
-        }
-        else
-        {
-            Microphone = new MicrophoneStream(inputDevice, outputDevice);
-
-            Microphone.Play();
         }
     }
 
     public void Stop()
     {
         MainMusic?.Stop();
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.Stop();
-        }
+        AdditionalMusic?.Stop();
     }
 
     public void Play()
     {
         MainMusic?.Play();
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.Play();
-        }
+        AdditionalMusic?.Play();
     }
 
     public void Pause()
     {
         MainMusic?.Pause();
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.Pause();
-        }
+        AdditionalMusic?.Pause();
     }
 
     public void StopAndPlayFromPosition(double startingPosition)
     {
         MainMusic?.StopAndPlayFromPosition(startingPosition);
 
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.StopAndPlayFromPosition(startingPosition);
-        }
+        AdditionalMusic?.StopAndPlayFromPosition(startingPosition);
 
         if (_delayedEqualizerInitialization && !String.IsNullOrEmpty(_selectedBandName))
         {
@@ -134,7 +104,7 @@ public class AudioStreamControl
                 {
                     SetBandsList(band.EqualizerBands);
 
-                    Log.Print("Profile has been selected", LogInfoType.Info);
+                    _logger.Log(LogLevel.Information, "Profile has been selected");
                 }
             }
         }
@@ -186,21 +156,14 @@ public class AudioStreamControl
     public void Seek(double offset)
     {
         MainMusic?.Seek(offset);
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.Seek(offset);
-        }
+        AdditionalMusic?.Seek(offset);
     }
 
     public void InitializeEqualizer(string? selectedBandName = null)
     {
         MainMusic?.InitializeEqualizer();
 
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.InitializeEqualizer();
-        }
+        AdditionalMusic?.InitializeEqualizer();
 
         if (MainMusic is { IsEqualizerWorking: false })
         {
@@ -212,30 +175,18 @@ public class AudioStreamControl
     public void StopEqualizer()
     {
         MainMusic?.StopEqualizer();
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.StopEqualizer();
-        }
+        AdditionalMusic?.StopEqualizer();
     }
 
     public void SetBandGain(int index, float value)
     {
         MainMusic?.SetBandGain(index, value);
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.SetBandGain(index, value);
-        }
+        AdditionalMusic?.SetBandGain(index, value);
     }
 
     public void SetBandsList(List<EqualizerBand>? equalizerBandsToAdd)
     {
         MainMusic?.SetBandsList(equalizerBandsToAdd);
-
-        if (AdditionalMusic != null)
-        {
-            AdditionalMusic.SetBandsList(equalizerBandsToAdd);
-        }
+        AdditionalMusic?.SetBandsList(equalizerBandsToAdd);
     }
 }

@@ -1,5 +1,4 @@
-﻿using LinkerPlayer.Audio;
-using LinkerPlayer.Core.Log;
+﻿using LinkerPlayer.Core.Log;
 using LinkerPlayer.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

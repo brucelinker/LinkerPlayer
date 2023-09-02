@@ -1,4 +1,5 @@
 ﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
 using MaterialDesignThemes.Wpf;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using LinkerPlayer.Core;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 using WinForms = System.Windows.Forms;
@@ -36,12 +36,6 @@ public partial class SettingsWindow
         {
             MainOutputDevicesList.Items.Add(device);
             AdditionalOutputDevicesList.Items.Add(device);
-            MicOutputDevicesList.Items.Add(device);
-        }
-
-        foreach (string device in DeviceControl.GetInputDevicesList())
-        {
-            InputDevicesList.Items.Add(device);
         }
 
         if (MainOutputDevicesList.Items.Contains(Properties.Settings.Default.MainOutputDevice))
@@ -62,18 +56,6 @@ public partial class SettingsWindow
             AdditionalOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(0);
         }
 
-        if (MicOutputDevicesList.Items.Contains(Properties.Settings.Default.MicOutputDevice))
-        {
-            MicOutputDevicesList.SelectedItem = Properties.Settings.Default.MicOutputDevice;
-        }
-        else
-        {
-            MicOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(0);
-        }
-
-        InputDevicesList.SelectedItem = Properties.Settings.Default.InputDevice;
-
-        MicOutputEnabled.IsChecked = Properties.Settings.Default.MicOutputEnabled;
         AdditionalOutputEnabled.IsChecked = Properties.Settings.Default.AdditionalOutputEnabled;
         EqualizerOnStartEnabled.IsChecked = Properties.Settings.Default.EqualizerOnStartEnabled;
 
@@ -103,47 +85,6 @@ public partial class SettingsWindow
             Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
             win!.AudioStreamControl.MainMusic!.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
         }
-
-        if (MicOutputDevicesList.SelectedItem != null)
-        {
-            Properties.Settings.Default.MicOutputDevice = MicOutputDevicesList.SelectedItem.ToString();
-        }
-
-        if (InputDevicesList.SelectedItem != null)
-        {
-            Properties.Settings.Default.InputDevice = InputDevicesList.SelectedItem.ToString();
-        }
-
-        Properties.Settings.Default.MicOutputEnabled = MicOutputEnabled.IsChecked.GetValueOrDefault();
-
-        if (Properties.Settings.Default.MicOutputEnabled &&
-            !string.IsNullOrEmpty(Properties.Settings.Default.MicOutputDevice) &&
-            !string.IsNullOrEmpty(Properties.Settings.Default.InputDevice))
-        {
-
-            if (win.AudioStreamControl.Microphone != null)
-            {
-                win.AudioStreamControl.Microphone.CloseStream();
-                win.AudioStreamControl.Microphone = null;
-            }
-
-            win.AudioStreamControl.ActivateMic(Properties.Settings.Default.InputDevice, Properties.Settings.Default.MicOutputDevice);
-            win.AudioStreamControl.Microphone!.InputDeviceVolume = (float)Properties.Settings.Default.MicVolumeSliderValue / 100;
-        }
-        else
-        {
-            if (win.AudioStreamControl.Microphone != null)
-            {
-                win.AudioStreamControl.Microphone.CloseStream();
-                win.AudioStreamControl.Microphone = null;
-            }
-
-            Properties.Settings.Default.MicOutputEnabled = false;
-            MicOutputEnabled.IsChecked = false;
-        }
-
-        win.PlayerControls.MicVolumeSlider.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
-        win.PlayerControls.MicVolumeButton.IsEnabled = Properties.Settings.Default.MicOutputEnabled;
 
         bool changedAdditionalDevice = false;
 
