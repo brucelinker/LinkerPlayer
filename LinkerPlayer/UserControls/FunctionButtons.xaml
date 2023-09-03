@@ -109,8 +109,8 @@
                         </EventTrigger>
                     </Button.Triggers>
                 </Button>
-            </ListViewItem>            
-            
+            </ListViewItem>
+
             <ListViewItem Padding="5">
                 <Button
                     x:Name="LoadFileButton"

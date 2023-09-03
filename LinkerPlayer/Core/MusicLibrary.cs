@@ -1,10 +1,10 @@
-﻿using LinkerPlayer.Core.Log;
-using LinkerPlayer.Models;
+﻿using LinkerPlayer.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Serilog;
 
 namespace LinkerPlayer.Core;
 
@@ -13,7 +13,6 @@ public class MusicLibrary
     private static readonly string JsonFilePath;
     private static List<Song>? _songs = new();
     private static List<Playlist>? _playlists = new();
-    private static readonly ILog Log = LogSettings.SelectedLog;
 
     static MusicLibrary()
     {
@@ -36,7 +35,7 @@ public class MusicLibrary
                 _songs = ((JArray)data["songs"]).ToObject<List<Song>>();
                 _playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>();
 
-                Log.Print("Data loaded from json", LogInfoType.Info);
+                Log.Information("Data loaded from json");
             }
         }
         else
@@ -44,7 +43,7 @@ public class MusicLibrary
             Directory.CreateDirectory(Path.GetDirectoryName(JsonFilePath) ?? string.Empty);
             File.Create(JsonFilePath).Close();
 
-            Log.Print("Empty json file created", LogInfoType.Info);
+            Log.Information("Empty json file created");
         }
     }
 
@@ -66,7 +65,7 @@ public class MusicLibrary
             }
         }
 
-        Log.Print("Data saved to json", LogInfoType.Info);
+        Log.Information("Data saved to json");
     }
 
     public static bool AddSong(Song song)
@@ -84,7 +83,7 @@ public class MusicLibrary
 
             _songs?.Add(song.Clone());
 
-            Log.Print($"New song with id {song.Id} added", LogInfoType.Info);
+            Log.Information($"New song with id {song.Id} added");
 
             SaveToJson();
 
@@ -104,7 +103,7 @@ public class MusicLibrary
                 playlist.SongIds.Remove(songId);
             }
 
-        Log.Print($"Song with id {songId} removed", LogInfoType.Info);
+        Log.Information($"Song with id {songId} removed");
 
         SaveToJson();
     }
@@ -115,7 +114,7 @@ public class MusicLibrary
         {
             _playlists?.Add(playlist.Clone());
 
-            Log.Print($"New playlist \'{playlist.Name}\' added", LogInfoType.Info);
+            Log.Information($"New playlist \'{playlist.Name}\' added");
 
             SaveToJson();
 
@@ -129,7 +128,7 @@ public class MusicLibrary
     {
         _playlists?.RemoveAll(p => p.Name == playlistName);
 
-        Log.Print($"Playlist \'{playlistName}\' removed", LogInfoType.Info);
+        Log.Information($"Playlist \'{playlistName}\' removed");
 
         SaveToJson();
     }
@@ -154,7 +153,7 @@ public class MusicLibrary
                     }
                 }
 
-                Log.Print($"Song with id {songId} added to playlist \'{playlistName}\'", LogInfoType.Info);
+                Log.Information($"Song with id {songId} added to playlist \'{playlistName}\'");
 
                 SaveToJson();
             }
@@ -169,7 +168,7 @@ public class MusicLibrary
         {
             playlist.SongIds.Remove(songId);
 
-            Log.Print($"Song with id {songId} removed from playlist \'{playlistName}\'", LogInfoType.Info);
+            Log.Information($"Song with id {songId} removed from playlist \'{playlistName}\'");
 
             SaveToJson();
         }
@@ -186,7 +185,7 @@ public class MusicLibrary
             from.SongIds.Remove(songId);
             to.SongIds.Add(songId);
 
-            Log.Print($"Song with id {songId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'", LogInfoType.Info);
+            Log.Information($"Song with id {songId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'");
 
             SaveToJson();
         }
@@ -198,7 +197,7 @@ public class MusicLibrary
 
         if (song != null && !string.IsNullOrEmpty(newName))
         {
-            Log.Print($"Song with id {songId} has been renamed", LogInfoType.Info);
+            Log.Information($"Song with id {songId} has been renamed");
 
             song.Name = newName;
             SaveToJson();
@@ -215,7 +214,7 @@ public class MusicLibrary
 
         if (playlist != null && !string.IsNullOrEmpty(newName) && _playlists?.Find(s => s.Name == newName) == null)
         {
-            Log.Print($"Playlist with name {oldName} has been renamed to {newName}", LogInfoType.Info);
+            Log.Information($"Playlist with name {oldName} has been renamed to {newName}");
 
             playlist.Name = newName;
             SaveToJson();
@@ -274,7 +273,6 @@ public class EqualizerLibrary
 {
     public static List<BandsSettings>? BandsSettings = new();
     private static readonly string JsonFilePath;
-    protected static ILog Log = LogSettings.SelectedLog;
 
     static EqualizerLibrary()
     {
@@ -295,10 +293,10 @@ public class EqualizerLibrary
             }
             else
             {
-                Log.Print("Json is empty", LogInfoType.Warning);
+                Log.Warning("Json is empty");
             }
 
-            Log.Print("Load from json", LogInfoType.Info);
+            Log.Information("Load from json");
         }
         else
         {
@@ -313,6 +311,6 @@ public class EqualizerLibrary
         string json = JsonConvert.SerializeObject(BandsSettings, Formatting.Indented, settings);
         File.WriteAllText(JsonFilePath, json);
 
-        Log.Print("Save to json", LogInfoType.Info);
+        Log.Information("Save to json");
     }
 }
