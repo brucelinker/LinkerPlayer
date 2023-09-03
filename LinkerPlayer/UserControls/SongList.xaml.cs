@@ -290,7 +290,7 @@ public partial class SongList
                 else
                 {
                     textBox.Text = textBoxText;
-                    ((textBox.DataContext as Song)!).Name = textBoxText;
+                    ((textBox.DataContext as Song)!).Title = textBoxText;
 
                     Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 

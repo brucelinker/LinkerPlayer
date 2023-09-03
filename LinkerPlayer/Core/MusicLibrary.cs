@@ -77,9 +77,21 @@ public class MusicLibrary
 
             TagLib.File? tagFile = TagLib.File.Create(song.Path);
 
-            song.Name = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(song.Path);
-
+            song.Title = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(song.Path);
+            song.Track = tagFile.Tag.Track;
+            song.Artist = tagFile.Tag.FirstAlbumArtist;
+            song.Album = tagFile.Tag.Album;
+            song.AlbumArtists = tagFile.Tag.AlbumArtists;
+            song.Composers = tagFile.Tag.Composers;
+            song.Genres = tagFile.Tag.Genres;
+            song.Year = tagFile.Tag.Year;
             song.Duration = tagFile.Properties.Duration;
+            song.BitRate = tagFile.Properties.AudioBitrate;
+            song.Channels = tagFile.Properties.AudioChannels;
+            song.SampleRate = tagFile.Properties.AudioSampleRate;
+            song.BitsPerSample = tagFile.Properties.BitsPerSample;
+            song.Codecs = tagFile.Properties.Codecs;
+            song.Description = tagFile.Properties.Description;
 
             _songs?.Add(song.Clone());
 
@@ -199,7 +211,7 @@ public class MusicLibrary
         {
             Log.Information($"Song with id {songId} has been renamed");
 
-            song.Name = newName;
+            song.Title = newName;
             SaveToJson();
 
             return true;

@@ -127,7 +127,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Header="Name">
+                    <GridViewColumn Header="Title">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBox

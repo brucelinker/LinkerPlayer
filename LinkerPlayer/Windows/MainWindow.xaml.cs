@@ -249,7 +249,7 @@ public partial class MainWindow
         if (!File.Exists(song.Path))
         {
             InfoSnackbar.MessageQueue?.Clear();
-            InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Name}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
+            InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
 
             return false;
         }
@@ -264,7 +264,7 @@ public partial class MainWindow
 
             PlayerControls.State = PlayerControls.ButtonState.Playing;
 
-            PlayerControls.CurrentSongName.Text = SelectedSong.Name;
+            PlayerControls.CurrentSongName.Text = SelectedSong.Title;
             TimeSpan ts = SelectedSong.Duration;
             PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
             PlayerControls.CurrentTime.Text = "0:00";
@@ -479,7 +479,7 @@ public partial class MainWindow
         if (!File.Exists(song.Path))
         {
             InfoSnackbar.MessageQueue?.Clear();
-            InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Name}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
+            InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
             SelectedSong = song.Clone();
             nextPrevButtonClick(null!, null!);
         }
@@ -586,7 +586,7 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            SelectedSong.Name = newName;
+            SelectedSong.Title = newName;
             PlayerControls.CurrentSongName.Text = newName;
         }
     }
