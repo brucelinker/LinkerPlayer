@@ -112,7 +112,7 @@ public partial class SongList
 
                 foreach (string mp3File in mp3Files)
                 {
-                    MediaFile songToAdd = new MediaFile() { FullFileName = mp3File };
+                    MediaFile songToAdd = new MediaFile() { Path = mp3File };
 
                     if (MusicLibrary.AddSong(songToAdd))
                     {
@@ -209,7 +209,7 @@ public partial class SongList
 
             foreach (string mp3File in mp3Files)
             {
-                MediaFile songToAdd = new MediaFile() { FullFileName = mp3File };
+                MediaFile songToAdd = new MediaFile() { Path = mp3File };
 
                 if (MusicLibrary.AddSong(songToAdd))
                 {

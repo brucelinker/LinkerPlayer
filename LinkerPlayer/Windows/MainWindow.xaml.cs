@@ -243,7 +243,7 @@ public partial class MainWindow
 
     public bool SelectSong(MediaFile mediaFile)
     {
-        if (!File.Exists(mediaFile.FullFileName))
+        if (!File.Exists(mediaFile.Path))
         {
             InfoSnackbar.MessageQueue?.Clear();
             InfoSnackbar.MessageQueue?.Enqueue($"Song \"{mediaFile.Title}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
@@ -254,7 +254,7 @@ public partial class MainWindow
         {
             SelectedSong = mediaFile.Clone();
 
-            AudioStreamControl.PathToMusic = SelectedSong.FullFileName;
+            AudioStreamControl.PathToMusic = SelectedSong.Path;
 
             AudioStreamControl.StopAndPlayFromPosition(0);
             _seekBarTimer.Start();
@@ -473,7 +473,7 @@ public partial class MainWindow
 
     private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButtonClick)
     { // skips if mediaFile doesn't exist
-        if (!File.Exists(song.FullFileName))
+        if (!File.Exists(song.Path))
         {
             InfoSnackbar.MessageQueue?.Clear();
             InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false, true, TimeSpan.FromSeconds(2));
@@ -592,11 +592,11 @@ public partial class MainWindow
     {
         if (VisualizationEnabled && SelectedSong != null)
         {
-            if (_currentlyVisualizedPath != SelectedSong.FullFileName)
+            if (_currentlyVisualizedPath != SelectedSong.Path)
             {
-                _currentlyVisualizedPath = SelectedSong.FullFileName;
+                _currentlyVisualizedPath = SelectedSong.Path;
 
-                PlayerControls.VisualizeAudio(SelectedSong.FullFileName);
+                PlayerControls.VisualizeAudio(SelectedSong.Path);
             }
         }
     }

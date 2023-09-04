@@ -70,16 +70,16 @@ public class MusicLibrary
 
     public static bool AddSong(MediaFile mediaFile)
     {
-        if (!string.IsNullOrEmpty(mediaFile.FullFileName) && Path.GetExtension(mediaFile.FullFileName).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(mediaFile.Path) && Path.GetExtension(mediaFile.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
             mediaFile.UpdateFromTag(true);
 
             // Generate a unique ID for the mediaFile
             //mediaFile.Id = Guid.NewGuid().ToString();
 
-            //TagLib.File? tagFile = TagLib.File.Create(mediaFile.FullFileName);
+            //TagLib.File? tagFile = TagLib.File.Create(mediaFile.Path);
 
-            //mediaFile.Title = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(mediaFile.FullFileName);
+            //mediaFile.Title = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(mediaFile.Path);
             //mediaFile.Track = tagFile.Tag.Track;
             //mediaFile.AlbumArtist = tagFile.Tag.AlbumArtist;
             //mediaFile.Album = tagFile.Tag.Album;
