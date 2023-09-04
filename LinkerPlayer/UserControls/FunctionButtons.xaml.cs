@@ -111,9 +111,9 @@ public partial class FunctionButtons
 
         foreach (FileInfo? file in files)
         {
-            Song song = new Song { Path = file.FullName };
+            MediaFile mediaFile = new MediaFile(file.FullName);
 
-            if (MusicLibrary.AddSong(song))
+            if (MusicLibrary.AddSong(mediaFile))
             {
                 MainWindow win = (MainWindow)Window.GetWindow(this)!;
 
@@ -127,14 +127,14 @@ public partial class FunctionButtons
                     {
                         win.SelectPlaylistByName(selectedPlaylist.Name!);
 
-                        MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                        win.SongList.List.Items.Add(song);
+                        MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
+                        win.SongList.List.Items.Add(mediaFile);
                     }
                 }
                 else
                 {
-                    MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                    win.SongList.List.Items.Add(song);
+                    MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
+                    win.SongList.List.Items.Add(mediaFile);
                 }
             }
         }
@@ -144,7 +144,7 @@ public partial class FunctionButtons
     {
         if (File.Exists(fileName))
         {
-            Song song = new Song { Path = fileName };
+            MediaFile song = new MediaFile (fileName);
 
             if (MusicLibrary.AddSong(song))
             {

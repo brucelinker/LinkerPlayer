@@ -12,6 +12,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
+using LinkerPlayer.Models;
 
 namespace LinkerPlayer.UserControls;
 
@@ -24,29 +25,15 @@ public partial class PlayerControls : INotifyPropertyChanged
         DataContext = this;
         InitializeComponent();
 
-        State = ButtonState.Paused;
+        State = PlayerState.Paused;
         Mode = PlaybackMode.Loop;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
-
-    public enum ButtonState
-    {
-        Stopped,
-        Playing,
-        Paused
-    }
-
-    public enum PlaybackMode
-    {
-        NoLoop,
-        Loop1,
-        Loop
-    }
-
+    
     private string _buttonStateImagePath = null!;
     private string _playbackModeImagePath = null!;
-    private ButtonState _buttonState = ButtonState.Stopped;
+    private PlayerState _playerState = PlayerState.Stopped;
     private PlaybackMode _playbackMode = PlaybackMode.NoLoop;
 
     public string ButtonStateImagePath
@@ -71,20 +58,20 @@ public partial class PlayerControls : INotifyPropertyChanged
         }
     }
 
-    public ButtonState State
+    public PlayerState State
     {
-        get => _buttonState;
+        get => _playerState;
         set
         {
             switch (value)
             {
-                case ButtonState.Paused:
+                case PlayerState.Paused:
                     ButtonStateImagePath = "/Images/play.png";
-                    _buttonState = value;
+                    _playerState = value;
                     break;
-                case ButtonState.Playing:
+                case PlayerState.Playing:
                     ButtonStateImagePath = "/Images/pause.png";
-                    _buttonState = value;
+                    _playerState = value;
                     break;
             }
         }

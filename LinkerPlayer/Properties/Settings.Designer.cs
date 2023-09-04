@@ -37,25 +37,13 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool VisualizationEnabled {
             get {
                 return ((bool)(this["VisualizationEnabled"]));
             }
             set {
                 this["VisualizationEnabled"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool MicOutputEnabled {
-            get {
-                return ((bool)(this["MicOutputEnabled"]));
-            }
-            set {
-                this["MicOutputEnabled"] = value;
             }
         }
         
@@ -80,18 +68,6 @@ namespace LinkerPlayer.Properties {
             }
             set {
                 this["MainVolumeSliderValue"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("50")]
-        public double MicVolumeSliderValue {
-            get {
-                return ((double)(this["MicVolumeSliderValue"]));
-            }
-            set {
-                this["MicVolumeSliderValue"] = value;
             }
         }
         
@@ -169,7 +145,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool MinimizeToTrayEnabled {
             get {
                 return ((bool)(this["MinimizeToTrayEnabled"]));
@@ -272,18 +248,6 @@ namespace LinkerPlayer.Properties {
             }
             set {
                 this["InputDevice"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string MicOutputDevice {
-            get {
-                return ((string)(this["MicOutputDevice"]));
-            }
-            set {
-                this["MicOutputDevice"] = value;
             }
         }
         

@@ -31,16 +31,16 @@
                             Background="Transparent"
                             BorderBrush="Transparent"
                             Click="ClickRowElement"
-                            FontFamily="/Fonts/#Montserrat"
+                            FontFamily="Segoe UI"
                             FontSize="14"
-                            FontWeight="Medium"
+                            FontWeight="Regular"
                             Foreground="#BDBDBD">
                             <GridViewRowPresenter />
 
                             <Button.ContextMenu>
                                 <ContextMenu
                                     Background="#212121"
-                                    FontFamily="/Fonts/#Montserrat"
+                                    FontFamily="Segoe UI"
                                     FontWeight="DemiBold"
                                     Foreground="#BDBDBD">
                                     <MenuItem Click="MenuItem_Click" Header="Rename" />
@@ -79,8 +79,8 @@
                         <TextBlock
                             Name="ColumnName"
                             Padding="4,5,4,5"
-                            FontFamily="/Fonts/#Montserrat"
-                            FontSize="20"
+                            FontFamily="Segoe UI"
+                            FontSize="14"
                             Foreground="#BDBDBD"
                             Text="{TemplateBinding Content}"
                             TextAlignment="Left" />
@@ -111,6 +111,7 @@
 
         <converters:DurationConverter x:Key="DurationConverter" />
     </UserControl.Resources>
+
     <Grid>
         <ListView
             Name="List"
@@ -131,21 +132,25 @@
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBox
+                                    d:DataContext="{d:DesignData IMediaFile}"
                                     Cursor="Hand"
                                     Focusable="False"
                                     IsReadOnly="True"
                                     KeyDown="TextBox_KeyDown"
                                     LostFocus="TextBox_LostFocus"
                                     Style="{DynamicResource GridViewCellTextBox}"
-                                    Text="{Binding Name, Mode=OneWay}" />
+                                    Text="{Binding Title, Mode=OneWay}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Header="Path To File">
+                    <GridViewColumn Header="Artist">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Path}" ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
+                                <TextBlock
+                                    d:DataContext="{d:DesignData IMediaFile}"
+                                    Text="{Binding AlbumArtist}"
+                                    ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -153,7 +158,7 @@
                     <GridViewColumn Width="90" Header="🕓">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
+                                <TextBlock d:DataContext="{d:DesignData MediaFile}" Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>

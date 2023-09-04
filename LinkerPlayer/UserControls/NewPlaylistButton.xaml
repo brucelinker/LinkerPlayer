@@ -5,34 +5,34 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     d:DesignHeight="80"
-    d:DesignWidth="290"
+    d:DesignWidth="100"
     mc:Ignorable="d">
     <Grid>
         <Button
             x:Name="AddButton"
-            Width="50"
-            Height="50"
-            Margin="15"
-            Padding="15"
+            Width="20"
+            Height="20"
+            Margin="0,8,0,0"
+            Padding="0"
             HorizontalAlignment="Left"
-            Background="#212128"
+            Background="Transparent"
             BorderBrush="Transparent"
             Click="AddButtonClick">
 
             <Image
-                Width="20"
-                Height="20"
+                Width="15"
+                Height="15"
                 Source="/Images/plus.png" />
         </Button>
 
-        <TextBlock
+        <!--<TextBlock
             Margin="80,0,0,0"
             VerticalAlignment="Center"
             FontFamily="/Fonts/#Montserrat"
             FontSize="22"
             FontWeight="DemiBold"
             Foreground="#BDBDBD"
-            Text="New Playlist" />
+            Text="New Playlist" />-->
 
         <Popup
             x:Name="EnterNamePopup"

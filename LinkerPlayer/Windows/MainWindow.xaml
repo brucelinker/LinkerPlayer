@@ -5,7 +5,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:userControls1="clr-namespace:LinkerPlayer.UserControls"
+    xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
     Title="LinkerPlayer"
     Width="1280"
     Height="710"
@@ -55,24 +55,24 @@
         </Grid.ColumnDefinitions>
 
         <!--  Title Bar  -->
-        <userControls1:TitlebarButtons
+        <userControls:TitlebarButtons
             x:Name="TitlebarButtons"
             Grid.Row="0"
             Grid.ColumnSpan="3"
             Panel.ZIndex="1" />
 
-        <Border
+        <!--<Border
             Grid.Row="0"
             Grid.Column="0"
             Background="Black"
             BorderBrush="White"
             BorderThickness="0,0,0,2"
-            Opacity="0.4" />
+            Opacity="0.4" />-->
 
-        <userControls1:NewPlaylistButton Grid.Row="0" Grid.Column="0" />
+        <!--<userControls:NewPlaylistButton Grid.Row="0" Grid.Column="0" />-->
 
-        <userControls1:PlaylistText
-            x:Name="PlaylistText"
+        <userControls:PlaylistTabs
+            x:Name="PlaylistTabs"
             Grid.Row="0"
             Grid.Column="1"
             Grid.ColumnSpan="2" />
@@ -84,12 +84,12 @@
             Background="Black"
             Opacity="0.4" />
 
-        <userControls1:PlaylistList
+        <userControls:PlaylistList
             x:Name="PlaylistList"
             Grid.Row="1"
             Grid.Column="0" />
 
-        <userControls1:SongList
+        <userControls:SongList
             x:Name="SongList"
             Grid.Row="1"
             Grid.Column="1" />
@@ -108,18 +108,18 @@
             Background="Black"
             Opacity="0.4" />
 
-        <userControls1:FunctionButtons
+        <userControls:FunctionButtons
             x:Name="FunctionButtons"
             Grid.Row="1"
             Grid.Column="2" />
 
         <!--  Tray Icon  -->
-        <userControls1:PlayerControls
+        <userControls:PlayerControls
             x:Name="PlayerControls"
             Grid.Row="2"
             Grid.Column="0"
             Grid.ColumnSpan="3" />
 
-        <userControls1:TrayIcon Grid.Row="0" Grid.Column="0" />
+        <userControls:TrayIcon Grid.Row="0" Grid.Column="0" />
     </Grid>
 </Window>

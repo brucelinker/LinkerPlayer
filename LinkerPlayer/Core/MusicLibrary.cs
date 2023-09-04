@@ -11,7 +11,7 @@ namespace LinkerPlayer.Core;
 public class MusicLibrary
 {
     private static readonly string JsonFilePath;
-    private static List<Song>? _songs = new();
+    private static List<MediaFile>? _mediaFiles = new();
     private static List<Playlist>? _playlists = new();
 
     static MusicLibrary()
@@ -32,7 +32,7 @@ public class MusicLibrary
 
             if (data != null)
             {
-                _songs = ((JArray)data["songs"]).ToObject<List<Song>>();
+                _mediaFiles = ((JArray)data["songs"]).ToObject<List<MediaFile>>();
                 _playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>();
 
                 Log.Information("Data loaded from json");
@@ -49,13 +49,13 @@ public class MusicLibrary
 
     private static void SaveToJson()
     {
-        if (_songs != null)
+        if (_mediaFiles != null)
         {
             if (_playlists != null)
             {
                 Dictionary<string, object> data = new Dictionary<string, object>
                 {
-                    { "songs", JArray.FromObject(_songs) },
+                    { "songs", JArray.FromObject(_mediaFiles) },
                     { "playlists", JArray.FromObject(_playlists) }
                 };
 
@@ -68,34 +68,36 @@ public class MusicLibrary
         Log.Information("Data saved to json");
     }
 
-    public static bool AddSong(Song song)
+    public static bool AddSong(MediaFile mediaFile)
     {
-        if (!string.IsNullOrEmpty(song.Path) && Path.GetExtension(song.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(mediaFile.FullFileName) && Path.GetExtension(mediaFile.FullFileName).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
-            // Generate a unique ID for the song
-            song.Id = Guid.NewGuid().ToString();
+            mediaFile.UpdateFromTag(true);
 
-            TagLib.File? tagFile = TagLib.File.Create(song.Path);
+            // Generate a unique ID for the mediaFile
+            //mediaFile.Id = Guid.NewGuid().ToString();
 
-            song.Title = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(song.Path);
-            song.Track = tagFile.Tag.Track;
-            song.Artist = tagFile.Tag.FirstAlbumArtist;
-            song.Album = tagFile.Tag.Album;
-            song.AlbumArtists = tagFile.Tag.AlbumArtists;
-            song.Composers = tagFile.Tag.Composers;
-            song.Genres = tagFile.Tag.Genres;
-            song.Year = tagFile.Tag.Year;
-            song.Duration = tagFile.Properties.Duration;
-            song.BitRate = tagFile.Properties.AudioBitrate;
-            song.Channels = tagFile.Properties.AudioChannels;
-            song.SampleRate = tagFile.Properties.AudioSampleRate;
-            song.BitsPerSample = tagFile.Properties.BitsPerSample;
-            song.Codecs = tagFile.Properties.Codecs;
-            song.Description = tagFile.Properties.Description;
+            //TagLib.File? tagFile = TagLib.File.Create(mediaFile.FullFileName);
 
-            _songs?.Add(song.Clone());
+            //mediaFile.Title = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(mediaFile.FullFileName);
+            //mediaFile.Track = tagFile.Tag.Track;
+            //mediaFile.AlbumArtist = tagFile.Tag.AlbumArtist;
+            //mediaFile.Album = tagFile.Tag.Album;
+            //mediaFile.AlbumArtists = tagFile.Tag.AlbumArtists;
+            //mediaFile.Composers = tagFile.Tag.Composers;
+            //mediaFile.Genres = tagFile.Tag.Genres;
+            //mediaFile.Year = tagFile.Tag.Year;
+            //mediaFile.Duration = tagFile.Properties.Duration;
+            //mediaFile.BitRate = tagFile.Properties.AudioBitrate;
+            //mediaFile.Channels = tagFile.Properties.AudioChannels;
+            //mediaFile.SampleRate = tagFile.Properties.AudioSampleRate;
+            //mediaFile.BitsPerSample = tagFile.Properties.BitsPerSample;
+            //mediaFile.Codecs = tagFile.Properties.Codecs;
+            //mediaFile.Description = tagFile.Properties.Description;
 
-            Log.Information($"New song with id {song.Id} added");
+            _mediaFiles?.Add(mediaFile.Clone());
+
+            Log.Information($"New mediaFile with id {mediaFile.Id} added");
 
             SaveToJson();
 
@@ -107,7 +109,7 @@ public class MusicLibrary
 
     public static void RemoveSong(string songId)
     {
-        _songs?.RemoveAll(s => s.Id == songId);
+        _mediaFiles?.RemoveAll(s => s.Id == songId);
 
         if (_playlists != null)
             foreach (Playlist playlist in _playlists)
@@ -205,7 +207,7 @@ public class MusicLibrary
 
     public static bool RenameSong(string songId, string newName)
     {
-        Song? song = _songs?.Find(s => s.Id == songId);
+        MediaFile? song = _mediaFiles?.Find(s => s.Id == songId);
 
         if (song != null && !string.IsNullOrEmpty(newName))
         {
@@ -238,14 +240,14 @@ public class MusicLibrary
     }
 
     // ReSharper disable once UnusedMember.Global
-    public static List<Song> GetSongs()
+    public static List<MediaFile> GetSongs()
     {
-        List<Song> songs = new List<Song>();
+        List<MediaFile> songs = new List<MediaFile>();
 
-        if (_songs != null)
-            foreach (Song song in _songs)
+        if (_mediaFiles != null)
+            foreach (MediaFile song in _mediaFiles)
             {
-                songs.Add(song.Clone());
+                songs.Add(song);
             }
 
         return songs;
@@ -264,65 +266,19 @@ public class MusicLibrary
         return playlists;
     }
 
-    public static List<Song> GetSongsFromPlaylist(string? playlistName)
+    public static List<MediaFile> GetSongsFromPlaylist(string? playlistName)
     {
         Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
-        List<Song> songsFromPlaylist = new List<Song>();
+        List<MediaFile> songsFromPlaylist = new List<MediaFile>();
 
         if (playlist != null)
         {
             foreach (string songId in playlist.SongIds)
             {
-                songsFromPlaylist.Add(_songs?.Find(p => p.Id == songId)?.Clone()!);
+                songsFromPlaylist.Add(_mediaFiles?.Find(p => p.Id == songId)!);
             }
         }
 
         return songsFromPlaylist;
-    }
-}
-
-public class EqualizerLibrary
-{
-    public static List<BandsSettings>? BandsSettings = new();
-    private static readonly string JsonFilePath;
-
-    static EqualizerLibrary()
-    {
-        JsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "LinkerPlayer", "bandsSettings.json");
-    }
-
-    public static void LoadFromJson()
-    {
-        if (File.Exists(JsonFilePath))
-        {
-            string jsonString = File.ReadAllText(JsonFilePath);
-
-            List<BandsSettings>? tempBands = JsonConvert.DeserializeObject<List<BandsSettings>>(jsonString);
-            if (tempBands != null)
-            {
-                BandsSettings = JsonConvert.DeserializeObject<List<BandsSettings>>(jsonString);
-            }
-            else
-            {
-                Log.Warning("Json is empty");
-            }
-
-            Log.Information("Load from json");
-        }
-        else
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(JsonFilePath)!);
-            File.Create(JsonFilePath).Close();
-        }
-    }
-
-    public static void SaveToJson()
-    {
-        JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
-        string json = JsonConvert.SerializeObject(BandsSettings, Formatting.Indented, settings);
-        File.WriteAllText(JsonFilePath, json);
-
-        Log.Information("Save to json");
     }
 }

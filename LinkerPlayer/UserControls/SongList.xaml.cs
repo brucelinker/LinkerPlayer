@@ -1,4 +1,5 @@
-﻿using LinkerPlayer.Audio;
+﻿using LinkerPlayer.Core;
+using LinkerPlayer.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,8 +8,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using LinkerPlayer.Core;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.UserControls;
 
@@ -82,8 +81,8 @@ public partial class SongList
 
     private void ListViewItem_Drop(object sender, DragEventArgs e)
     {
-        Song? droppedData = e.Data.GetData(typeof(Song)) as Song;
-        Song? target = ((ListViewItem)(sender)).DataContext as Song;
+        MediaFile? droppedData = e.Data.GetData(typeof(MediaFile)) as MediaFile;
+        MediaFile? target = ((ListViewItem)(sender)).DataContext as MediaFile;
 
         Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
@@ -113,7 +112,7 @@ public partial class SongList
 
                 foreach (string mp3File in mp3Files)
                 {
-                    Song songToAdd = new Song() { Path = mp3File };
+                    MediaFile songToAdd = new MediaFile() { FullFileName = mp3File };
 
                     if (MusicLibrary.AddSong(songToAdd))
                     {
@@ -149,7 +148,7 @@ public partial class SongList
 
         foreach (Button buttonToChange in Helper.FindVisualChildren<Button>(List))
         {
-            if (((buttonToChange.Content as GridViewRowPresenter)?.Content as Song)?.Id == win.SelectedSong?.Id)
+            if (((buttonToChange.Content as GridViewRowPresenter)?.Content as MediaFile)?.Id == win.SelectedSong?.Id)
             {
                 buttonToChange.FontWeight = FontWeights.ExtraBold;
                 break;
@@ -161,9 +160,9 @@ public partial class SongList
     {
         Button button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
 
-        Song? target = ((ListViewItem)(sender)).DataContext as Song;
+        MediaFile? target = ((ListViewItem)(sender)).DataContext as MediaFile;
 
-        if (e.Data.GetData(typeof(Song)) is Song droppedData && target != null)
+        if (e.Data.GetData(typeof(MediaFile)) is MediaFile droppedData && target != null)
         {
             int removedIdx = List.Items.IndexOf(droppedData);
             int targetIdx = List.Items.IndexOf(target);
@@ -210,7 +209,7 @@ public partial class SongList
 
             foreach (string mp3File in mp3Files)
             {
-                Song songToAdd = new Song() { Path = mp3File };
+                MediaFile songToAdd = new MediaFile() { FullFileName = mp3File };
 
                 if (MusicLibrary.AddSong(songToAdd))
                 {
@@ -229,18 +228,18 @@ public partial class SongList
 
             if (Equals(menuItem.Header, "Remove from playlist"))
             {
-                MusicLibrary.RemoveSongFromPlaylist((menuItem.DataContext as Song)!.Id, win.SelectedPlaylist?.Name);
-                MusicLibrary.RemoveSong((menuItem.DataContext as Song)!.Id);
+                MusicLibrary.RemoveSongFromPlaylist((menuItem.DataContext as MediaFile)!.Id, win.SelectedPlaylist?.Name);
+                MusicLibrary.RemoveSong((menuItem.DataContext as MediaFile)!.Id);
 
                 if (win.SelectedSong != null)
                 {
-                    if ((menuItem.DataContext as Song)!.Id == win.SelectedSong.Id)
+                    if ((menuItem.DataContext as MediaFile)!.Id == win.SelectedSong.Id)
                     {
                         win.SelectedSongRemoved();
                     }
                 }
 
-                List.Items.Remove(menuItem.DataContext as Song);
+                List.Items.Remove(menuItem.DataContext as MediaFile);
             }
             else if (Equals(menuItem.Header, "Rename"))
             {
@@ -283,20 +282,20 @@ public partial class SongList
 
             if (textBoxText != _oldTextBoxText)
             {
-                if (!MusicLibrary.RenameSong((textBox.DataContext as Song)!.Id, textBoxText))
+                if (!MusicLibrary.RenameSong((textBox.DataContext as MediaFile)!.Id, textBoxText))
                 {
                     textBox.Text = _oldTextBoxText;
                 }
                 else
                 {
                     textBox.Text = textBoxText;
-                    ((textBox.DataContext as Song)!).Title = textBoxText;
+                    ((textBox.DataContext as MediaFile)!).Title = textBoxText;
 
                     Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
                     if (win.SelectedSong != null)
                     {
-                        if (win.SelectedSong.Id == (textBox.DataContext as Song)!.Id)
+                        if (win.SelectedSong.Id == (textBox.DataContext as MediaFile)!.Id)
                         {
                             win.RenameSelectedSong(textBoxText);
                         }

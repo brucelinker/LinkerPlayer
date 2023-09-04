@@ -23,7 +23,7 @@ public partial class PlaylistList
 
     private void ListViewItem_Drop(object sender, DragEventArgs e)
     {
-        Song? droppedData = e.Data.GetData(typeof(Song)) as Song;
+        MediaFile? droppedData = e.Data.GetData(typeof(MediaFile)) as MediaFile;
         string target = (((ListViewItem)(sender)).DataContext as Playlist)!.Name!;
 
         Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
@@ -61,7 +61,7 @@ public partial class PlaylistList
 
             foreach (string mp3File in mp3Files)
             {
-                Song songToAdd = new Song() { Path = mp3File };
+                MediaFile songToAdd = new MediaFile(mp3File);
 
                 if (MusicLibrary.AddSong(songToAdd))
                 {
@@ -133,7 +133,7 @@ public partial class PlaylistList
                 MusicLibrary.RemovePlaylist((menuItem.DataContext as Playlist)!.Name);
                 List.Items.Remove(menuItem.DataContext as Playlist);
 
-                win.PlaylistText.CurrentPlaylistName.Text = "Playlist not selected";
+                //win.PlaylistTabs.CurrentPlaylistName.Text = "Playlist not selected";
                 win.SongList.List.Items.Clear();
                 win.SelectedPlaylist = null;
             }
@@ -171,7 +171,7 @@ public partial class PlaylistList
 
                     foreach (string mp3File in mp3Files)
                     {
-                        Song songToAdd = new Song() { Path = mp3File };
+                        MediaFile songToAdd = new MediaFile(mp3File);
 
                         string? playlistName = (menuItem.DataContext as Playlist)!.Name;
 
