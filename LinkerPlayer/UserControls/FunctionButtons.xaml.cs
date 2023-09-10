@@ -115,9 +115,9 @@ public partial class FunctionButtons
 
             if (MusicLibrary.AddSong(mediaFile))
             {
-                MainWindow win = (MainWindow)Window.GetWindow(this)!;
+                MainWindow mainWindow = (MainWindow)Window.GetWindow(this)!;
 
-                Playlist? selectedPlaylist = win.SelectedPlaylist;
+                Playlist? selectedPlaylist = mainWindow.SelectedPlaylist;
 
                 if (selectedPlaylist == null)
                 {
@@ -125,16 +125,16 @@ public partial class FunctionButtons
 
                     if (selectedPlaylist != null)
                     {
-                        win.SelectPlaylistByName(selectedPlaylist.Name!);
+                        mainWindow.SelectPlaylistByName(selectedPlaylist.Name!);
 
                         MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
-                        win.SongList.List.Items.Add(mediaFile);
+                        mainWindow.TrackList.List.Items.Add(mediaFile);
                     }
                 }
                 else
                 {
                     MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
-                    win.SongList.List.Items.Add(mediaFile);
+                    mainWindow.TrackList.List.Items.Add(mediaFile);
                 }
             }
         }
@@ -161,13 +161,13 @@ public partial class FunctionButtons
                         win.SelectPlaylistByName(selectedPlaylist.Name!);
 
                         MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                        win.SongList.List.Items.Add(song);
+                        win.TrackList.List.Items.Add(song);
                     }
                 }
                 else
                 {
                     MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                    win.SongList.List.Items.Add(song);
+                    win.TrackList.List.Items.Add(song);
                 }
             }
         }

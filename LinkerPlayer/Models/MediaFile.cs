@@ -22,16 +22,14 @@ public interface IMediaFile : INotifyPropertyChanged
     uint Disc { get; }
     uint DiscCount { get; }
     uint Year { get; }
-    string Artists { get; }
     string Title { get; }
+    string Artists { get; }
     string Album { get; }
-    string AlbumArtists { get; }
     string Performers { get; }
     string Composers { get; }
     TimeSpan Duration { get; }
     string Genres { get; }
     string Comment { get; }
-    ICodec Codec { get; }
     int Bitrate { get; }
     int SampleRate { get; } BitmapImage AlbumCover { get; }
     int PlayListIndex { get; set; }
@@ -70,8 +68,6 @@ public class MediaFile : IMediaFile
     [JsonProperty(Required = Required.AllowNull)]
     public string Album { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
-    public string AlbumArtists { get; set; } = string.Empty;
-    [JsonProperty(Required = Required.AllowNull)]
     public string Performers { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
     public string Genres { get; set; } = string.Empty;
@@ -79,8 +75,6 @@ public class MediaFile : IMediaFile
     public string Composers { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
     public TimeSpan Duration { get; set; }
-    [JsonProperty(Required = Required.AllowNull)]
-    public ICodec Codec { get; set; }
     [JsonProperty(Required = Required.AllowNull)]
     public int Bitrate { get; set; }
     [JsonProperty(Required = Required.AllowNull)]
@@ -143,6 +137,10 @@ public class MediaFile : IMediaFile
             using File? file = File.Create(fileName);
 
             Id = Guid.NewGuid().ToString();
+            FileName = System.IO.Path.GetFileName(fileName);
+
+            // Title
+            Title = file.Tag.Title;
 
             // Album
             Album = file.Tag.Album;
@@ -151,13 +149,18 @@ public class MediaFile : IMediaFile
                 Album = UnknownString;
             }
 
-            // AlbumArtists
+            // Artists
             List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            AlbumArtists = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist;
+            Artists = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist;
 
             // Performers
             List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
             Performers = performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer;
+
+            if (string.IsNullOrWhiteSpace(Artists))
+            {
+                Artists = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
+            }
 
             AlbumCover = CoverManager.GetImageFromPictureTag(Path);
 
@@ -171,9 +174,6 @@ public class MediaFile : IMediaFile
             // Copyright
             Copyright = file.Tag.Copyright;
 
-            // Title
-            Title = file.Tag.Title;
-
             // Genres
             Genres = file.Tag.Genres.Length > 1 ? string.Join("/", Genres) : file.Tag.FirstGenre;
 
@@ -186,7 +186,6 @@ public class MediaFile : IMediaFile
             if (file.Properties.MediaTypes != MediaTypes.None)
             {
                 Duration = file.Properties.Duration;
-                Codec = file.Properties.Codecs.FirstOrDefault(c => c is TagLib.Mpeg.AudioHeader)!;
                 Bitrate = file.Properties.AudioBitrate;
                 SampleRate = file.Properties.AudioSampleRate;
             }
@@ -205,7 +204,7 @@ public class MediaFile : IMediaFile
 
     public override string ToString()
     {
-        return $"{Track} {AlbumArtists} - {Title} {Duration:m\\:ss}";
+        return $"{Track} {Artists} - {Title} {Duration:m\\:ss}";
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -235,15 +234,13 @@ public class MediaFile : IMediaFile
             Disc = this.Disc,
             DiscCount = this.DiscCount,
             Year = this.Year,
-            Artists = this.Artists,
             Title = this.Title,
             Album = this.Album,
-            AlbumArtists = this.AlbumArtists,
+            Artists = this.Artists,
             Performers = this.Performers,
             Composers = this.Composers,
             Genres = this.Genres,
             Comment = this.Comment,
-            Codec = this.Codec,
             Duration = this.Duration,
             Bitrate = this.Bitrate,
             SampleRate = this.SampleRate,

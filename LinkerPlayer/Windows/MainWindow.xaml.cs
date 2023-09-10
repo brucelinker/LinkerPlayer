@@ -1,7 +1,8 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
-using LinkerPlayer.UserControls;
+using MaterialDesignThemes.Wpf;
+using Microsoft.Windows.Themes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,12 +19,14 @@ namespace LinkerPlayer.Windows;
 
 public partial class MainWindow
 {
+    public static MainWindow Instance = null!;
     public AudioStreamControl AudioStreamControl;
     private readonly DispatcherTimer _seekBarTimer = new();
 
     public Playlist? SelectedPlaylist;
     public MediaFile? SelectedSong;
     public string? BackgroundPlaylistName;
+    public int SelectedTheme;
 
     public bool VisualizationEnabled = Properties.Settings.Default.VisualizationEnabled;
     private string? _currentlyVisualizedPath;
@@ -33,7 +36,10 @@ public partial class MainWindow
     public MainWindow()
     {
         InitializeComponent();
+
+        Instance = this;
         DataContext = this;
+
         WinMax.DoSourceInitialized(this);
 
         if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
@@ -109,10 +115,21 @@ public partial class MainWindow
             }
         }
 
+        if (Properties.Settings.Default.SelectedTheme > -1)
+        {
+            SelectedTheme = Properties.Settings.Default.SelectedTheme;
+        }
+        else
+        {
+            SelectedTheme = (int)ThemeColors.Dark;
+        }
+
+        ModifyTheme((ThemeColors)SelectedTheme);
+
         PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
         PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
 
-        SongList.ClickRowElement += Song_Click;
+        TrackList.ClickRowElement += Song_Click;
 
         PlaylistList.ClickRowElement += (s, _) =>
         {
@@ -187,6 +204,23 @@ public partial class MainWindow
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
 
+    public void ModifyTheme(ThemeColors themeColor)
+    {
+        PaletteHelper paletteHelper = new PaletteHelper();
+        ITheme theme = paletteHelper.GetTheme();
+
+        if (themeColor == ThemeColors.White)
+        {
+            theme.SetBaseTheme(BaseTheme.Light.GetBaseTheme());
+        }
+        else
+        {
+            theme.SetBaseTheme(BaseTheme.Dark.GetBaseTheme());
+        }
+
+        paletteHelper.SetTheme(theme);
+    }
+    
     private void MainVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
         AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.MainVolumeSlider.Value / 100;
@@ -266,7 +300,7 @@ public partial class MainWindow
             PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
             PlayerControls.CurrentTime.Text = "0:00";
 
-            foreach (Button button in Helper.FindVisualChildren<Button>(SongList.List))
+            foreach (Button button in Helper.FindVisualChildren<Button>(TrackList.List))
             { // outline selected mediaFile
                 if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedSong.Id)
                 {
@@ -341,7 +375,7 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            int selectedSongIndex = SongList.List.Items
+            int selectedSongIndex = TrackList.List.Items
                                     .Cast<MediaFile>()
                                     .ToList()
                                     .FindIndex(item => item.Id == SelectedSong.Id);
@@ -383,13 +417,13 @@ public partial class MainWindow
             switch (PlayerControls.Mode)
             {
                 case PlaybackMode.Loop:
-                    if (selectedSongIndex == SongList.List.Items.Count - 1)
+                    if (selectedSongIndex == TrackList.List.Items.Count - 1)
                     {
-                        SelectWithSkipping((SongList.List.Items[0] as MediaFile)!, NextButton_Click);
+                        SelectWithSkipping((TrackList.List.Items[0] as MediaFile)!, NextButton_Click);
                     }
                     else
                     {
-                        SelectWithSkipping((SongList.List.Items[selectedSongIndex + 1] as MediaFile)!, NextButton_Click);
+                        SelectWithSkipping((TrackList.List.Items[selectedSongIndex + 1] as MediaFile)!, NextButton_Click);
                     }
                     break;
 
@@ -407,7 +441,7 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            int selectedSongIndex = SongList.List.Items
+            int selectedSongIndex = TrackList.List.Items
                                     .Cast<MediaFile>()
                                     .ToList()
                                     .FindIndex(item => item.Id == SelectedSong.Id);
@@ -452,11 +486,11 @@ public partial class MainWindow
                 case PlaybackMode.Loop:
                     if (selectedSongIndex == 0)
                     {
-                        SelectWithSkipping((SongList.List.Items[^1] as MediaFile)!, PrevButton_Click);
+                        SelectWithSkipping((TrackList.List.Items[^1] as MediaFile)!, PrevButton_Click);
                     }
                     else
                     {
-                        SelectWithSkipping((SongList.List.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
+                        SelectWithSkipping((TrackList.List.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
                     }
                     break;
 
@@ -518,17 +552,17 @@ public partial class MainWindow
             //PlaylistText.CurrentPlaylistName.Text = SelectedPlaylist.Name;
 
             List<MediaFile> songs = MusicLibrary.GetSongsFromPlaylist(SelectedPlaylist.Name);
-            SongList.List.Items.Clear();
+            TrackList.List.Items.Clear();
 
             foreach (MediaFile song in songs)
             {
-                SongList.List.Items.Add(song);
+                TrackList.List.Items.Add(song);
             }
 
             await Task.Delay(10); // waiting till list is loaded and outline selected mediaFile
             if (SelectedSong != null)
             {
-                foreach (Button button in Helper.FindVisualChildren<Button>(SongList.List))
+                foreach (Button button in Helper.FindVisualChildren<Button>(TrackList.List))
                 {
                     if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedSong.Id)
                     {

@@ -12,7 +12,7 @@ namespace LinkerPlayer.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.5.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.7.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -25,13 +25,13 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string DownloadsFolder {
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int SelectedTheme {
             get {
-                return ((string)(this["DownloadsFolder"]));
+                return ((int)(this["SelectedTheme"]));
             }
             set {
-                this["DownloadsFolder"] = value;
+                this["SelectedTheme"] = value;
             }
         }
         
@@ -61,7 +61,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public double MainVolumeSliderValue {
             get {
                 return ((double)(this["MainVolumeSliderValue"]));
@@ -73,7 +73,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public double AdditionalVolumeSliderValue {
             get {
                 return ((double)(this["AdditionalVolumeSliderValue"]));
@@ -181,7 +181,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Space")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string PlayPauseHotkey {
             get {
                 return ((string)(this["PlayPauseHotkey"]));
@@ -193,7 +193,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Down")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string NextSongHotkey {
             get {
                 return ((string)(this["NextSongHotkey"]));
@@ -205,7 +205,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Up")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string PreviousSongHotkey {
             get {
                 return ((string)(this["PreviousSongHotkey"]));
@@ -217,7 +217,7 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("OemPlus")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string IncreaseMainVolumeHotkey {
             get {
                 return ((string)(this["IncreaseMainVolumeHotkey"]));
@@ -229,25 +229,13 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("OemMinus")]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string DecreaseMainVolumeHotkey {
             get {
                 return ((string)(this["DecreaseMainVolumeHotkey"]));
             }
             set {
                 this["DecreaseMainVolumeHotkey"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string InputDevice {
-            get {
-                return ((string)(this["InputDevice"]));
-            }
-            set {
-                this["InputDevice"] = value;
             }
         }
         

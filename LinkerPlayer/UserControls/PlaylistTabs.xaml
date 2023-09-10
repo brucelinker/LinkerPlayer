@@ -11,12 +11,15 @@
     <Grid>
 
         <StackPanel Orientation="Horizontal">
-            <TabControl Margin="0, 20, 0, 0">
-                <TabItem Header="Hello" Name="Tab1"/>
-                <TabItem Header="Hello World" Name="Tab3"/>
-                <TabItem Header="Hello World Again" Name="Tab2"/>
+            <TabControl Margin="0,20,0,0">
+                <TabItem Name="Tab1" Header="Hello" />
+                <TabItem Name="Tab3" Header="Hello World" />
+                <TabItem Name="Tab2" Header="Hello World Again" />
             </TabControl>
-            <userControls:NewPlaylistButton Grid.Row="0" Grid.Column="0" Margin="20, 0, 0, 0" />
+            <userControls:NewPlaylistButton
+                Grid.Row="0"
+                Grid.Column="0"
+                Margin="20,0,0,0" />
         </StackPanel>
 
 

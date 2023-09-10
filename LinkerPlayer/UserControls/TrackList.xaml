@@ -1,5 +1,5 @@
 ﻿<UserControl
-    x:Class="LinkerPlayer.UserControls.SongList"
+    x:Class="LinkerPlayer.UserControls.TrackList"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="clr-namespace:LinkerPlayer.Converters"
@@ -144,18 +144,29 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Header="Artist">
+                    <GridViewColumn Width="Auto" Header="Artists">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock
                                     d:DataContext="{d:DesignData IMediaFile}"
-                                    Text="{Binding AlbumArtist}"
+                                    Text="{Binding Artists}"
                                     ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="90" Header="🕓">
+                    <GridViewColumn Width="Auto" Header="Album">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    d:DataContext="{d:DesignData IMediaFile}"
+                                    Text="{Binding Album}"
+                                    ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+
+                    <GridViewColumn Width="Auto" Header="🕓">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock d:DataContext="{d:DesignData MediaFile}" Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
@@ -165,7 +176,6 @@
                 </GridView>
             </ListView.View>
         </ListView>
-
 
     </Grid>
 </UserControl>

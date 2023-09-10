@@ -4,7 +4,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    Background="{DynamicResource MaterialDesignPaper}"
+    TextElement.FontWeight="Medium"
+    TextElement.FontSize="14"
+    FontFamily="{materialDesign:MaterialDesignFont}"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="clr-namespace:LinkerPlayer.Models"
     xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
     Title="Settings"
     Width="610"
@@ -25,24 +31,24 @@
 
     <Window.Resources>
         <Style x:Key="NoStylingButton" TargetType="{x:Type Button}">
-            <Setter Property="Template">
+            <!--<Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border
+                        --><!--<Border
                             x:Name="border"
                             Background="Transparent"
                             CornerRadius="10">
                             <ContentPresenter />
-                        </Border>
+                        </Border>-->
 
-                        <ControlTemplate.Triggers>
+                        <!--<ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="border" Property="Background" Value="#3b3b42" />
                             </Trigger>
-                        </ControlTemplate.Triggers>
+                        </ControlTemplate.Triggers>--><!--
                     </ControlTemplate>
                 </Setter.Value>
-            </Setter>
+            </Setter>-->
 
         </Style>
     </Window.Resources>
@@ -54,24 +60,24 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Grid.Background>
+        <!--<Grid.Background>
             <SolidColorBrush Color="#212128" />
-        </Grid.Background>
+        </Grid.Background>-->
 
         <userControls:TitlebarButtons x:Name="TitlebarButtons" Panel.ZIndex="1" />
 
         <TabControl Name="TabControl" Grid.Row="1">
             <TabControl.Resources>
                 <Style TargetType="TextBlock">
-                    <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
-                    <Setter Property="FontSize" Value="16" />
-                    <Setter Property="Foreground" Value="#BDBDBD" />
+                    <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+                    <!--<Setter Property="FontSize" Value="16" />-->
+                    <!--<Setter Property="Foreground" Value="#BDBDBD" />-->
                     <Setter Property="VerticalAlignment" Value="Center" />
                 </Style>
 
                 <Style BasedOn="{StaticResource MaterialDesignComboBox}" TargetType="ComboBox">
-                    <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
-                    <Setter Property="FontSize" Value="16" />
+                    <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+                    <!--<Setter Property="FontSize" Value="16" />-->
                     <Setter Property="VerticalAlignment" Value="Center" />
                     <Setter Property="Height" Value="27" />
                 </Style>
@@ -86,16 +92,16 @@
                 </Style>
             </TabControl.Resources>
 
-            <!-- Audio Tab -->
+            <!--  Audio Tab  -->
             <TabItem>
                 <TabItem.Header>
-                    <TextBlock Foreground="White">Audio</TextBlock>
+                    <TextBlock>Audio</TextBlock>
                 </TabItem.Header>
 
                 <TabItem.Content>
                     <StackPanel Margin="30,50,30,0">
-                        
-                        <!-- Main Output Device -->
+
+                        <!--  Main Output Device  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="265" />
@@ -108,11 +114,10 @@
                                 Name="MainOutputDevicesList"
                                 Grid.Column="1"
                                 BorderBrush="{DynamicResource PrimaryHueMidBrush}"
-                                Foreground="#BDBDBD">
-                            </ComboBox>
+                                Foreground="#BDBDBD" />
                         </Grid>
 
-                        <!-- Additional Output Device -->
+                        <!--  Additional Output Device  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="265" />
@@ -123,13 +128,10 @@
 
                             <ComboBox
                                 Name="AdditionalOutputDevicesList"
-                                Grid.Column="1"
-                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
-                                Foreground="#BDBDBD">
-                            </ComboBox>
+                                Grid.Column="1" />
                         </Grid>
 
-                        <!-- Enable Output to Additional Device -->
+                        <!--  Enable Output to Additional Device  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
@@ -144,7 +146,7 @@
                 </TabItem.Content>
             </TabItem>
 
-            <!-- Hotkeys Tab -->
+            <!--  Hotkeys Tab  -->
             <TabItem>
                 <TabItem.Header>
                     <TextBlock Foreground="White">Hotkeys</TextBlock>
@@ -155,32 +157,36 @@
                 </TabItem.Content>
             </TabItem>
 
-            <!-- Other Tab -->
+            <!--  Other Tab  -->
             <TabItem>
                 <TabItem.Header>
-                    <TextBlock Foreground="White">Other</TextBlock>
+                    <TextBlock>Other</TextBlock>
                 </TabItem.Header>
 
                 <TabItem.Content>
-                    <StackPanel Margin="30,50,30,0">
+                    <StackPanel Margin="70,50,70,0">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="180" />
                                 <ColumnDefinition />
-                                <ColumnDefinition Width="40" />
+                                <ColumnDefinition Width="100" />
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Grid.Column="0">Downloads folder</TextBlock>
-                            <TextBlock Name="DownloadsFolder" Grid.Column="1" />
-                            <Button
+                            <TextBlock Grid.Column="0">Theme</TextBlock>
+                            <ComboBox
+                                x:Name="ThemesList"
                                 Grid.Column="2"
-                                Click="EditDownloadsFolder"
-                                Style="{StaticResource NoStylingButton}">
-                                <materialDesign:PackIcon Foreground="White" Kind="PencilOutline" />
-                            </Button>
+                                HorizontalContentAlignment="Center"
+                                ItemsSource="{Binding Path=ThemeColors}" SelectionChanged="OnThemeSelectionChanged">
+                                <ComboBoxItem Content="White" Tag="{x:Static models:ThemeColors.White}" />
+                                <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
+                                <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
+                                <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />
+                                <ComboBoxItem Content="Black" Tag="{x:Static models:ThemeColors.BlackSmooth}" />
+                            </ComboBox>
                         </Grid>
 
-                        <!-- Enable Sound Wave Visualization -->
+                        <!--  Enable Sound Wave Visualization  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
@@ -191,7 +197,7 @@
                             <ToggleButton Name="VisualizationEnabled" Grid.Column="1" />
                         </Grid>
 
-                        <!-- Minimize to Tray On Close -->
+                        <!--  Minimize to Tray On Close  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
@@ -202,7 +208,7 @@
                             <ToggleButton Name="MinimizeToTrayEnabled" Grid.Column="1" />
                         </Grid>
 
-                        <!-- Enable equalizer on start -->
+                        <!--  Enable equalizer on start  -->
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
@@ -220,12 +226,12 @@
         <Button
             Grid.Row="2"
             Width="150"
-            Margin="15"
+            Margin="0,0,25,25"
             HorizontalAlignment="Right"
-            Foreground="{DynamicResource PrimaryHueMidBrush}"
             Background="Transparent"
             Click="Save_Click"
-            Content="Save" />
+            Content="Save"
+            Foreground="{DynamicResource PrimaryHueMidBrush}" />
 
         <materialDesign:Snackbar
             Name="InfoSnackbar"

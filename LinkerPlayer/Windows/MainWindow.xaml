@@ -4,6 +4,11 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    Background="{DynamicResource MaterialDesignPaper}"
+    TextElement.FontWeight="Medium"
+    TextElement.FontSize="14"
+    FontFamily="{materialDesign:MaterialDesignFont}"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
     Title="LinkerPlayer"
@@ -12,18 +17,13 @@
     MinWidth="800"
     MinHeight="450"
     AllowsTransparency="True"
-    Background="{DynamicResource MaterialDesignPaper}"
     Closed="Window_Closed"
     Closing="Window_Closing"
-    FontFamily="{materialDesign:MaterialDesignFont}"
     Icon="/Images/app64.ico"
     IsVisibleChanged="Window_IsVisibleChanged"
     Loaded="Window_Loaded"
     MouseDown="Window_MouseDown"
     StateChanged="Window_StateChanged"
-    TextElement.FontSize="14"
-    TextElement.FontWeight="Medium"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
     WindowStyle="None"
     mc:Ignorable="d">
 
@@ -89,8 +89,8 @@
             Grid.Row="1"
             Grid.Column="0" />
 
-        <userControls:SongList
-            x:Name="SongList"
+        <userControls:TrackList
+            x:Name="TrackList"
             Grid.Row="1"
             Grid.Column="1" />
 

@@ -1,9 +1,9 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Models;
 using MaterialDesignThemes.Wpf;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -13,7 +13,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
-using WinForms = System.Windows.Forms;
 
 namespace LinkerPlayer.Windows;
 
@@ -22,7 +21,10 @@ public partial class SettingsWindow
     public SettingsWindow()
     {
         InitializeComponent();
+
         DataContext = this;
+
+        MainWindow mainWindow = (Owner as MainWindow)!;
         WinMax.DoSourceInitialized(this);
 
         PreviewKeyDown += Window_PreviewKeyDown;
@@ -30,7 +32,7 @@ public partial class SettingsWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        MainWindow? win = (Owner as MainWindow);
+        MainWindow? mainWindow = (Owner as MainWindow);
 
         foreach (string device in DeviceControl.GetOutputDevicesList())
         {
@@ -44,7 +46,7 @@ public partial class SettingsWindow
         }
         else
         {
-            MainOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(win!.AudioStreamControl.MainMusic!.GetOutputDeviceId());
+            MainOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(mainWindow!.AudioStreamControl.MainMusic!.GetOutputDeviceId());
         }
 
         if (AdditionalOutputDevicesList.Items.Contains(Properties.Settings.Default.AdditionalOutputDevice))
@@ -59,16 +61,17 @@ public partial class SettingsWindow
         AdditionalOutputEnabled.IsChecked = Properties.Settings.Default.AdditionalOutputEnabled;
         EqualizerOnStartEnabled.IsChecked = Properties.Settings.Default.EqualizerOnStartEnabled;
 
-        if (string.IsNullOrEmpty(Properties.Settings.Default.DownloadsFolder))
-        {
-            string downloadsFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
 
-            DownloadsFolder.Text = downloadsFolderPath;
+        if (ThemesList.Items.Count >= 0 && Properties.Settings.Default.SelectedTheme <= ThemesList.Items.Count)
+        {
+            ThemesList.SelectedIndex = Properties.Settings.Default.SelectedTheme;
         }
         else
         {
-            DownloadsFolder.Text = Properties.Settings.Default.DownloadsFolder;
+            ThemesList.SelectedIndex = (int)ThemeColors.Dark;
         }
+
+        mainWindow?.ModifyTheme((ThemeColors)ThemesList.SelectedIndex);
 
         VisualizationEnabled.IsChecked = Properties.Settings.Default.VisualizationEnabled;
         MinimizeToTrayEnabled.IsChecked = Properties.Settings.Default.MinimizeToTrayEnabled;
@@ -76,14 +79,44 @@ public partial class SettingsWindow
         PopulateHotkeyStackPanel();
     }
 
+    private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        MainWindow? mainWindow = (Owner as MainWindow);
+
+        ComboBoxItem selectedItem = ((sender as ComboBox)!.SelectedItem as ComboBoxItem)!;
+
+        ThemeColors selectedTheme = (ThemeColors)selectedItem.Tag;
+
+        mainWindow?.ModifyTheme(selectedTheme);
+    }
+
+    private static string GetCurrentTheme()
+    {
+        PaletteHelper paletteHelper = new PaletteHelper();
+        ITheme theme = paletteHelper.GetTheme();
+
+        return theme.ToString() ?? Theme.Dark.ToString()!;
+    }
+
+    public ThemeColors StringToThemeColor(string theme)
+    {
+        switch (theme)
+        {
+            case "White":
+                return ThemeColors.White;
+            default:
+                return ThemeColors.Dark;
+        }
+    }
+
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        MainWindow? win = (Owner as MainWindow);
+        MainWindow? mainWindow = (Owner as MainWindow);
 
-        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || MainOutputDevicesList.SelectedItem.ToString() != DeviceControl.GetOutputDeviceNameById(win!.AudioStreamControl.MainMusic!.GetOutputDeviceId()))
+        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || MainOutputDevicesList.SelectedItem.ToString() != DeviceControl.GetOutputDeviceNameById(mainWindow!.AudioStreamControl.MainMusic!.GetOutputDeviceId()))
         {
             Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
-            win!.AudioStreamControl.MainMusic!.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
+            mainWindow!.AudioStreamControl.MainMusic!.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
         }
 
         bool changedAdditionalDevice = false;
@@ -105,9 +138,9 @@ public partial class SettingsWindow
             {
                 Properties.Settings.Default.AdditionalOutputEnabled = true;
 
-                win.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
-                win.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)win.PlayerControls.AdditionalVolumeSlider.Value / 100;
-                win.AudioStreamControl.AdditionalMusic.StoppedEvent += win.Music_StoppedEvent!;
+                mainWindow.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
+                mainWindow.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)mainWindow.PlayerControls.AdditionalVolumeSlider.Value / 100;
+                mainWindow.AudioStreamControl.AdditionalMusic.StoppedEvent += mainWindow.Music_StoppedEvent!;
             }
             else
             {
@@ -119,32 +152,36 @@ public partial class SettingsWindow
         {
             Properties.Settings.Default.AdditionalOutputEnabled = false;
 
-            if (win.AudioStreamControl.AdditionalMusic != null)
+            if (mainWindow.AudioStreamControl.AdditionalMusic != null)
             {
-                win.AudioStreamControl.AdditionalMusic.CloseStream();
-                win.AudioStreamControl.AdditionalMusic = null;
+                mainWindow.AudioStreamControl.AdditionalMusic.CloseStream();
+                mainWindow.AudioStreamControl.AdditionalMusic = null;
             }
         }
 
-        win.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
-        win.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        mainWindow.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        mainWindow.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
-        Properties.Settings.Default.DownloadsFolder = DownloadsFolder.Text;
+        if (ThemesList.SelectedIndex != Properties.Settings.Default.SelectedTheme)
+        {
+            Properties.Settings.Default.SelectedTheme = ThemesList.SelectedIndex;
+        }
+
         Properties.Settings.Default.MinimizeToTrayEnabled = MinimizeToTrayEnabled.IsChecked.GetValueOrDefault();
         Properties.Settings.Default.EqualizerOnStartEnabled = EqualizerOnStartEnabled.IsChecked.GetValueOrDefault();
 
         if (VisualizationEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.VisualizationEnabled)
         {
             Properties.Settings.Default.VisualizationEnabled = VisualizationEnabled.IsChecked.GetValueOrDefault();
-            win.VisualizationEnabled = Properties.Settings.Default.VisualizationEnabled;
+            mainWindow.VisualizationEnabled = Properties.Settings.Default.VisualizationEnabled;
 
             if (Properties.Settings.Default.VisualizationEnabled)
             {
-                win.StartVisualization();
+                mainWindow.StartVisualization();
             }
             else
             {
-                win.StopVisualization();
+                mainWindow.StopVisualization();
             }
         }
 
@@ -160,19 +197,6 @@ public partial class SettingsWindow
 
         InfoSnackbar.MessageQueue?.Clear();
         InfoSnackbar.MessageQueue?.Enqueue("Saved!", null, null, null, false, true, TimeSpan.FromSeconds(1));
-    }
-
-    private void EditDownloadsFolder(object sender, RoutedEventArgs e)
-    {
-        WinForms.FolderBrowserDialog dialog = new WinForms.FolderBrowserDialog();
-        dialog.InitialDirectory = DownloadsFolder.Text;
-
-        WinForms.DialogResult res = dialog.ShowDialog();
-
-        if (res == WinForms.DialogResult.OK)
-        {
-            DownloadsFolder.Text = dialog.SelectedPath;
-        }
     }
 
     string _editedHotkey = "";
