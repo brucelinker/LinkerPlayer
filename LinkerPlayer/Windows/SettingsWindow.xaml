@@ -4,11 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
-    Background="{DynamicResource MaterialDesignPaper}"
-    TextElement.FontWeight="Medium"
-    TextElement.FontSize="14"
-    FontFamily="{materialDesign:MaterialDesignFont}"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="clr-namespace:LinkerPlayer.Models"
     xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
@@ -75,7 +70,7 @@
                     <Setter Property="VerticalAlignment" Value="Center" />
                 </Style>
 
-                <Style BasedOn="{StaticResource MaterialDesignComboBox}" TargetType="ComboBox">
+                <Style TargetType="ComboBox">
                     <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
                     <!--<Setter Property="FontSize" Value="16" />-->
                     <Setter Property="VerticalAlignment" Value="Center" />
@@ -113,7 +108,6 @@
                             <ComboBox
                                 Name="MainOutputDevicesList"
                                 Grid.Column="1"
-                                BorderBrush="{DynamicResource PrimaryHueMidBrush}"
                                 Foreground="#BDBDBD" />
                         </Grid>
 
@@ -230,8 +224,7 @@
             HorizontalAlignment="Right"
             Background="Transparent"
             Click="Save_Click"
-            Content="Save"
-            Foreground="{DynamicResource PrimaryHueMidBrush}" />
+            Content="Save" />
 
         <materialDesign:Snackbar
             Name="InfoSnackbar"

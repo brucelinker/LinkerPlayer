@@ -1,8 +1,6 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
-using MaterialDesignThemes.Wpf;
-using Microsoft.Windows.Themes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -204,21 +202,23 @@ public partial class MainWindow
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
 
-    public void ModifyTheme(ThemeColors themeColor)
+    public void ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
     {
-        PaletteHelper paletteHelper = new PaletteHelper();
-        ITheme theme = paletteHelper.GetTheme();
+        ThemeManager.ClearStyles();
+        ThemeManager.AddTheme(themeColor);
 
-        if (themeColor == ThemeColors.White)
-        {
-            theme.SetBaseTheme(BaseTheme.Light.GetBaseTheme());
-        }
-        else
-        {
-            theme.SetBaseTheme(BaseTheme.Dark.GetBaseTheme());
-        }
+        const string colors = @"Styles\SolidColorBrushes.xaml";
+        Uri colorsUri = new Uri(colors, UriKind.Relative);
+        ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
 
-        paletteHelper.SetTheme(theme);
+        ThemeManager.AddDict(brushesDict);
+
+        Uri sizeUri = ThemeManager.GetSizeUri(fontSize);
+        ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
+
+        ThemeManager.AddDict(sizesDict);
+
+        SelectedTheme = (int)themeColor;
     }
     
     private void MainVolumeSlider_ValueChanged(object sender, EventArgs e)
@@ -263,14 +263,9 @@ public partial class MainWindow
 
             foreach (Button button in Helper.FindVisualChildren<Button>(PlaylistList.List))
             {
-                if (((button.Content as ContentPresenter)!.Content as Playlist)!.Name == SelectedPlaylist.Name)
-                {
-                    button.FontWeight = FontWeights.ExtraBold;
-                }
-                else
-                {
-                    button.FontWeight = FontWeights.Normal;
-                }
+                button.FontWeight = ((button.Content as ContentPresenter)!
+                    .Content as Playlist)!.Name == SelectedPlaylist.Name ? 
+                        FontWeights.ExtraBold : FontWeights.Normal;
             }
         }
     }
@@ -301,15 +296,11 @@ public partial class MainWindow
             PlayerControls.CurrentTime.Text = "0:00";
 
             foreach (Button button in Helper.FindVisualChildren<Button>(TrackList.List))
-            { // outline selected mediaFile
-                if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedSong.Id)
-                {
-                    button.FontWeight = FontWeights.ExtraBold;
-                }
-                else
-                {
-                    button.FontWeight = FontWeights.Normal;
-                }
+            {
+                // outline selected mediaFile
+                button.FontWeight = ((button.Content as GridViewRowPresenter)!
+                    .Content as MediaFile)!.Id == SelectedSong.Id ? 
+                    FontWeights.ExtraBold : FontWeights.Normal;
             }
 
             StartVisualization();
@@ -391,14 +382,10 @@ public partial class MainWindow
 
                         if (selectedSongIndex != -1)
                         {
-                            if (selectedSongIndex == backgroundSongs.Count - 1)
-                            {
-                                SelectWithSkipping(backgroundSongs[0], NextButton_Click);
-                            }
-                            else
-                            {
-                                SelectWithSkipping(backgroundSongs[selectedSongIndex + 1], NextButton_Click);
-                            }
+                            SelectWithSkipping(
+                                selectedSongIndex == backgroundSongs.Count - 1
+                                    ? backgroundSongs[0]
+                                    : backgroundSongs[selectedSongIndex + 1], NextButton_Click);
                         }
 
                         break;
@@ -457,14 +444,10 @@ public partial class MainWindow
 
                         if (selectedSongIndex != -1)
                         {
-                            if (selectedSongIndex == 0)
-                            {
-                                SelectWithSkipping(backgroundSongs[^1], PrevButton_Click);
-                            }
-                            else
-                            {
-                                SelectWithSkipping(backgroundSongs[selectedSongIndex - 1], PrevButton_Click);
-                            }
+                            SelectWithSkipping(selectedSongIndex == 0 
+                                    ? backgroundSongs[^1] 
+                                    : backgroundSongs[selectedSongIndex - 1],
+                                PrevButton_Click);
                         }
 
                         break;
@@ -680,14 +663,8 @@ public partial class MainWindow
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
-            if (SelectedBandsSettings != null!)
-            {
-                Properties.Settings.Default.EqualizerBandName = SelectedBandsSettings.Name;
-            }
-            else
-            {
-                Properties.Settings.Default.EqualizerBandName = null;
-            }
+            Properties.Settings.Default.EqualizerBandName = 
+                SelectedBandsSettings != null! ? SelectedBandsSettings.Name : null;
         }
 
         Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.MainMusic!.GetOutputDeviceId());

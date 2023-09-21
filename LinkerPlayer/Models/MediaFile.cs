@@ -31,7 +31,8 @@ public interface IMediaFile : INotifyPropertyChanged
     string Genres { get; }
     string Comment { get; }
     int Bitrate { get; }
-    int SampleRate { get; } BitmapImage AlbumCover { get; }
+    int SampleRate { get; } 
+    BitmapImage? AlbumCover { get; }
     int PlayListIndex { get; set; }
     PlayerState State { get; set; }
 }
@@ -92,7 +93,7 @@ public class MediaFile : IMediaFile
 
     [Browsable(false)]
     [JsonIgnore]
-    public BitmapImage AlbumCover { get; set; }
+    public BitmapImage? AlbumCover { get; set; }
 
     PlayerState _state = PlayerState.Stopped;
     [Browsable(false)]

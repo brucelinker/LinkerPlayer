@@ -16,9 +16,9 @@ using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.Windows;
 
-public partial class CustomEqualizer : INotifyPropertyChanged
+public partial class EqualizerWindow : INotifyPropertyChanged
 {
-    public CustomEqualizer()
+    public EqualizerWindow()
     {
         InitializeComponent();
         WinMax.DoSourceInitialized(this);

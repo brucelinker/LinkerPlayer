@@ -6,11 +6,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <materialDesign:CustomColorTheme
-                    BaseTheme="Dark"
-                    PrimaryColor="Aqua"
-                    SecondaryColor="DarkGreen" />
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Defaults.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Styles/SolidColorBrushes.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Themes/BlackSmooth.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/Styles/FontSizes/FontSizesNormal.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

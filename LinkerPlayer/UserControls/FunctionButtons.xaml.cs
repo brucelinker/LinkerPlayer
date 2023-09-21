@@ -27,7 +27,7 @@ public partial class FunctionButtons
     private SettingsWindow? _settingsWin;
 
     private bool _isEqualizerWindowOpen;
-    private CustomEqualizer? _equalizerWin;
+    private EqualizerWindow? _equalizerWin;
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
@@ -213,7 +213,7 @@ public partial class FunctionButtons
             return;
         }
 
-        _equalizerWin = new CustomEqualizer
+        _equalizerWin = new EqualizerWindow
         {
             Owner = Window.GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterOwner
