@@ -40,7 +40,7 @@
         </Grid.Background>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="80" />
+            <RowDefinition Height="60" />
             <RowDefinition />
             <RowDefinition Height="80" />
         </Grid.RowDefinitions>
@@ -71,8 +71,8 @@
 
         <!--<userControls:NewPlaylistButton Grid.Row="0" Grid.Column="0" />-->
 
-        <userControls:PlaylistTabs
-            x:Name="PlaylistTabs"
+        <userControls:PlaylistList
+            x:Name="PlaylistList"
             Grid.Row="0"
             Grid.Column="1"
             Grid.ColumnSpan="2" />
@@ -84,10 +84,10 @@
             Background="Black"
             Opacity="0.4" />
 
-        <userControls:PlaylistList
+        <!--<userControls:PlaylistList
             x:Name="PlaylistList"
             Grid.Row="1"
-            Grid.Column="0" />
+            Grid.Column="0" />-->
 
         <userControls:TrackList
             x:Name="TrackList"

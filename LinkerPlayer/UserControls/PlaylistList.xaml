@@ -5,7 +5,8 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="450"
+    xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+    d:DesignHeight="45"
     d:DesignWidth="290"
     mc:Ignorable="d">
 
@@ -13,7 +14,7 @@
         <Style TargetType="{x:Type ListView}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Margin" Value="10" />
+            <Setter Property="Margin" Value="0, 30, 10, -1" />
         </Style>
 
         <Style TargetType="{x:Type ListViewItem}">
@@ -23,43 +24,36 @@
                         <Button
                             Name="RowElement"
                             Height="Auto"
-                            Padding="10"
+                            Padding="10, 6, 10, 10"
                             HorizontalContentAlignment="Left"
-                            materialDesign:RippleAssist.IsDisabled="True"
-                            Background="Transparent"
-                            BorderBrush="Transparent"
+                            BorderBrush="Gray"
                             Click="ClickRowElement"
-                            FontFamily="/Fonts/#Montserrat"
-                            FontSize="22"
-                            FontWeight="Normal"
-                            Foreground="#BDBDBD">
+                            FontWeight="Normal">
                             <ContentPresenter />
 
                             <Button.ContextMenu>
                                 <ContextMenu
                                     Background="#212121"
-                                    FontFamily="/Fonts/#Montserrat"
+                                    FontFamily="Segoe UI"
                                     FontWeight="DemiBold"
                                     Foreground="#BDBDBD">
                                     <MenuItem Click="MenuItem_Click" Header="Add song(s)" />
                                     <MenuItem Click="MenuItem_Click" Header="Rename" />
-                                    <MenuItem
-                                        Click="MenuItem_Click"
-                                        Foreground="IndianRed"
-                                        Header="Remove playlist" />
+                                    <MenuItem Click="MenuItem_Click" Header="Remove playlist" />
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
 
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger Property="IsMouseOver" Value="False">
                                 <Setter TargetName="RowElement" Property="Background">
                                     <Setter.Value>
-                                        <SolidColorBrush Opacity="0.1" Color="White" />
+                                        <SolidColorBrush Color="Red" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
+
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -81,11 +75,20 @@
     </UserControl.Resources>
 
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition />
+        </Grid.ColumnDefinitions>
         <ListView
             Name="List"
             ScrollViewer.CanContentScroll="False"
             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
             ScrollViewer.VerticalScrollBarVisibility="Hidden">
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <TextBox
@@ -99,5 +102,10 @@
                 </DataTemplate>
             </ListView.ItemTemplate>
         </ListView>
+        <userControls:NewPlaylistButton
+            Grid.Row="0"
+            Grid.Column="1"
+            Margin="0,20,0,0" />
+
     </Grid>
 </UserControl>

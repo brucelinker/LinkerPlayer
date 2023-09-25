@@ -4,14 +4,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="80"
-    d:DesignWidth="100"
+    d:DesignHeight="18"
+    d:DesignWidth="18"
     mc:Ignorable="d">
     <Grid>
         <Button
             x:Name="AddButton"
-            Width="20"
-            Height="20"
+            Width="18"
+            Height="18"
             Margin="0,8,0,0"
             Padding="0"
             HorizontalAlignment="Left"
@@ -24,15 +24,6 @@
                 Height="15"
                 Source="/Images/plus.png" />
         </Button>
-
-        <!--<TextBlock
-            Margin="80,0,0,0"
-            VerticalAlignment="Center"
-            FontFamily="/Fonts/#Montserrat"
-            FontSize="22"
-            FontWeight="DemiBold"
-            Foreground="#BDBDBD"
-            Text="New Playlist" />-->
 
         <Popup
             x:Name="EnterNamePopup"

@@ -13,8 +13,9 @@
     <UserControl.Resources>
         <Style TargetType="{x:Type ListView}">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Margin" Value="10" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Margin" Value="0,0,20,0" />
+            <Setter Property="Padding" Value="0,4,20,0" />
             <Setter Property="AllowDrop" Value="True" />
             <EventSetter Event="Drop" Handler="ListView_Drop" />
         </Style>
@@ -41,13 +42,10 @@
                                 <ContextMenu
                                     Background="#212121"
                                     FontFamily="Segoe UI"
-                                    FontWeight="DemiBold"
+                                    FontWeight="Regular"
                                     Foreground="#BDBDBD">
                                     <MenuItem Click="MenuItem_Click" Header="Rename" />
-                                    <MenuItem
-                                        Click="MenuItem_Click"
-                                        Foreground="IndianRed"
-                                        Header="Remove from playlist" />
+                                    <MenuItem Click="MenuItem_Click" Header="Remove from playlist" />
                                 </ContextMenu>
                             </Button.ContextMenu>
                         </Button>
@@ -78,10 +76,10 @@
                     <ControlTemplate TargetType="{x:Type GridViewColumnHeader}">
                         <TextBlock
                             Name="ColumnName"
-                            Padding="4,5,4,5"
+                            Padding="4,0,4,5"
                             FontFamily="Segoe UI"
-                            FontSize="14"
-                            Foreground="#BDBDBD"
+                            FontSize="16"
+                            Foreground="White"
                             Text="{TemplateBinding Content}"
                             TextAlignment="Left" />
 
@@ -116,7 +114,7 @@
         <ListView
             Name="List"
             ScrollViewer.CanContentScroll="False"
-            ScrollViewer.VerticalScrollBarVisibility="Hidden"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
             SizeChanged="ListView_SizeChanged">
             <ListView.View>
                 <GridView AllowsColumnReorder="False">
@@ -128,7 +126,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Header="Title">
+                    <GridViewColumn Width="200" Header="Title">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBox
@@ -144,7 +142,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="Auto" Header="Artists">
+                    <GridViewColumn Width="220" Header="Artists">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock
@@ -155,7 +153,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="Auto" Header="Album">
+                    <GridViewColumn Width="270" Header="Album">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock
@@ -166,7 +164,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="Auto" Header="🕓">
+                    <GridViewColumn Width="50" Header="🕓">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock d:DataContext="{d:DesignData MediaFile}" Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
