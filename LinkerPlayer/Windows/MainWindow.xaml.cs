@@ -20,6 +20,7 @@ public partial class MainWindow
     public static MainWindow Instance = null!;
     public AudioStreamControl AudioStreamControl;
     private readonly DispatcherTimer _seekBarTimer = new();
+    private static ThemeManager _themeManager = new();
 
     public Playlist? SelectedPlaylist;
     public MediaFile? SelectedSong;
@@ -122,7 +123,7 @@ public partial class MainWindow
             SelectedTheme = (int)ThemeColors.Dark;
         }
 
-        ModifyTheme((ThemeColors)SelectedTheme);
+        SelectedTheme = _themeManager.ModifyTheme((ThemeColors)SelectedTheme);
 
         PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
         PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
@@ -202,24 +203,24 @@ public partial class MainWindow
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
 
-    public void ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
-    {
-        ThemeManager.ClearStyles();
-        ThemeManager.AddTheme(themeColor);
+    //public void ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
+    //{
+    //    ThemeManager.ClearStyles();
+    //    ThemeManager.AddTheme(themeColor);
 
-        const string colors = @"Styles\SolidColorBrushes.xaml";
-        Uri colorsUri = new Uri(colors, UriKind.Relative);
-        ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
+    //    const string colors = @"Styles\SolidColorBrushes.xaml";
+    //    Uri colorsUri = new Uri(colors, UriKind.Relative);
+    //    ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
 
-        ThemeManager.AddDict(brushesDict);
+    //    ThemeManager.AddDict(brushesDict);
 
-        Uri sizeUri = ThemeManager.GetSizeUri(fontSize);
-        ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
+    //    Uri sizeUri = ThemeManager.GetSizeUri(fontSize);
+    //    ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
 
-        ThemeManager.AddDict(sizesDict);
+    //    ThemeManager.AddDict(sizesDict);
 
-        SelectedTheme = (int)themeColor;
-    }
+    //    SelectedTheme = (int)themeColor;
+    //}
     
     private void MainVolumeSlider_ValueChanged(object sender, EventArgs e)
     {

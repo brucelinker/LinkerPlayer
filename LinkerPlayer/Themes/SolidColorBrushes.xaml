@@ -3,49 +3,50 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-    <SolidColorBrush x:Key="FirstColorNormal" Color="{DynamicResource FirstColorBrush}" />
-    <SolidColorBrush x:Key="FirstColorLight" Color="{DynamicResource FirstColorLightBrush}" />
-    <SolidColorBrush x:Key="FirstItemBackground" Color="{DynamicResource FirstBackgroundBrush}" />
-    <SolidColorBrush x:Key="PrimaryBackground" Color="{DynamicResource PrimaryBackgroundBrush}" />
-    <SolidColorBrush x:Key="SecondBackground" Color="{DynamicResource SecondBackgroundBrush}" />
-    <SolidColorBrush x:Key="StandardTextColor" Color="{DynamicResource StandardTextForeground}" />
-
+    <SolidColorBrush x:Key="FirstDarkBrush" Color="{DynamicResource FirstDarkColor}" />
+    <SolidColorBrush x:Key="FirstLightBrush" Color="{DynamicResource FirstLightColor}" />
+    <SolidColorBrush x:Key="FirstBackgroundBrush" Color="{DynamicResource FirstBackgroundColor}" />
+    <SolidColorBrush x:Key="PrimaryBackgroundBrush" Color="{DynamicResource PrimaryBackgroundColor}" />
+    <SolidColorBrush x:Key="SecondBackgroundBrush" Color="{DynamicResource SecondBackgroundColor}" />
+    <SolidColorBrush x:Key="StandardTextForegroundBrush" Color="{DynamicResource StandardTextForegroundColor}" />
     <SolidColorBrush x:Key="InactiveSelectionBrush" Color="{DynamicResource InactiveSelectionColor}" />
 
-    <SolidColorBrush x:Key="PlayerButtonBorderBrush" Color="{DynamicResource PlayerButtonBorderColor}" />
-    <SolidColorBrush x:Key="PlayerButtonBorderDarkBrush" Color="{DynamicResource PlayerButtonBorderDark}" />
-    <SolidColorBrush x:Key="PlayerButtonGradientStartBrush" Color="{DynamicResource PlayerButtonGradientStart}" />
-    <SolidColorBrush x:Key="PlayerButtonMouseOverBorderBrush" Color="{DynamicResource PlayerButtonMouseOverBorderColor}" />
-    <SolidColorBrush x:Key="PlayerButtonMouseOverBackgroundBrush" Color="{DynamicResource PlayerButtonMouseOverBackground}" />
-    <SolidColorBrush x:Key="PlayerStartGradient" Color="{DynamicResource PlayerStartColor}" />
-    <SolidColorBrush x:Key="PlayerEndGradient" Color="{DynamicResource PlayerEndColor}" />
-    <SolidColorBrush x:Key="PlayerInactiveBrush" Color="{DynamicResource PlayerInactiveColor}" />
-    <SolidColorBrush x:Key="PlayerActiveBrush" Color="{DynamicResource PlayerActiveColor}" />
-
-    <SolidColorBrush x:Key="ListItemForeground" Color="{DynamicResource DefaultItemForeground}" />
-    <SolidColorBrush x:Key="ListViewItemBackground" Color="{DynamicResource ListViewItemBackgroundBrush}" />
-    <SolidColorBrush x:Key="ListViewItemForeground" Color="{DynamicResource ListViewItemForegroundBrush}" />
-    
-    <SolidColorBrush x:Key="PlaylistBackground" Color="{DynamicResource PlaylistBackgroundBrush}" />
-    <SolidColorBrush x:Key="PlaylistItemBackground" Color="{DynamicResource PlaylistItemBackgroundBrush}" />
-    <SolidColorBrush x:Key="PlaylistInsertBrush" Color="{DynamicResource PlaylistInsertColor}" />
-    <SolidColorBrush x:Key="PlayListTipBackground" Color="{DynamicResource PlayListTipColor}" />
-    <SolidColorBrush x:Key="PlayListTipForeground" Color="{DynamicResource PlayListTipTextColor}" />
-
-    <SolidColorBrush x:Key="ImageBackgroundBrush" Color="{DynamicResource ImageBackgroundColor}" />
-
-    <SolidColorBrush x:Key="MenuBrush" Color="{DynamicResource MenuColor}" />
-    <SolidColorBrush x:Key="MenuTextBrush" Color="{DynamicResource MenuTextColor}"/>
-    <SolidColorBrush x:Key="MenuDisabledTextBrush" Color="{DynamicResource MenuDisabledTextForeGround}" />
-    <SolidColorBrush x:Key="MenuHoverBrush" Color="{DynamicResource MenuHoverColor}" />
-    <SolidColorBrush x:Key="MenuSelectionBrush" Color="{DynamicResource MenuSelectionColor}" />
-    <SolidColorBrush x:Key="MenuHighlightBrush" Color="{DynamicResource MenuHighlightColor}" />
-    
     <SolidColorBrush x:Key="GridAlternateBrush" Color="{DynamicResource GridAlternateColor}" />
     <SolidColorBrush x:Key="GridSelectionBrush" Color="{DynamicResource GridSelectionColor}" />
     <SolidColorBrush x:Key="GridSelectionTextBrush" Color="{DynamicResource GridSelectionTextColor}" />
 
-    <SolidColorBrush x:Key="SpectrumBackground" Color="{DynamicResource SpectrumColor}" />
+    <SolidColorBrush x:Key="ListItemForegroundBrush" Color="{DynamicResource ListItemForegroundColor}" />
+    <SolidColorBrush x:Key="ListViewItemBackgroundBrush" Color="{DynamicResource ListViewItemBackgroundColor}" />
+    <SolidColorBrush x:Key="ListViewItemForegroundBrush" Color="{DynamicResource ListViewItemForegroundColor}" />
+
+    <SolidColorBrush x:Key="PlaylistBackgroundBrush" Color="{DynamicResource PlaylistBackgroundColor}" />
+    <SolidColorBrush x:Key="PlaylistItemBackgroundBrush" Color="{DynamicResource PlaylistItemBackgroundColor}" />
+    <SolidColorBrush x:Key="PlaylistInsertBrush" Color="{DynamicResource PlaylistInsertColor}" />
+    <SolidColorBrush x:Key="PlayListTipBackgroundBrush" Color="{DynamicResource PlayListTipBackgroundColor}" />
+    <SolidColorBrush x:Key="PlayListTipForegroundBrush" Color="{DynamicResource PlayListTipForegroundColor}" />
+
+    <SolidColorBrush x:Key="PlayerInactiveBrush" Color="{DynamicResource PlayerInactiveColor}" />
+    <SolidColorBrush x:Key="PlayerActiveBrush" Color="{DynamicResource PlayerActiveColor}" />
+    <SolidColorBrush x:Key="PlayerStartGradientBrush" Color="{DynamicResource PlayStartGradientColor}" />
+    <SolidColorBrush x:Key="PlayerEndGradientBrush" Color="{DynamicResource PlayEndGradientColor}" />
+
+    <SolidColorBrush x:Key="PlayerButtonBorderBrush" Color="{DynamicResource PlayerButtonBorderColor}" />
+    <SolidColorBrush x:Key="PlayerButtonBorderDarkBrush" Color="{DynamicResource PlayerButtonBorderDarkColor}" />
+    <SolidColorBrush x:Key="PlayerButtonGradientStartBrush" Color="{DynamicResource PlayerButtonGradientStartColor}" />
+    <SolidColorBrush x:Key="PlayerButtonMouseOverBorderBrush" Color="{DynamicResource PlayerButtonMouseOverBorderColor}" />
+    <SolidColorBrush x:Key="PlayerButtonMouseOverBackgroundBrush" Color="{DynamicResource PlayerButtonMouseOverBackgroundColor}" />
+
+    <SolidColorBrush x:Key="MenuTextForegroundBrush" Color="{DynamicResource MenuTextForegroundColor}" />
+    <SolidColorBrush x:Key="MenuDisabledTextBrush" Color="{DynamicResource MenuDisabledTextColor}" />
+    <SolidColorBrush x:Key="MenuBrush" Color="{DynamicResource MenuColor}" />
+    <SolidColorBrush x:Key="MenuTextBrush" Color="{DynamicResource MenuTextColor}" />
+    <SolidColorBrush x:Key="MenuHoverBrush" Color="{DynamicResource MenuHoverColor}" />
+    <SolidColorBrush x:Key="MenuSelectionBrush" Color="{DynamicResource MenuSelectionColor}" />
+    <SolidColorBrush x:Key="MenuHighlightBrush" Color="{DynamicResource MenuHighlightColor}" />
+
+    <SolidColorBrush x:Key="ImageBackgroundBrush" Color="{DynamicResource ImageBackgroundColor}" />
+
+    <SolidColorBrush x:Key="SpectrumBackgroundBrush" Color="{DynamicResource SpectrumBackgroundColor}" />
     <SolidColorBrush x:Key="SpectrumStartBrush" Color="{DynamicResource SpectrumStartColor}" />
     <SolidColorBrush x:Key="SpectrumEndBrush" Color="{DynamicResource SpectrumEndColor}" />
     <SolidColorBrush x:Key="SpectrumLineBrush" Color="{DynamicResource SpectrumLineColor}" />

@@ -11,8 +11,8 @@
 
     <SolidColorBrush x:Key="PlayerInactiveBrush" Color="{DynamicResource PlayerInactiveColor}" />
     <SolidColorBrush x:Key="PlayerActiveBrush" Color="{DynamicResource PlayerActiveColor}" />
-    <SolidColorBrush x:Key="PlayerStartGradient" Color="{DynamicResource PlayerStartColor}" />
-    <SolidColorBrush x:Key="PlayerEndGradient" Color="{DynamicResource PlayerEndColor}" />
+    <SolidColorBrush x:Key="PlayerStartGradient" Color="{DynamicResource PlayStartGradientColor}" />
+    <SolidColorBrush x:Key="PlayerEndGradient" Color="{DynamicResource PlayEndGradientColor}" />
 
     <SolidColorBrush x:Key="ListItemForeground" Color="{DynamicResource DefaultItemForeground}" />
     <SolidColorBrush x:Key="ListViewItemBackground" Color="{DynamicResource ListViewItemBackgroundBrush}" />
@@ -20,7 +20,7 @@
 
     <SolidColorBrush x:Key="FirstColorNormal" Color="{DynamicResource FirstColorBrush}" />
     <SolidColorBrush x:Key="FirstColorLight" Color="{DynamicResource FirstColorLightBrush}" />
-    <SolidColorBrush x:Key="PrimaryBackground" Color="{DynamicResource PrimaryBackgroundBrush}" />
+    <SolidColorBrush x:Key="PrimaryBackgroundColor" Color="{DynamicResource PrimaryBackgroundColor}" />
     <SolidColorBrush x:Key="SecondBackground" Color="{DynamicResource SecondBackgroundBrush}" />
     <SolidColorBrush x:Key="StandardTextColor" Color="{DynamicResource StandardTextForeground}" />
     <SolidColorBrush x:Key="FirstItemBackground" Color="{DynamicResource FirstBackgroundBrush}" />
@@ -28,8 +28,8 @@
     <SolidColorBrush x:Key="PlaylistBackground" Color="{DynamicResource PlaylistBackgroundBrush}" />
     <SolidColorBrush x:Key="PlaylistItemBackground" Color="{DynamicResource PlaylistItemBackgroundBrush}" />
     <SolidColorBrush x:Key="PlaylistInsertBrush" Color="{DynamicResource PlaylistInsertColor}" />
-    <SolidColorBrush x:Key="PlayListTipBackground" Color="{DynamicResource PlayListTipColor}" />
-    <SolidColorBrush x:Key="PlayListTipForeground" Color="{DynamicResource PlayListTipTextColor}" />
+    <SolidColorBrush x:Key="PlayListTipBackground" Color="{DynamicResource PlayListTipBackgroundColor}" />
+    <SolidColorBrush x:Key="PlayListTipForeground" Color="{DynamicResource PlayListTipForegroundColor}" />
 
     <SolidColorBrush x:Key="ImageBackgroundBrush" Color="{DynamicResource ImageBackgroundColor}" />
 
@@ -45,7 +45,7 @@
     <SolidColorBrush x:Key="GridSelectionTextBrush" Color="{DynamicResource GridSelectionTextColor}" />
     <SolidColorBrush x:Key="InactiveSelectionBrush" Color="{DynamicResource InactiveSelectionColor}" />
 
-    <SolidColorBrush x:Key="SpectrumBackground" Color="{DynamicResource SpectrumColor}" />
+    <SolidColorBrush x:Key="SpectrumBackground" Color="{DynamicResource SpectrumBackgroundColor}" />
     <SolidColorBrush x:Key="SpectrumStartBrush" Color="{DynamicResource SpectrumStartColor}" />
     <SolidColorBrush x:Key="SpectrumEndBrush" Color="{DynamicResource SpectrumEndColor}" />
     <SolidColorBrush x:Key="SpectrumLineBrush" Color="{DynamicResource SpectrumLineColor}" />

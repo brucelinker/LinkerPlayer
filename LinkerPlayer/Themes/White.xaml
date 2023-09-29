@@ -1,54 +1,54 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Color x:Key="PlayerButtonBorderColor">#a0a0a0</Color>
-    <Color x:Key="PlayerButtonBorderDark">DarkGray</Color>
-    <Color x:Key="PlayerButtonGradientStartColor">#DDDDDD</Color>
-    <Color x:Key="PlayerButtonGradientEndColor">#FFFFFF</Color>
-    <Color x:Key="PlayerButtonPressedGradientStart">#A0A0A0</Color>
-    <Color x:Key="PlayerButtonPressedGradientStop">#C0C0C0</Color>
-    <Color x:Key="PlayerButtonMouseOverBorderColor">SteelBlue</Color>
-    <Color x:Key="PlayerButtonMouseOverBackground">#E0E0E0</Color>
+    <Color x:Key="FirstDarkColor">SteelBlue</Color>
+    <Color x:Key="FirstLightColor">LightSteelBlue</Color>
+    <Color x:Key="FirstBackgroundColor">White</Color>
+    <Color x:Key="PrimaryBackgroundColor">White</Color>
+    <Color x:Key="SecondBackgroundColor">White</Color>
+    <Color x:Key="StandardTextForegroundColor">#4682B4</Color>
+    <Color x:Key="InactiveSelectionColor">WhiteSmoke</Color>
 
-    <Color x:Key="DefaultItemForeground">#555555</Color>
-    <Color x:Key="MenuTextBrushForeground">#999999</Color>
-    <Color x:Key="MenuDisabledTextForeGround">#999999</Color>
-    <Color x:Key="FirstColorBrush">SteelBlue</Color>
-    <Color x:Key="FirstColorLightBrush">LightSteelBlue</Color>
-    <Color x:Key="PrimaryBackgroundBrush">White</Color>
-    <Color x:Key="SecondBackgroundBrush">White</Color>
-    <Color x:Key="StandardTextForeground">#4682B4</Color>
-
-    <Color x:Key="ListViewItemBackgroundBrush">White</Color>
-    <Color x:Key="ListViewItemForegroundBrush">#666666</Color>
-    <Color x:Key="FirstBackgroundBrush">White</Color>
-    <Color x:Key="PlaylistBackgroundBrush">White</Color>
-    <Color x:Key="PlaylistItemBackgroundBrush">White</Color>
-
-    <Color x:Key="ImageBackgroundColor">White</Color>
-    <Color x:Key="MenuColor">#FDFDFD</Color>
-    <Color x:Key="MenuTextColor">Gray</Color>
     <Color x:Key="GridAlternateColor">WhiteSmoke</Color>
     <Color x:Key="GridSelectionColor">#CBE8F6</Color>
-    <Color x:Key="PlaylistInsertColor">#6B7B82</Color>
     <Color x:Key="GridSelectionTextColor">Black</Color>
-    <Color x:Key="MenuHoverColor">LightSteelBlue</Color>
-    <Color x:Key="MenuSelectionColor">Black</Color>
+
+    <Color x:Key="ListItemForegroundColor">#555555</Color>
+    <Color x:Key="ListViewItemBackgroundColor">White</Color>
+    <Color x:Key="ListViewItemForegroundColor">#666666</Color>
+
+    <Color x:Key="PlaylistBackgroundColor">White</Color>
+    <Color x:Key="PlaylistItemBackgroundColor">White</Color>
+    <Color x:Key="PlaylistInsertColor">#6B7B82</Color>
+    <Color x:Key="PlayListTipBackgroundColor">#A0A4A8</Color>
+    <Color x:Key="PlayListTipForegroundColor">#F0F0F0</Color>
 
     <Color x:Key="PlayerInactiveColor">Gray</Color>
     <Color x:Key="PlayerActiveColor">DarkGray</Color>
+    <Color x:Key="PlayStartGradientColor">#FFFFFF</Color>
+    <Color x:Key="PlayEndGradientColor">#FFFFFF</Color>
 
+    <Color x:Key="PlayerButtonBorderColor">#a0a0a0</Color>
+    <Color x:Key="PlayerButtonBorderDarkColor">DarkGray</Color>
+    <Color x:Key="PlayerButtonGradientStartColor">#DDDDDD</Color>
+    <Color x:Key="PlayerButtonGradientEndColor">#FFFFFF</Color>
+    <Color x:Key="PlayerButtonPressedGradientStartColor">#A0A0A0</Color>
+    <Color x:Key="PlayerButtonPressedGradientStopColor">#C0C0C0</Color>
+    <Color x:Key="PlayerButtonMouseOverBorderColor">SteelBlue</Color>
+    <Color x:Key="PlayerButtonMouseOverBackgroundColor">#E0E0E0</Color>
+
+    <Color x:Key="MenuTextForegroundColor">#999999</Color>
+    <Color x:Key="MenuDisabledTextColor">#999999</Color>
+    <Color x:Key="MenuColor">#FDFDFD</Color>
+    <Color x:Key="MenuTextColor">Gray</Color>
+    <Color x:Key="MenuHoverColor">LightSteelBlue</Color>
+    <Color x:Key="MenuSelectionColor">Black</Color>
     <Color x:Key="MenuHighlightColor">Black</Color>
 
-    <Color x:Key="InactiveSelectionColor">WhiteSmoke</Color>
+    <Color x:Key="ImageBackgroundColor">White</Color>
 
-    <Color x:Key="PlayerStartColor">#FFFFFF</Color>
-    <Color x:Key="PlayerEndColor">#FFFFFF</Color>
-    <Color x:Key="SpectrumColor">#FFFFFF</Color>
-
+    <Color x:Key="SpectrumBackgroundColor">#FFFFFF</Color>
     <Color x:Key="SpectrumStartColor">Steelblue</Color>
     <Color x:Key="SpectrumEndColor">Yellow</Color>
     <Color x:Key="SpectrumLineColor">LightSteelBlue</Color>
 
-    <Color x:Key="PlayListTipColor">#A0A4A8</Color>
-    <Color x:Key="PlayListTipTextColor">#F0F0F0</Color>
 </ResourceDictionary>

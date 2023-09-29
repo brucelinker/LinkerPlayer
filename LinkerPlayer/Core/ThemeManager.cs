@@ -85,6 +85,25 @@ public class ThemeManager
         return langDictUri;
     }
 
+    public int ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
+    {
+        ClearStyles();
+        AddTheme(themeColor);
+
+        const string colors = @"Styles\SolidColorBrushes.xaml";
+        Uri colorsUri = new Uri(colors, UriKind.Relative);
+        ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
+
+        AddDict(brushesDict);
+
+        Uri sizeUri = ThemeManager.GetSizeUri(fontSize);
+        ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
+
+        AddDict(sizesDict);
+
+        return (int)themeColor;
+    }
+
     public static void AddTheme(ThemeColors skin)
     {
         string uri = GetThemeUri(skin);

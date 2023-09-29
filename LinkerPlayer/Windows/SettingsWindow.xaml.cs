@@ -18,6 +18,8 @@ namespace LinkerPlayer.Windows;
 
 public partial class SettingsWindow
 {
+    private readonly ThemeManager _themeManager = new();
+
     public SettingsWindow()
     {
         InitializeComponent();
@@ -71,7 +73,7 @@ public partial class SettingsWindow
             ThemesList.SelectedIndex = (int)ThemeColors.Dark;
         }
 
-        mainWindow?.ModifyTheme((ThemeColors)ThemesList.SelectedIndex);
+        _themeManager.ModifyTheme((ThemeColors)ThemesList.SelectedIndex);
 
         VisualizationEnabled.IsChecked = Properties.Settings.Default.VisualizationEnabled;
         MinimizeToTrayEnabled.IsChecked = Properties.Settings.Default.MinimizeToTrayEnabled;
@@ -81,13 +83,13 @@ public partial class SettingsWindow
 
     private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        MainWindow? mainWindow = (Owner as MainWindow);
+        //MainWindow? mainWindow = (Owner as MainWindow);
 
         ComboBoxItem selectedItem = ((sender as ComboBox)!.SelectedItem as ComboBoxItem)!;
 
         ThemeColors selectedTheme = (ThemeColors)selectedItem.Tag;
 
-        mainWindow?.ModifyTheme(selectedTheme);
+        _themeManager.ModifyTheme(selectedTheme);
     }
 
     private static string GetCurrentTheme()

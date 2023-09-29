@@ -14,7 +14,7 @@
         <Style TargetType="{x:Type ListView}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Margin" Value="0, 30, 10, -1" />
+            <Setter Property="Margin" Value="0,30,10,-1" />
         </Style>
 
         <Style TargetType="{x:Type ListViewItem}">
@@ -24,12 +24,12 @@
                         <Button
                             Name="RowElement"
                             Height="Auto"
-                            Padding="10, 6, 10, 10"
+                            Padding="10,6,10,10"
                             HorizontalContentAlignment="Left"
                             BorderBrush="Gray"
                             Click="ClickRowElement"
                             FontWeight="Normal">
-                            <ContentPresenter />
+                            <ContentPresenter/>
 
                             <Button.ContextMenu>
                                 <ContextMenu
@@ -46,6 +46,13 @@
 
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="False">
+                                <Setter TargetName="RowElement" Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="blue" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="RowElement" Property="Background">
                                     <Setter.Value>
                                         <SolidColorBrush Color="Red" />
