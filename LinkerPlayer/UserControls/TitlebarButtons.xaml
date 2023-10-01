@@ -13,7 +13,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Grid Width="45" Height="25">
-                            <Border x:Name="border" Background="Transparent" />
+                            <Border x:Name="border" Background="{DynamicResource TitleBarBackgroundBrush}" />
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
 
@@ -21,7 +21,7 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="border" Property="Background">
                                     <Setter.Value>
-                                        <SolidColorBrush Opacity="0.1" Color="White" />
+                                        <SolidColorBrush Opacity="0.1" Color="black" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -36,7 +36,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
                         <Grid Width="45" Height="25">
-                            <Border x:Name="border" Background="Transparent" />
+                            <Border x:Name="border" Background="Black" />
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Grid>
 
@@ -59,6 +59,7 @@
         <StackPanel
             HorizontalAlignment="Right"
             VerticalAlignment="Top"
+            Background="{DynamicResource TitleBarBackgroundBrush}"
             Orientation="Horizontal"
             WindowChrome.IsHitTestVisibleInChrome="True">
 

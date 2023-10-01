@@ -172,7 +172,7 @@
                                 Grid.Column="2"
                                 HorizontalContentAlignment="Center"
                                 ItemsSource="{Binding Path=ThemeColors}" SelectionChanged="OnThemeSelectionChanged">
-                                <ComboBoxItem Content="White" Tag="{x:Static models:ThemeColors.White}" />
+                                <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
                                 <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
                                 <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
                                 <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />

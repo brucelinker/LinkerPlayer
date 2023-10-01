@@ -3,12 +3,13 @@ using System.Windows;
 using System;
 using LinkerPlayer.Models;
 using LinkerPlayer.Properties;
+using MaterialDesignThemes.Wpf;
 
 namespace LinkerPlayer.Core;
 
 public class ThemeManager
 {
-    public static ThemeColors ActiveSkin = ThemeColors.White;
+    public static ThemeColors ActiveSkin = ThemeColors.Dark;
 
     public static void ClearStyles()
     {
@@ -21,10 +22,6 @@ public class ThemeManager
         MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Clear();
         //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.Favourites.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.AlbumDetails.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.Playlist.PlaylistStatus.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.SmartPlayer.Spectrum.Resources.MergedDictionaries.Clear();
     }
 
     public static void AddDict(ResourceDictionary resDict)
@@ -39,12 +36,6 @@ public class ThemeManager
         MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Add(resDict);
         //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.setctrl.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.TrackTable.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.Favourites.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.AlbumDetails.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.Playlist.PlaylistStatus.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.SmartPlayer.OnThemeChanged();
     }
 
     public static string GetThemeUri(ThemeColors theme)
@@ -54,7 +45,7 @@ public class ThemeManager
         switch (theme)
         {
             case ThemeColors.Blue: resourceLocator = @"Themes\Blue.xaml"; break;
-            case ThemeColors.White: resourceLocator = @"Themes\White.xaml"; break;
+            case ThemeColors.Light: resourceLocator = @"Themes\Light.xaml"; break;
             case ThemeColors.Dark: resourceLocator = @"Themes\Dark.xaml"; break;
             case ThemeColors.Gray: resourceLocator = @"Themes\Gray.xaml"; break;
             case ThemeColors.BlackSmooth: resourceLocator = @"Themes\BlackSmooth.xaml"; break;
@@ -85,7 +76,7 @@ public class ThemeManager
         return langDictUri;
     }
 
-    public int ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
+    public ThemeColors ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
     {
         ClearStyles();
         AddTheme(themeColor);
@@ -101,7 +92,7 @@ public class ThemeManager
 
         AddDict(sizesDict);
 
-        return (int)themeColor;
+        return themeColor;
     }
 
     public static void AddTheme(ThemeColors skin)
@@ -158,12 +149,13 @@ public class ThemeManager
         FontSize currentSize = (FontSize)Settings.Default.FontSize;
         switch (theme)
         {
-            case "White": ApplyTheme(main, ThemeColors.White, currentSize); break;
+            case "Light": ApplyTheme(main, ThemeColors.Light, currentSize); break;
             case "Blue": ApplyTheme(main, ThemeColors.Blue, currentSize); break;
+            case "Gray": ApplyTheme(main, ThemeColors.Gray, currentSize); break;
             case "Dark": ApplyTheme(main, ThemeColors.Dark, currentSize); break;
             case "Custom": ApplySkinFromFile(main, fileName); break;
             case "URI": ApplyTheme(fileName); break;
-            default: ApplyTheme(main, ThemeColors.White, currentSize); break;
+            default: ApplyTheme(main, ThemeColors.Light, currentSize); break;
         }
     }
 
@@ -171,9 +163,45 @@ public class ThemeManager
     {
     }
 
+    public static ThemeColors StringToThemeColor(string theme)
+    {
+        switch (theme)
+        {
+            case "Light": return ThemeColors.Light;
+            case "Blue": return ThemeColors.Blue;
+            case "Gray": return ThemeColors.Gray;
+            case "Dark": return ThemeColors.Dark;
+            default: return ThemeColors.BlackSmooth;
+        }
+    }
+
+    public static int StringToThemeColorIndex(string theme)
+    {
+        switch (theme)
+        {
+            case "Light": return (int)ThemeColors.Light;
+            case "Blue": return (int)ThemeColors.Blue;
+            case "Gray": return (int)ThemeColors.Gray;
+            case "Dark": return (int)ThemeColors.Dark;
+            default: return (int)ThemeColors.BlackSmooth;
+        }
+    }
+
+    public static string IndexToThemeColorString(int theme)
+    {
+        switch (theme)
+        {
+            case (int)ThemeColors.Light: return "Light";
+            case (int)ThemeColors.Blue: return "Blue";
+            case (int)ThemeColors.Gray: return "Gray";
+            case (int)ThemeColors.Dark: return "Dark";
+            default: return "BlackSmooth";
+        }
+    }
+
     public static void ApplyFontSize(MainWindow main, FontSize size)
     {
-        ApplyTheme(main, (ThemeColors)Settings.Default.SelectedTheme, size);
+        ApplyTheme(main, (ThemeColors)Enum.Parse(typeof(ThemeColors), Settings.Default.SelectedTheme), size);
         //MainWindow.Instance.TrackTable.UpdateMargín(size);
         //MainWindow.Instance.Favorites.UpdateMargín(size);
     }

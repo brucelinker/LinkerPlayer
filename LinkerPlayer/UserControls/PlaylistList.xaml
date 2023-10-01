@@ -29,7 +29,7 @@
                             BorderBrush="Gray"
                             Click="ClickRowElement"
                             FontWeight="Normal">
-                            <ContentPresenter/>
+                            <ContentPresenter />
 
                             <Button.ContextMenu>
                                 <ContextMenu
@@ -48,7 +48,7 @@
                             <Trigger Property="IsMouseOver" Value="False">
                                 <Setter TargetName="RowElement" Property="Background">
                                     <Setter.Value>
-                                        <SolidColorBrush Color="blue" />
+                                        <SolidColorBrush Color="{DynamicResource PlaylistItemBackgroundBrush}" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>

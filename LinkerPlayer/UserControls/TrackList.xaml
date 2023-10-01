@@ -35,15 +35,15 @@
                             FontFamily="Segoe UI"
                             FontSize="14"
                             FontWeight="Regular"
-                            Foreground="#BDBDBD">
+                            Foreground="{DynamicResource StandardTextForegroundBrush}">
                             <GridViewRowPresenter />
 
                             <Button.ContextMenu>
                                 <ContextMenu
-                                    Background="#212121"
+                                    Background="{DynamicResource MenuBrush}"
                                     FontFamily="Segoe UI"
                                     FontWeight="Regular"
-                                    Foreground="#BDBDBD">
+                                    Foreground="{DynamicResource MenuTextBrush}">
                                     <MenuItem Click="MenuItem_Click" Header="Rename" />
                                     <MenuItem Click="MenuItem_Click" Header="Remove from playlist" />
                                 </ContextMenu>
@@ -79,7 +79,7 @@
                             Padding="4,0,4,5"
                             FontFamily="Segoe UI"
                             FontSize="16"
-                            Foreground="White"
+                            Foreground="{DynamicResource StandardTextForegroundBrush}"
                             Text="{TemplateBinding Content}"
                             TextAlignment="Left" />
 
@@ -87,7 +87,7 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ColumnName" Property="Background">
                                     <Setter.Value>
-                                        <SolidColorBrush Opacity="0.1" Color="White" />
+                                        <SolidColorBrush Opacity="1.1" Color="White" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -100,8 +100,8 @@
         <Style x:Key="GridViewCellTextBox" TargetType="{x:Type TextBox}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="#BDBDBD" />
-            <Setter Property="CaretBrush" Value="#BDBDBD" />
+            <Setter Property="Foreground" Value="{DynamicResource StandardTextForegroundBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource StandardTextForegroundBrush}" />
             <EventSetter Event="PreviewDragOver" Handler="TextBox_PreviewDragOver" />
 
             <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />

@@ -19,7 +19,7 @@ public class DefaultAlbumImage
     {
         string noAlbumCoverUri = NoAlbumCoverLight;
 
-        if (Settings.Default.SelectedTheme == (int)ThemeColors.BlackSmooth)
+        if (Settings.Default.SelectedTheme == ThemeColors.BlackSmooth.ToString())
             noAlbumCoverUri = NoAlbumCoverDark;
 
         _defaultImage = new BitmapImage(new System.Uri(noAlbumCoverUri, System.UriKind.Absolute));

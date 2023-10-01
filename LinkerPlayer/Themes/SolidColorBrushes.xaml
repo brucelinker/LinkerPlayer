@@ -3,6 +3,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
+    <SolidColorBrush x:Key="TitleBarForegroundBrush" Color="{DynamicResource TitleBarForegroundColor}" />
+    <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="{DynamicResource TitleBarBackgroundColor}" />
+
     <SolidColorBrush x:Key="FirstDarkBrush" Color="{DynamicResource FirstDarkColor}" />
     <SolidColorBrush x:Key="FirstLightBrush" Color="{DynamicResource FirstLightColor}" />
     <SolidColorBrush x:Key="FirstBackgroundBrush" Color="{DynamicResource FirstBackgroundColor}" />

@@ -25,10 +25,10 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public int SelectedTheme {
+        [global::System.Configuration.DefaultSettingValueAttribute("Dark")]
+        public string SelectedTheme {
             get {
-                return ((int)(this["SelectedTheme"]));
+                return ((string)(this["SelectedTheme"]));
             }
             set {
                 this["SelectedTheme"] = value;

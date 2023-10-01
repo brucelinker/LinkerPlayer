@@ -20,12 +20,12 @@ public partial class MainWindow
     public static MainWindow Instance = null!;
     public AudioStreamControl AudioStreamControl;
     private readonly DispatcherTimer _seekBarTimer = new();
-    private static ThemeManager _themeManager = new();
+    private static readonly ThemeManager ThemeManager = new();
 
     public Playlist? SelectedPlaylist;
     public MediaFile? SelectedSong;
     public string? BackgroundPlaylistName;
-    public int SelectedTheme;
+    public ThemeColors SelectedTheme;
 
     public bool VisualizationEnabled = Properties.Settings.Default.VisualizationEnabled;
     private string? _currentlyVisualizedPath;
@@ -114,16 +114,16 @@ public partial class MainWindow
             }
         }
 
-        if (Properties.Settings.Default.SelectedTheme > -1)
+        if (!string.IsNullOrEmpty(Properties.Settings.Default.SelectedTheme))
         {
-            SelectedTheme = Properties.Settings.Default.SelectedTheme;
+            SelectedTheme = ThemeManager.StringToThemeColor(Properties.Settings.Default.SelectedTheme);
         }
         else
         {
-            SelectedTheme = (int)ThemeColors.Dark;
+            SelectedTheme = ThemeColors.Dark;
         }
 
-        SelectedTheme = _themeManager.ModifyTheme((ThemeColors)SelectedTheme);
+        SelectedTheme = ThemeManager.ModifyTheme(SelectedTheme);
 
         PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
         PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;

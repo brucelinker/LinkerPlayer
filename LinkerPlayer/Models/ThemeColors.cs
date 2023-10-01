@@ -2,7 +2,7 @@
 
 public enum ThemeColors
 {
-    White = 0,
+    Light = 0,
     Gray = 1,
     Dark = 2,
     Blue = 3,

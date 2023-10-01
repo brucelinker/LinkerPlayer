@@ -63,10 +63,10 @@ public partial class SettingsWindow
         AdditionalOutputEnabled.IsChecked = Properties.Settings.Default.AdditionalOutputEnabled;
         EqualizerOnStartEnabled.IsChecked = Properties.Settings.Default.EqualizerOnStartEnabled;
 
-
-        if (ThemesList.Items.Count >= 0 && Properties.Settings.Default.SelectedTheme <= ThemesList.Items.Count)
+        int selectedThemeIndex = ThemeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme);
+        if (ThemesList.Items.Count >= 0 && selectedThemeIndex <= ThemesList.Items.Count)
         {
-            ThemesList.SelectedIndex = Properties.Settings.Default.SelectedTheme;
+            ThemesList.SelectedIndex = selectedThemeIndex;
         }
         else
         {
@@ -98,17 +98,6 @@ public partial class SettingsWindow
         ITheme theme = paletteHelper.GetTheme();
 
         return theme.ToString() ?? Theme.Dark.ToString()!;
-    }
-
-    public ThemeColors StringToThemeColor(string theme)
-    {
-        switch (theme)
-        {
-            case "White":
-                return ThemeColors.White;
-            default:
-                return ThemeColors.Dark;
-        }
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
@@ -164,9 +153,9 @@ public partial class SettingsWindow
         mainWindow.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
         mainWindow.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
-        if (ThemesList.SelectedIndex != Properties.Settings.Default.SelectedTheme)
+        if (ThemesList.SelectedIndex != ThemeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme))
         {
-            Properties.Settings.Default.SelectedTheme = ThemesList.SelectedIndex;
+            Properties.Settings.Default.SelectedTheme = ThemeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
         }
 
         Properties.Settings.Default.MinimizeToTrayEnabled = MinimizeToTrayEnabled.IsChecked.GetValueOrDefault();

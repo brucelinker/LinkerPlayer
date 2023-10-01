@@ -23,7 +23,7 @@
     StateChanged="Window_StateChanged"
     TextElement.FontSize="14"
     TextElement.FontWeight="Medium"
-    TextElement.Foreground="{DynamicResource MaterialDesignBody}"
+    TextElement.Foreground="{DynamicResource StandardTextForegroundBrush}"
     WindowStyle="None"
     mc:Ignorable="d">
 
@@ -34,7 +34,7 @@
     <Grid Focusable="True">
         <Grid.Background>
             <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
-                <GradientStop Color="#1A1A1A" />
+                <GradientStop Color="{DynamicResource PlayStartGradientColor}" />
                 <GradientStop Offset="1" Color="Black" />
             </LinearGradientBrush>
         </Grid.Background>
