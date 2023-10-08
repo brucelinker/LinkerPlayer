@@ -98,11 +98,11 @@ public partial class MainWindow
         PlayerControls.SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
         PlayerControls.SeekBar.ValueChanged += SeekBar_ValueChanged;
 
-        PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
-        PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        //PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        //PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
         PlayerControls.MainVolumeSlider.Value = Properties.Settings.Default.MainVolumeSliderValue;
-        PlayerControls.AdditionalVolumeSlider.Value = Properties.Settings.Default.AdditionalVolumeSliderValue;
+        //PlayerControls.AdditionalVolumeSlider.Value = Properties.Settings.Default.AdditionalVolumeSliderValue;
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
@@ -126,7 +126,7 @@ public partial class MainWindow
         SelectedTheme = ThemeManager.ModifyTheme(SelectedTheme);
 
         PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
-        PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
+        //PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
 
         TrackList.ClickRowElement += Song_Click;
 
@@ -229,7 +229,7 @@ public partial class MainWindow
 
     private void AdditionalVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        AudioStreamControl.AdditionalMusic!.MusicVolume = (float)PlayerControls.AdditionalVolumeSlider.Value / 100;
+        //AudioStreamControl.AdditionalMusic!.MusicVolume = (float)PlayerControls.AdditionalVolumeSlider.Value / 100;
     }
 
     public void Music_StoppedEvent(object sender, EventArgs e)
@@ -652,7 +652,7 @@ public partial class MainWindow
     public void Window_Closed(object sender, EventArgs e)
     {
         Properties.Settings.Default.MainVolumeSliderValue = PlayerControls.MainVolumeSlider.Value;
-        Properties.Settings.Default.AdditionalVolumeSliderValue = PlayerControls.AdditionalVolumeSlider.Value;
+        //Properties.Settings.Default.AdditionalVolumeSliderValue = PlayerControls.AdditionalVolumeSlider.Value;
 
         Properties.Settings.Default.LastSelectedPlaylistName = SelectedPlaylist != null ? SelectedPlaylist.Name : "";
         Properties.Settings.Default.LastBackgroundPlaylistName = BackgroundPlaylistName ?? "";

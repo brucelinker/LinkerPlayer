@@ -10,19 +10,23 @@
     <Grid>
         <Button
             x:Name="AddButton"
-            Width="18"
-            Height="18"
-            Margin="0,8,0,0"
-            Padding="0"
+            Width="30"
+            Height="28"
+            Margin="0,0,0,0"
+            Padding="0,0,0,0"
             HorizontalAlignment="Left"
-            Background="Transparent"
-            BorderBrush="Transparent"
-            Click="AddButtonClick">
+            Background="{DynamicResource NewPlaylistButtonBackgroundBrush}"
+            BorderBrush="{DynamicResource NewPlaylistButtonBackgroundBrush}"
+            Click="AddButtonClick"
+            Content="+"
+            FontSize="28"
+            FontWeight="Normal"
+            Foreground="{DynamicResource NewPlaylistButtonForegroundBrush}">
 
-            <Image
+            <!--<Image
                 Width="15"
                 Height="15"
-                Source="/Images/plus.png" />
+                Source="/Images/plus.png" />-->
         </Button>
 
         <Popup
@@ -33,13 +37,12 @@
             PlacementTarget="{Binding ElementName=AddButton}"
             StaysOpen="False"
             VerticalOffset="15">
-            <Border Padding="15" Background="#212128">
+            <Border Padding="15" Background="{DynamicResource NewPlaylistNamePopupBackgroundBrush}">
                 <TextBox
                     Name="PopupTextBox"
-                    FontFamily="/Fonts/#Montserrat"
                     FontSize="22"
                     FontWeight="DemiBold"
-                    Foreground="#BDBDBD"
+                    Foreground="{DynamicResource NewPlaylistNamePopupForegroundBrush}"
                     KeyDown="PopupTextBox_KeyDown" />
             </Border>
         </Popup>

@@ -375,7 +375,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
                 Maximum = Maximum,
                 Minimum = Minimum,
                 Orientation = Orientation.Vertical,
-                Style = (Style)FindResource("MaterialDesignDiscreteSlider"),
+                Style = (Style)FindResource("EqVerticalSlider"),
                 TickFrequency = 1,
                 TickPlacement = TickPlacement.BottomRight
             };

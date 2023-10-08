@@ -14,9 +14,12 @@ namespace LinkerPlayer.UserControls;
 
 public partial class FunctionButtons
 {
-    private const string SupportedAudioFormats = "(*.mp3)|*.mp3;(*.flac)|*.flac";
+    private const string SupportedAudioFormats = "(*.mp3; *.flac)|*.mp3; *.flac";
     private const string SupportedPlaylistFormats = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
     const string SupportedExtensions = $"Audio Formats {SupportedAudioFormats}|Playlist Files {SupportedPlaylistFormats}|All files (*.*)|*.*";
+
+    private bool _isEqualizerWindowOpen;
+    private EqualizerWindow? _equalizerWin;
 
     public FunctionButtons()
     {
@@ -26,8 +29,6 @@ public partial class FunctionButtons
     private bool _isSettingsWindowOpen;
     private SettingsWindow? _settingsWin;
 
-    private bool _isEqualizerWindowOpen;
-    private EqualizerWindow? _equalizerWin;
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
@@ -218,6 +219,7 @@ public partial class FunctionButtons
             Owner = Window.GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
+
         _equalizerWin.Closed += (_, _) => { _isEqualizerWindowOpen = false; };
         _equalizerWin.Closing += (_, _) => { _equalizerWin.Owner = null; };
         _isEqualizerWindowOpen = true;

@@ -58,9 +58,7 @@
 
   <ItemGroup>
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
-    <PackageReference Include="MaterialDesignColors" Version="2.1.4" />
     <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
-    <PackageReference Include="MaterialDesignThemes.Wpf" Version="1.0.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />

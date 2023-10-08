@@ -1,0 +1,102 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Style x:Key="SliderIncreaseButton" TargetType="RepeatButton">
+    <Setter Property="SnapsToDevicePixels" Value="true" />
+    <Setter Property="OverridesDefaultStyle" Value="true" />
+    <Setter Property="IsTabStop" Value="false" />
+    <Setter Property="Focusable" Value="false" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RepeatButton">
+          <Border
+            Width="5"
+            Background="{DynamicResource ControlDisabledBrush}"
+            BorderBrush="{DynamicResource ControlDisabledBrush}"
+            BorderThickness="1" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="SliderDecreaseButton" TargetType="RepeatButton">
+    <Setter Property="SnapsToDevicePixels" Value="true" />
+    <Setter Property="OverridesDefaultStyle" Value="true" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RepeatButton">
+          <Border
+            Width="5"
+            Background="{DynamicResource ControlPrimaryAccentBrush}"
+            BorderBrush="{DynamicResource ControlPrimaryAccentBrush}"
+            BorderThickness="1"
+            SnapsToDevicePixels="True" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="SliderThumb" TargetType="Thumb">
+    <Setter Property="SnapsToDevicePixels" Value="true" />
+    <Setter Property="OverridesDefaultStyle" Value="true" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Thumb">
+          <!--  Add name to ellipse to use in ControlTemplate triggers  -->
+          <Ellipse
+            x:Name="Ellipse"
+            Width="20"
+            Height="12"
+            Fill="{DynamicResource ControlPrimaryAccentBrush}" />
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="true">
+              <Setter TargetName="Ellipse" Property="Fill" Value="Yellow" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <ControlTemplate x:Key="Slider" TargetType="Slider">
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" MinWidth="{TemplateBinding MinWidth}" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <Track x:Name="PART_Track" Grid.Column="1">
+        <Track.DecreaseRepeatButton>
+          <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource SliderDecreaseButton}" />
+        </Track.DecreaseRepeatButton>
+        <Track.Thumb>
+          <Thumb Style="{StaticResource SliderThumb}" />
+        </Track.Thumb>
+        <Track.IncreaseRepeatButton>
+          <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource SliderIncreaseButton}" />
+        </Track.IncreaseRepeatButton>
+      </Track>
+      <TickBar
+        Name="BottomTick"
+        Grid.Column="2"
+        Width="4"
+        Fill="White"
+        Placement="Right"
+        SnapsToDevicePixels="True"
+        Visibility="Collapsed" />
+    </Grid>
+  </ControlTemplate>
+
+  <Style x:Key="EqVerticalSlider" TargetType="Slider">
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="SnapsToDevicePixels" Value="true" />
+    <Setter Property="OverridesDefaultStyle" Value="true" />
+    <Style.Triggers>
+      <Trigger Property="Orientation" Value="Vertical">
+        <Setter Property="MinHeight" Value="104" />
+        <Setter Property="MinWidth" Value="21" />
+        <Setter Property="Template" Value="{StaticResource Slider}" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+</ResourceDictionary>

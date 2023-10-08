@@ -6,5 +6,5 @@ public enum ThemeColors
     Gray = 1,
     Dark = 2,
     Blue = 3,
-    BlackSmooth = 4
+    Midnight = 4
 }

@@ -35,7 +35,7 @@
                             FontFamily="Segoe UI"
                             FontSize="14"
                             FontWeight="Regular"
-                            Foreground="{DynamicResource StandardTextForegroundBrush}">
+                            Foreground="{DynamicResource TrackListItemForegroundBrush}">
                             <GridViewRowPresenter />
 
                             <Button.ContextMenu>
@@ -54,7 +54,7 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="RowElement" Property="Background">
                                     <Setter.Value>
-                                        <SolidColorBrush Opacity="0.1" Color="White" />
+                                        <SolidColorBrush Opacity="0.1" Color="{DynamicResource TrackListMouseOverItemBackgroundColor}" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -79,7 +79,7 @@
                             Padding="4,0,4,5"
                             FontFamily="Segoe UI"
                             FontSize="16"
-                            Foreground="{DynamicResource StandardTextForegroundBrush}"
+                            Foreground="{DynamicResource TrackListColumnHeaderForegroundBrush}"
                             Text="{TemplateBinding Content}"
                             TextAlignment="Left" />
 
@@ -87,7 +87,7 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="ColumnName" Property="Background">
                                     <Setter.Value>
-                                        <SolidColorBrush Opacity="1.1" Color="White" />
+                                        <SolidColorBrush Opacity="1.1" Color="{DynamicResource TrackListColumnHeaderBackgroundColor}" />
                                     </Setter.Value>
                                 </Setter>
                             </Trigger>
@@ -100,8 +100,8 @@
         <Style x:Key="GridViewCellTextBox" TargetType="{x:Type TextBox}">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{DynamicResource StandardTextForegroundBrush}" />
-            <Setter Property="CaretBrush" Value="{DynamicResource StandardTextForegroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TrackListItemForegroundBrush}" />
             <EventSetter Event="PreviewDragOver" Handler="TextBox_PreviewDragOver" />
 
             <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
@@ -126,7 +126,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="200" Header="Title">
+                    <GridViewColumn Width="Auto" Header="Title">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBox
@@ -142,7 +142,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="220" Header="Artists">
+                    <GridViewColumn Width="Auto" Header="Artists">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock
@@ -153,7 +153,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="270" Header="Album">
+                    <GridViewColumn Width="Auto" Header="Album">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock
@@ -164,7 +164,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
 
-                    <GridViewColumn Width="50" Header="🕓">
+                    <GridViewColumn Width="Auto" Header="🕓">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock d:DataContext="{d:DesignData MediaFile}" Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />

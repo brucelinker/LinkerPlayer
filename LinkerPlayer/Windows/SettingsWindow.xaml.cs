@@ -92,13 +92,13 @@ public partial class SettingsWindow
         _themeManager.ModifyTheme(selectedTheme);
     }
 
-    private static string GetCurrentTheme()
-    {
-        PaletteHelper paletteHelper = new PaletteHelper();
-        ITheme theme = paletteHelper.GetTheme();
+    //private static string GetCurrentTheme()
+    //{
+    //    PaletteHelper paletteHelper = new PaletteHelper();
+    //    ITheme theme = paletteHelper.GetTheme();
 
-        return theme.ToString() ?? Theme.Dark.ToString()!;
-    }
+    //    return theme.ToString() ?? Theme.Dark.ToString()!;
+    //}
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -130,7 +130,7 @@ public partial class SettingsWindow
                 Properties.Settings.Default.AdditionalOutputEnabled = true;
 
                 mainWindow.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
-                mainWindow.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)mainWindow.PlayerControls.AdditionalVolumeSlider.Value / 100;
+                //mainWindow.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)mainWindow.PlayerControls.AdditionalVolumeSlider.Value / 100;
                 mainWindow.AudioStreamControl.AdditionalMusic.StoppedEvent += mainWindow.Music_StoppedEvent!;
             }
             else
@@ -150,8 +150,8 @@ public partial class SettingsWindow
             }
         }
 
-        mainWindow.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
-        mainWindow.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        //mainWindow.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
+        //mainWindow.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
         if (ThemesList.SelectedIndex != ThemeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme))
         {

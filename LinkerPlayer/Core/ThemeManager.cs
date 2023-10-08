@@ -18,7 +18,6 @@ public class ThemeManager
         MainWindow.Instance.TrackList.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.FunctionButtons.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Clear();
-        MainWindow.Instance.TrackList.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Clear();
         //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Clear();
@@ -48,7 +47,7 @@ public class ThemeManager
             case ThemeColors.Light: resourceLocator = @"Themes\Light.xaml"; break;
             case ThemeColors.Dark: resourceLocator = @"Themes\Dark.xaml"; break;
             case ThemeColors.Gray: resourceLocator = @"Themes\Gray.xaml"; break;
-            case ThemeColors.BlackSmooth: resourceLocator = @"Themes\BlackSmooth.xaml"; break;
+            case ThemeColors.Midnight: resourceLocator = @"Themes\Midnight.xaml"; break;
             default: resourceLocator = @"Themes\White.xaml"; break;
         }
 
@@ -171,7 +170,7 @@ public class ThemeManager
             case "Blue": return ThemeColors.Blue;
             case "Gray": return ThemeColors.Gray;
             case "Dark": return ThemeColors.Dark;
-            default: return ThemeColors.BlackSmooth;
+            default: return ThemeColors.Midnight;
         }
     }
 
@@ -183,7 +182,7 @@ public class ThemeManager
             case "Blue": return (int)ThemeColors.Blue;
             case "Gray": return (int)ThemeColors.Gray;
             case "Dark": return (int)ThemeColors.Dark;
-            default: return (int)ThemeColors.BlackSmooth;
+            default: return (int)ThemeColors.Midnight;
         }
     }
 
@@ -195,15 +194,13 @@ public class ThemeManager
             case (int)ThemeColors.Blue: return "Blue";
             case (int)ThemeColors.Gray: return "Gray";
             case (int)ThemeColors.Dark: return "Dark";
-            default: return "BlackSmooth";
+            default: return "Midnight";
         }
     }
 
     public static void ApplyFontSize(MainWindow main, FontSize size)
     {
         ApplyTheme(main, (ThemeColors)Enum.Parse(typeof(ThemeColors), Settings.Default.SelectedTheme), size);
-        //MainWindow.Instance.TrackTable.UpdateMargín(size);
-        //MainWindow.Instance.Favorites.UpdateMargín(size);
     }
 
     public static void ApplyPadding(MainWindow main, PaddingType type)

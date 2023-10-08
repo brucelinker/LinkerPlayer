@@ -176,7 +176,7 @@
                                 <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
                                 <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
                                 <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />
-                                <ComboBoxItem Content="Black" Tag="{x:Static models:ThemeColors.BlackSmooth}" />
+                                <ComboBoxItem Content="Black" Tag="{x:Static models:ThemeColors.Midnight}" />
                             </ComboBox>
                         </Grid>
 

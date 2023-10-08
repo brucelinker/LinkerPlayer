@@ -1,4 +1,6 @@
-﻿using MaterialDesignThemes.Wpf;
+﻿using LinkerPlayer.Models;
+using LinkerPlayer.Core;
+using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -12,7 +14,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.UserControls;
 
@@ -477,78 +478,12 @@ public partial class PlayerControls : INotifyPropertyChanged
         if (MainVolumeSlider.Value != 0)
         {
             _mainVolumeSliderBeforeMuteValue = MainVolumeSlider.Value;
-            //MainVolumeSlider.Value = 0;
 
             AnimateVolumeSliderValue(MainVolumeSlider, 0);
         }
         else
         {
-            //MainVolumeSlider.Value = mainVolumeSliderBeforeMuteValue;
-
             AnimateVolumeSliderValue(MainVolumeSlider, _mainVolumeSliderBeforeMuteValue);
-        }
-    }
-
-    private void MicVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        PackIcon? icon = MicVolumeButton.Content as PackIcon;
-
-        if (MicVolumeSlider.Value == 0)
-        {
-            if (icon != null) icon.Kind = PackIconKind.MicrophoneOff;
-        }
-        else
-        {
-            if (icon != null) icon.Kind = PackIconKind.Microphone;
-        }
-    }
-
-    double _micVolumeSliderBeforeMuteValue;
-
-    private void MicVolumeButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (MicVolumeSlider.Value != 0)
-        {
-            _micVolumeSliderBeforeMuteValue = MicVolumeSlider.Value;
-            //MicVolumeSlider.Value = 0;
-
-            AnimateVolumeSliderValue(MicVolumeSlider, 0);
-        }
-        else
-        {
-            //MicVolumeSlider.Value = micVolumeSliderBeforeMuteValue;
-
-            AnimateVolumeSliderValue(MicVolumeSlider, _micVolumeSliderBeforeMuteValue);
-        }
-    }
-
-    private void AdditionalVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        PackIcon? icon = AdditionalVolumeButton.Content as PackIcon;
-
-        if (AdditionalVolumeSlider.Value == 0)
-        {
-            if (icon != null) icon.Kind = PackIconKind.MicrophoneVariantOff;
-        }
-        else
-        {
-            if (icon != null) icon.Kind = PackIconKind.MicrophoneVariant;
-        }
-    }
-
-    double _additionalVolumeSliderBeforeMuteValue;
-
-    private void AdditionalVolumeButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (AdditionalVolumeSlider.Value != 0)
-        {
-            _additionalVolumeSliderBeforeMuteValue = AdditionalVolumeSlider.Value;
-
-            AnimateVolumeSliderValue(AdditionalVolumeSlider, 0);
-        }
-        else
-        {
-            AnimateVolumeSliderValue(AdditionalVolumeSlider, _additionalVolumeSliderBeforeMuteValue);
         }
     }
 

@@ -11,7 +11,9 @@ public class CustomSlider : Slider
 
     public CustomSlider()
     {
-        Style = FindResource("MaterialDesignSlider") as Style;
+        Style = FindResource("CustomSlider") as Style;
+        //    DefaultStyleKeyProperty.OverrideMetadata(typeof(CustomSlider),
+        //        new FrameworkPropertyMetadata(typeof(CustomSlider)));
     }
 
     public override void OnApplyTemplate()
