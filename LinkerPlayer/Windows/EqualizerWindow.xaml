@@ -3,7 +3,6 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-  xmlns:local="clr-namespace:LinkerPlayer.Windows"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
@@ -34,16 +33,16 @@
     <Grid.Resources>
       <Style x:Key="TextBlockFontStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
-        <Setter Property="Foreground" Value="#BDBDBD" />
+        <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
       </Style>
     </Grid.Resources>
 
     <Grid.Background>
-      <SolidColorBrush Color="#212128" />
+      <SolidColorBrush Color="{DynamicResource ChildWindowBackgroundColor}" />
     </Grid.Background>
 
     <Grid.RowDefinitions>
-      <RowDefinition Height="80" />
+      <RowDefinition Height="90" />
       <RowDefinition />
       <RowDefinition Height="20" />
       <RowDefinition Height="50" />
@@ -70,10 +69,11 @@
         Name="Profiles"
         Grid.Column="1"
         Width="120"
+        Height="25"
         Padding="5"
         materialDesign:HintAssist.Hint="Default"
         Background="Transparent"
-        BorderBrush="{DynamicResource PrimaryHueMidBrush}"
+        BorderBrush="{DynamicResource ControlPrimaryAccentBrush}"
         FontFamily="/Fonts/#Montserrat"
         Foreground="#BDBDBD"
         IsTextSearchEnabled="false"
@@ -116,7 +116,7 @@
         </Button>
 
         <Popup
-          x:Name="ReNamePopup"
+          x:Name="RenamePopup"
           Width="150"
           HorizontalOffset="0"
           Placement="Bottom"
@@ -130,7 +130,7 @@
               FontSize="14"
               FontWeight="DemiBold"
               Foreground="#BDBDBD"
-              KeyDown="ReNamePopupTextBox_KeyDown" />
+              KeyDown="RenamePopupTextBox_KeyDown" />
           </Border>
         </Popup>
         <Button
@@ -143,6 +143,7 @@
 
         <Popup
           x:Name="NamePopup"
+          Grid.Column="2"
           Width="150"
           HorizontalOffset="0"
           Placement="Bottom"
@@ -162,6 +163,7 @@
         <Button
           Name="NameButton"
           Grid.Column="3"
+          Background="Transparent"
           Click="AddButton_Click"
           ToolTip="Add">
           <materialDesign:PackIcon Foreground="White" Kind="Plus" />
@@ -203,8 +205,8 @@
           Text="-30 dB" />
       </Grid>
 
-      <!-- EQ Sliders - Initialized in Window_Loaded -->
-      <Grid Name="EqGrid" Grid.Column="1"/>
+      <!--  EQ Sliders - Initialized in Window_Loaded  -->
+      <Grid Name="EqGrid" Grid.Column="1" />
 
     </Grid>
 
@@ -257,7 +259,7 @@
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           FontFamily="/Fonts/#Montserrat"
-          Foreground="#BDBDBD"
+          Foreground="{DynamicResource ControlPrimaryAccentBrush}"
           Text="Start" />
       </Button>
 

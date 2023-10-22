@@ -6,6 +6,8 @@
   <Color x:Key="MainWindowGradientStartColor">Black</Color>
   <Color x:Key="MainWindowGradientEndColor">Black</Color>
 
+  <Color x:Key="ChildWindowBackgroundColor">#333333</Color>
+
   <Color x:Key="ControlPrimaryAccentColor">#673AB7</Color>
   <Color x:Key="ControlSecondaryAccentColor">#3B2A5A</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
@@ -20,8 +22,8 @@
   <Color x:Key="StandardTextForegroundColor">#4682B4</Color>
   <Color x:Key="InactiveSelectionColor">#333333</Color>
 
-  <Color x:Key="PlaylistItemForegroundColor">#F0F0F0</Color>
-  <Color x:Key="PlaylistItemBackgroundColor">Black</Color>
+  <Color x:Key="PlaylistTabForegroundColor">#F0F0F0</Color>
+  <Color x:Key="PlaylistTabBackgroundColor">Black</Color>
   <Color x:Key="PlaylistMouseOverItemForegroundColor">#F0F0F0</Color>
   <Color x:Key="PlaylistMouseOverItemBackgroundColor">Black</Color>
   <Color x:Key="PlaylistSelectedItemColor">#6B7B82</Color>
@@ -29,7 +31,10 @@
   <Color x:Key="TrackListColumnHeaderForegroundColor">#F0F0F0</Color>
   <Color x:Key="TrackListColumnHeaderBackgroundColor">Black</Color>
   <Color x:Key="TrackListItemForegroundColor">#F0F0F0</Color>
-  <Color x:Key="TrackListItemBackgroundColor">Black</Color>
+  <Color x:Key="TrackListItemBackgroundAlt1Color">#1D1D1D</Color>
+  <Color x:Key="TrackListItemBackgroundAlt2Color">#232323</Color>
+  <Color x:Key="TrackListSelectedItemItemForegroundColor">#F0F0F0</Color>
+  <Color x:Key="TrackListSelectedItemItemBackgroundColor">LightSlateGray</Color>
   <Color x:Key="TrackListMouseOverItemForegroundColor">#F0F0F0</Color>
   <Color x:Key="TrackListMouseOverItemBackgroundColor">Black</Color>
   <Color x:Key="TrackListSelectedItemColor">#6B7B82</Color>
@@ -43,14 +48,14 @@
   <Color x:Key="NewPlaylistNamePopupForegroundColor">WhiteSmoke</Color>
   <Color x:Key="NewPlaylistNamePopupBackgroundColor">Black</Color>
 
-  <Color x:Key="PlayerForegroundColor">Black</Color>
-  <Color x:Key="PlayerBackgroundColor">#444444</Color>
+  <Color x:Key="PlayerForegroundColor">WhiteSmoke</Color>
+  <Color x:Key="PlayerBackgroundColor">Black</Color>
   <Color x:Key="PlayerActiveColor">White</Color>
   <Color x:Key="PlayStartGradientColor">#090909</Color>
   <Color x:Key="PlayEndGradientColor">#202020</Color>
 
-  <Color x:Key="PlayPauseButtonColor">#DDDDDD</Color>
-  <Color x:Key="PlayPauseButtonPressedColor">#A0A0A0</Color>
+  <Color x:Key="PlayerControlButtonColor">#DDDDDD</Color>
+  <Color x:Key="PlayerControlButtonPressedColor">#A0A0A0</Color>
 
   <Color x:Key="MenuTextForegroundColor">#CCCCCC</Color>
   <Color x:Key="MenuDisabledTextColor">#808080</Color>

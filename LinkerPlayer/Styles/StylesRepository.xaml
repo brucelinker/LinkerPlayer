@@ -105,7 +105,7 @@
   </Style>
   <Style TargetType="{x:Type TreeView}">
     <Setter Property="Background" Value="{DynamicResource MenuBackground}" />
-    <Setter Property="Foreground" Value="{DynamicResource MenuTextColor}" />
+    <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}" />
     <Setter Property="Width" Value="Auto" />
     <Setter Property="Padding" Value="0,0,0,0" />
     <Setter Property="Margin" Value="0,0,0,0" />
@@ -257,7 +257,7 @@
       <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="{DynamicResource SelectedItemForegroundColor}" />
     </Style.Resources>
     <Setter Property="FontSize" Value="12" />
-    <Setter Property="Foreground" Value="{DynamicResource MenuTextColor}" />
+    <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="IsExpanded" Value="{Binding IsNodeExpanded, Mode=TwoWay}" />

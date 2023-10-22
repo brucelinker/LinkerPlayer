@@ -1,50 +1,50 @@
 ﻿<UserControl
-    x:Class="LinkerPlayer.UserControls.NewPlaylistButton"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="18"
-    d:DesignWidth="18"
-    mc:Ignorable="d">
-    <Grid>
-        <Button
-            x:Name="AddButton"
-            Width="30"
-            Height="28"
-            Margin="0,0,0,0"
-            Padding="0,0,0,0"
-            HorizontalAlignment="Left"
-            Background="{DynamicResource NewPlaylistButtonBackgroundBrush}"
-            BorderBrush="{DynamicResource NewPlaylistButtonBackgroundBrush}"
-            Click="AddButtonClick"
-            Content="+"
-            FontSize="28"
-            FontWeight="Normal"
-            Foreground="{DynamicResource NewPlaylistButtonForegroundBrush}">
+  x:Class="LinkerPlayer.UserControls.NewPlaylistButton"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  d:DesignHeight="18"
+  d:DesignWidth="18"
+  mc:Ignorable="d">
+  <Grid>
+    <Button
+      x:Name="AddButton"
+      Width="30"
+      Height="28"
+      Margin="0,0,0,0"
+      Padding="0,0,0,0"
+      HorizontalAlignment="Left"
+      Background="{DynamicResource NewPlaylistButtonBackgroundBrush}"
+      BorderBrush="{DynamicResource NewPlaylistButtonBackgroundBrush}"
+      Click="AddButtonClick"
+      Content="+"
+      FontSize="28"
+      FontWeight="Normal"
+      Foreground="{DynamicResource NewPlaylistButtonForegroundBrush}">
 
-            <!--<Image
+      <!--<Image
                 Width="15"
                 Height="15"
                 Source="/Images/plus.png" />-->
-        </Button>
+    </Button>
 
-        <Popup
-            x:Name="EnterNamePopup"
-            Width="290"
-            HorizontalOffset="0"
-            Placement="Bottom"
-            PlacementTarget="{Binding ElementName=AddButton}"
-            StaysOpen="False"
-            VerticalOffset="15">
-            <Border Padding="15" Background="{DynamicResource NewPlaylistNamePopupBackgroundBrush}">
-                <TextBox
-                    Name="PopupTextBox"
-                    FontSize="22"
-                    FontWeight="DemiBold"
-                    Foreground="{DynamicResource NewPlaylistNamePopupForegroundBrush}"
-                    KeyDown="PopupTextBox_KeyDown" />
-            </Border>
-        </Popup>
-    </Grid>
+    <Popup
+      x:Name="EnterNamePopup"
+      Width="290"
+      HorizontalOffset="0"
+      Placement="Bottom"
+      PlacementTarget="{Binding ElementName=AddButton}"
+      StaysOpen="False"
+      VerticalOffset="15">
+      <Border Padding="15" Background="{DynamicResource NewPlaylistNamePopupBackgroundBrush}">
+        <TextBox
+          Name="PopupTextBox"
+          FontSize="22"
+          FontWeight="DemiBold"
+          Foreground="{DynamicResource NewPlaylistNamePopupForegroundBrush}"
+          KeyDown="PopupTextBox_KeyDown" />
+      </Border>
+    </Popup>
+  </Grid>
 </UserControl>

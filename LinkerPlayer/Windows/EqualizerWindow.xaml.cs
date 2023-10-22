@@ -209,7 +209,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     {
         if (StartStopText.Text == "Stop")
         {
-            ReNamePopup.IsOpen = true;
+            RenamePopup.IsOpen = true;
             ReNamePopupTextBox.Focus();
         }
     }
@@ -292,7 +292,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         }
     }
 
-    private void ReNamePopupTextBox_KeyDown(object sender, KeyEventArgs e)
+    private void RenamePopupTextBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
@@ -319,7 +319,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
 
                 ReNamePopupTextBox.Text = "";
-                ReNamePopup.IsOpen = false;
+                RenamePopup.IsOpen = false;
             }
         }
     }

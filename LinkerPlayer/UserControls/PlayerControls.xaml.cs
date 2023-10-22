@@ -1,5 +1,4 @@
 ﻿using LinkerPlayer.Models;
-using LinkerPlayer.Core;
 using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
 using System;
@@ -13,7 +12,6 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Threading;
 
 namespace LinkerPlayer.UserControls;
 
@@ -67,14 +65,14 @@ public partial class PlayerControls : INotifyPropertyChanged
             switch (value)
             {
                 case PlayerState.Paused:
-                    ButtonStateImagePath = "/Images/play.png";
                     _playerState = value;
                     break;
                 case PlayerState.Playing:
-                    ButtonStateImagePath = "/Images/pause.png";
                     _playerState = value;
                     break;
             }
+
+            OnPropertyChanged();
         }
     }
 
@@ -115,86 +113,6 @@ public partial class PlayerControls : INotifyPropertyChanged
                 Mode = PlaybackMode.Loop;
                 break;
         }
-    }
-
-    DispatcherTimer? _vsHeightTimer;
-    private bool _isToggling;
-
-    private void VSExpandTimer_Tick(object sender, EventArgs e)
-    {
-        GridLength rowHeight = VolumeSlidersGrid.RowDefinitions[0].Height;
-
-        if (rowHeight.Value < 100)
-        {
-            VolumeSlidersGrid.RowDefinitions[0].Height = new GridLength(rowHeight.Value + 5, GridUnitType.Star);
-            VolumeSlidersGrid.RowDefinitions[1].Height = new GridLength(rowHeight.Value + 5, GridUnitType.Star);
-        }
-        else
-        {
-            _isToggling = false;
-            _vsHeightTimer?.Stop();
-        }
-    }
-
-    private void VSContractTimer_Tick(object sender, EventArgs e)
-    {
-        GridLength rowHeight = VolumeSlidersGrid.RowDefinitions[0].Height;
-
-        if (rowHeight.Value > 0)
-        {
-            VolumeSlidersGrid.RowDefinitions[0].Height = new GridLength(rowHeight.Value - 5, GridUnitType.Star);
-            VolumeSlidersGrid.RowDefinitions[1].Height = new GridLength(rowHeight.Value - 5, GridUnitType.Star);
-        }
-        else
-        {
-            _isToggling = false;
-            _vsHeightTimer?.Stop();
-        }
-    }
-
-    private void ToggleVolumeSliders(object sender, RoutedEventArgs e)
-    {
-        if (!_isToggling)
-        {
-            _vsHeightTimer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromMilliseconds(5)
-            };
-
-            if (VolumeSlidersGrid.RowDefinitions[0].Height.Value == 0)
-            {
-                _vsHeightTimer.Tick += VSExpandTimer_Tick!;
-
-                RotateToggle(0, -180);
-            }
-            else
-            {
-                _vsHeightTimer.Tick += VSContractTimer_Tick!;
-
-                RotateToggle(-180, 0);
-            }
-
-            _isToggling = true;
-            _vsHeightTimer.Start();
-        }
-    }
-
-    private void RotateToggle(double from, double to)
-    {
-        DoubleAnimation rotateAnimation = new DoubleAnimation
-        {
-            From = from,
-            To = to,
-            Duration = TimeSpan.FromMilliseconds(300),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-        };
-
-        ExpanderImage.RenderTransformOrigin = new Point(0.5, 0.5);
-
-        RotateTransform rotateTransform = new RotateTransform();
-        ExpanderImage.RenderTransform = rotateTransform;
-
-        rotateTransform.BeginAnimation(RotateTransform.AngleProperty, rotateAnimation);
     }
 
     public void ShowSeekBarHideBorders()

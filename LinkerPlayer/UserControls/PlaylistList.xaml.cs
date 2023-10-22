@@ -35,8 +35,8 @@ public partial class PlaylistList
                 MusicLibrary.AddSongToPlaylist(droppedData.Id, target);
                 MusicLibrary.RemoveSongFromPlaylist(droppedData.Id, win.SelectedPlaylist!.Name);
 
-                int removedIdx = win.TrackList.List.Items.IndexOf(droppedData);
-                win.TrackList.List.Items.RemoveAt(removedIdx);
+                int removedIdx = win.TracksTable.TracksTable.Items.IndexOf(droppedData);
+                win.TracksTable.TracksTable.Items.RemoveAt(removedIdx);
 
                 if (win.SelectedSong != null)
                 {
@@ -73,7 +73,7 @@ public partial class PlaylistList
                     }
                     else if (win.SelectedPlaylist.Name == target)
                     {
-                        win.TrackList.List.Items.Add(songToAdd);
+                        win.TracksTable.TracksTable.Items.Add(songToAdd);
                     }
                     else
                     {
@@ -134,7 +134,7 @@ public partial class PlaylistList
                 List.Items.Remove(menuItem.DataContext as Playlist);
 
                 //win.PlaylistTabs.CurrentPlaylistName.Text = "Playlist not selected";
-                win.TrackList.List.Items.Clear();
+                win.TracksTable.TracksTable.Items.Clear();
                 win.SelectedPlaylist = null;
             }
             else if (Equals(menuItem.Header, "Rename"))
@@ -185,7 +185,7 @@ public partial class PlaylistList
                             }
                             else if (win.SelectedPlaylist.Name == playlistName)
                             {
-                                win.TrackList.List.Items.Add(songToAdd);
+                                win.TracksTable.TracksTable.Items.Add(songToAdd);
                             }
                             else
                             {

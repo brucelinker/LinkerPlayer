@@ -2,8 +2,10 @@
   x:Class="LinkerPlayer.UserControls.PlayerControls"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:core="clr-namespace:LinkerPlayer.Core"
+  xmlns:common="clr-namespace:LinkerPlayer.Models"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   d:DesignHeight="80"
@@ -11,72 +13,28 @@
   mc:Ignorable="d">
 
   <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CircularButton.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/TransparentButton.xaml" />
+      </ResourceDictionary.MergedDictionaries>
 
-    <Style x:Key="PlayPauseButton" TargetType="{x:Type Button}">
-      <Setter Property="Width" Value="50" />
-      <Setter Property="Height" Value="50" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="{x:Type Button}">
-            <Grid>
-              <Border
-                x:Name="border"
-                Background="{DynamicResource PlayPauseButtonBrush}"
-                CornerRadius="100">
-                <Image
-                  Width="20"
-                  Height="20"
-                  RenderOptions.BitmapScalingMode="HighQuality"
-                  Source="{Binding ButtonStateImagePath}" />
-              </Border>
-
-              <Grid.RenderTransform>
-                <ScaleTransform />
-              </Grid.RenderTransform>
-            </Grid>
-
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="border" Property="Opacity" Value="0.8" />
-              </Trigger>
-
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="RenderTransformOrigin" Value="0.5, 0.5" />
-                <Setter Property="RenderTransform">
-                  <Setter.Value>
-                    <ScaleTransform ScaleX="1.03" ScaleY="1.03" />
-                  </Setter.Value>
-                </Setter>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
-    <Style x:Key="NoStylingButton" TargetType="{x:Type Button}">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border Background="Transparent">
-              <ContentPresenter />
-            </Border>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
+      <converters:EnumBooleanConverter x:Key="PlayerStateToIconConverter">
+        <converters:EnumBooleanConverter.TrueValue>
+          <iconPacks:PackIconMaterial Width="19" Height="19" Margin="0" Kind="Pause" />
+        </converters:EnumBooleanConverter.TrueValue>
+        <converters:EnumBooleanConverter.FalseValue>
+          <iconPacks:PackIconFontAwesome Width="20" Height="20" Margin="3 0 0 0" Kind="PlaySolid" />
+        </converters:EnumBooleanConverter.FalseValue>
+      </converters:EnumBooleanConverter>
+    </ResourceDictionary>
   </UserControl.Resources>
 
   <Grid>
     <Border Background="{DynamicResource PlayerBackgroundBrush}" />
     <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="200" />
+        <ColumnDefinition Width="270" />
         <ColumnDefinition />
         <ColumnDefinition Width="90" />
         <ColumnDefinition Width="250" />
@@ -84,35 +42,71 @@
 
       <Grid Grid.Column="0" Margin="40,0,40,0">
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="20" />
-          <ColumnDefinition />
-          <ColumnDefinition Width="20" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
 
         <Button
           Name="PrevButton"
           Grid.Column="0"
-          Style="{StaticResource NoStylingButton}">
-          <Image
-            Opacity="0.7"
-            RenderOptions.BitmapScalingMode="HighQuality"
-            Source="\Images\prev.png" />
-        </Button>
+          Width="36"
+          Height="36"
+          Margin="0,0,4,0"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Content="{iconPacks:Material SkipPrevious, Width=16, Height=16}"
+          Style="{StaticResource CircularButton}" />
 
         <Button
-          Name="PlayPauseButton"
+          Name="PlayButton"
           Grid.Column="1"
-          Style="{StaticResource PlayPauseButton}" />
+          Width="55"
+          Height="55"
+          Margin="4,0,4,0"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Command="{Binding PlayOrPauseCommand, Mode=OneWay}"
+          Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static common:PlayerState.Playing}}"
+          Style="{StaticResource CircularButton}" />
 
+        <!--<Button
+          Name="PlayerControlButton"
+          Grid.Column="1"
+          Margin="4,0,4,0"
+          Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static common:PlayerState.Playing}}"
+          Style="{StaticResource PlayerControlButton}" />-->
+
+        <!--  stop  -->
+        <Button
+          Name="StopButton"
+          Grid.Column="2"
+          Width="36"
+          Height="36"
+          Margin="4,0,4,0"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Command="{Binding StopCommand, Mode=OneWay}"
+          Content="{iconPacks:Material Stop, Width=14, Height=14}"
+          Style="{StaticResource CircularButton}"
+          ToolTip="Stop" />
+
+        <!--  next  -->
         <Button
           Name="NextButton"
-          Grid.Column="2"
-          Style="{StaticResource NoStylingButton}">
-          <Image
-            Opacity="0.7"
-            RenderOptions.BitmapScalingMode="HighQuality"
-            Source="\Images\next.png" />
-        </Button>
+          Grid.Column="3"
+          Width="36"
+          Height="36"
+          Margin="4,0,4,0"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Command="{Binding PlayNextCommand, Mode=OneWay}"
+          Content="{iconPacks:Material SkipNext,
+                                       Width=16,
+                                       Height=16}"
+          Style="{StaticResource CircularButton}"
+          ToolTip="Next File (j)" />
       </Grid>
 
       <Grid Grid.Column="1">
@@ -160,8 +154,8 @@
               ValueChanged="SeekBar_ValueChanged" />
 
             <UniformGrid
-              Grid.Column="0"
               Name="UniGrid"
+              Grid.Column="0"
               Grid.ColumnSpan="4"
               Margin="0,0,0,10"
               Rows="1"
@@ -198,10 +192,12 @@
       <Button
         Name="PlaybackModeButton"
         Grid.Column="2"
+        Width="40"
+        Height="30"
         Margin="10,0,0,0"
         HorizontalAlignment="Left"
         Click="PlaybackModeButton_Click"
-        Style="{StaticResource NoStylingButton}">
+        Style="{StaticResource TransparentButton}">
         <Image
           Width="40"
           Opacity="0.7"
@@ -235,32 +231,17 @@
           Name="MainVolumeButton"
           Grid.Row="2"
           Grid.Column="1"
-          Width="20"
-          Height="20"
+          Width="28"
+          Height="28"
           Click="MainVolumeButton_Click"
-          Style="{StaticResource NoStylingButton}">
+          Style="{StaticResource CircularButton}">
           <materialDesign:PackIcon
-            Width="20"
-            Height="20"
+            Width="18"
+            Height="18"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Foreground="White"
             Kind="VolumeMute" />
-        </Button>
-
-        <Button
-          Grid.RowSpan="3"
-          Grid.Column="2"
-          Width="20"
-          Height="40"
-          HorizontalAlignment="Left"
-          Click="ToggleVolumeSliders"
-          Style="{StaticResource NoStylingButton}">
-          <Image
-            Name="ExpanderImage"
-            Opacity="0.7"
-            RenderOptions.BitmapScalingMode="HighQuality"
-            Source="/Images/expand.png" />
         </Button>
       </Grid>
     </Grid>

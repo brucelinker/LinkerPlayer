@@ -1,9 +1,8 @@
-﻿using LinkerPlayer.Windows;
-using System.Windows;
-using System;
-using LinkerPlayer.Models;
+﻿using LinkerPlayer.Models;
 using LinkerPlayer.Properties;
-using MaterialDesignThemes.Wpf;
+using LinkerPlayer.Windows;
+using System;
+using System.Windows;
 
 namespace LinkerPlayer.Core;
 
@@ -15,7 +14,7 @@ public class ThemeManager
     {
         Application.Current.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.Resources.MergedDictionaries.Clear();
-        MainWindow.Instance.TrackList.Resources.MergedDictionaries.Clear();
+        //MainWindow.Instance.TracksDataGrid.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.FunctionButtons.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Clear();
@@ -29,7 +28,7 @@ public class ThemeManager
 
         Application.Current.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.Resources.MergedDictionaries.Add(resDict);
-        MainWindow.Instance.TrackList.Resources.MergedDictionaries.Add(resDict);
+        //MainWindow.Instance.TracksDataGrid.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.FunctionButtons.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Add(resDict);

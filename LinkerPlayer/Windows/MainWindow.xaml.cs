@@ -39,6 +39,7 @@ public partial class MainWindow
         Instance = this;
         DataContext = this;
 
+        ((App)Application.Current).WindowPlace.Register(this);
         WinMax.DoSourceInitialized(this);
 
         if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
@@ -92,7 +93,7 @@ public partial class MainWindow
 
         DisplayPlaylists();
 
-        PlayerControls.PlayPauseButton.Click += PlayPauseButton_Click;
+        PlayerControls.PlayButton.Click += PlayButton_Click;
         PlayerControls.PrevButton.Click += PrevButton_Click;
         PlayerControls.NextButton.Click += NextButton_Click;
         PlayerControls.SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
@@ -128,7 +129,7 @@ public partial class MainWindow
         PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
         //PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
 
-        TrackList.ClickRowElement += Song_Click;
+        TracksTable.ClickRowElement += Song_Click;
 
         PlaylistList.ClickRowElement += (s, _) =>
         {
@@ -183,7 +184,7 @@ public partial class MainWindow
                     {
                         if (SelectSong(SelectedSong))
                         {
-                            PlayPauseButton_Click(null!, null!);
+                            PlayButton_Click(null!, null!);
 
                             AudioStreamControl.CurrentTrackPosition = AudioStreamControl.CurrentTrackLength * Properties.Settings.Default.LastSeekBarValue / 100;
 
@@ -221,15 +222,10 @@ public partial class MainWindow
 
     //    SelectedTheme = (int)themeColor;
     //}
-    
+
     private void MainVolumeSlider_ValueChanged(object sender, EventArgs e)
     {
         AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.MainVolumeSlider.Value / 100;
-    }
-
-    private void AdditionalVolumeSlider_ValueChanged(object sender, EventArgs e)
-    {
-        //AudioStreamControl.AdditionalMusic!.MusicVolume = (float)PlayerControls.AdditionalVolumeSlider.Value / 100;
     }
 
     public void Music_StoppedEvent(object sender, EventArgs e)
@@ -252,23 +248,27 @@ public partial class MainWindow
 
     public void Song_Click(object sender, RoutedEventArgs e)
     {
-        string idBefore = SelectedSong != null ? SelectedSong.Id : "";
+        //string idBefore = SelectedSong != null ? SelectedSong.Id : "";
 
-        SelectSong((((sender as Button)!.Content as GridViewRowPresenter)!.Content as MediaFile)!);
-
-        string idAfter = SelectedSong != null ? SelectedSong.Id : "";
-
-        if (idBefore != idAfter)
-        { // outline background playlist
-            BackgroundPlaylistName = SelectedPlaylist!.Name;
-
-            foreach (Button button in Helper.FindVisualChildren<Button>(PlaylistList.List))
-            {
-                button.FontWeight = ((button.Content as ContentPresenter)!
-                    .Content as Playlist)!.Name == SelectedPlaylist.Name ? 
-                        FontWeights.ExtraBold : FontWeights.Normal;
-            }
+        if (sender is DataGrid { SelectedItem: not null } grid)
+        {
+            SelectSong((grid.SelectedItem as MediaFile)!);
+            //SelectSong((((sender as Button)!.Content as GridViewRowPresenter)!.Content as MediaFile)!);
         }
+
+        //string idAfter = SelectedSong != null ? SelectedSong.Id : "";
+
+        //if (idBefore != idAfter)
+        //{ // outline background playlist
+        //    BackgroundPlaylistName = SelectedPlaylist!.Name;
+
+        //    foreach (Button button in Helper.FindVisualChildren<Button>(PlaylistList.List))
+        //    {
+        //        button.FontWeight = ((button.Content as ContentPresenter)!
+        //            .Content as Playlist)!.Name == SelectedPlaylist.Name ?
+        //                FontWeights.ExtraBold : FontWeights.Normal;
+        //    }
+        //}
     }
 
     public bool SelectSong(MediaFile mediaFile)
@@ -282,6 +282,7 @@ public partial class MainWindow
         }
         else
         {
+            mediaFile.UpdateFromTag();
             SelectedSong = mediaFile.Clone();
 
             AudioStreamControl.PathToMusic = SelectedSong.Path;
@@ -296,13 +297,15 @@ public partial class MainWindow
             PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
             PlayerControls.CurrentTime.Text = "0:00";
 
-            foreach (Button button in Helper.FindVisualChildren<Button>(TrackList.List))
-            {
-                // outline selected mediaFile
-                button.FontWeight = ((button.Content as GridViewRowPresenter)!
-                    .Content as MediaFile)!.Id == SelectedSong.Id ? 
-                    FontWeights.ExtraBold : FontWeights.Normal;
-            }
+            TrackInfo.SetSelectedMediaFile(SelectedSong);
+
+            //foreach (Button button in Helper.FindVisualChildren<Button>(TracksTable.TracksTable))
+            //{
+            //    // outline selected mediaFile
+            //    button.FontWeight = ((button.Content as GridViewRowPresenter)!
+            //        .Content as MediaFile)!.Id == SelectedSong.Id ?
+            //        FontWeights.ExtraBold : FontWeights.Normal;
+            //}
 
             StartVisualization();
 
@@ -341,7 +344,7 @@ public partial class MainWindow
         }
     }
 
-    private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
+    private void PlayButton_Click(object sender, RoutedEventArgs e)
     {
         if (SelectedSong != null)
         {
@@ -367,7 +370,7 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            int selectedSongIndex = TrackList.List.Items
+            int selectedSongIndex = TracksTable.TracksTable.Items
                                     .Cast<MediaFile>()
                                     .ToList()
                                     .FindIndex(item => item.Id == SelectedSong.Id);
@@ -405,13 +408,13 @@ public partial class MainWindow
             switch (PlayerControls.Mode)
             {
                 case PlaybackMode.Loop:
-                    if (selectedSongIndex == TrackList.List.Items.Count - 1)
+                    if (selectedSongIndex == TracksTable.TracksTable.Items.Count - 1)
                     {
-                        SelectWithSkipping((TrackList.List.Items[0] as MediaFile)!, NextButton_Click);
+                        SelectWithSkipping((TracksTable.TracksTable.Items[0] as MediaFile)!, NextButton_Click);
                     }
                     else
                     {
-                        SelectWithSkipping((TrackList.List.Items[selectedSongIndex + 1] as MediaFile)!, NextButton_Click);
+                        SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex + 1] as MediaFile)!, NextButton_Click);
                     }
                     break;
 
@@ -429,7 +432,7 @@ public partial class MainWindow
     {
         if (SelectedSong != null)
         {
-            int selectedSongIndex = TrackList.List.Items
+            int selectedSongIndex = TracksTable.TracksTable.Items
                                     .Cast<MediaFile>()
                                     .ToList()
                                     .FindIndex(item => item.Id == SelectedSong.Id);
@@ -445,8 +448,8 @@ public partial class MainWindow
 
                         if (selectedSongIndex != -1)
                         {
-                            SelectWithSkipping(selectedSongIndex == 0 
-                                    ? backgroundSongs[^1] 
+                            SelectWithSkipping(selectedSongIndex == 0
+                                    ? backgroundSongs[^1]
                                     : backgroundSongs[selectedSongIndex - 1],
                                 PrevButton_Click);
                         }
@@ -470,11 +473,11 @@ public partial class MainWindow
                 case PlaybackMode.Loop:
                     if (selectedSongIndex == 0)
                     {
-                        SelectWithSkipping((TrackList.List.Items[^1] as MediaFile)!, PrevButton_Click);
+                        SelectWithSkipping((TracksTable.TracksTable.Items[^1] as MediaFile)!, PrevButton_Click);
                     }
                     else
                     {
-                        SelectWithSkipping((TrackList.List.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
+                        SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
                     }
                     break;
 
@@ -529,33 +532,35 @@ public partial class MainWindow
         }
     }
 
-    private async Task DisplaySelectedPlaylist()
+    private Task DisplaySelectedPlaylist()
     {
         if (SelectedPlaylist != null)
         {
             //PlaylistText.CurrentPlaylistName.Text = SelectedPlaylist.Name;
 
             List<MediaFile> songs = MusicLibrary.GetSongsFromPlaylist(SelectedPlaylist.Name);
-            TrackList.List.Items.Clear();
+            TracksTable.TracksTable.Items.Clear();
 
             foreach (MediaFile song in songs)
             {
-                TrackList.List.Items.Add(song);
+                TracksTable.TracksTable.Items.Add(song);
             }
 
-            await Task.Delay(10); // waiting till list is loaded and outline selected mediaFile
-            if (SelectedSong != null)
-            {
-                foreach (Button button in Helper.FindVisualChildren<Button>(TrackList.List))
-                {
-                    if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedSong.Id)
-                    {
-                        button.FontWeight = FontWeights.ExtraBold;
-                        break;
-                    }
-                }
-            }
+            //await Task.Delay(10); // waiting till list is loaded and outline selected mediaFile
+            //if (SelectedSong != null)
+            //{
+            //    foreach (Button button in Helper.FindVisualChildren<Button>(TracksTable.TracksTable))
+            //    {
+            //        if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedSong.Id)
+            //        {
+            //            button.FontWeight = FontWeights.ExtraBold;
+            //            break;
+            //        }
+            //    }
+            //}
         }
+
+        return Task.CompletedTask;
     }
 
     public void SelectedSongRemoved()
@@ -664,7 +669,7 @@ public partial class MainWindow
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
-            Properties.Settings.Default.EqualizerBandName = 
+            Properties.Settings.Default.EqualizerBandName =
                 SelectedBandsSettings != null! ? SelectedBandsSettings.Name : null;
         }
 
@@ -729,7 +734,7 @@ public partial class MainWindow
 
             if (enteredHotkey == Properties.Settings.Default["PlayPauseHotkey"].ToString())
             {
-                PlayPauseButton_Click(null!, null!);
+                PlayButton_Click(null!, null!);
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["NextSongHotkey"].ToString())

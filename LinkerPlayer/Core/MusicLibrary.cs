@@ -74,27 +74,6 @@ public class MusicLibrary
         {
             mediaFile.UpdateFromTag(true);
 
-            // Generate a unique ID for the mediaFile
-            //mediaFile.Id = Guid.NewGuid().ToString();
-
-            //TagLib.File? tagFile = TagLib.File.Create(mediaFile.Path);
-
-            //mediaFile.Title = tagFile.Tag.Title ?? Path.GetFileNameWithoutExtension(mediaFile.Path);
-            //mediaFile.Track = tagFile.Tag.Track;
-            //mediaFile.AlbumArtist = tagFile.Tag.AlbumArtist;
-            //mediaFile.Album = tagFile.Tag.Album;
-            //mediaFile.AlbumArtists = tagFile.Tag.AlbumArtists;
-            //mediaFile.Composers = tagFile.Tag.Composers;
-            //mediaFile.Genres = tagFile.Tag.Genres;
-            //mediaFile.Year = tagFile.Tag.Year;
-            //mediaFile.Duration = tagFile.Properties.Duration;
-            //mediaFile.BitRate = tagFile.Properties.AudioBitrate;
-            //mediaFile.Channels = tagFile.Properties.AudioChannels;
-            //mediaFile.SampleRate = tagFile.Properties.AudioSampleRate;
-            //mediaFile.BitsPerSample = tagFile.Properties.BitsPerSample;
-            //mediaFile.Codecs = tagFile.Properties.Codecs;
-            //mediaFile.Description = tagFile.Properties.Description;
-
             _mediaFiles?.Add(mediaFile.Clone());
 
             Log.Information($"New mediaFile with id {mediaFile.Id} added");

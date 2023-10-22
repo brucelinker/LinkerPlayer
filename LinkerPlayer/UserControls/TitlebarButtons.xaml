@@ -4,7 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  d:DesignHeight="80"
+  d:DesignHeight="40"
   d:DesignWidth="800"
   mc:Ignorable="d">
   <UserControl.Resources>
@@ -12,7 +12,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="45" Height="25">
+            <Grid Width="45" Height="30">
               <Border x:Name="border" Background="{DynamicResource TitleBarBackgroundBrush}" />
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
@@ -35,7 +35,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="45" Height="25">
+            <Grid Width="45" Height="30">
               <Border x:Name="border" Background="Black" />
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
@@ -55,7 +55,18 @@
     </Style>
 
   </UserControl.Resources>
+
   <Grid>
+    <!--<Border Background="{DynamicResource TitleBarBackgroundBrush}" />-->
+    <TextBlock
+      Margin="15,7,0,0"
+      HorizontalAlignment="Left"
+      VerticalAlignment="Top"
+      d:Foreground=" White"
+      FontSize="22"
+      FontWeight="Light"
+      Foreground="{DynamicResource TitleBarForegroundBrush}"
+      Text="LinkerPlayer" />
     <StackPanel
       HorizontalAlignment="Right"
       VerticalAlignment="Top"

@@ -26,7 +26,6 @@ public partial class SettingsWindow
 
         DataContext = this;
 
-        MainWindow mainWindow = (Owner as MainWindow)!;
         WinMax.DoSourceInitialized(this);
 
         PreviewKeyDown += Window_PreviewKeyDown;
@@ -39,7 +38,7 @@ public partial class SettingsWindow
         foreach (string device in DeviceControl.GetOutputDevicesList())
         {
             MainOutputDevicesList.Items.Add(device);
-            AdditionalOutputDevicesList.Items.Add(device);
+            //AdditionalOutputDevicesList.Items.Add(device);
         }
 
         if (MainOutputDevicesList.Items.Contains(Properties.Settings.Default.MainOutputDevice))
@@ -51,16 +50,16 @@ public partial class SettingsWindow
             MainOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(mainWindow!.AudioStreamControl.MainMusic!.GetOutputDeviceId());
         }
 
-        if (AdditionalOutputDevicesList.Items.Contains(Properties.Settings.Default.AdditionalOutputDevice))
-        {
-            AdditionalOutputDevicesList.SelectedItem = Properties.Settings.Default.AdditionalOutputDevice;
-        }
-        else
-        {
-            AdditionalOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(0);
-        }
+        //if (AdditionalOutputDevicesList.Items.Contains(Properties.Settings.Default.AdditionalOutputDevice))
+        //{
+        //    AdditionalOutputDevicesList.SelectedItem = Properties.Settings.Default.AdditionalOutputDevice;
+        //}
+        //else
+        //{
+        //    AdditionalOutputDevicesList.SelectedItem = DeviceControl.GetOutputDeviceNameById(0);
+        //}
 
-        AdditionalOutputEnabled.IsChecked = Properties.Settings.Default.AdditionalOutputEnabled;
+        //AdditionalOutputEnabled.IsChecked = Properties.Settings.Default.AdditionalOutputEnabled;
         EqualizerOnStartEnabled.IsChecked = Properties.Settings.Default.EqualizerOnStartEnabled;
 
         int selectedThemeIndex = ThemeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme);
@@ -110,45 +109,43 @@ public partial class SettingsWindow
             mainWindow!.AudioStreamControl.MainMusic!.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
         }
 
-        bool changedAdditionalDevice = false;
+        //if (AdditionalOutputDevicesList.SelectedItem != null)
+        //{
+        //    changedAdditionalDevice = (AdditionalOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.AdditionalOutputDevice)
+        //        || (AdditionalOutputDevicesList.SelectedItem.ToString() != DeviceControl.GetOutputDeviceNameById(0));
+        //    Properties.Settings.Default.AdditionalOutputDevice = AdditionalOutputDevicesList.SelectedItem.ToString();
+        //}
 
-        if (AdditionalOutputDevicesList.SelectedItem != null)
-        {
-            changedAdditionalDevice = (AdditionalOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.AdditionalOutputDevice)
-                || (AdditionalOutputDevicesList.SelectedItem.ToString() != DeviceControl.GetOutputDeviceNameById(0));
-            Properties.Settings.Default.AdditionalOutputDevice = AdditionalOutputDevicesList.SelectedItem.ToString();
-        }
+        //bool changedAdditionalEnabled = AdditionalOutputEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.AdditionalOutputEnabled;
 
-        bool changedAdditionalEnabled = AdditionalOutputEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.AdditionalOutputEnabled;
+        //if ((changedAdditionalDevice && AdditionalOutputEnabled.IsChecked.GetValueOrDefault()) ||
+        //    (changedAdditionalEnabled && AdditionalOutputEnabled.IsChecked.GetValueOrDefault()))
+        //{
 
-        if ((changedAdditionalDevice && AdditionalOutputEnabled.IsChecked.GetValueOrDefault()) ||
-            (changedAdditionalEnabled && AdditionalOutputEnabled.IsChecked.GetValueOrDefault()))
-        {
+        //    if (AdditionalOutputDevicesList.SelectedItem != null)
+        //    {
+        //        Properties.Settings.Default.AdditionalOutputEnabled = true;
 
-            if (AdditionalOutputDevicesList.SelectedItem != null)
-            {
-                Properties.Settings.Default.AdditionalOutputEnabled = true;
+        //        mainWindow.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
+        //        //mainWindow.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)mainWindow.PlayerControls.AdditionalVolumeSlider.Value / 100;
+        //        mainWindow.AudioStreamControl.AdditionalMusic.StoppedEvent += mainWindow.Music_StoppedEvent!;
+        //    }
+        //    else
+        //    {
+        //        Properties.Settings.Default.AdditionalOutputEnabled = false;
+        //        AdditionalOutputEnabled.IsChecked = false;
+        //    }
+        //}
+        //else if (changedAdditionalEnabled && !AdditionalOutputEnabled.IsChecked.GetValueOrDefault())
+        //{
+        //    Properties.Settings.Default.AdditionalOutputEnabled = false;
 
-                mainWindow.AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice!);
-                //mainWindow.AudioStreamControl.AdditionalMusic!.MusicVolume = (float)mainWindow.PlayerControls.AdditionalVolumeSlider.Value / 100;
-                mainWindow.AudioStreamControl.AdditionalMusic.StoppedEvent += mainWindow.Music_StoppedEvent!;
-            }
-            else
-            {
-                Properties.Settings.Default.AdditionalOutputEnabled = false;
-                AdditionalOutputEnabled.IsChecked = false;
-            }
-        }
-        else if (changedAdditionalEnabled && !AdditionalOutputEnabled.IsChecked.GetValueOrDefault())
-        {
-            Properties.Settings.Default.AdditionalOutputEnabled = false;
-
-            if (mainWindow.AudioStreamControl.AdditionalMusic != null)
-            {
-                mainWindow.AudioStreamControl.AdditionalMusic.CloseStream();
-                mainWindow.AudioStreamControl.AdditionalMusic = null;
-            }
-        }
+        //    if (mainWindow.AudioStreamControl.AdditionalMusic != null)
+        //    {
+        //        mainWindow.AudioStreamControl.AdditionalMusic.CloseStream();
+        //        mainWindow.AudioStreamControl.AdditionalMusic = null;
+        //    }
+        //}
 
         //mainWindow.PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
         //mainWindow.PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;

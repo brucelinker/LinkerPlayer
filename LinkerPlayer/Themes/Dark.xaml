@@ -6,22 +6,24 @@
   <Color x:Key="MainWindowGradientStartColor">#3B4951</Color>
   <Color x:Key="MainWindowGradientEndColor">#3B4951</Color>
 
+  <Color x:Key="ChildWindowBackgroundColor">#CCCCCC</Color>
+
   <Color x:Key="ControlPrimaryAccentColor">LightGray</Color>
   <Color x:Key="ControlSecondaryAccentColor">MediumPurple</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
 
   <Color x:Key="DefaultTextColor">Black</Color>
 
-  <Color x:Key="FirstDarkColor">LightSteelBlue</Color>
-  <Color x:Key="FirstLightColor">LightSteelBlue</Color>
+  <Color x:Key="FirstDarkColor">DarkGray</Color>
+  <Color x:Key="FirstLightColor">LightGray</Color>
   <Color x:Key="FirstBackgroundColor">#555555</Color>
-  <Color x:Key="PrimaryBackgroundColor">White</Color>
+  <Color x:Key="PrimaryBackgroundColor">#424242</Color>
   <Color x:Key="SecondBackgroundColor">White</Color>
-  <Color x:Key="StandardTextForegroundColor">#4682B4</Color>
+  <Color x:Key="StandardTextForegroundColor">White</Color>
   <Color x:Key="InactiveSelectionColor">Gray</Color>
 
-  <Color x:Key="PlaylistItemForegroundColor">White</Color>
-  <Color x:Key="PlaylistItemBackgroundColor">White</Color>
+  <Color x:Key="PlaylistTabForegroundColor">White</Color>
+  <Color x:Key="PlaylistTabBackgroundColor">White</Color>
   <Color x:Key="PlaylistMouseOverItemForegroundColor">White</Color>
   <Color x:Key="PlaylistMouseOverItemBackgroundColor">White</Color>
   <Color x:Key="PlaylistSelectedItemColor">#6B7B82</Color>
@@ -33,10 +35,13 @@
   <Color x:Key="NewPlaylistNamePopupForegroundColor">WhiteSmoke</Color>
   <Color x:Key="NewPlaylistNamePopupBackgroundColor">Black</Color>
 
-  <Color x:Key="TrackListColumnHeaderForegroundColor">Black</Color>
-  <Color x:Key="TrackListColumnHeaderBackgroundColor">White</Color>
+  <Color x:Key="TrackListColumnHeaderForegroundColor">White</Color>
+  <Color x:Key="TrackListColumnHeaderBackgroundColor">#252525</Color>
   <Color x:Key="TrackListItemForegroundColor">White</Color>
-  <Color x:Key="TrackListItemBackgroundColor">White</Color>
+  <Color x:Key="TrackListItemBackgroundAlt1Color">#1D1D1D</Color>
+  <Color x:Key="TrackListItemBackgroundAlt2Color">#232323</Color>
+  <Color x:Key="TrackListSelectedItemItemForegroundColor">Black</Color>
+  <Color x:Key="TrackListSelectedItemItemBackgroundColor">LightGray</Color>
   <Color x:Key="TrackListMouseOverItemForegroundColor">White</Color>
   <Color x:Key="TrackListMouseOverItemBackgroundColor">White</Color>
   <Color x:Key="TrackListSelectedItemColor">#6B7B82</Color>
@@ -49,8 +54,8 @@
   <Color x:Key="PlayStartGradientColor">#303030</Color>
   <Color x:Key="PlayEndGradientColor">#505050</Color>
 
-  <Color x:Key="PlayPauseButtonColor">#DDDDDD</Color>
-  <Color x:Key="PlayPauseButtonPressedColor">#A0A0A0</Color>
+  <Color x:Key="PlayerControlButtonColor">#DDDDDD</Color>
+  <Color x:Key="PlayerControlButtonPressedColor">#A0A0A0</Color>
 
   <Color x:Key="MenuTextForegroundColor">#CCCCCC</Color>
   <Color x:Key="MenuDisabledTextColor">#808080</Color>

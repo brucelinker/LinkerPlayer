@@ -1,18 +1,18 @@
-﻿using LinkerPlayer.Core;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.Core;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
-using Serilog;
 using TagLib;
 using File = TagLib.File;
 
 namespace LinkerPlayer.Models;
 
-public interface IMediaFile : INotifyPropertyChanged
+public interface IMediaFile
 {
     string Id { get; }
     string Path { get; }
@@ -37,7 +37,7 @@ public interface IMediaFile : INotifyPropertyChanged
     PlayerState State { get; set; }
 }
 
-public class MediaFile : IMediaFile
+public class MediaFile : ObservableObject, IMediaFile
 {
     const string UnknownString = "<Unknown>";
 
@@ -96,8 +96,6 @@ public class MediaFile : IMediaFile
     public BitmapImage? AlbumCover { get; set; }
 
     PlayerState _state = PlayerState.Stopped;
-    [Browsable(false)]
-    [JsonIgnore]
     public PlayerState State
     {
         get => _state;
@@ -111,8 +109,6 @@ public class MediaFile : IMediaFile
     }
 
     int _playListIndex;
-    [Browsable(false)]
-    [JsonIgnore]
     public int PlayListIndex
     {
         get => _playListIndex;
@@ -199,7 +195,7 @@ public class MediaFile : IMediaFile
 
         if (raisePropertyChanged)
         {
-            this.OnPropertyChanged();
+            OnPropertyChanged();
         }
     }
 
@@ -208,20 +204,18 @@ public class MediaFile : IMediaFile
         return $"{Track} {Artists} - {Title} {Duration:m\\:ss}";
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    //protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    //{
+    //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    //}
 
-    protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value)) return false;
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
+    //protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    //{
+    //    if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+    //    field = value;
+    //    OnPropertyChanged(propertyName);
+    //    return true;
+    //}
 
     public MediaFile Clone()
     {

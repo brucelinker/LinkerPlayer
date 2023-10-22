@@ -11,9 +11,9 @@ using System.Windows.Media;
 
 namespace LinkerPlayer.UserControls;
 
-public partial class TrackList
+public partial class TrackList1
 {
-    public TrackList()
+    public TrackList1()
     {
         DataContext = this;
         InitializeComponent();

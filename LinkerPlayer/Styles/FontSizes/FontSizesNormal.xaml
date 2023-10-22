@@ -3,7 +3,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
-  <FontFamily x:Key="BaseFontFamily">Calibri</FontFamily>
+  <FontFamily x:Key="BaseFontFamily">Segoe UI</FontFamily>
   <sys:Double x:Key="FontSizeLarge">18</sys:Double>
   <sys:Double x:Key="FontSizeBiggest">16.8</sys:Double>
   <sys:Double x:Key="FontSizeBigger">15.7</sys:Double>

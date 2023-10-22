@@ -1,277 +1,264 @@
 ﻿<UserControl
-    x:Class="LinkerPlayer.UserControls.FunctionButtons"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    d:DesignHeight="450"
-    d:DesignWidth="60"
-    mc:Ignorable="d">
-    <UserControl.Resources>
-        <Style TargetType="{x:Type ListView}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-        </Style>
-    </UserControl.Resources>
+  x:Class="LinkerPlayer.UserControls.FunctionButtons"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  d:DesignHeight="450"
+  d:DesignWidth="60"
+  mc:Ignorable="d">
 
-    <Grid>
-        <ListView
-            Name="List"
-            ScrollViewer.CanContentScroll="False"
-            ScrollViewer.HorizontalScrollBarVisibility="Hidden"
-            ScrollViewer.VerticalScrollBarVisibility="Hidden">
-            <ListViewItem Padding="5">
-                <Button
-                    x:Name="SettingsButton"
-                    Width="50"
-                    Height="50"
-                    Padding="15"
-                    Background="#212128"
-                    BorderBrush="Transparent"
-                    Click="SettingsButton_Click">
-                    <Image
-                        RenderOptions.BitmapScalingMode="HighQuality"
-                        RenderTransformOrigin="0.5,0.5"
-                        Source="/Images/settings.png">
-                        <Image.RenderTransform>
-                            <RotateTransform x:Name="CogRotateAnim" Angle="0" />
-                        </Image.RenderTransform>
-                    </Image>
-                    <Button.Triggers>
-                        <EventTrigger RoutedEvent="Button.Click">
-                            <EventTrigger.Actions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation
-                                            Storyboard.TargetName="CogRotateAnim"
-                                            Storyboard.TargetProperty="(RotateTransform.Angle)"
-                                            From="0"
-                                            To="135"
-                                            Duration="0:0:0.5">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger.Actions>
-                        </EventTrigger>
-                    </Button.Triggers>
-                </Button>
-            </ListViewItem>
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/TransparentButton.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
 
-            <ListViewItem Padding="5">
-                <Button
-                    x:Name="LoadFolderButton"
-                    Width="50"
-                    Height="50"
-                    Padding="10"
-                    Background="#212128"
-                    BorderBrush="Transparent"
-                    Click="LoadFolderButton_Click">
-                    <Grid>
-                        <ProgressBar
-                            Name="LoadingFolderProgress"
-                            Width="40"
-                            Height="40"
-                            Margin="-15"
-                            IsIndeterminate="True"
-                            Style="{StaticResource MaterialDesignCircularProgressBar}"
-                            Visibility="Collapsed" />
-                        <Image
-                            RenderOptions.BitmapScalingMode="HighQuality"
-                            RenderTransformOrigin="0.5,0.5"
-                            Source="/Images/loadfolder.png">
-                            <Image.RenderTransform>
-                                <RotateTransform x:Name="LoadingFolderRotateAnim" Angle="0" />
-                            </Image.RenderTransform>
-                        </Image>
-                    </Grid>
+  <Grid>
+    <Border BorderBrush="#424242" BorderThickness="1" />
+    <StackPanel Orientation="Vertical">
 
-                    <Button.Triggers>
-                        <EventTrigger RoutedEvent="Button.Click">
-                            <EventTrigger.Actions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation
-                                            Storyboard.TargetName="LoadingFolderRotateAnim"
-                                            Storyboard.TargetProperty="(RotateTransform.Angle)"
-                                            From="0"
-                                            To="360"
-                                            Duration="0:0:0.5">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger.Actions>
-                        </EventTrigger>
-                    </Button.Triggers>
-                </Button>
-            </ListViewItem>
+      <Button
+        x:Name="SettingsButton"
+        Width="50"
+        Height="50"
+        Padding="10"
+        Click="SettingsButton_Click"
+        Style="{StaticResource TransparentButton}">
+        <Image
+          RenderOptions.BitmapScalingMode="HighQuality"
+          RenderTransformOrigin="0.5,0.5"
+          Source="/Images/settings.png">
+          <Image.RenderTransform>
+            <RotateTransform x:Name="CogRotateAnim" Angle="0" />
+          </Image.RenderTransform>
+        </Image>
+        <Button.Triggers>
+          <EventTrigger RoutedEvent="Button.MouseEnter">
+            <EventTrigger.Actions>
+              <BeginStoryboard>
+                <Storyboard>
+                  <DoubleAnimation
+                    Storyboard.TargetName="CogRotateAnim"
+                    Storyboard.TargetProperty="(RotateTransform.Angle)"
+                    From="0"
+                    To="135"
+                    Duration="0:0:0.5">
+                    <DoubleAnimation.EasingFunction>
+                      <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                  </DoubleAnimation>
+                </Storyboard>
+              </BeginStoryboard>
+            </EventTrigger.Actions>
+          </EventTrigger>
+        </Button.Triggers>
+      </Button>
 
-            <ListViewItem Padding="5">
-                <Button
-                    x:Name="LoadFileButton"
-                    Width="50"
-                    Height="50"
-                    Padding="10"
-                    Background="Transparent"
-                    BorderBrush="Transparent"
-                    Click="LoadFileButton_Click">
-                    <Grid>
-                        <ProgressBar
-                            Name="LoadingFileProgress"
-                            Width="40"
-                            Height="40"
-                            Margin="-15"
-                            IsIndeterminate="True"
-                            Style="{StaticResource MaterialDesignCircularProgressBar}"
-                            Visibility="Collapsed" />
-                        <Image
-                            RenderOptions.BitmapScalingMode="HighQuality"
-                            RenderTransformOrigin="0.5,0.5"
-                            Source="/Images/loadfile.png">
-                            <Image.RenderTransform>
-                                <RotateTransform x:Name="LoadingFileRotateAnim" Angle="0" />
-                            </Image.RenderTransform>
-                        </Image>
-                    </Grid>
+      <Button
+        x:Name="LoadFolderButton"
+        Width="50"
+        Height="50"
+        Padding="10"
+        Click="LoadFolderButton_Click"
+        Style="{StaticResource TransparentButton}">
+        <Grid>
+          <ProgressBar
+            Name="LoadingFolderProgress"
+            Width="40"
+            Height="40"
+            Margin="-15"
+            IsIndeterminate="True"
+            Style="{StaticResource MaterialDesignCircularProgressBar}"
+            Visibility="Collapsed" />
+          <Image
+            RenderOptions.BitmapScalingMode="HighQuality"
+            RenderTransformOrigin="0.5,0.5"
+            Source="/Images/loadfolder.png">
+            <Image.RenderTransform>
+              <RotateTransform x:Name="LoadingFolderRotateAnim" Angle="0" />
+            </Image.RenderTransform>
+          </Image>
+        </Grid>
 
-                    <Button.Triggers>
-                        <EventTrigger RoutedEvent="Button.Click">
-                            <EventTrigger.Actions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation
-                                            Storyboard.TargetName="LoadingFileRotateAnim"
-                                            Storyboard.TargetProperty="(RotateTransform.Angle)"
-                                            From="0"
-                                            To="360"
-                                            Duration="0:0:0.5">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger.Actions>
-                        </EventTrigger>
-                    </Button.Triggers>
-                </Button>
-            </ListViewItem>
+        <Button.Triggers>
+          <EventTrigger RoutedEvent="Button.MouseEnter">
+            <EventTrigger.Actions>
+              <BeginStoryboard>
+                <Storyboard>
+                  <DoubleAnimation
+                    Storyboard.TargetName="LoadingFolderRotateAnim"
+                    Storyboard.TargetProperty="(RotateTransform.Angle)"
+                    From="0"
+                    To="360"
+                    Duration="0:0:0.5">
+                    <DoubleAnimation.EasingFunction>
+                      <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                  </DoubleAnimation>
+                </Storyboard>
+              </BeginStoryboard>
+            </EventTrigger.Actions>
+          </EventTrigger>
+        </Button.Triggers>
+      </Button>
 
-            <ListViewItem Padding="5">
-                <Button
-                    x:Name="EqualizerButton"
-                    Width="50"
-                    Height="50"
-                    Padding="8"
-                    Background="#212128"
-                    BorderBrush="Transparent"
-                    Click="EqualizerButton_Click">
+      <Button
+        x:Name="LoadFileButton"
+        Width="50"
+        Height="50"
+        Padding="10"
+        Click="LoadFileButton_Click"
+        Style="{StaticResource TransparentButton}">
+        <Grid>
+          <ProgressBar
+            Name="LoadingFileProgress"
+            Width="40"
+            Height="40"
+            Margin="-15"
+            IsIndeterminate="True"
+            Style="{StaticResource MaterialDesignCircularProgressBar}"
+            Visibility="Collapsed" />
+          <Image
+            RenderOptions.BitmapScalingMode="HighQuality"
+            RenderTransformOrigin="0.5,0.5"
+            Source="/Images/loadfile.png">
+            <Image.RenderTransform>
+              <RotateTransform x:Name="LoadingFileRotateAnim" Angle="0" />
+            </Image.RenderTransform>
+          </Image>
+        </Grid>
 
-                    <Canvas>
-                        <Border
-                            Canvas.Left="-13.5"
-                            Canvas.Top="-14"
-                            Width="3"
-                            Height="28"
-                            Background="White"
-                            CornerRadius="1" />
-                        <Border
-                            Canvas.Left="10.5"
-                            Canvas.Top="-14"
-                            Width="3"
-                            Height="28"
-                            Background="White"
-                            CornerRadius="1" />
-                        <Border
-                            Canvas.Left="-1.5"
-                            Canvas.Top="-14"
-                            Width="3"
-                            Height="28"
-                            Background="White"
-                            CornerRadius="1" />
+        <Button.Triggers>
+          <EventTrigger RoutedEvent="Button.MouseEnter">
+            <EventTrigger.Actions>
+              <BeginStoryboard>
+                <Storyboard>
+                  <DoubleAnimation
+                    Storyboard.TargetName="LoadingFileRotateAnim"
+                    Storyboard.TargetProperty="(RotateTransform.Angle)"
+                    From="0"
+                    To="360"
+                    Duration="0:0:0.5">
+                    <DoubleAnimation.EasingFunction>
+                      <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                  </DoubleAnimation>
+                </Storyboard>
+              </BeginStoryboard>
+            </EventTrigger.Actions>
+          </EventTrigger>
+        </Button.Triggers>
+      </Button>
 
-                        <Ellipse
-                            Name="EqCircle1"
-                            Canvas.Left="-16.5"
-                            Canvas.Top="-10"
-                            Width="9"
-                            Height="9"
-                            Fill="#212128"
-                            Stroke="White"
-                            StrokeThickness="2" />
-                        <Ellipse
-                            Name="EqCircle2"
-                            Canvas.Left="-4.5"
-                            Canvas.Top="3"
-                            Width="9"
-                            Height="9"
-                            Fill="#212128"
-                            Stroke="White"
-                            StrokeThickness="2" />
-                        <Ellipse
-                            Name="EqCircle3"
-                            Canvas.Left="7.5"
-                            Canvas.Top="-6"
-                            Width="9"
-                            Height="9"
-                            Fill="#212128"
-                            Stroke="White"
-                            StrokeThickness="2" />
-                    </Canvas>
+      <Button
+        x:Name="EqualizerButton"
+        Width="50"
+        Height="50"
+        Padding="8"
+        Click="EqualizerButton_Click"
+        Style="{StaticResource TransparentButton}">
 
-                    <Button.Triggers>
-                        <EventTrigger RoutedEvent="Button.Click">
-                            <EventTrigger.Actions>
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation
-                                            AutoReverse="True"
-                                            Storyboard.TargetName="EqCircle1"
-                                            Storyboard.TargetProperty="(Canvas.Top)"
-                                            From="-10"
-                                            To="3"
-                                            Duration="0:0:0.4">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
+        <Canvas>
+          <Border
+            Canvas.Left="-13.5"
+            Canvas.Top="-14"
+            Width="3"
+            Height="28"
+            Background="White"
+            CornerRadius="1" />
+          <Border
+            Canvas.Left="10.5"
+            Canvas.Top="-14"
+            Width="3"
+            Height="28"
+            Background="White"
+            CornerRadius="1" />
+          <Border
+            Canvas.Left="-1.5"
+            Canvas.Top="-14"
+            Width="3"
+            Height="28"
+            Background="White"
+            CornerRadius="1" />
 
-                                        <DoubleAnimation
-                                            AutoReverse="True"
-                                            Storyboard.TargetName="EqCircle2"
-                                            Storyboard.TargetProperty="(Canvas.Top)"
-                                            From="3"
-                                            To="-10"
-                                            Duration="0:0:0.4">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
+          <Ellipse
+            Name="EqCircle1"
+            Canvas.Left="-16.5"
+            Canvas.Top="-10"
+            Width="9"
+            Height="9"
+            Fill="#212128"
+            Stroke="White"
+            StrokeThickness="2" />
+          <Ellipse
+            Name="EqCircle2"
+            Canvas.Left="-4.5"
+            Canvas.Top="3"
+            Width="9"
+            Height="9"
+            Fill="#212128"
+            Stroke="White"
+            StrokeThickness="2" />
+          <Ellipse
+            Name="EqCircle3"
+            Canvas.Left="7.5"
+            Canvas.Top="-6"
+            Width="9"
+            Height="9"
+            Fill="#212128"
+            Stroke="White"
+            StrokeThickness="2" />
+        </Canvas>
 
-                                        <DoubleAnimation
-                                            AutoReverse="True"
-                                            Storyboard.TargetName="EqCircle3"
-                                            Storyboard.TargetProperty="(Canvas.Top)"
-                                            From="-6"
-                                            To="3"
-                                            Duration="0:0:0.25">
-                                            <DoubleAnimation.EasingFunction>
-                                                <CubicEase EasingMode="EaseOut" />
-                                            </DoubleAnimation.EasingFunction>
-                                        </DoubleAnimation>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger.Actions>
-                        </EventTrigger>
-                    </Button.Triggers>
-                </Button>
-            </ListViewItem>
-        </ListView>
-    </Grid>
+        <Button.Triggers>
+          <EventTrigger RoutedEvent="Button.MouseEnter">
+            <EventTrigger.Actions>
+              <BeginStoryboard>
+                <Storyboard>
+                  <DoubleAnimation
+                    AutoReverse="True"
+                    Storyboard.TargetName="EqCircle1"
+                    Storyboard.TargetProperty="(Canvas.Top)"
+                    From="-10"
+                    To="3"
+                    Duration="0:0:0.4">
+                    <DoubleAnimation.EasingFunction>
+                      <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                  </DoubleAnimation>
+
+                  <DoubleAnimation
+                    AutoReverse="True"
+                    Storyboard.TargetName="EqCircle2"
+                    Storyboard.TargetProperty="(Canvas.Top)"
+                    From="3"
+                    To="-10"
+                    Duration="0:0:0.4">
+                    <DoubleAnimation.EasingFunction>
+                      <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                  </DoubleAnimation>
+
+                  <DoubleAnimation
+                    AutoReverse="True"
+                    Storyboard.TargetName="EqCircle3"
+                    Storyboard.TargetProperty="(Canvas.Top)"
+                    From="-6"
+                    To="3"
+                    Duration="0:0:0.25">
+                    <DoubleAnimation.EasingFunction>
+                      <CubicEase EasingMode="EaseOut" />
+                    </DoubleAnimation.EasingFunction>
+                  </DoubleAnimation>
+                </Storyboard>
+              </BeginStoryboard>
+            </EventTrigger.Actions>
+          </EventTrigger>
+        </Button.Triggers>
+      </Button>
+    </StackPanel>
+  </Grid>
 </UserControl>

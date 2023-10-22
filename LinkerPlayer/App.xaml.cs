@@ -1,6 +1,7 @@
 ﻿using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using RestoreWindowPlace;
 using Serilog;
 using System.Windows;
 
@@ -9,9 +10,12 @@ namespace LinkerPlayer;
 public partial class App
 {
     public static IHost? AppHost { get; set; }
+    public WindowPlace WindowPlace { get; }
 
     public App()
     {
+        this.WindowPlace = new WindowPlace("placement.config");
+
         AppHost = Host.CreateDefaultBuilder()
             .UseSerilog((host, configuration) =>
             {
@@ -47,5 +51,6 @@ public partial class App
         await AppHost!.StopAsync();
         AppHost.Dispose();
         base.OnExit(e);
+        this.WindowPlace.Save();
     }
 }

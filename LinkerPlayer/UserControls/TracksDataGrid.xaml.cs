@@ -1,28 +1,37 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using LinkerPlayer.Models;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
-namespace LinkerPlayer.UserControls
+namespace LinkerPlayer.UserControls;
+
+public partial class TracksDataGrid
 {
-    /// <summary>
-    /// Interaction logic for TracksDataGrid.xaml
-    /// </summary>
-    public partial class TracksDataGrid : UserControl
+    private MediaFile? _mediaFile;
+
+    public TracksDataGrid()
     {
-        public TracksDataGrid()
+        DataContext = this;
+        InitializeComponent();
+    }
+
+    public RoutedEventHandler? ClickRowElement;
+
+    private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_mediaFile is { State: PlayerState.Playing })
         {
-            InitializeComponent();
+            _mediaFile.State = PlayerState.Stopped;
         }
+
+        Windows.MainWindow mainWindow = (Windows.MainWindow)Window.GetWindow(this)!;
+        
+        if (sender is DataGrid { SelectedItem: not null } grid)
+        {
+            _mediaFile = ((grid.SelectedItem as MediaFile)!);
+            _mediaFile.State = PlayerState.Playing;
+        }
+
+        mainWindow.Song_Click(sender, e);
     }
 }

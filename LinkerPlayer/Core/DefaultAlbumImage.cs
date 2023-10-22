@@ -9,6 +9,7 @@ public class DefaultAlbumImage
     private static BitmapImage? _defaultImage;
     private const string NoAlbumCoverLight = @"pack://application:,,,/LinkerPlayer;component/Images/no_album_cover_light.jpg";
     private const string NoAlbumCoverDark = @"pack://application:,,,/LinkerPlayer;component/Images/no_album_cover_dark.jpg";
+    private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/cdgraphic.png";
 
     public static BitmapImage GetImage(string resourceString)
     {
@@ -17,10 +18,10 @@ public class DefaultAlbumImage
 
     public static void Reload()
     {
-        string noAlbumCoverUri = NoAlbumCoverLight;
+        string noAlbumCoverUri = NoAlbumCover;
 
-        if (Settings.Default.SelectedTheme == ThemeColors.Midnight.ToString())
-            noAlbumCoverUri = NoAlbumCoverDark;
+        //if (Settings.Default.SelectedTheme == ThemeColors.Midnight.ToString())
+        //    noAlbumCoverUri = NoAlbumCoverDark;
 
         _defaultImage = new BitmapImage(new System.Uri(noAlbumCoverUri, System.UriKind.Absolute));
     }

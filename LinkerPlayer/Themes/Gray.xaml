@@ -6,6 +6,8 @@
   <Color x:Key="MainWindowGradientStartColor">#EEF1F5</Color>
   <Color x:Key="MainWindowGradientEndColor">#EEF1F5</Color>
 
+  <Color x:Key="ChildWindowBackgroundColor">#AAAAAA</Color>
+
   <Color x:Key="ControlPrimaryAccentColor">#673AB7</Color>
   <Color x:Key="ControlSecondaryAccentColor">#3B2A5A</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
@@ -20,8 +22,8 @@
   <Color x:Key="StandardTextForeground">#4000000</Color>
   <Color x:Key="InactiveSelectionColor">WhiteSmoke</Color>
 
-  <Color x:Key="PlaylistItemForegroundColor">White</Color>
-  <Color x:Key="PlaylistItemBackgroundColor">White</Color>
+  <Color x:Key="PlaylistTabForegroundColor">White</Color>
+  <Color x:Key="PlaylistTabBackgroundColor">White</Color>
   <Color x:Key="PlaylistMouseOverItemForegroundColor">White</Color>
   <Color x:Key="PlaylistMouseOverItemBackgroundColor">White</Color>
   <Color x:Key="PlaylistSelectedItemColor">#6B7B82</Color>
@@ -36,7 +38,10 @@
   <Color x:Key="TrackListColumnHeaderForegroundColor">Black</Color>
   <Color x:Key="TrackListColumnHeaderBackgroundColor">White</Color>
   <Color x:Key="TrackListItemForegroundColor">White</Color>
-  <Color x:Key="TrackListItemBackgroundColor">White</Color>
+  <Color x:Key="TrackListItemBackgroundAlt1Color">LightGray</Color>
+  <Color x:Key="TrackListItemBackgroundAlt2Color">DarkGray</Color>
+  <Color x:Key="TrackListSelectedItemItemForegroundColor">White</Color>
+  <Color x:Key="TrackListSelectedItemItemBackgroundColor">DarkGray</Color>
   <Color x:Key="TrackListMouseOverItemForegroundColor">White</Color>
   <Color x:Key="TrackListMouseOverItemBackgroundColor">White</Color>
   <Color x:Key="TrackListSelectedItemColor">#6B7B82</Color>
@@ -49,8 +54,8 @@
   <Color x:Key="PlayStartGradientColor">#D0D0D0</Color>
   <Color x:Key="PlayEndGradientColor">#EAEAEA</Color>
 
-  <Color x:Key="PlayPauseButtonColor">#DDDDDD</Color>
-  <Color x:Key="PlayPauseButtonPressedColor">#A0A0A0</Color>
+  <Color x:Key="PlayerControlButtonColor">#DDDDDD</Color>
+  <Color x:Key="PlayerControlButtonPressedColor">#A0A0A0</Color>
 
   <Color x:Key="MenuTextForegroundColor">#000000</Color>
   <Color x:Key="MenuDisabledTextColor">#808080</Color>
