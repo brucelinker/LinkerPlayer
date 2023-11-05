@@ -256,7 +256,7 @@
             <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
             <Style.Triggers>
               <Trigger Property="IsChecked" Value="true">
-                <Setter Property="Content" Value="{iconPacks:Material Shuffle, Width=15, Height=15}" />
+                <Setter Property="Content" Value="{iconPacks:Entypo Shuffle, Width=17, Height=17}" />
               </Trigger>
             </Style.Triggers>
           </Style>
