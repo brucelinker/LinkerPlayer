@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using LinkerPlayer.UserControls;
 
 namespace LinkerPlayer.Windows;
 
@@ -44,16 +45,16 @@ public partial class MainWindow
 
         if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
         {
-            Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(0);
+            Properties.Settings.Default.MainOutputDevice = OutputDevice.GetOutputDeviceNameById(0);
         }
-        else if (!DeviceControl.GetOutputDevicesList().Contains(Properties.Settings.Default.MainOutputDevice))
+        else if (!OutputDevice.GetOutputDevicesList().Contains(Properties.Settings.Default.MainOutputDevice))
         {
-            Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(0);
+            Properties.Settings.Default.MainOutputDevice = OutputDevice.GetOutputDeviceNameById(0);
         }
 
         if (string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
         {
-            foreach (string outputDevice in DeviceControl.GetOutputDevicesList())
+            foreach (string outputDevice in OutputDevice.GetOutputDevicesList())
             {
                 if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase))
                 {
@@ -61,11 +62,11 @@ public partial class MainWindow
                 }
             }
         }
-        else if (!DeviceControl.GetOutputDevicesList().Contains(Properties.Settings.Default.AdditionalOutputDevice))
+        else if (!OutputDevice.GetOutputDevicesList().Contains(Properties.Settings.Default.AdditionalOutputDevice))
         {
             Properties.Settings.Default.AdditionalOutputDevice = "";
 
-            foreach (string outputDevice in DeviceControl.GetOutputDevicesList())
+            foreach (string outputDevice in OutputDevice.GetOutputDevicesList())
             {
                 if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase))
                 {
@@ -76,7 +77,7 @@ public partial class MainWindow
 
         AudioStreamControl = new AudioStreamControl(Properties.Settings.Default.MainOutputDevice, null!);
 
-        AudioStreamControl.MainMusic!.MusicVolume = (float)Properties.Settings.Default.MainVolumeSliderValue / 100;
+        AudioStreamControl.MainMusic!.MusicVolume = (float)Properties.Settings.Default.VolumeSliderValue / 100;
 
         if (Properties.Settings.Default.AdditionalOutputEnabled && !string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
         {
@@ -102,7 +103,7 @@ public partial class MainWindow
         //PlayerControls.AdditionalVolumeSlider.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
         //PlayerControls.AdditionalVolumeButton.IsEnabled = Properties.Settings.Default.AdditionalOutputEnabled;
 
-        PlayerControls.MainVolumeSlider.Value = Properties.Settings.Default.MainVolumeSliderValue;
+        PlayerControls.VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
         //PlayerControls.AdditionalVolumeSlider.Value = Properties.Settings.Default.AdditionalVolumeSliderValue;
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
@@ -126,7 +127,7 @@ public partial class MainWindow
 
         SelectedTheme = ThemeManager.ModifyTheme(SelectedTheme);
 
-        PlayerControls.MainVolumeSlider.ValueChanged += MainVolumeSlider_ValueChanged;
+        PlayerControls.VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
         //PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
 
         TracksTable.ClickRowElement += Song_Click;
@@ -199,7 +200,7 @@ public partial class MainWindow
             }
         }
 
-        PlayerControls.Mode = (PlaybackMode)Properties.Settings.Default.LastPlaybackMode;
+        //PlayerControls.Mode = (PlaybackMode)Properties.Settings.Default.LastPlaybackMode;
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
@@ -223,9 +224,9 @@ public partial class MainWindow
     //    SelectedTheme = (int)themeColor;
     //}
 
-    private void MainVolumeSlider_ValueChanged(object sender, EventArgs e)
+    private void VolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.MainVolumeSlider.Value / 100;
+        AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.VolumeSlider.Value / 100;
     }
 
     public void Music_StoppedEvent(object sender, EventArgs e)
@@ -280,37 +281,27 @@ public partial class MainWindow
 
             return false;
         }
-        else
-        {
-            mediaFile.UpdateFromTag();
-            SelectedSong = mediaFile.Clone();
 
-            AudioStreamControl.PathToMusic = SelectedSong.Path;
+        mediaFile.UpdateFromTag();
+        SelectedSong = mediaFile.Clone();
 
-            AudioStreamControl.StopAndPlayFromPosition(0);
-            _seekBarTimer.Start();
+        AudioStreamControl.PathToMusic = SelectedSong.Path;
 
-            PlayerControls.State = PlayerState.Playing;
+        AudioStreamControl.StopAndPlayFromPosition(0);
+        _seekBarTimer.Start();
 
-            PlayerControls.CurrentSongName.Text = SelectedSong.Title;
-            TimeSpan ts = SelectedSong.Duration;
-            PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-            PlayerControls.CurrentTime.Text = "0:00";
+        PlayerControls.State = PlayerState.Playing;
 
-            TrackInfo.SetSelectedMediaFile(SelectedSong);
+        PlayerControls.CurrentSongName.Text = SelectedSong.Title;
+        TimeSpan ts = SelectedSong.Duration;
+        PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
+        PlayerControls.CurrentTime.Text = "0:00";
 
-            //foreach (Button button in Helper.FindVisualChildren<Button>(TracksTable.TracksTable))
-            //{
-            //    // outline selected mediaFile
-            //    button.FontWeight = ((button.Content as GridViewRowPresenter)!
-            //        .Content as MediaFile)!.Id == SelectedSong.Id ?
-            //        FontWeights.ExtraBold : FontWeights.Normal;
-            //}
+        TrackInfo.SetSelectedMediaFile(SelectedSong);
 
-            StartVisualization();
+        StartVisualization();
 
-            return true;
-        }
+        return true;
     }
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -351,14 +342,17 @@ public partial class MainWindow
             if (PlayerControls.State == PlayerState.Paused)
             {
                 PlayerControls.State = PlayerState.Playing;
+                SelectedSong.State = PlayerState.Playing;
+                TracksDataGrid.UpdatePlayerState(PlayerState.Playing);
 
                 AudioStreamControl.StopAndPlayFromPosition((PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
-
                 _seekBarTimer.Start();
             }
             else
             {
                 PlayerControls.State = PlayerState.Paused;
+                SelectedSong.State = PlayerState.Paused;
+                TracksDataGrid.UpdatePlayerState(PlayerState.Paused);
 
                 AudioStreamControl.Pause();
                 _seekBarTimer.Stop();
@@ -371,59 +365,39 @@ public partial class MainWindow
         if (SelectedSong != null)
         {
             int selectedSongIndex = TracksTable.TracksTable.Items
-                                    .Cast<MediaFile>()
-                                    .ToList()
-                                    .FindIndex(item => item.Id == SelectedSong.Id);
+                .Cast<MediaFile>()
+                .ToList()
+                .FindIndex(item => item.Id == SelectedSong.Id);
 
             if (selectedSongIndex == -1)
-            { // changed displayed playlist
-                switch (PlayerControls.Mode)
+            {
+                // changed displayed playlist
+                if (PlayerControls.ShuffleMode)
                 {
-                    case PlaybackMode.Loop:
+                    List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
+                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
 
-                        List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
-                        selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
-
-                        if (selectedSongIndex != -1)
-                        {
-                            SelectWithSkipping(
-                                selectedSongIndex == backgroundSongs.Count - 1
-                                    ? backgroundSongs[0]
-                                    : backgroundSongs[selectedSongIndex + 1], NextButton_Click);
-                        }
-
-                        break;
-
-                    case PlaybackMode.Loop1:
-                        SelectSong(SelectedSong);
-                        break;
-
-                    case PlaybackMode.NoLoop:
-                        break;
+                    if (selectedSongIndex != -1)
+                    {
+                        SelectWithSkipping(
+                            selectedSongIndex == backgroundSongs.Count - 1
+                                ? backgroundSongs[0]
+                                : backgroundSongs[selectedSongIndex + 1], NextButton_Click);
+                    }
                 }
-
-                return;
             }
 
-            switch (PlayerControls.Mode)
+            else
             {
-                case PlaybackMode.Loop:
-                    if (selectedSongIndex == TracksTable.TracksTable.Items.Count - 1)
-                    {
-                        SelectWithSkipping((TracksTable.TracksTable.Items[0] as MediaFile)!, NextButton_Click);
-                    }
-                    else
-                    {
-                        SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex + 1] as MediaFile)!, NextButton_Click);
-                    }
-                    break;
-
-                case PlaybackMode.Loop1:
-                    SelectSong(SelectedSong);
-                    break;
-
-                case PlaybackMode.NoLoop:
-                    break;
+                if (selectedSongIndex == TracksTable.TracksTable.Items.Count - 1)
+                {
+                    SelectWithSkipping((TracksTable.TracksTable.Items[0] as MediaFile)!, NextButton_Click);
+                }
+                else
+                {
+                    SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex + 1] as MediaFile)!,
+                        NextButton_Click);
+                }
             }
         }
     }
@@ -439,55 +413,31 @@ public partial class MainWindow
 
             if (selectedSongIndex == -1)
             { // changed displayed playlist
-                switch (PlayerControls.Mode)
+                if (PlayerControls.ShuffleMode)
                 {
-                    case PlaybackMode.Loop:
+                    List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
+                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
 
-                        List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
-                        selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
-
-                        if (selectedSongIndex != -1)
-                        {
-                            SelectWithSkipping(selectedSongIndex == 0
-                                    ? backgroundSongs[^1]
-                                    : backgroundSongs[selectedSongIndex - 1],
-                                PrevButton_Click);
-                        }
-
-                        break;
-
-                    case PlaybackMode.Loop1:
-                        SelectSong(SelectedSong);
-                        break;
-
-                    case PlaybackMode.NoLoop:
-                        SelectSong(SelectedSong);
-                        break;
+                    if (selectedSongIndex != -1)
+                    {
+                        SelectWithSkipping(selectedSongIndex == 0
+                                ? backgroundSongs[^1]
+                                : backgroundSongs[selectedSongIndex - 1],
+                            PrevButton_Click);
+                    }
                 }
-
-                return;
             }
 
-            switch (PlayerControls.Mode)
+            else
             {
-                case PlaybackMode.Loop:
-                    if (selectedSongIndex == 0)
-                    {
-                        SelectWithSkipping((TracksTable.TracksTable.Items[^1] as MediaFile)!, PrevButton_Click);
-                    }
-                    else
-                    {
-                        SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
-                    }
-                    break;
-
-                case PlaybackMode.Loop1:
-                    SelectSong(SelectedSong);
-                    break;
-
-                case PlaybackMode.NoLoop:
-                    SelectSong(SelectedSong);
-                    break;
+                if (selectedSongIndex == 0)
+                {
+                    SelectWithSkipping((TracksTable.TracksTable.Items[^1] as MediaFile)!, PrevButton_Click);
+                }
+                else
+                {
+                    SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
+                }
             }
         }
     }
@@ -656,7 +606,7 @@ public partial class MainWindow
 
     public void Window_Closed(object sender, EventArgs e)
     {
-        Properties.Settings.Default.MainVolumeSliderValue = PlayerControls.MainVolumeSlider.Value;
+        Properties.Settings.Default.VolumeSliderValue = PlayerControls.VolumeSlider.Value;
         //Properties.Settings.Default.AdditionalVolumeSliderValue = PlayerControls.AdditionalVolumeSlider.Value;
 
         Properties.Settings.Default.LastSelectedPlaylistName = SelectedPlaylist != null ? SelectedPlaylist.Name : "";
@@ -665,7 +615,7 @@ public partial class MainWindow
 
         Properties.Settings.Default.LastSeekBarValue = PlayerControls.SeekBar.Value;
 
-        Properties.Settings.Default.LastPlaybackMode = (int)PlayerControls.Mode;
+        //Properties.Settings.Default.LastPlaybackMode = (int)PlayerControls.Mode;
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
@@ -673,11 +623,11 @@ public partial class MainWindow
                 SelectedBandsSettings != null! ? SelectedBandsSettings.Name : null;
         }
 
-        Properties.Settings.Default.MainOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.MainMusic!.GetOutputDeviceId());
+        Properties.Settings.Default.MainOutputDevice = OutputDevice.GetOutputDeviceNameById(AudioStreamControl.MainMusic!.GetOutputDeviceId());
 
         if (AudioStreamControl.AdditionalMusic != null)
         {
-            Properties.Settings.Default.AdditionalOutputDevice = DeviceControl.GetOutputDeviceNameById(AudioStreamControl.AdditionalMusic.GetOutputDeviceId());
+            Properties.Settings.Default.AdditionalOutputDevice = OutputDevice.GetOutputDeviceNameById(AudioStreamControl.AdditionalMusic.GetOutputDeviceId());
         }
 
         Properties.Settings.Default.Save();
@@ -749,14 +699,14 @@ public partial class MainWindow
             }
             else if (enteredHotkey == Properties.Settings.Default["IncreaseMainVolumeHotkey"].ToString())
             {
-                double val = PlayerControls.MainVolumeSlider.Value;
-                PlayerControls.MainVolumeSlider.Value = val + 5 > 100 ? 100 : val + 5;
+                double val = PlayerControls.VolumeSlider.Value;
+                PlayerControls.VolumeSlider.Value = val + 5 > 100 ? 100 : val + 5;
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["DecreaseMainVolumeHotkey"].ToString())
             {
-                double val = PlayerControls.MainVolumeSlider.Value;
-                PlayerControls.MainVolumeSlider.Value = val - 5 < 0 ? 0 : val - 5;
+                double val = PlayerControls.VolumeSlider.Value;
+                PlayerControls.VolumeSlider.Value = val - 5 < 0 ? 0 : val - 5;
                 e.Handled = true;
             }
         }

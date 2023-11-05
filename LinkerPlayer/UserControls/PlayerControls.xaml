@@ -2,12 +2,13 @@
   x:Class="LinkerPlayer.UserControls.PlayerControls"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:common="clr-namespace:LinkerPlayer.Models"
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:models="clr-namespace:LinkerPlayer.Models"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls" d:DataContext="{d:DesignInstance Type=userControls:PlayerControls}"
   d:DesignHeight="80"
   d:DesignWidth="1000"
   mc:Ignorable="d">
@@ -21,12 +22,61 @@
 
       <converters:EnumBooleanConverter x:Key="PlayerStateToIconConverter">
         <converters:EnumBooleanConverter.TrueValue>
-          <iconPacks:PackIconMaterial Width="19" Height="19" Margin="0" Kind="Pause" />
+          <iconPacks:PackIconMaterial
+            Width="19"
+            Height="19"
+            Margin="0"
+            Kind="Pause" />
         </converters:EnumBooleanConverter.TrueValue>
         <converters:EnumBooleanConverter.FalseValue>
-          <iconPacks:PackIconFontAwesome Width="20" Height="20" Margin="3 0 0 0" Kind="PlaySolid" />
+          <iconPacks:PackIconFontAwesome
+            Width="20"
+            Height="20"
+            Margin="3,0,0,0"
+            Kind="PlaySolid" />
         </converters:EnumBooleanConverter.FalseValue>
       </converters:EnumBooleanConverter>
+
+      <converters:EnumBooleanConverter x:Key="ShuffleModeToIconConverter">
+        <converters:EnumBooleanConverter.TrueValue>
+          <iconPacks:PackIconMaterial
+            Width="19"
+            Height="19"
+            Margin="0"
+            Kind="Shuffle" />
+        </converters:EnumBooleanConverter.TrueValue>
+        <converters:EnumBooleanConverter.FalseValue>
+          <iconPacks:PackIconMaterial
+            Width="20"
+            Height="20"
+            Margin="3,0,0,0"
+            Kind="ShuffleDisabled" />
+        </converters:EnumBooleanConverter.FalseValue>
+      </converters:EnumBooleanConverter>
+
+      <!--<converters:BooleanConverter 
+        x:Key="ShuffleModeToIconConverter"
+          TrueValue ="{iconPacks:Material Shuffle,
+            Width=19,
+            Height=19}" 
+          FalseValue="{iconPacks:Material ShuffleDisabled,
+            Width=20,
+            Height=20}" />-->
+
+      <converters:BooleanConverter
+        x:Key="MuteToIconConverter"
+        FalseValue="{iconPacks:MaterialLight Volume,
+                                             Width=15,
+                                             Height=15}"
+        TrueValue="{iconPacks:MaterialLight VolumeMute,
+                                            Width=15,
+                                            Height=15}" />
+
+      <converters:BooleanConverter
+        x:Key="ModeToBrushConverter"
+        FalseValue="{DynamicResource PlayerForegroundBrush}"
+        TrueValue="{DynamicResource ControlPrimaryAccentBrush}" />
+
     </ResourceDictionary>
   </UserControl.Resources>
 
@@ -56,8 +106,13 @@
           Margin="0,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Content="{iconPacks:Material SkipPrevious, Width=16, Height=16}"
-          Style="{StaticResource CircularButton}" />
+          Command="{Binding PlayPrevCommand, Mode=OneWay}"
+          Content="{iconPacks:Material SkipPrevious,
+                                       Width=13,
+                                       Height=13}"
+          Foreground="{DynamicResource PlayerForegroundBrush}"
+          Style="{StaticResource LinkerCircleButton}"
+          ToolTip="Previous Track" />
 
         <Button
           Name="PlayButton"
@@ -68,15 +123,9 @@
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Command="{Binding PlayOrPauseCommand, Mode=OneWay}"
-          Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static common:PlayerState.Playing}}"
-          Style="{StaticResource CircularButton}" />
-
-        <!--<Button
-          Name="PlayerControlButton"
-          Grid.Column="1"
-          Margin="4,0,4,0"
-          Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static common:PlayerState.Playing}}"
-          Style="{StaticResource PlayerControlButton}" />-->
+          Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}"
+          Foreground="{DynamicResource PlayerForegroundBrush}"
+          Style="{StaticResource LinkerCircleButton}" />
 
         <!--  stop  -->
         <Button
@@ -88,8 +137,11 @@
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Command="{Binding StopCommand, Mode=OneWay}"
-          Content="{iconPacks:Material Stop, Width=14, Height=14}"
-          Style="{StaticResource CircularButton}"
+          Content="{iconPacks:Material Stop,
+                                       Width=12,
+                                       Height=12}"
+          Foreground="{DynamicResource PlayerForegroundBrush}"
+          Style="{StaticResource LinkerCircleButton}"
           ToolTip="Stop" />
 
         <!--  next  -->
@@ -103,9 +155,10 @@
           VerticalAlignment="Center"
           Command="{Binding PlayNextCommand, Mode=OneWay}"
           Content="{iconPacks:Material SkipNext,
-                                       Width=16,
-                                       Height=16}"
-          Style="{StaticResource CircularButton}"
+                                       Width=13,
+                                       Height=13}"
+          Foreground="{DynamicResource PlayerForegroundBrush}"
+          Style="{StaticResource LinkerCircleButton}"
           ToolTip="Next File (j)" />
       </Grid>
 
@@ -189,21 +242,34 @@
         </TextBlock>
       </Grid>
 
-      <Button
-        Name="PlaybackModeButton"
+      <ToggleButton
+        Name="ShuffleModeButton"
         Grid.Column="2"
-        Width="40"
-        Height="30"
-        Margin="10,0,0,0"
-        HorizontalAlignment="Left"
-        Click="PlaybackModeButton_Click"
-        Style="{StaticResource TransparentButton}">
-        <Image
-          Width="40"
-          Opacity="0.7"
-          RenderOptions.BitmapScalingMode="HighQuality"
-          Source="{Binding PlaybackModeImagePath}" />
-      </Button>
+        Width="36"
+        Height="36"
+        Click="ShuffleModeButton_Click"
+        Command="{Binding ShuffleCommand, Mode=OneWay}">
+        <ToggleButton.Style>
+          <Style TargetType="ToggleButton" 
+                 BasedOn="{StaticResource LinkerCircleToggleButton}">
+            <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
+            <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
+            <Style.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Content" Value="{iconPacks:Material Shuffle, Width=15, Height=15}" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </ToggleButton.Style>
+      </ToggleButton>
+
+      <!--<materialDesign:PackIcon
+          Width="18"
+          Height="18"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Foreground="{Binding ShuffleMode, Mode=OneWay, Converter={StaticResource ModeToBrushConverter}}"
+          Kind="Shuffle" />-->
 
       <Grid Name="VolumeSlidersGrid" Grid.Column="3">
         <Grid.ColumnDefinitions>
@@ -219,22 +285,48 @@
         </Grid.RowDefinitions>
 
         <Slider
-          x:Name="MainVolumeSlider"
+          x:Name="VolumeSlider"
           Grid.Row="2"
           Grid.Column="0"
+          Margin="0, 0, 12, 0"
           VerticalAlignment="Center"
           Maximum="100"
           Style="{StaticResource CustomHorizontalSlider}"
-          ValueChanged="MainVolumeSlider_ValueChanged" />
+          ValueChanged="VolumeSlider_ValueChanged" />
 
-        <Button
+        <ToggleButton
           Name="MainVolumeButton"
           Grid.Row="2"
           Grid.Column="1"
-          Width="28"
-          Height="28"
+          Width="36"
+          Height="36"
+          VerticalAlignment="Center"
+          HorizontalContentAlignment="Center"
           Click="MainVolumeButton_Click"
-          Style="{StaticResource CircularButton}">
+          Command="{Binding MuteCommand, Mode=OneWay}"
+          ToolTip="Mute (m)">
+          <ToggleButton.Style>
+            <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource LinkerCircleToggleButton}" >
+              <Setter Property="Content" Value="{iconPacks:Octicons Unmute, Width=15, Height=15}" />
+              <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
+              <Style.Triggers>
+                <Trigger Property="IsChecked" Value="true">
+                  <Setter Property="Content" Value="{iconPacks:Octicons Mute, Width=15, Height=15}" />
+                  <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </ToggleButton.Style>
+        </ToggleButton>
+
+        <!--<Button
+          Name="MainVolumeButton"
+          Grid.Row="2"
+          Grid.Column="1"
+          Width="32"
+          Height="32"
+          Click="MainVolumeButton_Click"
+          Style="{StaticResource CircleToggleButtonStyle}">
           <materialDesign:PackIcon
             Width="18"
             Height="18"
@@ -242,7 +334,7 @@
             VerticalAlignment="Center"
             Foreground="White"
             Kind="VolumeMute" />
-        </Button>
+        </Button>-->
       </Grid>
     </Grid>
   </Grid>

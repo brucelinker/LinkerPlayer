@@ -49,14 +49,14 @@
   <Color x:Key="TrackListTipBackgroundColor">LightSteelBlue</Color>
   <Color x:Key="TrackListTipForegroundColor">Black</Color>
 
-  <Color x:Key="PlayerForegroundColor">Black</Color>
+  <Color x:Key="PlayerForegroundColor">White</Color>
   <Color x:Key="PlayerBackgroundColor">#40586A</Color>
   <Color x:Key="PlayerActiveColor">DarkGray</Color>
   <Color x:Key="PlayStartGradientColor">#FFFFFF</Color>
   <Color x:Key="PlayEndGradientColor">#FFFFFF</Color>
 
   <Color x:Key="PlayerControlButtonColor">Transparent</Color>
-  <Color x:Key="PlayerControlButtonBorderColor">#EBEBEB</Color>
+  <Color x:Key="PlayerControlButtonBorderColor">#BBBBBB</Color>
   <Color x:Key="PlayerControlButtonPressedColor">#888888</Color>
   <Color x:Key="PlayerControlButtonMouseOverBorderColor">#888888</Color>
 

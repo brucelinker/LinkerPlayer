@@ -7,12 +7,17 @@ namespace LinkerPlayer.UserControls;
 
 public partial class TracksDataGrid
 {
-    private MediaFile? _mediaFile;
+    private static MediaFile? _mediaFile;
 
     public TracksDataGrid()
     {
         DataContext = this;
         InitializeComponent();
+    }
+
+    public static void UpdatePlayerState(PlayerState state)
+    {
+        _mediaFile.State = state;
     }
 
     public RoutedEventHandler? ClickRowElement;
@@ -33,5 +38,9 @@ public partial class TracksDataGrid
         }
 
         mainWindow.Song_Click(sender, e);
+    }
+
+    private void TrackRow_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
     }
 }

@@ -62,12 +62,12 @@ namespace LinkerPlayer.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public double MainVolumeSliderValue {
+        public double VolumeSliderValue {
             get {
-                return ((double)(this["MainVolumeSliderValue"]));
+                return ((double)(this["VolumeSliderValue"]));
             }
             set {
-                this["MainVolumeSliderValue"] = value;
+                this["VolumeSliderValue"] = value;
             }
         }
         

@@ -51,7 +51,7 @@ public class AudioStream
         {
             OutputDevice = new WaveOutEvent()
             {
-                DeviceNumber = DeviceControl.GetOutputDeviceId(deviceName)
+                DeviceNumber = Audio.OutputDevice.GetOutputDeviceId(deviceName)
             };
 
             OutputDevice.PlaybackStopped += PlaybackStopped;
@@ -74,7 +74,7 @@ public class AudioStream
                 if (ex.Message == "NoDriver calling waveOutGetVolume")
                 {
                     sender = null;
-                    SelectOutputDevice(DeviceControl.GetOutputDeviceNameById(0));
+                    SelectOutputDevice(Audio.OutputDevice.GetOutputDeviceNameById(0));
                 }
             }
 
@@ -86,7 +86,7 @@ public class AudioStream
     {
         if (OutputDevice != null)
         {
-            string outputDeviceName = DeviceControl.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
+            string outputDeviceName = Audio.OutputDevice.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
             Log.Information($"Playing to {outputDeviceName}.");
 
             OutputDevice?.Play();
@@ -97,7 +97,7 @@ public class AudioStream
     {
         if (OutputDevice != null)
         {
-            string outputDeviceName = DeviceControl.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
+            string outputDeviceName = Audio.OutputDevice.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
             Log.Information($"Stopped {outputDeviceName}.");
 
             OutputDevice?.Stop();
@@ -108,7 +108,7 @@ public class AudioStream
     {
         if (OutputDevice != null)
         {
-            string outputDeviceName = DeviceControl.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
+            string outputDeviceName = Audio.OutputDevice.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
             Log.Information($"Paused {outputDeviceName}.");
 
             OutputDevice?.Pause();

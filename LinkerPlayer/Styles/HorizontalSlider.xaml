@@ -9,10 +9,11 @@
       <Setter.Value>
         <ControlTemplate TargetType="RepeatButton">
           <Border
-            Height="5"
+            Height="2"
             Background="{DynamicResource ControlDisabledBrush}"
             BorderBrush="{DynamicResource ControlDisabledBrush}"
-            BorderThickness="1" />
+            BorderThickness="2"
+            CornerRadius="2" />
         </ControlTemplate>
       </Setter.Value>
     </Setter>
@@ -25,10 +26,11 @@
       <Setter.Value>
         <ControlTemplate TargetType="RepeatButton">
           <Border
-            Height="5"
+            Height="6"
             Background="{DynamicResource ControlPrimaryAccentBrush}"
             BorderBrush="{DynamicResource ControlPrimaryAccentBrush}"
             BorderThickness="1"
+            CornerRadius="2"
             SnapsToDevicePixels="True" />
         </ControlTemplate>
       </Setter.Value>

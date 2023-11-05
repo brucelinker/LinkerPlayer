@@ -25,93 +25,48 @@ public partial class PlayerControls : INotifyPropertyChanged
         InitializeComponent();
 
         State = PlayerState.Paused;
-        Mode = PlaybackMode.Loop;
+        //Mode = PlaybackMode.Loop;
+
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
-    
-    private string _buttonStateImagePath = null!;
-    private string _playbackModeImagePath = null!;
+
     private PlayerState _playerState = PlayerState.Stopped;
-    private PlaybackMode _playbackMode = PlaybackMode.NoLoop;
-
-    public string ButtonStateImagePath
-    {
-        get => _buttonStateImagePath;
-        set
-        {
-            _buttonStateImagePath = value;
-
-            OnPropertyChanged();
-        }
-    }
-
-    public string PlaybackModeImagePath
-    {
-        get => _playbackModeImagePath;
-        set
-        {
-            _playbackModeImagePath = value;
-
-            OnPropertyChanged();
-        }
-    }
-
     public PlayerState State
     {
         get => _playerState;
         set
         {
-            switch (value)
-            {
-                case PlayerState.Paused:
-                    _playerState = value;
-                    break;
-                case PlayerState.Playing:
-                    _playerState = value;
-                    break;
-            }
+            if (_playerState == value) return;
+            _playerState = value;
 
             OnPropertyChanged();
         }
     }
 
-    public PlaybackMode Mode
+    private static bool _shuffleMode = false;
+    public bool ShuffleMode
     {
-        get => _playbackMode;
+        get => _shuffleMode;
         set
         {
-            switch (value)
-            {
-                case PlaybackMode.Loop:
-                    PlaybackModeImagePath = "/Images/Loop.png";
-                    _playbackMode = value;
-                    break;
-                case PlaybackMode.Loop1:
-                    PlaybackModeImagePath = "/Images/Loop1.png";
-                    _playbackMode = value;
-                    break;
-                case PlaybackMode.NoLoop:
-                    PlaybackModeImagePath = "/Images/NoLoop.png";
-                    _playbackMode = value;
-                    break;
-            }
+            if (_shuffleMode == value) return;
+            _shuffleMode = value;
+
+            OnPropertyChanged();
         }
     }
 
-    private void PlaybackModeButton_Click(object sender, RoutedEventArgs e)
+    private bool _isMute = false;
+    public bool IsMute
     {
-        switch (Mode)
+        get => _isMute;
+        set
         {
-            case PlaybackMode.Loop:
-                Mode = PlaybackMode.Loop1;
-                break;
-            case PlaybackMode.Loop1:
-                Mode = PlaybackMode.NoLoop;
-                break;
-            case PlaybackMode.NoLoop:
-                Mode = PlaybackMode.Loop;
-                break;
+            if(value == _isMute) return;
+            _isMute = value;
+
+            OnPropertyChanged();
         }
     }
 
@@ -370,10 +325,10 @@ public partial class PlayerControls : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private void MainVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         PackIcon? icon = MainVolumeButton.Content as PackIcon;
-        double val = MainVolumeSlider.Value;
+        double val = VolumeSlider.Value;
 
         if (val == 0)
         {
@@ -393,16 +348,21 @@ public partial class PlayerControls : INotifyPropertyChanged
 
     private void MainVolumeButton_Click(object sender, RoutedEventArgs e)
     {
-        if (MainVolumeSlider.Value != 0)
+        if (VolumeSlider.Value != 0)
         {
-            _mainVolumeSliderBeforeMuteValue = MainVolumeSlider.Value;
+            _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
 
-            AnimateVolumeSliderValue(MainVolumeSlider, 0);
+            AnimateVolumeSliderValue(VolumeSlider, 0);
         }
         else
         {
-            AnimateVolumeSliderValue(MainVolumeSlider, _mainVolumeSliderBeforeMuteValue);
+            AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
         }
+    }
+
+    private void ShuffleModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _shuffleMode = !_shuffleMode;
     }
 
     private void AnimateVolumeSliderValue(Slider slider, double newVal)

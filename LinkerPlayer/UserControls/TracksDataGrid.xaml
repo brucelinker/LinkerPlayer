@@ -107,6 +107,7 @@
       ScrollViewer.CanContentScroll="True"
       ScrollViewer.HorizontalScrollBarVisibility="Auto"
       ScrollViewer.VerticalScrollBarVisibility="Auto"
+      SelectionChanged="TrackRow_SelectionChanged"
       VirtualizingStackPanel.IsVirtualizing="True"
       VirtualizingStackPanel.VirtualizationMode="Standard">
       <DataGrid.ColumnHeaderStyle>
@@ -247,18 +248,21 @@
               <Grid>
                 <iconPacks:PackIconFontAwesome
                   x:Name="PlayImage"
-                  Width="10"
+                  Width="20"
                   Height="10"
+                  Margin="5,0,0,0"
                   HorizontalAlignment="Right"
                   VerticalAlignment="Center"
                   Foreground="{StaticResource TrackListItemForegroundBrush}"
                   Kind="PlaySolid"
                   Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}" />
+
                 <iconPacks:PackIconMaterial
                   x:Name="PauseImage"
-                  Width="10"
+                  Width="20"
                   Height="10"
-                  HorizontalAlignment="Center"
+                  Margin="5,0,0,0"
+                  HorizontalAlignment="Right"
                   VerticalAlignment="Center"
                   Foreground="{StaticResource TrackListItemForegroundBrush}"
                   Kind="Pause"

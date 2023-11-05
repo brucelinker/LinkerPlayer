@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace LinkerPlayer.Audio;
 
-public class DeviceControl
+public class OutputDevice
 {
     public static int GetOutputDeviceId(string nameDevice)
     {
@@ -16,24 +16,6 @@ public class DeviceControl
         for (int n = -1; n < WaveOut.DeviceCount; n++)
         {
             if (nameDevice == WaveOut.GetCapabilities(n).ProductName)
-            {
-                return n;
-            }
-        }
-
-        return 0;
-    }
-
-    public static int GetInputDeviceId(string nameDevice)
-    {
-        if (String.IsNullOrWhiteSpace(nameDevice))
-        {
-            throw new ArgumentNullException(nameof(nameDevice));
-        }
-
-        for (int n = -1; n < WaveIn.DeviceCount; n++)
-        {
-            if (nameDevice == WaveIn.GetCapabilities(n).ProductName)
             {
                 return n;
             }
@@ -54,18 +36,6 @@ public class DeviceControl
         return list;
     }
 
-    public static List<string> GetInputDevicesList()
-    {
-        var list = new List<string>();
-
-        for (int n = -1; n < WaveIn.DeviceCount; n++)
-        {
-            list.Add(WaveIn.GetCapabilities(n).ProductName);
-        }
-
-        return list;
-    }
-
     public static string GetOutputDeviceNameById(int id)
     {
         if (WaveOut.DeviceCount <= id)
@@ -74,10 +44,5 @@ public class DeviceControl
         }
 
         return WaveOut.GetCapabilities(id).ProductName;
-    }
-
-    public static string GetInputDeviceNameById(int id)
-    {
-        return WaveIn.GetCapabilities(id).ProductName;
     }
 }

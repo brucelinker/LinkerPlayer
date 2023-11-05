@@ -15,12 +15,12 @@ public class MusicStream : AudioStream
     private Equalizer? _equalizer;
     private EqualizerBand[]? _bands;
 
-    private float _musicVolume;
 
     public MusicStream(string deviceName) : base(deviceName)
     {
     }
 
+    private float _musicVolume;
     public float MusicVolume
     {
         get
