@@ -2,20 +2,45 @@
 using LinkerPlayer.Models;
 using System;
 using System.Windows;
+using System.Windows.Media.Imaging;
+using Serilog;
 
 namespace LinkerPlayer.UserControls;
 
 public partial class TrackInfo
 {
     public MediaFile SelectedMediaFile = new();
+    private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/cdgraphic.png";
 
     public TrackInfo()
     {
+        this.DataContext = this;
         InitializeComponent();
+    }
+
+    private static BitmapImage? _defaultAlbumImage;
+    public static BitmapImage DefaultAlbumImage
+    {
+        get
+        {
+            if (_defaultAlbumImage == null)
+                ReloadDefaultAlbumImage();
+
+            return _defaultAlbumImage!;
+        }
+    }
+
+    public static void ReloadDefaultAlbumImage()
+    {
+        Log.Information("TrackInfo - ReloadDefaultAlbumImage");
+
+        _defaultAlbumImage = new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
     }
 
     public void SetSelectedMediaFile(MediaFile mediaFile)
     {
+        Log.Information("TrackInfo - SetSelectedMediaFile");
+
         SelectedMediaFile = mediaFile;
 
         DisplayTrackImage(mediaFile);
@@ -27,6 +52,8 @@ public partial class TrackInfo
 
     private void DisplayTrackImage(IMediaFile mediaFile)
     {
+        Log.Information("TrackInfo - DisplayTrackImage");
+
         if (mediaFile.AlbumCover != null)
         {
             TrackImage.Source = mediaFile.AlbumCover;
@@ -49,7 +76,7 @@ public partial class TrackInfo
 
         try
         {
-            TrackImage.Source = DefaultAlbumImage.DefaultImage;
+            TrackImage.Source = DefaultAlbumImage;
             TrackImageText.Text = "[ No Image ]";
         }
         catch (Exception exc)

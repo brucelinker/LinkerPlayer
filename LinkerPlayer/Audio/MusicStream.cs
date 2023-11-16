@@ -72,6 +72,7 @@ public class MusicStream : AudioStream
 
             base.Play();
         }
+        Log.Information("MusicStream - Play");
     }
 
     public void StopAndPlayFromPosition(double startingPosition)
@@ -99,6 +100,8 @@ public class MusicStream : AudioStream
 
             base.Play();
         }
+        Log.Information("MusicStream - StopAndPlayFromPosition");
+
     }
 
     public override void Stop()
@@ -106,6 +109,7 @@ public class MusicStream : AudioStream
         base.Stop();
 
         Dispose();
+        Log.Information("MusicStream - Stop");
     }
 
     private void Dispose()
@@ -115,6 +119,7 @@ public class MusicStream : AudioStream
             _audioFile?.Dispose();
             _audioFile = null;
         }
+        Log.Information("MusicStream - Dispose");
     }
 
     public override void CloseStream()
@@ -122,6 +127,7 @@ public class MusicStream : AudioStream
         Stop();
         StopEqualizer();
         base.CloseStream();
+        Log.Information("MusicStream - CloseStream");
     }
 
     public string? PathToMusic
@@ -203,7 +209,7 @@ public class MusicStream : AudioStream
 
             _equalizer = new Equalizer(_audioFile, _bands);
 
-            Log.Information("Initialize equalizer");
+            Log.Information("MusicStream - Initialize equalizer");
         }
     }
 
@@ -213,7 +219,7 @@ public class MusicStream : AudioStream
 
         _equalizer = null;
 
-        Log.Information("Stop equalizer");
+        Log.Information("MusicStream - Stop equalizer");
     }
 
     public bool IsEqualizerWorking => _equalizer != null;
@@ -232,6 +238,7 @@ public class MusicStream : AudioStream
         {
             return 0;
         }
+        Log.Information("MusicStream - GetBandGain");
     }
 
     public void SetBandGain(int index, float value)
@@ -244,6 +251,7 @@ public class MusicStream : AudioStream
                 _equalizer?.Update();
             }
         }
+        Log.Information("MusicStream - SetBandGain");
     }
 
     public List<EqualizerBand> GetBandsList()
@@ -261,6 +269,7 @@ public class MusicStream : AudioStream
                 });
             }
 
+        Log.Information("MusicStream - GetBandsList");
         return equalizerBands;
     }
 
@@ -273,6 +282,7 @@ public class MusicStream : AudioStream
                 SetBandGain(i, equalizerBandsToAdd[i].Gain);
             }
         }
+        Log.Information("MusicStream - SetBandsList");
     }
 
     public void ReselectOutputDevice(string deviceName)
@@ -300,5 +310,6 @@ public class MusicStream : AudioStream
 
             SelectOutputDevice(deviceName);
         }
+        Log.Information("MusicStream - ReselectOutputDevice");
     }
 }

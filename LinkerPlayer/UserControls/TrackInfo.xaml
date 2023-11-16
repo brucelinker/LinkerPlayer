@@ -45,7 +45,7 @@
           Height="300"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Source="{Binding ElementName=_This, Path=DefaultImage}">
+          Source="{Binding DefaultAlbumImage}">
           <Image.Style>
             <Style TargetType="Image">
               <Setter Property="Opacity" Value="1" />

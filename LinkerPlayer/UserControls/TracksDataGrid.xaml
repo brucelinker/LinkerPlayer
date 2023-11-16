@@ -101,7 +101,6 @@
       EnableRowVirtualization="True"
       GridLinesVisibility="None"
       IsReadOnly="True"
-      ItemsSource="{Binding Tracks}"
       MouseDoubleClick="TrackRow_MouseDoubleClick"
       RowHeaderWidth="0"
       ScrollViewer.CanContentScroll="True"
@@ -336,12 +335,12 @@
           <DataGridTemplateColumn.CellTemplate>
             <DataTemplate>
               <TextBlock
-                Margin="{Binding ElementName=_This, Path=TableMargin, UpdateSourceTrigger=Default}"
+                Margin="5,0,5,0"
                 d:DataContext="{d:DesignData IMediaFile}"
                 FontSize="{DynamicResource FontSizeNormal}"
                 Text="{Binding Title, Mode=OneWay}"
                 ToolTip="{Binding Title}">
-                <TextBlock.Style>
+                <!--<TextBlock.Style>
                   <Style TargetType="TextBlock">
                     <Style.Triggers>
                       <DataTrigger Binding="{Binding Flag}" Value="0">
@@ -367,9 +366,9 @@
                       </DataTrigger>
                     </Style.Triggers>
 
-                    <!--  OK = 0, Tagged, Hidden, Easy, New, Failures, Unknown  -->
+                    --><!--  OK = 0, Tagged, Hidden, Easy, New, Failures, Unknown  --><!--
                   </Style>
-                </TextBlock.Style>
+                </TextBlock.Style>-->
               </TextBlock>
             </DataTemplate>
           </DataGridTemplateColumn.CellTemplate>

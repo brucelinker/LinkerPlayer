@@ -11,19 +11,22 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Navigation;
 using System.Windows.Threading;
 using LinkerPlayer.UserControls;
+using Serilog;
 
 namespace LinkerPlayer.Windows;
 
 public partial class MainWindow
 {
-    public static MainWindow Instance = null!;
+    public static MainWindow? Instance;
     public AudioStreamControl AudioStreamControl;
     private readonly DispatcherTimer _seekBarTimer = new();
     private static readonly ThemeManager ThemeManager = new();
 
     public Playlist? SelectedPlaylist;
+    public bool PlaylistLoaded = false;
     public MediaFile? SelectedSong;
     public string? BackgroundPlaylistName;
     public ThemeColors SelectedTheme;
@@ -129,10 +132,10 @@ public partial class MainWindow
 
         PlayerControls.VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
         //PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
-
+         
         TracksTable.ClickRowElement += Song_Click;
 
-        PlaylistList.ClickRowElement += (s, _) =>
+        PlaylistList.ClickRowElement += (s, o) =>
         {
             SelectPlaylistByName((((s as Button)!.Content as ContentPresenter)!.Content as Playlist)!.Name!.ToString());
         };
@@ -141,6 +144,8 @@ public partial class MainWindow
         _seekBarTimer.Tick += timer_Tick!;
 
         Properties.Settings.Default.Save();
+
+        Log.Information("MainWindow - Constructor");
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -203,6 +208,7 @@ public partial class MainWindow
         //PlayerControls.Mode = (PlaybackMode)Properties.Settings.Default.LastPlaybackMode;
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
+        Log.Information("MainWindow - Window_Loaded");
     }
 
     //public void ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
@@ -226,11 +232,14 @@ public partial class MainWindow
 
     private void VolumeSlider_ValueChanged(object sender, EventArgs e)
     {
+        Log.Information("MainWindow - VolumeSlider_ValueChanged");
         AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.VolumeSlider.Value / 100;
     }
 
     public void Music_StoppedEvent(object sender, EventArgs e)
     {
+        Log.Information("MainWindow - MusicStoppedEvent");
+
         if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength)
         {
             PlayerControls.State = PlayerState.Paused;
@@ -274,6 +283,8 @@ public partial class MainWindow
 
     public bool SelectSong(MediaFile mediaFile)
     {
+        Log.Information("MainWindow - SelectSong");
+
         if (!File.Exists(mediaFile.Path))
         {
             InfoSnackbar.MessageQueue?.Clear();
@@ -337,6 +348,8 @@ public partial class MainWindow
 
     private void PlayButton_Click(object sender, RoutedEventArgs e)
     {
+        Log.Information("MainWindow - PlayButton_Click");
+
         if (SelectedSong != null)
         {
             if (PlayerControls.State == PlayerState.Paused)
@@ -362,6 +375,8 @@ public partial class MainWindow
 
     private void NextButton_Click(object sender, RoutedEventArgs e)
     {
+        Log.Information("MainWindow - NextButton_Click");
+
         if (SelectedSong != null)
         {
             int selectedSongIndex = TracksTable.TracksTable.Items
@@ -404,6 +419,8 @@ public partial class MainWindow
 
     private void PrevButton_Click(object sender, RoutedEventArgs e)
     {
+        Log.Information("MainWindow - PrevButton_Click");
+
         if (SelectedSong != null)
         {
             int selectedSongIndex = TracksTable.TracksTable.Items
@@ -444,6 +461,8 @@ public partial class MainWindow
 
     private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButtonClick)
     { // skips if mediaFile doesn't exist
+        Log.Information("MainWindow - SelectWithSkipping");
+
         if (!File.Exists(song.Path))
         {
             InfoSnackbar.MessageQueue?.Clear();
@@ -459,6 +478,8 @@ public partial class MainWindow
 
     private void DisplayPlaylists()
     {
+        Log.Information("MainWindow - DisplayPlaylists");
+
         List<Playlist> playlists = MusicLibrary.GetPlaylists();
 
         foreach (Playlist p in playlists)
@@ -469,11 +490,19 @@ public partial class MainWindow
 
     public void SelectPlaylistByName(string name)
     {
+        Log.Information("MainWindow - SelectPlaylistByName");
+
+        if (SelectedPlaylist != null && string.Equals(SelectedPlaylist.Name, name) && PlaylistLoaded)
+        {
+            return;
+        }
+
         foreach (Playlist playlist in MusicLibrary.GetPlaylists())
         {
             if (playlist.Name == name)
             {
                 SelectedPlaylist = playlist;
+                PlaylistLoaded = false;
 
                 Task unused = DisplaySelectedPlaylist();
 
@@ -484,6 +513,8 @@ public partial class MainWindow
 
     private Task DisplaySelectedPlaylist()
     {
+        Log.Information("MainWindow - DisplaySelectedPlaylist");
+
         if (SelectedPlaylist != null)
         {
             //PlaylistText.CurrentPlaylistName.Text = SelectedPlaylist.Name;
@@ -496,7 +527,9 @@ public partial class MainWindow
                 TracksTable.TracksTable.Items.Add(song);
             }
 
-            //await Task.Delay(10); // waiting till list is loaded and outline selected mediaFile
+            PlaylistLoaded = true;
+
+            //Task.Delay(10); // waiting till list is loaded and outline selected mediaFile
             //if (SelectedSong != null)
             //{
             //    foreach (Button button in Helper.FindVisualChildren<Button>(TracksTable.TracksTable))
@@ -515,6 +548,8 @@ public partial class MainWindow
 
     public void SelectedSongRemoved()
     {
+        Log.Information("MainWindow - SelectedSongRemoved");
+
         if (SelectedSong != null)
         {
             AudioStreamControl.Stop();
@@ -545,6 +580,8 @@ public partial class MainWindow
 
     public void RenameSelectedPlaylist(string newName)
     {
+        Log.Information("MainWindow - RenameSelectedPlaylist");
+
         if (SelectedPlaylist != null)
         {
             SelectedPlaylist.Name = newName;
@@ -554,6 +591,8 @@ public partial class MainWindow
 
     public void RenameSelectedSong(string newName)
     {
+        Log.Information("MainWindow - RenameSelectedSong");
+
         if (SelectedSong != null)
         {
             SelectedSong.Title = newName;
@@ -563,6 +602,8 @@ public partial class MainWindow
 
     public void StartVisualization()
     {
+        Log.Information("MainWindow - StartVisualization");
+
         if (VisualizationEnabled && SelectedSong != null)
         {
             if (_currentlyVisualizedPath != SelectedSong.Path)
@@ -576,6 +617,7 @@ public partial class MainWindow
 
     public void StopVisualization()
     {
+        Log.Information("MainWindow - StopVisualization");
         PlayerControls.Rendering = false;
         PlayerControls.ShowSeekBarHideBorders();
         PlayerControls.UniGrid.Children.Clear();

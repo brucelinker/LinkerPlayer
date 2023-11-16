@@ -3,6 +3,7 @@ using LinkerPlayer.Properties;
 using LinkerPlayer.Windows;
 using System;
 using System.Windows;
+using LinkerPlayer.UserControls;
 
 namespace LinkerPlayer.Core;
 
@@ -12,6 +13,8 @@ public class ThemeManager
 
     public static void ClearStyles()
     {
+        if (MainWindow.Instance == null) return;
+
         Application.Current.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.Resources.MergedDictionaries.Clear();
         //MainWindow.Instance.TracksDataGrid.Resources.MergedDictionaries.Clear();
@@ -24,7 +27,9 @@ public class ThemeManager
 
     public static void AddDict(ResourceDictionary resDict)
     {
-        DefaultAlbumImage.Reload();
+        TrackInfo.ReloadDefaultAlbumImage();
+
+        if (MainWindow.Instance == null) return;
 
         Application.Current.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.Resources.MergedDictionaries.Add(resDict);
@@ -74,7 +79,7 @@ public class ThemeManager
         return langDictUri;
     }
 
-    public ThemeColors ModifyTheme(ThemeColors themeColor, FontSize fontSize = Models.FontSize.Normal)
+    public ThemeColors ModifyTheme(ThemeColors themeColor, FontSize fontSize = FontSize.Normal)
     {
         ClearStyles();
         AddTheme(themeColor);
@@ -121,8 +126,6 @@ public class ThemeManager
 
     public static void ApplyTheme(MainWindow main, ThemeColors skin, FontSize size)
     {
-        ResourceDictionary origDict = Application.Current.Resources;
-
         ClearStyles();
         AddTheme(skin);
 
@@ -132,8 +135,8 @@ public class ThemeManager
 
         AddDict(brushesDict);
 
-        Uri size_uri = GetSizeUri(size);
-        ResourceDictionary sizesDict = (Application.LoadComponent(size_uri) as ResourceDictionary)!;
+        Uri sizeUri = GetSizeUri(size);
+        ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
 
         AddDict(sizesDict);
 
@@ -204,12 +207,9 @@ public class ThemeManager
 
     public static void ApplyPadding(MainWindow main, PaddingType type)
     {
-        ResourceDictionary origDict = Application.Current.Resources;
-
         string dictStr = @"Styles\Padding\Padding" + type.ToString() + ".xaml";
         Uri paddingUri = new Uri(dictStr, UriKind.Relative);
         ResourceDictionary paddingDict = (Application.LoadComponent(paddingUri) as ResourceDictionary)!;
         AddDict(paddingDict);
     }
-
 }

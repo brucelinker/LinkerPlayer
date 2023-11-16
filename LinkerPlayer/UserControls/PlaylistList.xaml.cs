@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using Serilog;
 
 namespace LinkerPlayer.UserControls;
 
@@ -23,12 +24,13 @@ public partial class PlaylistList
 
     private void ListViewItem_Drop(object sender, DragEventArgs e)
     {
-        MediaFile? droppedData = e.Data.GetData(typeof(MediaFile)) as MediaFile;
+        Log.Information("PlaylistList - ListViewItem_Drop");
+
         string target = (((ListViewItem)(sender)).DataContext as Playlist)!.Name!;
 
         Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
-        if (droppedData != null && target != null!)
+        if (e.Data.GetData(typeof(MediaFile)) is MediaFile droppedData && target != null!)
         {
             if (target != win.SelectedPlaylist?.Name)
             {
@@ -61,7 +63,7 @@ public partial class PlaylistList
 
             foreach (string mp3File in mp3Files)
             {
-                MediaFile songToAdd = new MediaFile(mp3File);
+                MediaFile songToAdd = new(mp3File);
 
                 if (MusicLibrary.AddSong(songToAdd))
                 {
@@ -91,6 +93,8 @@ public partial class PlaylistList
 
     private void ListViewItem_PreviewDragEnter(object sender, DragEventArgs e)
     {
+        Log.Information("PlaylistList - ListViewItem_PreviewDragEnter");
+
         Button button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
 
         button.BorderBrush = new SolidColorBrush(Colors.White) { Opacity = 0.4 };
@@ -99,6 +103,8 @@ public partial class PlaylistList
 
     private void ListViewItem_PreviewDragLeave(object sender, DragEventArgs e)
     {
+        Log.Information("PlaylistList - ListViewItem_PreviewDragLeave");
+
         Button button = Helper.FindVisualChildren<Button>(sender as ListViewItem).First();
 
         button.BorderBrush = new SolidColorBrush(Colors.Transparent);
@@ -107,12 +113,16 @@ public partial class PlaylistList
 
     private void TextBox_PreviewDragOver(object sender, DragEventArgs e)
     {
+        Log.Information("PlaylistList - TexttBox_PreviewDragOver");
+
         e.Effects = DragDropEffects.Move;
         e.Handled = true; // allows objects to be dropped on TextBox
     }
 
     private void MenuItem_Click(object sender, RoutedEventArgs e)
     {
+        Log.Information("PlaylistList - MenuItem_Click");
+
         if (sender is MenuItem menuItem)
         {
             Button? button = ((ContextMenu)menuItem.Parent).PlacementTarget as Button;
@@ -156,7 +166,7 @@ public partial class PlaylistList
             }
             else if (Equals(menuItem.Header, "Add song(s)"))
             {
-                OpenFileDialog openFileDialog = new OpenFileDialog
+                OpenFileDialog openFileDialog = new()
                 {
                     Multiselect = true,
                     Title = "Select mp3 file(s)",
@@ -171,7 +181,7 @@ public partial class PlaylistList
 
                     foreach (string mp3File in mp3Files)
                     {
-                        MediaFile songToAdd = new MediaFile(mp3File);
+                        MediaFile songToAdd = new(mp3File);
 
                         string? playlistName = (menuItem.DataContext as Playlist)!.Name;
 
@@ -262,6 +272,8 @@ public partial class PlaylistList
 
     private async Task OutlineBackgroundPlaylist(string textBoxText)
     {
+        Log.Information("PlaylistList - OutlineBackgroundPlaylist");
+
         Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
         await Task.Delay(10);

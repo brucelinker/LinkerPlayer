@@ -19,9 +19,10 @@ public partial class App
         AppHost = Host.CreateDefaultBuilder()
             .UseSerilog((host, configuration) =>
             {
-                configuration.WriteTo.File("Logs/LinkerPlayer-{Date}.txt")
+                configuration
                     .WriteTo.Debug()
-                    .WriteTo.Console();
+                    .WriteTo.Console()
+                    .WriteTo.File("Logs/LinkerPlayer-{Date}.txt");
             })
             .ConfigureServices((_, services) =>
             {
@@ -32,7 +33,8 @@ public partial class App
         // Global logger
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
-            .WriteTo.File("Logs/LinkerPlayer-.txt", rollingInterval:RollingInterval.Day)
+            .WriteTo.Debug()
+            .WriteTo.File("Logs/LinkerPlayer-.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
     }
 

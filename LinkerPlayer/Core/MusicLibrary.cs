@@ -103,6 +103,8 @@ public class MusicLibrary
 
     public static bool AddPlaylist(Playlist playlist)
     {
+        Log.Information("MusicLibrary - AddPlaylist");
+
         if (_playlists?.Find(p => p.Name == playlist.Name) == null)
         {
             _playlists?.Add(playlist.Clone());
@@ -119,6 +121,8 @@ public class MusicLibrary
 
     public static void RemovePlaylist(string? playlistName)
     {
+        Log.Information("MusicLibrary - RemovePlaylist");
+
         _playlists?.RemoveAll(p => p.Name == playlistName);
 
         Log.Information($"Playlist \'{playlistName}\' removed");
@@ -128,6 +132,8 @@ public class MusicLibrary
 
     public static void AddSongToPlaylist(string songId, string? playlistName, int position = -1)
     {
+        Log.Information("MusicLibrary - AddSongToPlaylist");
+
         Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
 
         if (playlist != null)
@@ -155,6 +161,8 @@ public class MusicLibrary
 
     public static void RemoveSongFromPlaylist(string songId, string? playlistName)
     {
+        Log.Information("MusicLibrary - RemoveSongFromPlaylist");
+
         Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
 
         if (playlist != null)
@@ -170,6 +178,8 @@ public class MusicLibrary
     // ReSharper disable once UnusedMember.Global
     public static void MoveSongToPlaylist(string songId, string fromPlaylist, string toPlaylist)
     {
+        Log.Information("MusicLibrary - AddPlaylist");
+
         Playlist? from = _playlists?.Find(p => p.Name == fromPlaylist);
         Playlist? to = _playlists?.Find(p => p.Name == toPlaylist);
 
@@ -221,6 +231,8 @@ public class MusicLibrary
     // ReSharper disable once UnusedMember.Global
     public static List<MediaFile> GetSongs()
     {
+        Log.Information("MusicLibrary - GetSongs");
+
         List<MediaFile> songs = new List<MediaFile>();
 
         if (_mediaFiles != null)
@@ -234,6 +246,8 @@ public class MusicLibrary
 
     public static List<Playlist> GetPlaylists()
     {
+        Log.Information("MusicLibrary - GetPlaylists");
+
         List<Playlist> playlists = new List<Playlist>();
 
         if (_playlists != null)
@@ -247,6 +261,8 @@ public class MusicLibrary
 
     public static List<MediaFile> GetSongsFromPlaylist(string? playlistName)
     {
+        Log.Information("MusicLibrary - GetSongsFromPlaylist");
+
         Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
         List<MediaFile> songsFromPlaylist = new List<MediaFile>();
 

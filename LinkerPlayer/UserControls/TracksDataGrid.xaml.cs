@@ -17,7 +17,7 @@ public partial class TracksDataGrid
 
     public static void UpdatePlayerState(PlayerState state)
     {
-        _mediaFile.State = state;
+        if (_mediaFile != null) _mediaFile.State = state;
     }
 
     public RoutedEventHandler? ClickRowElement;

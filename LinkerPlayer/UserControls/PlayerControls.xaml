@@ -5,10 +5,10 @@
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
-  xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
-  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls" d:DataContext="{d:DesignInstance Type=userControls:PlayerControls}"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+  d:DataContext="{d:DesignInstance Type=userControls:PlayerControls}"
   d:DesignHeight="80"
   d:DesignWidth="1000"
   mc:Ignorable="d">
@@ -54,11 +54,11 @@
         </converters:EnumBooleanConverter.FalseValue>
       </converters:EnumBooleanConverter>
 
-      <!--<converters:BooleanConverter 
+      <!--<converters:BooleanConverter
         x:Key="ShuffleModeToIconConverter"
           TrueValue ="{iconPacks:Material Shuffle,
             Width=19,
-            Height=19}" 
+            Height=19}"
           FalseValue="{iconPacks:Material ShuffleDisabled,
             Width=20,
             Height=20}" />-->
@@ -106,7 +106,6 @@
           Margin="0,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Command="{Binding PlayPrevCommand, Mode=OneWay}"
           Content="{iconPacks:Material SkipPrevious,
                                        Width=13,
                                        Height=13}"
@@ -122,7 +121,6 @@
           Margin="4,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Command="{Binding PlayOrPauseCommand, Mode=OneWay}"
           Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}"
           Foreground="{DynamicResource PlayerForegroundBrush}"
           Style="{StaticResource LinkerCircleButton}" />
@@ -136,10 +134,7 @@
           Margin="4,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Command="{Binding StopCommand, Mode=OneWay}"
-          Content="{iconPacks:Material Stop,
-                                       Width=12,
-                                       Height=12}"
+          Content="{iconPacks:Material Stop, Width=12, Height=12}"
           Foreground="{DynamicResource PlayerForegroundBrush}"
           Style="{StaticResource LinkerCircleButton}"
           ToolTip="Stop" />
@@ -153,10 +148,7 @@
           Margin="4,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Command="{Binding PlayNextCommand, Mode=OneWay}"
-          Content="{iconPacks:Material SkipNext,
-                                       Width=13,
-                                       Height=13}"
+          Content="{iconPacks:Material SkipNext, Width=13, Height=13}"
           Foreground="{DynamicResource PlayerForegroundBrush}"
           Style="{StaticResource LinkerCircleButton}"
           ToolTip="Next File (j)" />
@@ -247,13 +239,11 @@
         Grid.Column="2"
         Width="36"
         Height="36"
-        Click="ShuffleModeButton_Click"
-        Command="{Binding ShuffleCommand, Mode=OneWay}">
+        Click="ShuffleModeButton_Click" >
         <ToggleButton.Style>
-          <Style TargetType="ToggleButton" 
-                 BasedOn="{StaticResource LinkerCircleToggleButton}">
+          <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
             <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
-            <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
+            <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
             <Style.Triggers>
               <Trigger Property="IsChecked" Value="true">
                 <Setter Property="Content" Value="{iconPacks:Entypo Shuffle, Width=17, Height=17}" />
@@ -288,7 +278,7 @@
           x:Name="VolumeSlider"
           Grid.Row="2"
           Grid.Column="0"
-          Margin="0, 0, 12, 0"
+          Margin="0,0,12,0"
           VerticalAlignment="Center"
           Maximum="100"
           Style="{StaticResource CustomHorizontalSlider}"
@@ -303,16 +293,15 @@
           VerticalAlignment="Center"
           HorizontalContentAlignment="Center"
           Click="MainVolumeButton_Click"
-          Command="{Binding MuteCommand, Mode=OneWay}"
           ToolTip="Mute (m)">
           <ToggleButton.Style>
-            <Style TargetType="{x:Type ToggleButton}" BasedOn="{StaticResource LinkerCircleToggleButton}" >
+            <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="{x:Type ToggleButton}">
               <Setter Property="Content" Value="{iconPacks:Octicons Unmute, Width=15, Height=15}" />
-              <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
+              <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
               <Style.Triggers>
                 <Trigger Property="IsChecked" Value="true">
                   <Setter Property="Content" Value="{iconPacks:Octicons Mute, Width=15, Height=15}" />
-                  <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}"></Setter>
+                  <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
                 </Trigger>
               </Style.Triggers>
             </Style>
