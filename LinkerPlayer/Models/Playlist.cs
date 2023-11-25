@@ -1,24 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.Generic;
 
 namespace LinkerPlayer.Models;
 
-public class Playlist
+public partial class Playlist : ObservableObject
 {
-    public string? Name { get; set; } = string.Empty;
-    public List<string> SongIds { get; set; }
-
-    public Playlist()
-    {
-        SongIds = new List<string>();
-    }
-
-    public Playlist Clone()
-    {
-        return new Playlist
-        {
-            Name = this.Name,
-            SongIds = this.SongIds.ToList()
-        };
-    }
+    [ObservableProperty] private string? _name;
+    [ObservableProperty] private List<string>? _songIds;
 }

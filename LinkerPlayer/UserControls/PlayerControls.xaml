@@ -134,7 +134,9 @@
           Margin="4,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Content="{iconPacks:Material Stop, Width=12, Height=12}"
+          Content="{iconPacks:Material Stop,
+                                       Width=12,
+                                       Height=12}"
           Foreground="{DynamicResource PlayerForegroundBrush}"
           Style="{StaticResource LinkerCircleButton}"
           ToolTip="Stop" />
@@ -148,7 +150,9 @@
           Margin="4,0,4,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Content="{iconPacks:Material SkipNext, Width=13, Height=13}"
+          Content="{iconPacks:Material SkipNext,
+                                       Width=13,
+                                       Height=13}"
           Foreground="{DynamicResource PlayerForegroundBrush}"
           Style="{StaticResource LinkerCircleButton}"
           ToolTip="Next File (j)" />
@@ -239,7 +243,7 @@
         Grid.Column="2"
         Width="36"
         Height="36"
-        Click="ShuffleModeButton_Click" >
+        Click="ShuffleModeButton_Click">
         <ToggleButton.Style>
           <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
             <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />

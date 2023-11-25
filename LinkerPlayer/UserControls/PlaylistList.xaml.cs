@@ -37,8 +37,9 @@ public partial class PlaylistList
                 MusicLibrary.AddSongToPlaylist(droppedData.Id, target);
                 MusicLibrary.RemoveSongFromPlaylist(droppedData.Id, win.SelectedPlaylist!.Name);
 
-                int removedIdx = win.TracksTable.TracksTable.Items.IndexOf(droppedData);
-                win.TracksTable.TracksTable.Items.RemoveAt(removedIdx);
+                // TODO
+                //int removedIdx = win.TracksTable.TracksTable.Items.IndexOf(droppedData);
+                //win.TracksTable.TracksTable.Items.RemoveAt(removedIdx);
 
                 if (win.SelectedSong != null)
                 {
@@ -75,7 +76,8 @@ public partial class PlaylistList
                     }
                     else if (win.SelectedPlaylist.Name == target)
                     {
-                        win.TracksTable.TracksTable.Items.Add(songToAdd);
+                        // TODO
+                        //win.TracksTable.TracksTable.Items.Add(songToAdd);
                     }
                     else
                     {
@@ -143,8 +145,9 @@ public partial class PlaylistList
                 MusicLibrary.RemovePlaylist((menuItem.DataContext as Playlist)!.Name);
                 List.Items.Remove(menuItem.DataContext as Playlist);
 
-                //win.PlaylistTabs.CurrentPlaylistName.Text = "Playlist not selected";
-                win.TracksTable.TracksTable.Items.Clear();
+                // TODO
+                // win.PlaylistTabs.CurrentPlaylistName.Text = "Playlist not selected";
+                // win.TracksTable.TracksTable.Items.Clear();
                 win.SelectedPlaylist = null;
             }
             else if (Equals(menuItem.Header, "Rename"))
@@ -195,7 +198,8 @@ public partial class PlaylistList
                             }
                             else if (win.SelectedPlaylist.Name == playlistName)
                             {
-                                win.TracksTable.TracksTable.Items.Add(songToAdd);
+                                // TODO
+                                //win.TracksTable.TracksTable.Items.Add(songToAdd);
                             }
                             else
                             {

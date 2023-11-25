@@ -60,11 +60,11 @@
       Grid.ColumnSpan="3"
       Panel.ZIndex="1" />
 
-    <userControls:PlaylistList
-      x:Name="PlaylistList"
-      Grid.Row="0"
+    <userControls:PlaylistTabs
+      x:Name="PlaylistTabs"
+      Grid.Row="1"
       Grid.Column="1"
-      Grid.ColumnSpan="2" />
+      Grid.ColumnSpan="1" />
 
     <!--  Main Window Body  -->
     <!--<Border
@@ -78,10 +78,10 @@
       Grid.Row="1"
       Grid.Column="0" />
 
-    <userControls:TracksDataGrid
+    <!--<userControls:TracksDataGrid
       x:Name="TracksTable"
       Grid.Row="1"
-      Grid.Column="1" />
+      Grid.Column="1" />-->
 
     <materialDesign:Snackbar
       Name="InfoSnackbar"

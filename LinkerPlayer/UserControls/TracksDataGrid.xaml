@@ -101,6 +101,7 @@
       EnableRowVirtualization="True"
       GridLinesVisibility="None"
       IsReadOnly="True"
+      ItemsSource="{Binding PlaylistsViewModel}"
       MouseDoubleClick="TrackRow_MouseDoubleClick"
       RowHeaderWidth="0"
       ScrollViewer.CanContentScroll="True"
@@ -243,7 +244,7 @@
           MinWidth="{DynamicResource TrackTableImageSize}"
           Header="">
           <DataGridTemplateColumn.CellTemplate>
-            <DataTemplate DataType="{x:Type models:MediaFile}">
+            <DataTemplate>
               <Grid>
                 <iconPacks:PackIconFontAwesome
                   x:Name="PlayImage"
@@ -366,7 +367,9 @@
                       </DataTrigger>
                     </Style.Triggers>
 
-                    --><!--  OK = 0, Tagged, Hidden, Easy, New, Failures, Unknown  --><!--
+                -->
+                <!--  OK = 0, Tagged, Hidden, Easy, New, Failures, Unknown  -->
+                <!--
                   </Style>
                 </TextBlock.Style>-->
               </TextBlock>

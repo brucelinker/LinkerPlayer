@@ -107,7 +107,7 @@ public class MusicLibrary
 
         if (_playlists?.Find(p => p.Name == playlist.Name) == null)
         {
-            _playlists?.Add(playlist.Clone());
+            _playlists?.Add(playlist);
 
             Log.Information($"New playlist \'{playlist.Name}\' added");
 
@@ -253,7 +253,7 @@ public class MusicLibrary
         if (_playlists != null)
             foreach (Playlist playlist in _playlists)
             {
-                playlists.Add(playlist.Clone());
+                playlists.Add(playlist);
             }
 
         return playlists;

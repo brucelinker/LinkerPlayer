@@ -31,7 +31,8 @@ public partial class NewPlaylistButton
 
                 if (MusicLibrary.AddPlaylist(new Playlist { Name = popupTextBoxText }))
                 {
-                    win.PlaylistList.List.Items.Add(new Playlist { Name = popupTextBoxText });
+                    //win.PlaylistList.List.Items.Add(new Playlist { Name = popupTextBoxText });
+                    // TODO win.PlaylistTabs .List.Items.Add(new Playlist { Name = popupTextBoxText });
 
                     win.SelectPlaylistByName(popupTextBoxText);
                 }

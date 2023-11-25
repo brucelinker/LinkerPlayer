@@ -2,7 +2,7 @@
 
 namespace LinkerPlayer.ViewModels;
 
-public class MainWindowViewModel : ObservableObject
+public class MainViewModel : ObservableObject
 {
     
 }

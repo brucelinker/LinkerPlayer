@@ -129,14 +129,16 @@ public partial class FunctionButtons
                         mainWindow.SelectPlaylistByName(selectedPlaylist.Name!);
 
                         MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
+                        // TODO
                         //mainWindow.TracksDataGrid.List.Items.Add(mediaFile);
-                        mainWindow.TracksTable.TracksTable.Items.Add(mediaFile);
+                        //mainWindow.TracksTable.TracksTable.Items.Add(mediaFile);
                     }
                 }
                 else
                 {
                     MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
-                    mainWindow.TracksTable.TracksTable.Items.Add(mediaFile);
+                    // TODO
+                    //mainWindow.TracksTable.TracksTable.Items.Add(mediaFile);
                 }
             }
         }
@@ -163,13 +165,15 @@ public partial class FunctionButtons
                         win.SelectPlaylistByName(selectedPlaylist.Name!);
 
                         MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                        win.TracksTable.TracksTable.Items.Add(song);
+                        // TODO
+                        //win.TracksTable.TracksTable.Items.Add(song);
                     }
                 }
                 else
                 {
                     MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                    win.TracksTable.TracksTable.Items.Add(song);
+                    // TODO
+                    //win.TracksTable.TracksTable.Items.Add(song);
                 }
             }
         }

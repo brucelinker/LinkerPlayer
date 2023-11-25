@@ -1,4 +1,5 @@
 ﻿using LinkerPlayer.Models;
+using LinkerPlayer.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -11,9 +12,11 @@ public partial class TracksDataGrid
 
     public TracksDataGrid()
     {
-        DataContext = this;
+        DataContext = new PlayListsViewModel();
         InitializeComponent();
     }
+
+    public PlayListsViewModel? ViewModel => DataContext as PlayListsViewModel;
 
     public static void UpdatePlayerState(PlayerState state)
     {

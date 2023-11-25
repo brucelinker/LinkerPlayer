@@ -12,7 +12,7 @@
   <Color x:Key="ControlSecondaryAccentColor">DarkCyan</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
 
-  <Color x:Key="DefaultTextColor">Black</Color>
+  <Color x:Key="DefaultTextColor">White</Color>
 
   <Color x:Key="FirstDarkColor">SteelBlue</Color>
   <Color x:Key="FirstLightColor">LightSteelBlue</Color>
