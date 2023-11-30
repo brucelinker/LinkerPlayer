@@ -46,8 +46,11 @@ public partial class TrackInfo
         DisplayTrackImage(mediaFile);
 
         TrackName.Text = mediaFile.Title;
-        TrackArtist.Text = mediaFile.Artists;
-        TrackAlbum.Text = mediaFile.Album;
+        TrackArtist.Text = $"Artist:  {mediaFile.Artists}";
+        TrackAlbum.Text = string.IsNullOrWhiteSpace(mediaFile.Album) ? "Album:  <undefined>" : $"Album:  {mediaFile.Album}";
+        TrackYear.Text = mediaFile.Year == 0 ? "Year:  <undefined>" : $"Year:  {mediaFile.Year}";
+        TrackBitrate.Text = $"Bitrate:  {mediaFile.Bitrate} kbps";
+        TrackGenre.Text = string.IsNullOrWhiteSpace(mediaFile.Genres) ? "Genres:  <undefined>" : $"Genres:  {mediaFile.Genres}";
     }
 
     private void DisplayTrackImage(IMediaFile mediaFile)

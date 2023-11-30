@@ -97,7 +97,7 @@ public partial class MainWindow
             AudioStreamControl.AdditionalMusic.StoppedEvent += Music_StoppedEvent!;
         }
 
-        (PlaylistTabs.DataContext as PlayListsViewModel)!.LoadPlaylists();
+        PlayListsViewModel.LoadPlaylists();
 
         PlayerControls.PlayButton.Click += PlayButton_Click;
         PlayerControls.PrevButton.Click += PrevButton_Click;

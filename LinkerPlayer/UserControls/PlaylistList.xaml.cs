@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using LinkerPlayer.Windows;
 using Serilog;
 
 namespace LinkerPlayer.UserControls;
@@ -24,11 +25,11 @@ public partial class PlaylistList
 
     private void ListViewItem_Drop(object sender, DragEventArgs e)
     {
+        MainWindow win = (MainWindow)Window.GetWindow(this)!;
+
         Log.Information("PlaylistList - ListViewItem_Drop");
 
         string target = (((ListViewItem)(sender)).DataContext as Playlist)!.Name!;
-
-        Windows.MainWindow win = (Windows.MainWindow)Window.GetWindow(this)!;
 
         if (e.Data.GetData(typeof(MediaFile)) is MediaFile droppedData && target != null!)
         {

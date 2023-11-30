@@ -1,5 +1,6 @@
 ﻿using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
@@ -87,6 +88,8 @@ public partial class FunctionButtons
 
     private void LoadFolderButton_Click(object sender, RoutedEventArgs e)
     {
+        MainWindow win = (MainWindow)Window.GetWindow(this)!;
+
         LoadFolderButton.IsHitTestVisible = false;
 
         using FolderBrowserDialog folderDialog = new FolderBrowserDialog();
@@ -104,11 +107,14 @@ public partial class FunctionButtons
 
         if (!files.Any())
         {
-            MainWindow win = (MainWindow)Window.GetWindow(this)!;
             win.InfoSnackbar.MessageQueue?.Clear();
             win.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
                 false, true, TimeSpan.FromSeconds(3));
         }
+
+        string playlistName = dirInfo.Name;
+        Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+        win.SelectedPlaylist = playlist;
 
         foreach (FileInfo? file in files)
         {
@@ -116,70 +122,47 @@ public partial class FunctionButtons
 
             if (MusicLibrary.AddSong(mediaFile))
             {
-                MainWindow mainWindow = (MainWindow)Window.GetWindow(this)!;
-
-                Playlist? selectedPlaylist = mainWindow.SelectedPlaylist;
-
-                if (selectedPlaylist == null)
-                {
-                    selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
-
-                    if (selectedPlaylist != null)
-                    {
-                        mainWindow.SelectPlaylistByName(selectedPlaylist.Name!);
-
-                        MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
-                        // TODO
-                        //mainWindow.TracksDataGrid.List.Items.Add(mediaFile);
-                        //mainWindow.TracksTable.TracksTable.Items.Add(mediaFile);
-                    }
-                }
-                else
-                {
-                    MusicLibrary.AddSongToPlaylist(mediaFile.Id, selectedPlaylist.Name);
-                    // TODO
-                    //mainWindow.TracksTable.TracksTable.Items.Add(mediaFile);
-                }
+                LoadAudioFile(file.FullName, playlistName);
             }
         }
+
+        PlaylistTab playlistTab = PlayListsViewModel.AddPlaylistTab(playlist);
+        win.SelectPlaylistByName(playlistTab.Header!);
     }
 
-    private void LoadAudioFile(string fileName)
+    private void LoadAudioFile(string fileName, string playlistName = "")
     {
+        MainWindow win = (MainWindow)Window.GetWindow(this)!;
+
         if (File.Exists(fileName))
         {
-            MediaFile song = new MediaFile (fileName);
+            MediaFile song = new MediaFile(fileName);
 
             if (MusicLibrary.AddSong(song))
             {
-                MainWindow win = (MainWindow)Window.GetWindow(this)!;
-
                 Playlist? selectedPlaylist = win.SelectedPlaylist;
 
                 if (selectedPlaylist == null)
                 {
                     selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
 
-                    if (selectedPlaylist != null)
+                    if (selectedPlaylist != null && !string.IsNullOrWhiteSpace(selectedPlaylist.Name))
                     {
-                        win.SelectPlaylistByName(selectedPlaylist.Name!);
+                        win.SelectPlaylistByName(selectedPlaylist.Name);
 
                         MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                        // TODO
-                        //win.TracksTable.TracksTable.Items.Add(song);
+                        //PlayListsViewModel.AddSongToPlaylistTab(song, selectedPlaylist.Name);
                     }
                 }
                 else
                 {
                     MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                    // TODO
-                    //win.TracksTable.TracksTable.Items.Add(song);
+                    //PlayListsViewModel.AddSongToPlaylistTab(song, selectedPlaylist.Name);
                 }
             }
         }
         else
         {
-            MainWindow win = (MainWindow)Window.GetWindow(this)!;
             win.InfoSnackbar.MessageQueue?.Clear();
             win.InfoSnackbar.MessageQueue?.Enqueue($"Error while converting {fileName}", null, null, null, false, true, TimeSpan.FromSeconds(2));
         }
@@ -233,7 +216,7 @@ public partial class FunctionButtons
 
         MainWindow win = (MainWindow)Window.GetWindow(this)!;
 
-        _equalizerWin.StartStopText.Text = win.AudioStreamControl.MainMusic!.IsEqualizerWorking ? "Stop" : "Start";
+        _equalizerWin.StartStopText.Text = win.AudioStreamControl!.MainMusic!.IsEqualizerWorking ? "Stop" : "Start";
 
         _equalizerWin.LoadSelectedBand(win.SelectedBandsSettings);
 

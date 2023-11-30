@@ -1,9 +1,28 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.Models;
+using NAudio.Gui;
+using System.Windows.Controls.Primitives;
+using System.Windows.Controls;
+using System.Windows.Media.Animation;
+using System.Windows;
+using System;
 
 namespace LinkerPlayer.ViewModels;
 
-public class PlayerControlsViewModel : ObservableObject
+public partial class PlayerControlsViewModel : ObservableObject
 {
+    [ObservableProperty]
+    private PlayerState _state = PlayerState.Stopped;
+    [ObservableProperty]
+    private static bool _shuffleMode = false;
+    [ObservableProperty]
+    private bool _isMute = false;
+
+    public PlayerControlsViewModel()
+    {
+        
+    }
+
 
     //this.PlayOrPauseCommand = new DelegateCommand(this.PlayOrPause, this.CanPlayOrPause);
 

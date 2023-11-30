@@ -77,16 +77,19 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
       <TextBlock
         Name="TrackName"
         Grid.Row="0"
         Grid.ColumnSpan="2"
-        Margin="15,8,0,0"
+        Margin="15,8,0,2"
         VerticalAlignment="Center"
         d:Text="Title"
-        FontSize="{DynamicResource FontSizeBigger}"
+        FontSize="{DynamicResource FontSizeBiggest}"
+        FontWeight="Regular"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
 
@@ -97,21 +100,10 @@
         Padding="0"
         VerticalAlignment="Center"
         d:Text="Artist"
-        FontSize="{DynamicResource FontSizeBigger}"
+        FontSize="{DynamicResource FontSizeNormal}"
+        FontWeight="Light"
         Foreground="{DynamicResource DefaultTextBrush}"
-        TextTrimming="CharacterEllipsis">
-
-        <TextBlock.Style>
-          <Style BasedOn="{StaticResource {x:Type TextBlock}}" TargetType="TextBlock">
-            <Style.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Cursor" Value="Hand" />
-                <Setter Property="TextDecorations" Value="Underline" />
-              </Trigger>
-            </Style.Triggers>
-          </Style>
-        </TextBlock.Style>
-      </TextBlock>
+        TextTrimming="CharacterEllipsis" />
 
       <TextBlock
         Name="TrackAlbum"
@@ -121,7 +113,44 @@
         Padding="1"
         VerticalAlignment="Center"
         d:Text="Album"
-        FontSize="{DynamicResource FontSizeBigger}"
+        FontSize="{DynamicResource FontSizeNormal}"
+        FontWeight="Light"
+        Foreground="{DynamicResource DefaultTextBrush}"
+        TextTrimming="CharacterEllipsis" />
+
+      <StackPanel Grid.Row="3" Orientation="Horizontal">
+        <TextBlock
+          Name="TrackYear"
+          Margin="15,0,0,0"
+          Padding="1"
+          VerticalAlignment="Center"
+          d:Text="Year"
+          FontSize="{DynamicResource FontSizeNormal}"
+          FontWeight="Light"
+          Foreground="{DynamicResource DefaultTextBrush}"
+          TextTrimming="CharacterEllipsis" />
+
+        <TextBlock
+          Name="TrackBitrate"
+          Margin="15,0,0,0"
+          Padding="1"
+          VerticalAlignment="Center"
+          d:Text="Year"
+          FontSize="{DynamicResource FontSizeNormal}"
+          FontWeight="Light"
+          Foreground="{DynamicResource DefaultTextBrush}"
+          TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+
+      <TextBlock
+        Name="TrackGenre"
+        Grid.Row="4"
+        Margin="15,0,0,0"
+        Padding="1"
+        VerticalAlignment="Center"
+        d:Text="Genre"
+        FontSize="{DynamicResource FontSizeNormal}"
+        FontWeight="Light"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
 

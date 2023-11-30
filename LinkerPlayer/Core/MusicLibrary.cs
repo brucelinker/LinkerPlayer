@@ -1,10 +1,13 @@
 ﻿using LinkerPlayer.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
-using Serilog;
+using System.Linq;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace LinkerPlayer.Core;
 
@@ -35,6 +38,16 @@ public class MusicLibrary
                 _mediaFiles = ((JArray)data["songs"]).ToObject<List<MediaFile>>();
                 _playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>();
 
+                if (_playlists == null || !_playlists.Any())
+                {
+                    _playlists!.Add(new Playlist
+                    {
+                        Name = "New Playlist",
+                        SongIds = new ObservableCollection<string>()
+                    });
+
+                    SaveToJson();
+                }
                 Log.Information("Data loaded from json");
             }
         }
@@ -73,11 +86,7 @@ public class MusicLibrary
         if (!string.IsNullOrEmpty(mediaFile.Path) && Path.GetExtension(mediaFile.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
             mediaFile.UpdateFromTag(true);
-
             _mediaFiles?.Add(mediaFile.Clone());
-
-            Log.Information($"New mediaFile with id {mediaFile.Id} added");
-
             SaveToJson();
 
             return true;
@@ -101,17 +110,16 @@ public class MusicLibrary
         SaveToJson();
     }
 
-    public static bool AddPlaylist(Playlist playlist)
+    public static bool AddPlaylist(Playlist newPlaylist)
     {
         Log.Information("MusicLibrary - AddPlaylist");
 
-        if (_playlists?.Find(p => p.Name == playlist.Name) == null)
+        if (_playlists?.Find(p => p.Name == newPlaylist.Name) == null)
         {
-            _playlists?.Add(playlist);
-
-            Log.Information($"New playlist \'{playlist.Name}\' added");
-
+            _playlists?.Add(newPlaylist);
             SaveToJson();
+
+            Log.Information($"New playlist \'{newPlaylist.Name}\' added");
 
             return true;
         }
@@ -121,13 +129,10 @@ public class MusicLibrary
 
     public static void RemovePlaylist(string? playlistName)
     {
-        Log.Information("MusicLibrary - RemovePlaylist");
-
         _playlists?.RemoveAll(p => p.Name == playlistName);
+        SaveToJson();
 
         Log.Information($"Playlist \'{playlistName}\' removed");
-
-        SaveToJson();
     }
 
     public static void AddSongToPlaylist(string songId, string? playlistName, int position = -1)
@@ -138,7 +143,7 @@ public class MusicLibrary
 
         if (playlist != null)
         {
-            if (!playlist.SongIds.Contains(songId))
+            if (!playlist.SongIds!.Contains(songId))
             {
                 if (position == -1)
                 {
@@ -151,8 +156,6 @@ public class MusicLibrary
                         playlist.SongIds.Insert(position, songId);
                     }
                 }
-
-                Log.Information($"Song with id {songId} added to playlist \'{playlistName}\'");
 
                 SaveToJson();
             }
@@ -250,11 +253,21 @@ public class MusicLibrary
 
         List<Playlist> playlists = new List<Playlist>();
 
-        if (_playlists != null)
+        if (_playlists != null && _playlists.Any())
+        {
             foreach (Playlist playlist in _playlists)
             {
                 playlists.Add(playlist);
             }
+        }
+        else
+        {
+            playlists.Add(new Playlist
+            {
+                Name = "NewPlaylist",
+                SongIds = new ObservableCollection<string>()
+            });
+        }
 
         return playlists;
     }
@@ -266,7 +279,7 @@ public class MusicLibrary
         Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
         List<MediaFile> songsFromPlaylist = new List<MediaFile>();
 
-        if (playlist != null)
+        if (playlist != null && playlist.SongIds != null)
         {
             foreach (string songId in playlist.SongIds)
             {
@@ -275,5 +288,26 @@ public class MusicLibrary
         }
 
         return songsFromPlaylist;
+    }
+
+    public static Playlist CreatePlaylist(string playlistName)
+    {
+        foreach (Playlist pl in _playlists)
+        {
+            if (pl.Name == playlistName)
+            {
+                return pl;
+            }
+        }
+
+        Playlist playlist = new Playlist
+        {
+            Name = playlistName,
+            SongIds = new()
+        };
+        
+        AddPlaylist(playlist);
+
+        return playlist;
     }
 }

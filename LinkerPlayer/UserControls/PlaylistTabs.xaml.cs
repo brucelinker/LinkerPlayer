@@ -1,10 +1,9 @@
-﻿using LinkerPlayer.Models;
-using System.Collections.ObjectModel;
-using System.Windows.Controls;
-using System.Windows.Input;
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace LinkerPlayer.UserControls;
 
