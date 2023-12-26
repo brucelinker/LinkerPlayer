@@ -1,6 +1,6 @@
 ﻿using LinkerPlayer.Core;
-using Microsoft.Extensions.Logging;
 using NAudio.Extras;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,15 +14,12 @@ public class AudioStreamControl
 
     private bool _delayedEqualizerInitialization;
     private string? _selectedBandName;
-    private readonly ILogger<AudioStreamControl> _logger;
 
-    public AudioStreamControl(string mainOutputDevice, ILogger<AudioStreamControl> logger)
+    public AudioStreamControl(string mainOutputDevice)
     {
-        _logger = logger;
-
         if (string.IsNullOrWhiteSpace(mainOutputDevice))
         {
-            _logger.Log(LogLevel.Error, "Device name can`t be null");
+            Log.Error("Device name can`t be null");
         }
         else
         {
@@ -34,7 +31,7 @@ public class AudioStreamControl
     {
         if (string.IsNullOrWhiteSpace(additionalOutputDevice))
         {
-            _logger.Log(LogLevel.Error, "Device name can`t be null");
+            Log.Error("Device name can`t be null");
         }
         else
         {
@@ -61,7 +58,7 @@ public class AudioStreamControl
             }
             else
             {
-                _logger.Log(LogLevel.Error, "MainMusic should be initialized");
+                Log.Error("MainMusic should be initialized");
             }
         }
     }
@@ -104,7 +101,7 @@ public class AudioStreamControl
                 {
                     SetBandsList(band.EqualizerBands);
 
-                    _logger.Log(LogLevel.Information, "Profile has been selected");
+                    Log.Information("Profile has been selected");
                 }
             }
         }

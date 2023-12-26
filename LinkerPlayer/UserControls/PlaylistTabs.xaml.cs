@@ -10,41 +10,51 @@ namespace LinkerPlayer.UserControls;
 [ObservableObject]
 public partial class PlaylistTabs
 {
-    private static MediaFile? _mediaFile;
+    private readonly PlayListsViewModel _playListsViewModel = new();
 
     public PlaylistTabs()
     {
-        DataContext = new PlayListsViewModel();
+        DataContext = _playListsViewModel;
 
         InitializeComponent();
     }
 
-    public static void UpdatePlayerState(PlayerState state)
+    private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_mediaFile != null) _mediaFile.State = state;
+        _playListsViewModel.OnSelectionChanged(sender, e);
     }
 
-    public RoutedEventHandler? ClickRowElement;
 
-    private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (_mediaFile is { State: PlayerState.Playing })
-        {
-            _mediaFile.State = PlayerState.Stopped;
-        }
+    //public static void UpdatePlayerState(PlayerState state)
+    //{
+    //    if (SelectedTrack != null) SelectedTrack.State = state;
+    //}
 
-        Windows.MainWindow mainWindow = (Windows.MainWindow)Window.GetWindow(this)!;
+    //public RoutedEventHandler? ClickRowElement;
 
-        if (sender is DataGrid { SelectedItem: not null } grid)
-        {
-            _mediaFile = ((grid.SelectedItem as MediaFile)!);
-            _mediaFile.State = PlayerState.Playing;
-        }
+    //private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    //{
+    //    if (SelectedTrack is { State: PlayerState.Playing })
+    //    {
+    //        SelectedTrack.State = PlayerState.Stopped;
+    //    }
 
-        mainWindow.Song_Click(sender, e);
-    }
+    //    Windows.MainWindow mainWindow = (Windows.MainWindow)Window.GetWindow(this)!;
 
-    private void TrackRow_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-    }
+    //    if (sender is DataGrid { SelectedItem: not null } grid)
+    //    {
+    //        SelectedTrack = ((grid.SelectedItem as MediaFile)!);
+    //        SelectedTrack.State = PlayerState.Playing;
+    //    }
+
+    //    mainWindow.Song_Click(sender, e);
+    //}
+
+    //private void TrackRow_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    //{
+    //    if (sender is DataGrid { SelectedItem: not null } grid)
+    //    {
+    //        SelectedTrack = ((grid.SelectedItem as MediaFile)!);
+    //    }
+    //}
 }

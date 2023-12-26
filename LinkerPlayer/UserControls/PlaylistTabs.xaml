@@ -7,6 +7,7 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
+  xmlns:vm="clr-namespace:LinkerPlayer.ViewModels"
   d:DesignHeight="80"
   d:DesignWidth="800"
   mc:Ignorable="d">
@@ -88,12 +89,12 @@
 
     <TabControl ItemsSource="{Binding TabList}">
       <TabControl.ItemTemplate>
-        <DataTemplate DataType="{x:Type models:PlaylistTab}">
+        <DataTemplate DataType="{x:Type vm:PlayListsViewModel}">
           <TextBlock Text="{Binding Header}" />
         </DataTemplate>
       </TabControl.ItemTemplate>
       <TabControl.ContentTemplate>
-        <DataTemplate DataType="{x:Type models:PlaylistTab}">
+        <DataTemplate DataType="{x:Type vm:PlayListsViewModel}">
           <DataGrid
             x:Name="TracksTable"
             Width="Auto"
@@ -114,12 +115,12 @@
             GridLinesVisibility="None"
             IsReadOnly="True"
             ItemsSource="{Binding Tracks}"
-            MouseDoubleClick="TrackRow_MouseDoubleClick"
             RowHeaderWidth="0"
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.HorizontalScrollBarVisibility="Auto"
             ScrollViewer.VerticalScrollBarVisibility="Auto"
-            SelectionChanged="TrackRow_SelectionChanged"
+            SelectedItem="{Binding SelectedTrack}"
+            SelectionChanged="TracksTable_OnSelectionChanged"
             VirtualizingStackPanel.IsVirtualizing="True"
             VirtualizingStackPanel.VirtualizationMode="Standard">
 

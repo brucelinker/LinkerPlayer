@@ -1,5 +1,7 @@
-﻿using LinkerPlayer.Audio;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.UserControls;
 using LinkerPlayer.ViewModels;
@@ -15,6 +17,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using static System.Windows.Forms.AxHost;
 
 namespace LinkerPlayer.Windows;
 
@@ -22,12 +25,12 @@ public partial class MainWindow
 {
     public static MainWindow? Instance;
     public AudioStreamControl AudioStreamControl;
-    private readonly DispatcherTimer _seekBarTimer = new();
+    public readonly DispatcherTimer SeekBarTimer = new();
     private static readonly ThemeManager ThemeManager = new();
 
     public Playlist? SelectedPlaylist;
     public bool PlaylistLoaded = false;
-    public MediaFile? SelectedSong;
+    public MediaFile? SelectedTrack;
     public string? BackgroundPlaylistName;
     public ThemeColors SelectedTheme;
 
@@ -35,9 +38,11 @@ public partial class MainWindow
     private string? _currentlyVisualizedPath;
 
     public BandsSettings SelectedBandsSettings = null!;
+    private readonly PlayerControlsViewModel _playerControlsViewModel;
 
-    public MainWindow()
+    public MainWindow(PlayerControlsViewModel playerControlsViewModel)
     {
+        _playerControlsViewModel = playerControlsViewModel;
         InitializeComponent();
 
         Instance = this;
@@ -45,6 +50,16 @@ public partial class MainWindow
 
         ((App)Application.Current).WindowPlace.Register(this);
         WinMax.DoSourceInitialized(this);
+
+        WeakReferenceMessenger.Default.Register<PlayerStateMessage>(this, (r, m) =>
+        {
+            OnPlayerStateChanged(m.Value);
+        });
+
+        WeakReferenceMessenger.Default.Register<PlaylistSelectionChangedMessage>(this, (r, m) =>
+        {
+            OnPlaylistSelectionChanged(m.Value);
+        });
 
         if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
         {
@@ -78,7 +93,7 @@ public partial class MainWindow
             }
         }
 
-        AudioStreamControl = new AudioStreamControl(Properties.Settings.Default.MainOutputDevice, null!);
+        AudioStreamControl = new AudioStreamControl(Properties.Settings.Default.MainOutputDevice);
 
         AudioStreamControl.MainMusic!.MusicVolume = (float)Properties.Settings.Default.VolumeSliderValue / 100;
 
@@ -99,9 +114,9 @@ public partial class MainWindow
 
         PlayListsViewModel.LoadPlaylists();
 
-        PlayerControls.PlayButton.Click += PlayButton_Click;
-        PlayerControls.PrevButton.Click += PrevButton_Click;
-        PlayerControls.NextButton.Click += NextButton_Click;
+        //PlayerControls.PlayButton.Click += PlayButton_Click;
+        //PlayerControls.PrevButton.Click += PrevButton_Click;
+        //PlayerControls.NextButton.Click += NextButton_Click;
         PlayerControls.SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
         PlayerControls.SeekBar.ValueChanged += SeekBar_ValueChanged;
 
@@ -135,17 +150,17 @@ public partial class MainWindow
         PlayerControls.VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
         //PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
 
-        PlaylistTabs.ClickRowElement += Song_Click;
+        //PlaylistTabs.ClickRowElement += Song_Click;
 
 
-        PlaylistTabs.ClickRowElement += (s, o) =>
-        {
-            SelectPlaylistByName(
-                (((s as Button)!.Content as ContentPresenter)!.Content as Playlist)!.Name!.ToString());
-        };
+        //PlaylistTabs.ClickRowElement += (s, o) =>
+        //{
+        //    SelectPlaylistByName(
+        //        (((s as Button)!.Content as ContentPresenter)!.Content as Playlist)!.Name!.ToString());
+        //};
 
-        _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
-        _seekBarTimer.Tick += timer_Tick!;
+        SeekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
+        SeekBarTimer.Tick += timer_Tick!;
 
         Properties.Settings.Default.Save();
 
@@ -189,14 +204,14 @@ public partial class MainWindow
 
                 if (!string.IsNullOrEmpty(lastSelectedSongId))
                 {
-                    SelectedSong = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName)
+                    SelectedTrack = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName)
                         .Find(s => s.Id == lastSelectedSongId);
 
-                    if (SelectedSong != null)
+                    if (SelectedTrack != null)
                     {
-                        if (SelectSong(SelectedSong))
+                        if (PlayTrack(SelectedTrack))
                         {
-                            PlayButton_Click(null!, null!);
+                            //PlayButton_Click(null!, null!);
 
                             AudioStreamControl.CurrentTrackPosition = AudioStreamControl.CurrentTrackLength *
                                 Properties.Settings.Default.LastSeekBarValue / 100;
@@ -205,7 +220,7 @@ public partial class MainWindow
                         }
                         else
                         {
-                            SelectedSong = null;
+                            SelectedTrack = null;
                         }
                     }
                 }
@@ -249,8 +264,8 @@ public partial class MainWindow
 
         if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength)
         {
-            PlayerControls.State = PlayerState.Paused;
-            _seekBarTimer.Stop();
+            _playerControlsViewModel.State = PlayerState.Paused;
+            SeekBarTimer.Stop();
 
             NextButton_Click(null!, null!);
         }
@@ -258,22 +273,22 @@ public partial class MainWindow
         {
             AudioStreamControl.Pause();
 
-            PlayerControls.State = PlayerState.Paused;
-            _seekBarTimer.Stop();
+            _playerControlsViewModel.State = PlayerState.Paused;
+            SeekBarTimer.Stop();
         }
     }
 
     public void Song_Click(object sender, RoutedEventArgs e)
     {
-        //string idBefore = SelectedSong != null ? SelectedSong.Id : "";
+        //string idBefore = SelectedTrack != null ? SelectedTrack.Id : "";
 
         if (sender is DataGrid { SelectedItem: not null } grid)
         {
-            SelectSong((grid.SelectedItem as MediaFile)!);
-            //SelectSong((((sender as Button)!.Content as GridViewRowPresenter)!.Content as MediaFile)!);
+            PlayTrack((grid.SelectedItem as MediaFile)!);
+            //PlayTrack((((sender as Button)!.Content as GridViewRowPresenter)!.Content as MediaFile)!);
         }
 
-        //string idAfter = SelectedSong != null ? SelectedSong.Id : "";
+        //string idAfter = SelectedTrack != null ? SelectedTrack.Id : "";
 
         //if (idBefore != idAfter)
         //{ // outline background playlist
@@ -288,9 +303,9 @@ public partial class MainWindow
         //}
     }
 
-    public bool SelectSong(MediaFile mediaFile)
+    public bool PlayTrack(MediaFile mediaFile)
     {
-        Log.Information("MainWindow - SelectSong");
+        Log.Information("MainWindow - PlayTrack");
 
         if (!File.Exists(mediaFile.Path))
         {
@@ -302,23 +317,30 @@ public partial class MainWindow
         }
 
         mediaFile.UpdateFromTag();
-        SelectedSong = mediaFile.Clone();
+        SelectedTrack = mediaFile.Clone();
 
-        AudioStreamControl.PathToMusic = SelectedSong.Path;
+        AudioStreamControl.PathToMusic = SelectedTrack.Path;
 
         AudioStreamControl.StopAndPlayFromPosition(0);
-        _seekBarTimer.Start();
+        SeekBarTimer.Start();
 
-        PlayerControls.State = PlayerState.Playing;
+        //_playerControlsViewModel.State = PlayerState.Playing;
 
-        PlayerControls.CurrentSongName.Text = SelectedSong.Title;
-        TimeSpan ts = SelectedSong.Duration;
+        PlayerControls.CurrentSongName.Text = SelectedTrack.Title;
+        TimeSpan ts = SelectedTrack.Duration;
         PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
         PlayerControls.CurrentTime.Text = "0:00";
 
-        TrackInfo.SetSelectedMediaFile(SelectedSong);
+        TrackInfo.SetSelectedMediaFile(SelectedTrack);
 
         StartVisualization();
+
+        return true;
+    }
+
+    public bool ResumeTrack(MediaFile mediaFile)
+    {
+        AudioStreamControl.Play();
 
         return true;
     }
@@ -333,14 +355,14 @@ public partial class MainWindow
         {
             AudioStreamControl.StopAndPlayFromPosition(posInSeekBar);
 
-            PlayerControls.State = PlayerState.Playing;
-            _seekBarTimer.Start();
+            _playerControlsViewModel.State = PlayerState.Playing;
+            SeekBarTimer.Start();
         }
     }
 
     private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (SelectedSong != null)
+        if (SelectedTrack != null)
         {
             double posInSeekBar = (PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100;
             TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
@@ -357,30 +379,42 @@ public partial class MainWindow
         }
     }
 
-    private void PlayButton_Click(object sender, RoutedEventArgs e)
+    private void OnPlaylistSelectionChanged(MediaFile? selectedTrack)
     {
-        Log.Information("MainWindow - PlayButton_Click");
+        SelectedTrack = selectedTrack;
+    }
 
-        if (SelectedSong != null)
+    private void OnPlayerStateChanged(PlayerState state)
+    {
+        Log.Information("MainWindow - OnPlayerStateChanged");
+
+        if (SelectedTrack != null)
         {
-            if (PlayerControls.State == PlayerState.Paused)
+            switch (state)
             {
-                PlayerControls.State = PlayerState.Playing;
-                SelectedSong.State = PlayerState.Playing;
-                PlaylistTabs.UpdatePlayerState(PlayerState.Playing);
+                case PlayerState.Playing:
 
-                AudioStreamControl.StopAndPlayFromPosition(
-                    (PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
-                _seekBarTimer.Start();
-            }
-            else
-            {
-                PlayerControls.State = PlayerState.Paused;
-                SelectedSong.State = PlayerState.Paused;
-                PlaylistTabs.UpdatePlayerState(PlayerState.Paused);
+                    //PlayTrack(SelectedTrack);
 
-                AudioStreamControl.Pause();
-                _seekBarTimer.Stop();
+                    AudioStreamControl.StopAndPlayFromPosition(
+                        (PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
+                    SeekBarTimer.Start();
+                    break;
+
+                case PlayerState.Paused:
+                    //_playerControlsViewModel.State = PlayerState.Paused;
+                    //SelectedTrack.State = PlayerState.Paused;
+                    //PlaylistTabs.UpdatePlayerState(PlayerState.Paused);
+
+                    AudioStreamControl.Pause();
+                    SeekBarTimer.Stop();
+                    break;
+
+                default:
+                    AudioStreamControl.Stop();
+                    AudioStreamControl.CurrentTrackPosition = 0;
+                    SeekBarTimer.Stop();
+                    break;
             }
         }
     }
@@ -389,23 +423,23 @@ public partial class MainWindow
     {
         Log.Information("MainWindow - NextButton_Click");
 
-        if (SelectedSong != null)
+        if (SelectedTrack != null)
         {
             // TODO
             //int selectedSongIndex = PlaylistTabs. TracksTable.TracksTable.Items
             //    .Cast<MediaFile>()
             //    .ToList()
-            //    .FindIndex(item => item.Id == SelectedSong.Id);
+            //    .FindIndex(item => item.Id == SelectedTrack.Id);
 
             int selectedSongIndex = 0;
 
             if (selectedSongIndex == -1)
             {
                 // changed displayed playlist
-                if (PlayerControls.ShuffleMode)
+                if (_playerControlsViewModel.ShuffleMode)
                 {
                     List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
-                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
+                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedTrack.Id);
 
                     if (selectedSongIndex != -1)
                     {
@@ -437,23 +471,23 @@ public partial class MainWindow
     {
         Log.Information("MainWindow - PrevButton_Click");
 
-        if (SelectedSong != null)
+        if (SelectedTrack != null)
         {
             // TODO
             //int selectedSongIndex = TracksTable.TracksTable.Items
             //                        .Cast<MediaFile>()
             //                        .ToList()
-            //                        .FindIndex(item => item.Id == SelectedSong.Id);
+            //                        .FindIndex(item => item.Id == SelectedTrack.Id);
 
             int selectedSongIndex = 0;
 
             if (selectedSongIndex == -1)
             {
                 // changed displayed playlist
-                if (PlayerControls.ShuffleMode)
+                if (_playerControlsViewModel.ShuffleMode)
                 {
                     List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
-                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedSong.Id);
+                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedTrack.Id);
 
                     if (selectedSongIndex != -1)
                     {
@@ -490,12 +524,12 @@ public partial class MainWindow
             InfoSnackbar.MessageQueue?.Clear();
             InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false,
                 true, TimeSpan.FromSeconds(2));
-            SelectedSong = song.Clone();
+            SelectedTrack = song.Clone();
             nextPrevButtonClick(null!, null!);
         }
         else
         {
-            SelectSong(song);
+            PlayTrack(song);
         }
     }
 
@@ -580,11 +614,11 @@ public partial class MainWindow
             PlaylistLoaded = true;
 
             //Task.Delay(10); // waiting till list is loaded and outline selected mediaFile
-            //if (SelectedSong != null)
+            //if (SelectedTrack != null)
             //{
             //    foreach (Button button in Helper.FindVisualChildren<Button>(TracksTable.TracksTable))
             //    {
-            //        if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedSong.Id)
+            //        if (((button.Content as GridViewRowPresenter)!.Content as MediaFile)!.Id == SelectedTrack.Id)
             //        {
             //            button.FontWeight = FontWeights.ExtraBold;
             //            break;
@@ -600,12 +634,12 @@ public partial class MainWindow
     {
         Log.Information("MainWindow - SelectedSongRemoved");
 
-        if (SelectedSong != null)
+        if (SelectedTrack != null)
         {
             AudioStreamControl.Stop();
-            SelectedSong = null;
-            PlayerControls.State = PlayerState.Paused;
-            _seekBarTimer.Stop();
+            SelectedTrack = null;
+            _playerControlsViewModel.State = PlayerState.Paused;
+            SeekBarTimer.Stop();
             PlayerControls.CurrentSongName.Text = "Song not selected";
             PlayerControls.TotalTime.Text = "0:00";
             PlayerControls.CurrentTime.Text = "0:00";
@@ -623,7 +657,7 @@ public partial class MainWindow
 
             BackgroundPlaylistName = null;
 
-            SelectedSong = null;
+            SelectedTrack = null;
 
             StopVisualization();
         }
@@ -644,9 +678,9 @@ public partial class MainWindow
     {
         Log.Information("MainWindow - RenameSelectedSong");
 
-        if (SelectedSong != null)
+        if (SelectedTrack != null)
         {
-            SelectedSong.Title = newName;
+            SelectedTrack.Title = newName;
             PlayerControls.CurrentSongName.Text = newName;
         }
     }
@@ -655,13 +689,13 @@ public partial class MainWindow
     {
         Log.Information("MainWindow - StartVisualization");
 
-        if (VisualizationEnabled && SelectedSong != null)
+        if (VisualizationEnabled && SelectedTrack != null)
         {
-            if (_currentlyVisualizedPath != SelectedSong.Path)
+            if (_currentlyVisualizedPath != SelectedTrack.Path)
             {
-                _currentlyVisualizedPath = SelectedSong.Path;
+                _currentlyVisualizedPath = SelectedTrack.Path;
 
-                PlayerControls.VisualizeAudio(SelectedSong.Path);
+                PlayerControls.VisualizeAudio(SelectedTrack.Path);
             }
         }
     }
@@ -704,7 +738,7 @@ public partial class MainWindow
 
         Properties.Settings.Default.LastSelectedPlaylistName = SelectedPlaylist != null ? SelectedPlaylist.Name : "";
         Properties.Settings.Default.LastBackgroundPlaylistName = BackgroundPlaylistName ?? "";
-        Properties.Settings.Default.LastSelectedSongId = SelectedSong != null ? SelectedSong.Id : "";
+        Properties.Settings.Default.LastSelectedSongId = SelectedTrack != null ? SelectedTrack.Id : "";
 
         Properties.Settings.Default.LastSeekBarValue = PlayerControls.SeekBar.Value;
 
@@ -779,7 +813,7 @@ public partial class MainWindow
 
             if (enteredHotkey == Properties.Settings.Default["PlayPauseHotkey"].ToString())
             {
-                PlayButton_Click(null!, null!);
+                //PlayButton_Click(null!, null!);
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["NextSongHotkey"].ToString())

@@ -1,74 +1,69 @@
-﻿using LinkerPlayer.Models;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.UserControls;
 
-public partial class PlayerControls : INotifyPropertyChanged
+interface IIPlayerControls
 {
+    
+}
+
+[ObservableObject]
+public partial class PlayerControls
+{
+    private readonly PlayerControlsViewModel _playerControlsViewModel = new();
     public bool Rendering;
 
     public PlayerControls()
     {
-        DataContext = this;
         InitializeComponent();
 
-        State = PlayerState.Paused;
-        //Mode = PlaybackMode.Loop;
-
+        DataContext = _playerControlsViewModel;
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+    //private PlayerState _playerState = PlayerState.Stopped;
+    //public PlayerState State
+    //{
+    //    get => _playerState;
+    //    set
+    //    {
+    //        if (_playerState == value) return;
+    //        _playerState = value;
+    //    }
+    //}
 
-    private PlayerState _playerState = PlayerState.Stopped;
-    public PlayerState State
-    {
-        get => _playerState;
-        set
-        {
-            if (_playerState == value) return;
-            _playerState = value;
+    //private static bool _shuffleMode = false;
+    //public bool ShuffleMode
+    //{
+    //    get => _shuffleMode;
+    //    set
+    //    {
+    //        if (_shuffleMode == value) return;
+    //        _shuffleMode = value;
+    //    }
+    //}
 
-            OnPropertyChanged();
-        }
-    }
-
-    private static bool _shuffleMode = false;
-    public bool ShuffleMode
-    {
-        get => _shuffleMode;
-        set
-        {
-            if (_shuffleMode == value) return;
-            _shuffleMode = value;
-
-            OnPropertyChanged();
-        }
-    }
-
-    private bool _isMute = false;
-    public bool IsMute
-    {
-        get => _isMute;
-        set
-        {
-            if(value == _isMute) return;
-            _isMute = value;
-
-            OnPropertyChanged();
-        }
-    }
+    //private bool _isMute = false;
+    //public bool IsMute
+    //{
+    //    get => _isMute;
+    //    set
+    //    {
+    //        if(value == _isMute) return;
+    //        _isMute = value;
+    //    }
+    //}
 
     public void ShowSeekBarHideBorders()
     {
@@ -320,14 +315,9 @@ public partial class PlayerControls : INotifyPropertyChanged
         }
     }
 
-    private void OnPropertyChanged([CallerMemberName] string propertyName = null!)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        PackIcon? icon = MainVolumeButton.Content as PackIcon;
+        PackIcon? icon = MuteButton.Content as PackIcon;
         double val = VolumeSlider.Value;
 
         if (val == 0)
@@ -360,10 +350,10 @@ public partial class PlayerControls : INotifyPropertyChanged
         }
     }
 
-    private void ShuffleModeButton_Click(object sender, RoutedEventArgs e)
-    {
-        _shuffleMode = !_shuffleMode;
-    }
+    //private void ShuffleModeButton_Click(object sender, RoutedEventArgs e)
+    //{
+    //    _playerControlsViewModel.ShuffleMode = !_playerControlsViewModel.ShuffleMode;
+    //}
 
     private void AnimateVolumeSliderValue(Slider slider, double newVal)
     {

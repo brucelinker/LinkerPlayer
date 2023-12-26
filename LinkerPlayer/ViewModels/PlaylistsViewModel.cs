@@ -1,5 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Microsoft.Win32;
 using Serilog;
@@ -8,7 +10,9 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
+using static System.Windows.Forms.AxHost;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -17,7 +21,25 @@ public partial class PlayListsViewModel : ObservableObject
     [ObservableProperty]
     private Playlist? _playlist;
 
+    [ObservableProperty]
+    private static MediaFile? _selectedTrack;
+
+    [ObservableProperty] 
+    private static PlayerState _state;
+
     public static ObservableCollection<PlaylistTab> TabList { get; set; } = new();
+
+    public void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        SelectedTrack = (sender as DataGrid)!.SelectedItem as MediaFile;
+        WeakReferenceMessenger.Default.Send(new PlaylistSelectionChangedMessage(SelectedTrack));
+    }
+
+    public void UpdatePlayerState(PlayerState state)
+    {
+        State = state;
+        if (SelectedTrack != null) SelectedTrack.State = state;
+    }
 
     public static void LoadPlaylists()
     {
@@ -69,6 +91,32 @@ public partial class PlayListsViewModel : ObservableObject
         }
     }
 
+    private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (SelectedTrack is { State: PlayerState.Playing })
+        {
+            SelectedTrack.State = PlayerState.Stopped;
+        }
+
+        //Windows.MainWindow mainWindow = (Windows.MainWindow)Window.GetWindow(this)!;
+
+        if (sender is DataGrid { SelectedItem: not null } grid)
+        {
+            SelectedTrack = ((grid.SelectedItem as MediaFile)!);
+            SelectedTrack.State = PlayerState.Playing;
+        }
+
+        //mainWindow.Song_Click(sender, e);
+    }
+
+    private void TrackRow_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is DataGrid { SelectedItem: not null } grid)
+        {
+            SelectedTrack = ((grid.SelectedItem as MediaFile)!);
+        }
+    }
+
     private static ObservableCollection<MediaFile> LoadPlaylistTracks(string playListName)
     {
         Log.Information("MainWindow - LoadPlaylistTracks");
@@ -103,9 +151,9 @@ public partial class PlayListsViewModel : ObservableObject
             //    //int removedIdx = win.TracksTable.TracksTable.Items.IndexOf(droppedData);
             //    //win.TracksTable.TracksTable.Items.RemoveAt(removedIdx);
 
-            //    if (win.SelectedSong != null)
+            //    if (win.SelectedTrack != null)
             //    {
-            //        if (droppedData.Id == win.SelectedSong.Id)
+            //        if (droppedData.Id == win.SelectedTrack.Id)
             //        {
             //            win.BackgroundPlaylistName = target;
 
@@ -195,10 +243,10 @@ public partial class PlayListsViewModel : ObservableObject
 
             if (Equals(menuItem.Header, "Remove playlist"))
             {
-                //if (win.SelectedSong != null)
+                //if (win.SelectedTrack != null)
                 //{
                 //    if (MusicLibrary.GetSongsFromPlaylist((menuItem.DataContext as Playlist)!.Name)
-                //            .FindIndex(item => item.Id == win.SelectedSong.Id) != -1)
+                //            .FindIndex(item => item.Id == win.SelectedTrack.Id) != -1)
                 //    {
                 //        win.SelectedSongRemoved();
                 //    }
