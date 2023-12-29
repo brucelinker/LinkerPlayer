@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.ViewModels;
 using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
 using System;
@@ -7,17 +8,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.UserControls;
-
-interface IIPlayerControls
-{
-    
-}
 
 [ObservableObject]
 public partial class PlayerControls
@@ -31,40 +25,7 @@ public partial class PlayerControls
 
         DataContext = _playerControlsViewModel;
     }
-
-    //private PlayerState _playerState = PlayerState.Stopped;
-    //public PlayerState State
-    //{
-    //    get => _playerState;
-    //    set
-    //    {
-    //        if (_playerState == value) return;
-    //        _playerState = value;
-    //    }
-    //}
-
-    //private static bool _shuffleMode = false;
-    //public bool ShuffleMode
-    //{
-    //    get => _shuffleMode;
-    //    set
-    //    {
-    //        if (_shuffleMode == value) return;
-    //        _shuffleMode = value;
-    //    }
-    //}
-
-    //private bool _isMute = false;
-    //public bool IsMute
-    //{
-    //    get => _isMute;
-    //    set
-    //    {
-    //        if(value == _isMute) return;
-    //        _isMute = value;
-    //    }
-    //}
-
+    
     public void ShowSeekBarHideBorders()
     {
         // reset SeekBar scaling to 1
@@ -334,39 +295,39 @@ public partial class PlayerControls
         }
     }
 
-    double _mainVolumeSliderBeforeMuteValue;
+    //double _mainVolumeSliderBeforeMuteValue;
 
-    private void MainVolumeButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (VolumeSlider.Value != 0)
-        {
-            _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
+    //private void MainVolumeButton_Click(object sender, RoutedEventArgs e)
+    //{
+    //    if (VolumeSlider.Value != 0)
+    //    {
+    //        _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
 
-            AnimateVolumeSliderValue(VolumeSlider, 0);
-        }
-        else
-        {
-            AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
-        }
-    }
+    //        AnimateVolumeSliderValue(VolumeSlider, 0);
+    //    }
+    //    else
+    //    {
+    //        AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
+    //    }
+    //}
 
     //private void ShuffleModeButton_Click(object sender, RoutedEventArgs e)
     //{
     //    _playerControlsViewModel.ShuffleMode = !_playerControlsViewModel.ShuffleMode;
     //}
 
-    private void AnimateVolumeSliderValue(Slider slider, double newVal)
-    {
-        DoubleAnimation doubleAnimation = new DoubleAnimation
-        {
-            From = slider.Value,
-            To = newVal,
-            Duration = TimeSpan.FromMilliseconds(300),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-        };
+    //private void AnimateVolumeSliderValue(Slider slider, double newVal)
+    //{
+    //    DoubleAnimation doubleAnimation = new DoubleAnimation
+    //    {
+    //        From = slider.Value,
+    //        To = newVal,
+    //        Duration = TimeSpan.FromMilliseconds(300),
+    //        EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
+    //    };
 
-        slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
-    }
+    //    slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
+    //}
 }
 
 public static class ListExtensions

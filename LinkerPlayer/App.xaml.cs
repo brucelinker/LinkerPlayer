@@ -28,7 +28,7 @@ public partial class App
             .ConfigureServices((_, services) =>
             {
                 services.AddSingleton<MainWindow>();
-                services.AddSingleton<PlayListsViewModel>();
+                services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
             })
             .Build();

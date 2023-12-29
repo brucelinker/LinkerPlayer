@@ -103,6 +103,32 @@ public class MusicStream : AudioStream
         Log.Information("MusicStream - StopAndPlayFromPosition");
 
     }
+    public void StopAndResetPosition()
+    {
+        if (_pathToMusic != null)
+        {
+            Stop();
+
+            _audioFile = new AudioFileReader(_pathToMusic);
+            _audioFile.CurrentTime = TimeSpan.FromSeconds(0);
+
+            //if (_equalizer != null)
+            //{
+            //    _equalizer = new Equalizer(_audioFile, _bands);
+            //    OutputDevice?.Init(_equalizer);
+            //}
+            //else
+            //{
+            //    OutputDevice?.Init(_audioFile);
+            //}
+
+            //MusicVolume = oldVol;
+
+            //base.Play();
+        }
+        Log.Information("MusicStream - StopAndResetPosition");
+
+    }
 
     public override void Stop()
     {

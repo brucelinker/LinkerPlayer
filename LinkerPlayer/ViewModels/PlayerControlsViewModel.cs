@@ -1,16 +1,16 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.UserControls;
 using LinkerPlayer.Windows;
 using Serilog;
-using System.Windows;
-using CommunityToolkit.Mvvm.Messaging;
-using LinkerPlayer.Messages;
-using LinkerPlayer.Audio;
-using System.Windows.Threading;
 using System;
-using System.Windows.Input;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Windows;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -33,7 +33,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     private MediaFile? _selectedMediaFile;
 
     private readonly MainWindow? _mainWindow;
-    private readonly PlayListsViewModel _playListsViewModel = new();
+    private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
     //private readonly AudioStreamControl _audioStreamControl = new(Properties.Settings.Default.MainOutputDevice);
     //public readonly DispatcherTimer SeekBarTimer = new();
 
@@ -58,29 +58,75 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         //_selectedMediaFile = selectedTrack;
     }
 
-    //public object PlayPauseCommand { get; }
-
-
     [RelayCommand]
     private void Prev()
     {
-        Log.Information("PrevCommand Hit");
+        PreviousTrack();
+    }
+
+    public void PreviousTrack()
+    {
+        if (_playlistTabsViewModel.SelectedTrack != null && _playlistTabsViewModel.SelectedTab != null && _playlistTabsViewModel.SelectedTab.Tracks != null)
+        {
+            List<MediaFile> playlistSongs = _playlistTabsViewModel.SelectedTab!.Tracks.ToList();
+
+            int selectedSongIndex = -1;
+
+            if (SelectedMediaFile != null)
+            {
+                selectedSongIndex = _playlistTabsViewModel.SelectedTab.Tracks
+                    .ToList()
+                    .FindIndex(item => item.Id == SelectedMediaFile.Id);
+            }
+
+            if (selectedSongIndex == -1)
+            {
+                // changed displayed playlist
+                if (ShuffleMode)
+                {
+                    List<MediaFile> selectedPlaylistSongs = MusicLibrary.GetSongsFromPlaylist(_playlistTabsViewModel.SelectedTab.Header);
+                    selectedSongIndex = selectedPlaylistSongs.FindIndex(item => item.Id == _playlistTabsViewModel.SelectedTrack.Id);
+
+                    if (selectedSongIndex != -1)
+                    {
+                        SelectWithSkipping(selectedSongIndex == 0 
+                            ? selectedPlaylistSongs[^1]
+                            : selectedPlaylistSongs[selectedSongIndex - 1], PrevButton_Click);
+                    }
+                }
+            }
+
+            else
+            {
+                if (selectedSongIndex == 0)
+                {
+                    SelectWithSkipping(playlistSongs[^1], PrevButton_Click);
+                }
+                else
+                {
+                    SelectWithSkipping(playlistSongs[selectedSongIndex - 1], PrevButton_Click);
+                }
+            }
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause()
     {
-        MediaFile? selectedTrack = _playListsViewModel.SelectedTrack;
+        PlayPauseTrack();
+    }
+
+    public void PlayPauseTrack()
+    {
+        MediaFile? selectedTrack = _playlistTabsViewModel.SelectedTrack;
 
         if (selectedTrack != null)
         {
-            PlayerState prevState = State;
-
             if (State != PlayerState.Playing)
             {
+                PlayerState prevState = State;
                 State = PlayerState.Playing;
-                selectedTrack.State = PlayerState.Playing;
-                _playListsViewModel.UpdatePlayerState(PlayerState.Playing);
+                _playlistTabsViewModel.UpdatePlayerState(PlayerState.Playing);
 
                 if (prevState == PlayerState.Paused)
                 {
@@ -94,8 +140,8 @@ public partial class PlayerControlsViewModel : ObservableRecipient
             else
             {
                 State = PlayerState.Paused;
-                selectedTrack.State = PlayerState.Paused;
-                _playListsViewModel.UpdatePlayerState(PlayerState.Paused);
+                //selectedTrack.State = PlayerState.Paused;
+                _playlistTabsViewModel.UpdatePlayerState(PlayerState.Paused);
             }
         }
 
@@ -105,7 +151,13 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     [RelayCommand]
     private void Stop()
     {
+        StopTrack();
+    }
+
+    private void StopTrack()
+    {
         State = PlayerState.Stopped;
+        _playlistTabsViewModel.UpdatePlayerState(PlayerState.Stopped);
 
         WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
     }
@@ -113,11 +165,62 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     [RelayCommand]
     private void Next()
     {
-        Log.Information("NextCommand Hit");
+        NextTrack();
     }
-    
+
+    public void NextTrack()
+    {
+        if (_playlistTabsViewModel.SelectedTrack != null && _playlistTabsViewModel.SelectedTab != null && _playlistTabsViewModel.SelectedTab.Tracks != null)
+        {
+            List<MediaFile> playlistSongs = _playlistTabsViewModel.SelectedTab!.Tracks.ToList();
+
+            int selectedSongIndex = -1;
+
+            if (SelectedMediaFile != null)
+            {
+                selectedSongIndex = _playlistTabsViewModel.SelectedTab.Tracks
+                    .ToList()
+                    .FindIndex(item => item.Id == SelectedMediaFile.Id);
+            }
+
+            if (selectedSongIndex == -1)
+            {
+                // changed displayed playlist
+                if (ShuffleMode)
+                {
+                    List<MediaFile> selectedPlaylistSongs = MusicLibrary.GetSongsFromPlaylist(_playlistTabsViewModel.SelectedTab.Header);
+                    selectedSongIndex = selectedPlaylistSongs.FindIndex(item => item.Id == _playlistTabsViewModel.SelectedTrack.Id);
+
+                    if (selectedSongIndex != -1)
+                    {
+                        SelectWithSkipping(selectedSongIndex == selectedPlaylistSongs.Count - 1
+                            ? selectedPlaylistSongs[0]
+                            : selectedPlaylistSongs[selectedSongIndex + 1], NextButton_Click);
+                    }
+                }
+            }
+
+            else
+            {
+                if (selectedSongIndex == playlistSongs.Count - 1)
+                {
+                    SelectWithSkipping(playlistSongs[0], NextButton_Click);
+                }
+                else
+                {
+                    SelectWithSkipping(playlistSongs[selectedSongIndex + 1], NextButton_Click);
+                }
+            }
+        }
+    }
+
     [RelayCommand]
     private void Shuffle()
+    {
+        ShuffleTracks();
+    }
+
+    private void ShuffleTracks()
     {
         ShuffleMode = !ShuffleMode;
     }
@@ -132,6 +235,35 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     {
         //return _selectedMediaFile != null;
         return true;
+    }
+
+    private void NextButton_Click(object sender, RoutedEventArgs e)
+    {
+    }
+
+    private void PrevButton_Click(object sender, RoutedEventArgs e)
+    {
+        Log.Information("MainWindow - PrevButton_Click");
+
+    }
+
+    private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButton)
+    {
+        // skips if mediaFile doesn't exist
+        Log.Information("MainWindow - SelectWithSkipping");
+
+        if (!File.Exists(song.Path))
+        {
+            //InfoSnackbar.MessageQueue?.Clear();
+            //InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false,
+            //    true, TimeSpan.FromSeconds(2));
+            //SelectedTrack = song.Clone();
+            nextPrevButton(null!, null!);
+        }
+        else
+        {
+            _mainWindow!.PlayTrack(song);
+        }
     }
 
     //private void TimerTick(object sender, EventArgs e)

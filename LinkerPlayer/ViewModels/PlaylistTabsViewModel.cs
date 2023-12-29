@@ -10,19 +10,20 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
-using static System.Windows.Forms.AxHost;
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class PlayListsViewModel : ObservableObject
+public partial class PlaylistTabsViewModel : ObservableObject
 {
     [ObservableProperty]
-    private Playlist? _playlist;
+    private string? _selectedPlaylistName;
 
     [ObservableProperty]
     private static MediaFile? _selectedTrack;
+
+    [ObservableProperty]
+    private static PlaylistTab? _selectedTab;
 
     [ObservableProperty] 
     private static PlayerState _state;
@@ -32,6 +33,7 @@ public partial class PlayListsViewModel : ObservableObject
     public void OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         SelectedTrack = (sender as DataGrid)!.SelectedItem as MediaFile;
+
         WeakReferenceMessenger.Default.Send(new PlaylistSelectionChangedMessage(SelectedTrack));
     }
 
@@ -55,15 +57,6 @@ public partial class PlayListsViewModel : ObservableObject
 
             Log.Information($"LoadPlaylists - added PlaylistTab {tab}");
         }
-
-        //JsonValueFormatter formatter = new();
-        //foreach (PlaylistTab tab in TabList)
-        //{
-        //    string json = JsonConvert.SerializeObject(tab.Tracks);
-        //    Log.Information("**TABLIST**");
-        //    Log.Information($"{@tab.Header}");
-        //    Log.Information($"{@json}");
-        //}
     }
 
     public static PlaylistTab AddPlaylistTab(Playlist p)
@@ -91,33 +84,19 @@ public partial class PlayListsViewModel : ObservableObject
         }
     }
 
-    private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    //private Playlist? _selectedPlaylist;
+    //private static MediaFile? _selectedTrack;
+    //private static PlaylistTab? _selectedTab;
+
+    public void UpdatePlaylistTab(object sender, SelectionChangedEventArgs selectionChangedEventArgs)
     {
-        if (SelectedTrack is { State: PlayerState.Playing })
+        if (sender is TabControl tabControl)
         {
-            SelectedTrack.State = PlayerState.Stopped;
-        }
-
-        //Windows.MainWindow mainWindow = (Windows.MainWindow)Window.GetWindow(this)!;
-
-        if (sender is DataGrid { SelectedItem: not null } grid)
-        {
-            SelectedTrack = ((grid.SelectedItem as MediaFile)!);
-            SelectedTrack.State = PlayerState.Playing;
-        }
-
-        //mainWindow.Song_Click(sender, e);
-    }
-
-    private void TrackRow_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is DataGrid { SelectedItem: not null } grid)
-        {
-            SelectedTrack = ((grid.SelectedItem as MediaFile)!);
+            SelectedTab = TabList[tabControl.SelectedIndex];
         }
     }
 
-    private static ObservableCollection<MediaFile> LoadPlaylistTracks(string playListName)
+    private static ObservableCollection<MediaFile> LoadPlaylistTracks(string? playListName)
     {
         Log.Information("MainWindow - LoadPlaylistTracks");
 
@@ -127,7 +106,7 @@ public partial class PlayListsViewModel : ObservableObject
         foreach (MediaFile song in songs)
         {
             tracks.Add(song);
-        };
+        }
 
         return tracks;
     }

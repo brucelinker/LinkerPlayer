@@ -100,19 +100,19 @@ public partial class MainWindow
         if (Properties.Settings.Default.AdditionalOutputEnabled &&
             !string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
         {
-            AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice);
+            //AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice);
             AudioStreamControl.AdditionalMusic!.MusicVolume =
                 (float)Properties.Settings.Default.AdditionalVolumeSliderValue / 100;
         }
 
-        AudioStreamControl.MainMusic.StoppedEvent += Music_StoppedEvent!;
+        //AudioStreamControl.MainMusic.StoppedEvent += Music_StoppedEvent!;
 
-        if (AudioStreamControl.AdditionalMusic != null)
-        {
-            AudioStreamControl.AdditionalMusic.StoppedEvent += Music_StoppedEvent!;
-        }
+        //if (AudioStreamControl.AdditionalMusic != null)
+        //{
+        //    AudioStreamControl.AdditionalMusic.StoppedEvent += Music_StoppedEvent!;
+        //}
 
-        PlayListsViewModel.LoadPlaylists();
+        PlaylistTabsViewModel.LoadPlaylists();
 
         //PlayerControls.PlayButton.Click += PlayButton_Click;
         //PlayerControls.PrevButton.Click += PrevButton_Click;
@@ -258,24 +258,13 @@ public partial class MainWindow
         AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.VolumeSlider.Value / 100;
     }
 
-    public void Music_StoppedEvent(object sender, EventArgs e)
+    public void StopTrack()
     {
-        Log.Information("MainWindow - MusicStoppedEvent");
+        Log.Information("MainWindow - StopTrack");
 
-        if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength)
-        {
-            _playerControlsViewModel.State = PlayerState.Paused;
-            SeekBarTimer.Stop();
-
-            NextButton_Click(null!, null!);
-        }
-        else if (sender == null!)
-        {
-            AudioStreamControl.Pause();
-
-            _playerControlsViewModel.State = PlayerState.Paused;
-            SeekBarTimer.Stop();
-        }
+        _playerControlsViewModel.State = PlayerState.Stopped;
+        SeekBarTimer.Stop();
+        AudioStreamControl.CurrentTrackPosition = 0;
     }
 
     public void Song_Click(object sender, RoutedEventArgs e)
@@ -393,19 +382,12 @@ public partial class MainWindow
             switch (state)
             {
                 case PlayerState.Playing:
-
-                    //PlayTrack(SelectedTrack);
-
                     AudioStreamControl.StopAndPlayFromPosition(
                         (PlayerControls.SeekBar.Value * AudioStreamControl.CurrentTrackLength) / 100);
                     SeekBarTimer.Start();
                     break;
 
                 case PlayerState.Paused:
-                    //_playerControlsViewModel.State = PlayerState.Paused;
-                    //SelectedTrack.State = PlayerState.Paused;
-                    //PlaylistTabs.UpdatePlayerState(PlayerState.Paused);
-
                     AudioStreamControl.Pause();
                     SeekBarTimer.Stop();
                     break;
@@ -414,124 +396,126 @@ public partial class MainWindow
                     AudioStreamControl.Stop();
                     AudioStreamControl.CurrentTrackPosition = 0;
                     SeekBarTimer.Stop();
+                    PlayerControls.CurrentTime.Text = "0:00";
+                    PlayerControls.SeekBar.Value = 0;
                     break;
             }
         }
     }
 
-    private void NextButton_Click(object sender, RoutedEventArgs e)
-    {
-        Log.Information("MainWindow - NextButton_Click");
+    //private void NextButton_Click(object sender, RoutedEventArgs e)
+    //{
+    //    Log.Information("MainWindow - NextButton_Click");
 
-        if (SelectedTrack != null)
-        {
-            // TODO
-            //int selectedSongIndex = PlaylistTabs. TracksTable.TracksTable.Items
-            //    .Cast<MediaFile>()
-            //    .ToList()
-            //    .FindIndex(item => item.Id == SelectedTrack.Id);
+    //    if (SelectedTrack != null)
+    //    {
+    //        // TODO
+    //        //int selectedSongIndex = PlaylistTabs. TracksTable.TracksTable.Items
+    //        //    .Cast<MediaFile>()
+    //        //    .ToList()
+    //        //    .FindIndex(item => item.Id == SelectedTrack.Id);
 
-            int selectedSongIndex = 0;
+    //        int selectedSongIndex = 0;
 
-            if (selectedSongIndex == -1)
-            {
-                // changed displayed playlist
-                if (_playerControlsViewModel.ShuffleMode)
-                {
-                    List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
-                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedTrack.Id);
+    //        if (selectedSongIndex == -1)
+    //        {
+    //            // changed displayed playlist
+    //            if (_playerControlsViewModel.ShuffleMode)
+    //            {
+    //                List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
+    //                selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedTrack.Id);
 
-                    if (selectedSongIndex != -1)
-                    {
-                        SelectWithSkipping(
-                            selectedSongIndex == backgroundSongs.Count - 1
-                                ? backgroundSongs[0]
-                                : backgroundSongs[selectedSongIndex + 1], NextButton_Click);
-                    }
-                }
-            }
+    //                if (selectedSongIndex != -1)
+    //                {
+    //                    SelectWithSkipping(
+    //                        selectedSongIndex == backgroundSongs.Count - 1
+    //                            ? backgroundSongs[0]
+    //                            : backgroundSongs[selectedSongIndex + 1], NextButton_Click);
+    //                }
+    //            }
+    //        }
 
-            else
-            {
-                // TODO
-                //if (selectedSongIndex == TracksTable.TracksTable.Items.Count - 1)
-                //{
-                //    SelectWithSkipping((TracksTable.TracksTable.Items[0] as MediaFile)!, NextButton_Click);
-                //}
-                //else
-                //{
-                //    SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex + 1] as MediaFile)!,
-                //        NextButton_Click);
-                //}
-            }
-        }
-    }
+    //        else
+    //        {
+    //            // TODO
+    //            //if (selectedSongIndex == TracksTable.TracksTable.Items.Count - 1)
+    //            //{
+    //            //    SelectWithSkipping((TracksTable.TracksTable.Items[0] as MediaFile)!, NextButton_Click);
+    //            //}
+    //            //else
+    //            //{
+    //            //    SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex + 1] as MediaFile)!,
+    //            //        NextButton_Click);
+    //            //}
+    //        }
+    //    }
+    //}
 
-    private void PrevButton_Click(object sender, RoutedEventArgs e)
-    {
-        Log.Information("MainWindow - PrevButton_Click");
+    //private void PrevButton_Click(object sender, RoutedEventArgs e)
+    //{
+    //    Log.Information("MainWindow - PrevButton_Click");
 
-        if (SelectedTrack != null)
-        {
-            // TODO
-            //int selectedSongIndex = TracksTable.TracksTable.Items
-            //                        .Cast<MediaFile>()
-            //                        .ToList()
-            //                        .FindIndex(item => item.Id == SelectedTrack.Id);
+    //    if (SelectedTrack != null)
+    //    {
+    //        // TODO
+    //        //int selectedSongIndex = TracksTable.TracksTable.Items
+    //        //                        .Cast<MediaFile>()
+    //        //                        .ToList()
+    //        //                        .FindIndex(item => item.Id == SelectedTrack.Id);
 
-            int selectedSongIndex = 0;
+    //        int selectedSongIndex = 0;
 
-            if (selectedSongIndex == -1)
-            {
-                // changed displayed playlist
-                if (_playerControlsViewModel.ShuffleMode)
-                {
-                    List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
-                    selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedTrack.Id);
+    //        if (selectedSongIndex == -1)
+    //        {
+    //            // changed displayed playlist
+    //            if (_playerControlsViewModel.ShuffleMode)
+    //            {
+    //                List<MediaFile> backgroundSongs = MusicLibrary.GetSongsFromPlaylist(BackgroundPlaylistName);
+    //                selectedSongIndex = backgroundSongs.FindIndex(item => item.Id == SelectedTrack.Id);
 
-                    if (selectedSongIndex != -1)
-                    {
-                        SelectWithSkipping(selectedSongIndex == 0
-                                ? backgroundSongs[^1]
-                                : backgroundSongs[selectedSongIndex - 1],
-                            PrevButton_Click);
-                    }
-                }
-            }
+    //                if (selectedSongIndex != -1)
+    //                {
+    //                    SelectWithSkipping(selectedSongIndex == 0
+    //                            ? backgroundSongs[^1]
+    //                            : backgroundSongs[selectedSongIndex - 1],
+    //                        PrevButton_Click);
+    //                }
+    //            }
+    //        }
 
-            else
-            {
-                // TODO
-                //if (selectedSongIndex == 0)
-                //{
-                //    SelectWithSkipping((TracksTable.TracksTable.Items[^1] as MediaFile)!, PrevButton_Click);
-                //}
-                //else
-                //{
-                //    SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
-                //}
-            }
-        }
-    }
+    //        else
+    //        {
+    //            // TODO
+    //            //if (selectedSongIndex == 0)
+    //            //{
+    //            //    SelectWithSkipping((TracksTable.TracksTable.Items[^1] as MediaFile)!, PrevButton_Click);
+    //            //}
+    //            //else
+    //            //{
+    //            //    SelectWithSkipping((TracksTable.TracksTable.Items[selectedSongIndex - 1] as MediaFile)!, PrevButton_Click);
+    //            //}
+    //        }
+    //    }
+    //}
 
-    private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButtonClick)
-    {
-        // skips if mediaFile doesn't exist
-        Log.Information("MainWindow - SelectWithSkipping");
+    //private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButtonClick)
+    //{
+    //    // skips if mediaFile doesn't exist
+    //    Log.Information("MainWindow - SelectWithSkipping");
 
-        if (!File.Exists(song.Path))
-        {
-            InfoSnackbar.MessageQueue?.Clear();
-            InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false,
-                true, TimeSpan.FromSeconds(2));
-            SelectedTrack = song.Clone();
-            nextPrevButtonClick(null!, null!);
-        }
-        else
-        {
-            PlayTrack(song);
-        }
-    }
+    //    if (!File.Exists(song.Path))
+    //    {
+    //        InfoSnackbar.MessageQueue?.Clear();
+    //        InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false,
+    //            true, TimeSpan.FromSeconds(2));
+    //        SelectedTrack = song.Clone();
+    //        nextPrevButtonClick(null!, null!);
+    //    }
+    //    else
+    //    {
+    //        PlayTrack(song);
+    //    }
+    //}
 
     //private void DisplayPlaylists()
     //{
@@ -818,12 +802,12 @@ public partial class MainWindow
             }
             else if (enteredHotkey == Properties.Settings.Default["NextSongHotkey"].ToString())
             {
-                NextButton_Click(null!, null!);
+                _playerControlsViewModel.NextTrack();
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["PreviousSongHotkey"].ToString())
             {
-                PrevButton_Click(null!, null!);
+                _playerControlsViewModel.PreviousTrack();
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["IncreaseMainVolumeHotkey"].ToString())

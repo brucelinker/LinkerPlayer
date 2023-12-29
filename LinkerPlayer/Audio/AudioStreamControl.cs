@@ -27,65 +27,24 @@ public class AudioStreamControl
         }
     }
 
-    public void ActivateAdditionalMusic(string additionalOutputDevice)
-    {
-        if (string.IsNullOrWhiteSpace(additionalOutputDevice))
-        {
-            Log.Error("Device name can`t be null");
-        }
-        else
-        {
-            if (MainMusic != null)
-            {
-                if (AdditionalMusic == null)
-                {
-                    AdditionalMusic = new MusicStream(additionalOutputDevice);
-
-                    if (PathToMusic != null)
-                    {
-                        AdditionalMusic.PathToMusic = PathToMusic;
-
-                        if (MainMusic.IsPlaying)
-                        {
-                            StopAndPlayFromPosition(CurrentTrackPosition);
-                        }
-                    }
-                }
-                else
-                {
-                    AdditionalMusic.ReselectOutputDevice(additionalOutputDevice);
-                }
-            }
-            else
-            {
-                Log.Error("MainMusic should be initialized");
-            }
-        }
-    }
-
     public void Stop()
     {
-        MainMusic?.Stop();
-        AdditionalMusic?.Stop();
+        MainMusic?.StopAndResetPosition();
     }
 
     public void Play()
     {
         MainMusic?.Play();
-        AdditionalMusic?.Play();
     }
 
     public void Pause()
     {
         MainMusic?.Pause();
-        AdditionalMusic?.Pause();
     }
 
     public void StopAndPlayFromPosition(double startingPosition)
     {
         MainMusic?.StopAndPlayFromPosition(startingPosition);
-
-        AdditionalMusic?.StopAndPlayFromPosition(startingPosition);
 
         if (_delayedEqualizerInitialization && !String.IsNullOrEmpty(_selectedBandName))
         {
@@ -115,11 +74,6 @@ public class AudioStreamControl
         set
         {
             if (MainMusic != null) MainMusic.PathToMusic = value;
-
-            if (AdditionalMusic != null)
-            {
-                AdditionalMusic.PathToMusic = value;
-            }
         }
     }
 
@@ -142,25 +96,17 @@ public class AudioStreamControl
         set
         {
             if (MainMusic != null) MainMusic.CurrentTrackPosition = value;
-
-            if (AdditionalMusic != null)
-            {
-                AdditionalMusic.CurrentTrackPosition = value;
-            }
         }
     }
 
     public void Seek(double offset)
     {
         MainMusic?.Seek(offset);
-        AdditionalMusic?.Seek(offset);
     }
 
     public void InitializeEqualizer(string? selectedBandName = null)
     {
         MainMusic?.InitializeEqualizer();
-
-        AdditionalMusic?.InitializeEqualizer();
 
         if (MainMusic is { IsEqualizerWorking: false })
         {
@@ -172,18 +118,15 @@ public class AudioStreamControl
     public void StopEqualizer()
     {
         MainMusic?.StopEqualizer();
-        AdditionalMusic?.StopEqualizer();
     }
 
     public void SetBandGain(int index, float value)
     {
         MainMusic?.SetBandGain(index, value);
-        AdditionalMusic?.SetBandGain(index, value);
     }
 
     public void SetBandsList(List<EqualizerBand>? equalizerBandsToAdd)
     {
         MainMusic?.SetBandsList(equalizerBandsToAdd);
-        AdditionalMusic?.SetBandsList(equalizerBandsToAdd);
     }
 }

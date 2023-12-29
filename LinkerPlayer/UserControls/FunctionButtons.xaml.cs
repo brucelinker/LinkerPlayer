@@ -126,7 +126,7 @@ public partial class FunctionButtons
             }
         }
 
-        PlaylistTab playlistTab = PlayListsViewModel.AddPlaylistTab(playlist);
+        PlaylistTab playlistTab = PlaylistTabsViewModel.AddPlaylistTab(playlist);
         win.SelectPlaylistByName(playlistTab.Header!);
     }
 
@@ -151,13 +151,13 @@ public partial class FunctionButtons
                         win.SelectPlaylistByName(selectedPlaylist.Name);
 
                         MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                        //PlayListsViewModel.AddSongToPlaylistTab(song, selectedPlaylist.Name);
+                        //PlaylistTabsViewModel.AddSongToPlaylistTab(song, selectedPlaylist.Name);
                     }
                 }
                 else
                 {
                     MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                    //PlayListsViewModel.AddSongToPlaylistTab(song, selectedPlaylist.Name);
+                    //PlaylistTabsViewModel.AddSongToPlaylistTab(song, selectedPlaylist.Name);
                 }
             }
         }

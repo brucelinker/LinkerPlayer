@@ -1,7 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
@@ -10,20 +9,19 @@ namespace LinkerPlayer.UserControls;
 [ObservableObject]
 public partial class PlaylistTabs
 {
-    private readonly PlayListsViewModel _playListsViewModel = new();
+    private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
 
     public PlaylistTabs()
     {
-        DataContext = _playListsViewModel;
+        DataContext = _playlistTabsViewModel;
 
         InitializeComponent();
     }
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _playListsViewModel.OnSelectionChanged(sender, e);
+        _playlistTabsViewModel.OnSelectionChanged(sender, e);
     }
-
 
     //public static void UpdatePlayerState(PlayerState state)
     //{
@@ -32,29 +30,22 @@ public partial class PlaylistTabs
 
     //public RoutedEventHandler? ClickRowElement;
 
-    //private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    //{
-    //    if (SelectedTrack is { State: PlayerState.Playing })
-    //    {
-    //        SelectedTrack.State = PlayerState.Stopped;
-    //    }
+    private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (_playlistTabsViewModel.SelectedTrack is { State: PlayerState.Playing })
+        {
+            _playlistTabsViewModel.SelectedTrack.State = PlayerState.Stopped;
+        }
 
-    //    Windows.MainWindow mainWindow = (Windows.MainWindow)Window.GetWindow(this)!;
+        if (sender is DataGrid { SelectedItem: not null } grid)
+        {
+            _playlistTabsViewModel.SelectedTrack = ((grid.SelectedItem as MediaFile)!);
+            _playlistTabsViewModel.SelectedTrack.State = PlayerState.Playing;
+        }
+    }
 
-    //    if (sender is DataGrid { SelectedItem: not null } grid)
-    //    {
-    //        SelectedTrack = ((grid.SelectedItem as MediaFile)!);
-    //        SelectedTrack.State = PlayerState.Playing;
-    //    }
-
-    //    mainWindow.Song_Click(sender, e);
-    //}
-
-    //private void TrackRow_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    //{
-    //    if (sender is DataGrid { SelectedItem: not null } grid)
-    //    {
-    //        SelectedTrack = ((grid.SelectedItem as MediaFile)!);
-    //    }
-    //}
+    private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _playlistTabsViewModel.UpdatePlaylistTab(sender, e);
+    }
 }
