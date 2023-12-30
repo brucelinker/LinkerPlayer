@@ -105,7 +105,7 @@ public partial class MainWindow
                 (float)Properties.Settings.Default.AdditionalVolumeSliderValue / 100;
         }
 
-        //AudioStreamControl.MainMusic.StoppedEvent += Music_StoppedEvent!;
+        AudioStreamControl.MainMusic.StoppedEvent += Music_StoppedEvent!;
 
         //if (AudioStreamControl.AdditionalMusic != null)
         //{
@@ -265,6 +265,24 @@ public partial class MainWindow
         _playerControlsViewModel.State = PlayerState.Stopped;
         SeekBarTimer.Stop();
         AudioStreamControl.CurrentTrackPosition = 0;
+    }
+
+    public void Music_StoppedEvent(object? sender, EventArgs e)
+    {
+        if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength)
+        {
+            //BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
+            SeekBarTimer.Stop();
+
+            _playerControlsViewModel.NextTrack();// NextButton_Click(null, null);
+        }
+        else if (sender == null)
+        {
+            AudioStreamControl.Pause();
+
+            //BottomControlPanel.State = BottomControlPanel.ButtonState.Paused;
+            SeekBarTimer.Stop();
+        }
     }
 
     public void Song_Click(object sender, RoutedEventArgs e)

@@ -20,15 +20,13 @@ public partial class PlaylistTabs
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _playlistTabsViewModel.OnSelectionChanged(sender, e);
+        _playlistTabsViewModel.OnTrackSelectionChanged(sender, e);
     }
 
-    //public static void UpdatePlayerState(PlayerState state)
-    //{
-    //    if (SelectedTrack != null) SelectedTrack.State = state;
-    //}
-
-    //public RoutedEventHandler? ClickRowElement;
+    private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        _playlistTabsViewModel.OnTabSelectionChanged(sender, e);
+    }
 
     private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
@@ -42,10 +40,5 @@ public partial class PlaylistTabs
             _playlistTabsViewModel.SelectedTrack = ((grid.SelectedItem as MediaFile)!);
             _playlistTabsViewModel.SelectedTrack.State = PlayerState.Playing;
         }
-    }
-
-    private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        _playlistTabsViewModel.UpdatePlaylistTab(sender, e);
     }
 }
