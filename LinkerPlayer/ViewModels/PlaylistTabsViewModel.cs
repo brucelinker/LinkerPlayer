@@ -4,8 +4,10 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Serilog;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Controls;
 
 namespace LinkerPlayer.ViewModels;
@@ -24,16 +26,23 @@ public partial class PlaylistTabsViewModel : ObservableObject
     [ObservableProperty]
     private static PlaylistTab? _selectedPlaylistTab;
 
-    [ObservableProperty] 
+    [ObservableProperty]
     private static PlayerState _state;
+
+    [ObservableProperty]
+    private static bool _shuffleMode;
 
     public static ObservableCollection<PlaylistTab> TabList { get; set; } = new();
 
     private static DataGrid? _dataGrid;
 
+    private readonly List<MediaFile?> _shuffleList = new();
+
+    private int _shuffledIndex = -1;
+
     public PlaylistTabsViewModel()
     {
-        WeakReferenceMessenger.Default.Register<PlayerStateMessage>(this, (r, m) =>
+        WeakReferenceMessenger.Default.Register<PlayerStateMessage>(this, (_, m) =>
         {
             OnPlayerStateChanged(m.Value);
         });
@@ -53,8 +62,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         if (_dataGrid != null)
         {
-            SelectedTrack = _dataGrid!.SelectedItem as MediaFile;
-            SelectedIndex = _dataGrid!.SelectedIndex;
+            SelectedTrack = _dataGrid.SelectedItem as MediaFile;
+            SelectedIndex = _dataGrid.SelectedIndex;
         }
 
         WeakReferenceMessenger.Default.Send(new PlaylistSelectionChangedMessage(SelectedTrack));
@@ -71,16 +80,23 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (SelectedTrack != null && _dataGrid != null)
         {
             int newIndex;
-         
+
             SelectedTrack.State = PlayerState.Stopped;
 
-            if(SelectedIndex == 0)
-                newIndex = SelectedPlaylistTab!.Tracks!.Count - 1;
+            if (_shuffleMode)
+            {
+                newIndex = GetPreviousShuffledIndex();
+            }
             else
-                newIndex = SelectedIndex - 1;
+            {
+                if (SelectedIndex == 0)
+                    newIndex = SelectedPlaylistTab!.Tracks!.Count - 1;
+                else
+                    newIndex = SelectedIndex - 1;
+            }
 
             _dataGrid.SelectedIndex = newIndex;
-            SelectedTrack = SelectedPlaylistTab!.Tracks![newIndex!];
+            SelectedTrack = SelectedPlaylistTab!.Tracks![newIndex];
 
             _dataGrid.SelectedItem = SelectedTrack;
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
@@ -98,13 +114,20 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             SelectedTrack.State = PlayerState.Stopped;
 
-            if (SelectedIndex == SelectedPlaylistTab!.Tracks!.Count - 1)
-                newIndex = 0;
+            if (_shuffleMode)
+            {
+                newIndex = GetNextShuffledIndex();
+            }
             else
-                newIndex = SelectedIndex + 1;
+            {
+                if (SelectedIndex == SelectedPlaylistTab!.Tracks!.Count - 1)
+                    newIndex = 0;
+                else
+                    newIndex = SelectedIndex + 1;
+            }
 
             _dataGrid.SelectedIndex = newIndex;
-            SelectedTrack = SelectedPlaylistTab!.Tracks![newIndex!];
+            SelectedTrack = SelectedPlaylistTab!.Tracks![newIndex];
 
             _dataGrid.SelectedItem = SelectedTrack;
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
@@ -112,6 +135,32 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         return SelectedTrack;
+    }
+
+    private int GetNextShuffledIndex()
+    {
+        if (_shuffledIndex == _shuffleList.Count - 1)
+            _shuffledIndex = 0;
+        else
+            _shuffledIndex += 1;
+
+        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
+            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
+
+        return newIndex;
+    }
+
+    private int GetPreviousShuffledIndex()
+    {
+        if (_shuffledIndex == 0)
+            _shuffledIndex = _shuffleList.Count - 1;
+        else
+            _shuffledIndex -= 1;
+
+        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
+            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
+
+        return newIndex;
     }
 
     public static void LoadPlaylists()
@@ -152,6 +201,33 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 tab.Tracks!.Add(song);
             }
+        }
+    }
+
+    public void ShuffleTracks(bool shuffleMode)
+    {
+        _shuffleMode = shuffleMode;
+
+        if (shuffleMode)
+        {
+            if (SelectedPlaylistTab != null && SelectedPlaylistTab!.Tracks!.Any())
+            {
+                List<MediaFile> tempList = SelectedPlaylistTab!.Tracks!.ToList();
+
+                Random random = new Random();
+
+                while (tempList.Count > 0)
+                {
+                    int index = random.Next(0, tempList.Count-1);
+
+                    _shuffleList.Add(tempList[index]);
+                    tempList.RemoveAt(index);
+                }
+            }
+        }
+        else
+        {
+            _shuffleList.Clear();
         }
     }
 

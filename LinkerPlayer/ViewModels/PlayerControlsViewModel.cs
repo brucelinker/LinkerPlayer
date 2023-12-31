@@ -1,15 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
-using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Windows;
 using Serilog;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 
 namespace LinkerPlayer.ViewModels;
@@ -40,17 +36,6 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         _mainWindow = (MainWindow?)Application.Current.MainWindow;
 
         State = PlayerState.Stopped;
-
-        WeakReferenceMessenger.Default.Register<PlaylistSelectionChangedMessage>(this, (r, m) =>
-        {
-            OnPlaylistSelectionChanged(m.Value!);
-        });
-
-    }
-
-    private void OnPlaylistSelectionChanged(MediaFile? selectedTrack)
-    {
-        //_selectedMediaFile = selectedTrack;
     }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
@@ -127,7 +112,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     public void NextTrack()
     {
-        MediaFile? nextMediaFile = _playlistTabsViewModel.NextMediaFile()!;
+        MediaFile nextMediaFile = _playlistTabsViewModel.NextMediaFile()!;
 
         if (!File.Exists(nextMediaFile.Path))
         {
@@ -141,12 +126,9 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     [RelayCommand]
     private void Shuffle()
     {
-        ShuffleTracks();
-    }
-
-    private void ShuffleTracks()
-    {
         ShuffleMode = !ShuffleMode;
+
+        _playlistTabsViewModel.ShuffleTracks(ShuffleMode);
     }
 
     [RelayCommand]
@@ -160,24 +142,24 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         return true;
     }
 
-    private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButton)
-    {
-        // skips if mediaFile doesn't exist
-        Log.Information("MainWindow - SelectWithSkipping");
+    //private void SelectWithSkipping(MediaFile song, Action<object, RoutedEventArgs> nextPrevButton)
+    //{
+    //    // skips if mediaFile doesn't exist
+    //    Log.Information("MainWindow - SelectWithSkipping");
 
-        if (!File.Exists(song.Path))
-        {
-            //InfoSnackbar.MessageQueue?.Clear();
-            //InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false,
-            //    true, TimeSpan.FromSeconds(2));
-            //SelectedTrack = song.Clone();
-            nextPrevButton(null!, null!);
-        }
-        else
-        {
-            _mainWindow!.PlayTrack(song);
-        }
-    }
+    //    if (!File.Exists(song.Path))
+    //    {
+    //        //InfoSnackbar.MessageQueue?.Clear();
+    //        //InfoSnackbar.MessageQueue?.Enqueue($"Song \"{song.Title}\" could not be found", null, null, null, false,
+    //        //    true, TimeSpan.FromSeconds(2));
+    //        //SelectedTrack = song.Clone();
+    //        nextPrevButton(null!, null!);
+    //    }
+    //    else
+    //    {
+    //        _mainWindow!.PlayTrack(song);
+    //    }
+    //}
 
     //private void TimerTick(object sender, EventArgs e)
     //{
