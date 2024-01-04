@@ -84,7 +84,7 @@ public class MusicLibrary
     {
         if (!string.IsNullOrEmpty(mediaFile.Path) && Path.GetExtension(mediaFile.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
-            mediaFile.UpdateFromTag(true);
+            mediaFile.UpdateFromFileMetadata(true);
             _mediaFiles?.Add(mediaFile.Clone());
             SaveToJson();
 

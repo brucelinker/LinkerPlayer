@@ -136,12 +136,11 @@
           <TextBlock
             Name="CurrentSongName"
             Grid.Row="0"
-            Margin="0,8,0,0"
+            Margin="0,10,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            FontFamily="/Fonts/#Montserrat"
             FontSize="16"
-            FontWeight="DemiBold"
+            FontWeight="Light"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Text="Song not selected"
             TextTrimming="CharacterEllipsis" />
@@ -180,9 +179,8 @@
           Padding="0,0,10,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          FontFamily="/Fonts/#Montserrat"
-          FontSize="15"
-          FontWeight="DemiBold"
+          FontSize="16"
+          FontWeight="Light"
           Foreground="{DynamicResource PlayerForegroundBrush}">
           0:00
         </TextBlock>
@@ -192,9 +190,8 @@
           Padding="10,0,0,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          FontFamily="/Fonts/#Montserrat"
-          FontSize="15"
-          FontWeight="DemiBold"
+          FontSize="16"
+          FontWeight="Light"
           Foreground="{DynamicResource PlayerForegroundBrush}">
           0:00
         </TextBlock>
@@ -205,7 +202,8 @@
         Grid.Column="2"
         Width="36"
         Height="36"
-        Command="{Binding ShuffleCommand}">
+        Command="{Binding ShuffleCommand}"
+        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}">
         <ToggleButton.Style>
           <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
             <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />

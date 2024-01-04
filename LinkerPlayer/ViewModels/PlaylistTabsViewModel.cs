@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace LinkerPlayer.ViewModels;
@@ -48,11 +49,27 @@ public partial class PlaylistTabsViewModel : ObservableObject
         });
     }
 
+    public void OnDataGridLoaded(object sender, RoutedEventArgs routedEventArgs)
+    {
+        if (sender is DataGrid dataGrid)
+        {
+            _dataGrid = dataGrid;
+
+            _dataGrid.SelectedItem = SelectedTrack;
+            _dataGrid!.SelectedIndex = SelectedIndex;
+        }
+    }
+
     public void OnTabSelectionChanged(object sender, SelectionChangedEventArgs selectionChangedEventArgs)
     {
         if (sender is TabControl tabControl)
         {
+            TabItem? tabItem = tabControl.SelectedItem as TabItem;
+
+
             SelectedPlaylistTab = (tabControl.SelectedContent as PlaylistTab);
+
+
         }
     }
 
@@ -66,13 +83,39 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedIndex = _dataGrid.SelectedIndex;
         }
 
-        WeakReferenceMessenger.Default.Send(new PlaylistSelectionChangedMessage(SelectedTrack));
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
     }
 
     private void OnPlayerStateChanged(PlayerState state)
     {
         State = state;
         if (SelectedTrack != null) SelectedTrack.State = state;
+    }
+
+    public MediaFile SelectTrack(MediaFile track)
+    {
+        SelectedTrack = track;
+
+        SelectedIndex = SelectedPlaylistTab!.Tracks!.ToList()
+            .FindIndex(x => x.Id.Contains(track.Id));
+
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+
+        return SelectedTrack;
+    }
+
+    public MediaFile SelectFirstTrack()
+    {
+        SelectedIndex = 0;
+        SelectedTrack = SelectedPlaylistTab!.Tracks![SelectedIndex];
+
+
+        _dataGrid!.SelectedItem = SelectedTrack;
+        _dataGrid!.SelectedIndex = SelectedIndex;
+
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+
+        return SelectedTrack;
     }
 
     public MediaFile? PreviousMediaFile()
@@ -218,7 +261,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                 while (tempList.Count > 0)
                 {
-                    int index = random.Next(0, tempList.Count-1);
+                    int index = random.Next(0, tempList.Count - 1);
 
                     _shuffleList.Add(tempList[index]);
                     tempList.RemoveAt(index);

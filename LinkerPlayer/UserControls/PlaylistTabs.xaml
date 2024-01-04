@@ -96,7 +96,7 @@
       <TabControl.ContentTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
           <DataGrid
-            x:Name="TracksTable"
+            Name="TracksTable"
             Width="Auto"
             Height="Auto"
             Margin="1,0,0,0"
@@ -115,6 +115,7 @@
             GridLinesVisibility="None"
             IsReadOnly="True"
             ItemsSource="{Binding Tracks}"
+            Loaded="DataGrid_Loaded"
             MouseDoubleClick="TrackRow_MouseDoubleClick"
             RowHeaderWidth="0"
             ScrollViewer.CanContentScroll="True"
@@ -161,7 +162,7 @@
               <Style TargetType="DataGridRow">
                 <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
                 <Setter Property="FontStyle" Value="Normal" />
-                <Setter Property="FontWeight" Value="Normal" />
+                <Setter Property="FontWeight" Value="Light" />
                 <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
                 <Setter Property="BorderThickness" Value="0" />
                 <Setter Property="VerticalAlignment" Value="Center" />

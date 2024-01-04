@@ -22,7 +22,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
-    private bool _isMute;
+    private bool _isMuted;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
@@ -46,28 +46,25 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     public void PlayPauseTrack()
     {
-        MediaFile? selectedTrack = _playlistTabsViewModel.SelectedTrack;
+        SelectedMediaFile = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
 
-        if (selectedTrack != null)
+        if (State != PlayerState.Playing)
         {
-            if (State != PlayerState.Playing)
-            {
-                PlayerState prevState = State;
-                State = PlayerState.Playing;
+            PlayerState prevState = State;
+            State = PlayerState.Playing;
 
-                if (prevState == PlayerState.Paused)
-                {
-                    _mainWindow!.ResumeTrack(selectedTrack);
-                }
-                else
-                {
-                    _mainWindow!.PlayTrack(selectedTrack);
-                }
+            if (prevState == PlayerState.Paused)
+            {
+                _mainWindow!.ResumeTrack(SelectedMediaFile);
             }
             else
             {
-                State = PlayerState.Paused;
+                _mainWindow!.PlayTrack(SelectedMediaFile);
             }
+        }
+        else
+        {
+            State = PlayerState.Paused;
         }
 
         WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
@@ -124,19 +121,23 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     }
 
     [RelayCommand]
-    private void Shuffle()
+    private void Shuffle(bool isChecked)
     {
-        ShuffleMode = !ShuffleMode;
+        SetShuffleMode(isChecked);
+    }
 
-        _playlistTabsViewModel.ShuffleTracks(ShuffleMode);
+    private void SetShuffleMode(bool shuffleMode)
+    {
+        ShuffleMode = shuffleMode;
+        _playlistTabsViewModel.ShuffleTracks(shuffleMode);
     }
 
     [RelayCommand]
-    private void Mute()
+    private void Mute(bool isMuted)
     {
-        Log.Information("MuteCommand Hit");
+        IsMuted = isMuted;
     }
-
+    
     private bool CanPlayPause()
     {
         return true;

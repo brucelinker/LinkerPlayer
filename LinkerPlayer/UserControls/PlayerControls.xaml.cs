@@ -1,4 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Messages;
 using LinkerPlayer.ViewModels;
 using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
@@ -10,6 +12,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using LinkerPlayer.Models;
 
 namespace LinkerPlayer.UserControls;
 
@@ -24,8 +27,16 @@ public partial class PlayerControls
         InitializeComponent();
 
         DataContext = _playerControlsViewModel;
+
+        ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
+
+        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (r, m) =>
+        {
+            OnSelectedTrackChanged(m.Value);
+        });
+
     }
-    
+
     public void ShowSeekBarHideBorders()
     {
         // reset SeekBar scaling to 1
@@ -157,6 +168,14 @@ public partial class PlayerControls
         SeekBar_ValueChanged(null, null);
 
         HideSeekBarShowBorders();
+    }
+
+    private void OnSelectedTrackChanged(MediaFile selectedTrack)
+    {
+        CurrentSongName.Text = selectedTrack.Title;
+        TimeSpan ts = selectedTrack.Duration;
+        TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
+        CurrentTime.Text = "0:00";
     }
 
     private async Task Render(string? path, List<float> peaks)

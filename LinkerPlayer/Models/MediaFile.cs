@@ -49,7 +49,7 @@ public class MediaFile : ObservableObject, IMediaFile
     {
         Path = fileName;
         FileName = System.IO.Path.GetFileName(fileName);
-        UpdateFromTag(false);
+        UpdateFromFileMetadata(false);
     }
 
     [JsonProperty(Required = Required.AllowNull)]
@@ -121,7 +121,7 @@ public class MediaFile : ObservableObject, IMediaFile
         }
     }
 
-    public void UpdateFromTag(bool raisePropertyChanged = true)
+    public void UpdateFromFileMetadata(bool raisePropertyChanged = true)
     {
         string fileName = Path;
         if (string.IsNullOrWhiteSpace(fileName))

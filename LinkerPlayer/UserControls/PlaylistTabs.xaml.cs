@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 
@@ -16,6 +17,11 @@ public partial class PlaylistTabs
         DataContext = _playlistTabsViewModel;
 
         InitializeComponent();
+    }
+
+    private void DataGrid_Loaded(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.OnDataGridLoaded(sender, e);
     }
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
