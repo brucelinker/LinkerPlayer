@@ -47,4 +47,24 @@ public partial class PlaylistTabs
             _playlistTabsViewModel.SelectedTrack.State = PlayerState.Playing;
         }
     }
+
+    private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.NewPlaylist();
+    }
+
+    private void MenuItem_LoadPlaylist(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.LoadPlaylist();
+    }
+
+    private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.RenamePlaylist(sender, e);
+    }
+
+    private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.RemovePlaylist(sender, e);
+    }
 }

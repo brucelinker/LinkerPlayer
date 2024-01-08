@@ -170,8 +170,10 @@ public partial class PlayerControls
         HideSeekBarShowBorders();
     }
 
-    private void OnSelectedTrackChanged(MediaFile selectedTrack)
+    private void OnSelectedTrackChanged(MediaFile? selectedTrack)
     {
+        if(selectedTrack == null) return;
+
         CurrentSongName.Text = selectedTrack.Title;
         TimeSpan ts = selectedTrack.Duration;
         TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";

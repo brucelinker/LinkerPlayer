@@ -3,13 +3,21 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Windows;
+using PlaylistsNET.Content;
+using PlaylistsNET.Models;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms;
+using System.Windows.Threading;
+using Application = System.Windows.Application;
+using TabControl = System.Windows.Controls.TabControl;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -17,32 +25,34 @@ public partial class PlaylistTabsViewModel : ObservableObject
 {
     [ObservableProperty]
     private string? _selectedPlaylistName;
-
     [ObservableProperty]
     private static MediaFile? _selectedTrack;
-
     [ObservableProperty]
     private static int _selectedIndex;
-
+    [ObservableProperty]
+    private static Playlist? _selectedPlaylist;
     [ObservableProperty]
     private static PlaylistTab? _selectedPlaylistTab;
-
     [ObservableProperty]
     private static PlayerState _state;
-
     [ObservableProperty]
     private static bool _shuffleMode;
-
     public static ObservableCollection<PlaylistTab> TabList { get; set; } = new();
 
+    private static TabControl? _tabControl;
     private static DataGrid? _dataGrid;
-
     private readonly List<MediaFile?> _shuffleList = new();
-
     private int _shuffledIndex = -1;
+    private readonly MainWindow _mainWindow;
+
+    private const string SupportedAudioFormats = "(*.mp3; *.flac)|*.mp3; *.flac";
+    private const string SupportedPlaylistFormats = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
+    const string SupportedExtensions = $"Audio Formats {SupportedAudioFormats}|Playlist Files {SupportedPlaylistFormats}|All files (*.*)|*.*";
 
     public PlaylistTabsViewModel()
     {
+        _mainWindow = (MainWindow?)Application.Current.MainWindow!;
+
         WeakReferenceMessenger.Default.Register<PlayerStateMessage>(this, (_, m) =>
         {
             OnPlayerStateChanged(m.Value);
@@ -64,12 +74,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         if (sender is TabControl tabControl)
         {
-            TabItem? tabItem = tabControl.SelectedItem as TabItem;
-
-
+            _tabControl = tabControl;
             SelectedPlaylistTab = (tabControl.SelectedContent as PlaylistTab);
-
-
         }
     }
 
@@ -86,10 +92,68 @@ public partial class PlaylistTabsViewModel : ObservableObject
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
     }
 
-    private void OnPlayerStateChanged(PlayerState state)
+    public void OnPlayerStateChanged(PlayerState state)
     {
         State = state;
         if (SelectedTrack != null) SelectedTrack.State = state;
+    }
+
+    public void NewPlaylist()
+    {
+        string playlistName = "New Playlist";
+        int index = 0;
+        bool found = true;
+
+        while (found)
+        {
+            found = false;
+            foreach (Playlist playlist in MusicLibrary.GetPlaylists())
+            {
+                if (playlist.Name == playlistName)
+                {
+                    index++;
+                    playlistName = $"New Playlist ({index})";
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        Playlist newPlaylist = MusicLibrary.CreatePlaylist(playlistName);
+        AddPlaylistTab(newPlaylist);
+        _tabControl!.SelectedIndex = TabList.Count - 1;
+    }
+
+    public void LoadPlaylist()
+    {
+        using OpenFileDialog openFileDialog = new();
+        openFileDialog.Filter = SupportedPlaylistFormats;
+        openFileDialog.Multiselect = false;
+        openFileDialog.Title = "Select file(s)";
+
+        DialogResult fileDialogRes = openFileDialog.ShowDialog();
+
+        if (fileDialogRes != DialogResult.OK) return;
+
+        LoadPlaylistFile(openFileDialog.FileName);
+    }
+
+    public void RenamePlaylist(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item)
+        {
+        }
+    }
+
+    public void RemovePlaylist(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem item)
+        {
+            PlaylistTab playlistTab = (item.DataContext as PlaylistTab)!;
+            MusicLibrary.RemovePlaylist(playlistTab.Header);
+            int tabIndex = TabList.ToList().FindIndex(x => x.Header!.Contains(playlistTab.Header!));
+            TabList.RemoveAt(tabIndex);
+        }
     }
 
     public MediaFile SelectTrack(MediaFile track)
@@ -180,36 +244,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         return SelectedTrack;
     }
 
-    private int GetNextShuffledIndex()
-    {
-        if (_shuffledIndex == _shuffleList.Count - 1)
-            _shuffledIndex = 0;
-        else
-            _shuffledIndex += 1;
-
-        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
-            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
-
-        return newIndex;
-    }
-
-    private int GetPreviousShuffledIndex()
-    {
-        if (_shuffledIndex == 0)
-            _shuffledIndex = _shuffleList.Count - 1;
-        else
-            _shuffledIndex -= 1;
-
-        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
-            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
-
-        return newIndex;
-    }
-
     public static void LoadPlaylists()
     {
-        Log.Information("PlaylistsViewModel - LoadPlaylists");
-
         List<Playlist> playlists = MusicLibrary.GetPlaylists();
 
         foreach (Playlist p in playlists)
@@ -231,6 +267,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         };
 
         TabList.Add(tab);
+
         return tab;
     }
 
@@ -274,6 +311,32 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
+    private int GetNextShuffledIndex()
+    {
+        if (_shuffledIndex == _shuffleList.Count - 1)
+            _shuffledIndex = 0;
+        else
+            _shuffledIndex += 1;
+
+        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
+            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
+
+        return newIndex;
+    }
+
+    private int GetPreviousShuffledIndex()
+    {
+        if (_shuffledIndex == 0)
+            _shuffledIndex = _shuffleList.Count - 1;
+        else
+            _shuffledIndex -= 1;
+
+        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
+            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
+
+        return newIndex;
+    }
+
     private static ObservableCollection<MediaFile> LoadPlaylistTracks(string? playListName)
     {
         Log.Information("MainWindow - LoadPlaylistTracks");
@@ -287,5 +350,140 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         return tracks;
+    }
+    private void LoadFileButton_Click(object sender, RoutedEventArgs e)
+    {
+        using OpenFileDialog openFileDialog = new();
+        openFileDialog.Filter = SupportedExtensions;
+        openFileDialog.Multiselect = true;
+        openFileDialog.Title = "Select file(s)";
+
+        DialogResult fileDialogRes = openFileDialog.ShowDialog();
+
+        if (fileDialogRes != DialogResult.OK) return;
+
+        foreach (string fileName in openFileDialog.FileNames)
+        {
+            var extension = Path.GetExtension(fileName);
+
+            if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
+            {
+                LoadAudioFile(fileName);
+            }
+
+            if (string.Equals(".m3u", extension, StringComparison.OrdinalIgnoreCase))
+            {
+                LoadPlaylistFile(fileName);
+            }
+        }
+    }
+
+    private void LoadFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        using FolderBrowserDialog folderDialog = new FolderBrowserDialog();
+        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
+
+        DialogResult fileDialogResult = folderDialog.ShowDialog();
+
+        if (fileDialogResult != DialogResult.OK) return;
+
+        string selectedFolderPath = folderDialog.SelectedPath;
+        DirectoryInfo dirInfo = new DirectoryInfo(selectedFolderPath);
+        List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
+
+        if (!files.Any())
+        {
+            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
+            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
+                false, true, TimeSpan.FromSeconds(3));
+        }
+
+        string playlistName = dirInfo.Name;
+        Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+        SelectedPlaylist = playlist;
+
+        foreach (FileInfo? file in files)
+        {
+            MediaFile mediaFile = new MediaFile(file.FullName);
+
+            if (MusicLibrary.AddSong(mediaFile))
+            {
+                LoadAudioFile(file.FullName, playlistName);
+            }
+        }
+
+        PlaylistTab playlistTab = AddPlaylistTab(playlist);
+        _mainWindow.SelectPlaylistByName(playlistTab.Header!);
+    }
+
+    private void LoadAudioFile(string fileName, string playlistName = "")
+    {
+        if (File.Exists(fileName))
+        {
+            MediaFile song = new MediaFile(fileName);
+
+            if (MusicLibrary.AddSong(song))
+            {
+                Playlist? selectedPlaylist = _mainWindow.SelectedPlaylist;
+
+                if (selectedPlaylist == null)
+                {
+                    selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
+
+                    if (selectedPlaylist != null && !string.IsNullOrWhiteSpace(selectedPlaylist.Name))
+                    {
+                        _mainWindow.SelectPlaylistByName(selectedPlaylist.Name);
+
+                        MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
+                        AddSongToPlaylistTab(song, selectedPlaylist.Name);
+                    }
+                }
+                else
+                {
+                    MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
+                    AddSongToPlaylistTab(song, selectedPlaylist.Name);
+                }
+            }
+        }
+        else
+        {
+            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
+            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"Error while converting {fileName}", null, null, null, false, true, TimeSpan.FromSeconds(2));
+        }
+    }
+
+    private void LoadPlaylistFile(string fileName)
+    {
+        if (File.Exists(fileName))
+        {
+            if (fileName.EndsWith("m3u"))
+            {
+                string directoryName = Path.GetDirectoryName(fileName)!;
+                string playlistName = Path.GetFileNameWithoutExtension(fileName)!;
+
+                M3uContent content = new M3uContent();
+                FileStream stream = File.OpenRead(fileName);
+                M3uPlaylist m3UPlaylist = content.GetFromStream(stream);
+
+                List<string> paths = m3UPlaylist.GetTracksPaths();
+
+                Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+                SelectedPlaylist = playlist;
+                PlaylistTab playlistTab = AddPlaylistTab(playlist);
+                _tabControl!.SelectedIndex = TabList.Count - 1;
+                _mainWindow.SelectPlaylistByName(playlistTab.Header!);
+
+                foreach (string path in paths)
+                {
+                    string mediaFilePath = Path.Combine(directoryName, path);
+                    MediaFile mediaFile = new MediaFile(mediaFilePath);
+
+                    if (MusicLibrary.AddSong(mediaFile))
+                    {
+                        LoadAudioFile($"{directoryName}\\{path}");
+                    }
+                }
+            }
+        }
     }
 }

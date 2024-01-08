@@ -85,12 +85,23 @@
     </ResourceDictionary>
   </UserControl.Resources>
 
-  <Grid>
 
+  <Grid>
     <TabControl ItemsSource="{Binding TabList}" SelectionChanged="TabControl_SelectionChanged">
       <TabControl.ItemTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
-          <TextBlock Text="{Binding Header}" />
+          <TextBlock Text="{Binding Header}" >
+            <TextBlock.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="New Playlist" Click="MenuItem_NewPlaylist" />
+                <MenuItem Header="Load Playlist" Click="MenuItem_LoadPlaylist" />
+                <Separator/>
+                <MenuItem Header="Rename Playlist" Click="MenuItem_RenamePlaylist" />
+                <Separator/>
+                <MenuItem Header="Remove Playlist" Click="MenuItem_RemovePlaylist" />
+              </ContextMenu>
+            </TextBlock.ContextMenu>
+          </TextBlock>
         </DataTemplate>
       </TabControl.ItemTemplate>
       <TabControl.ContentTemplate>

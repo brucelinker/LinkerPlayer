@@ -5,12 +5,10 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.UserControls;
 using LinkerPlayer.ViewModels;
-using Serilog;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -193,42 +191,16 @@ public partial class MainWindow
                     {
                         _playlistTabsViewModel.SelectTrack(SelectedTrack);
                     }
-
-                    //if (SelectedTrack != null)
-                    //{
-                    //    if (PlayTrack(SelectedTrack))
-                    //    {
-                    //        AudioStreamControl.CurrentTrackPosition = AudioStreamControl.CurrentTrackLength *
-                    //            Properties.Settings.Default.LastSeekBarValue / 100;
-
-                    //        PlayerControls.SeekBar.Value = Properties.Settings.Default.LastSeekBarValue;
-                    //    }
-                    //    else
-                    //    {
-                    //        SelectedTrack = null;
-                    //    }
-                    //}
                 }
             }
         }
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
-        //Log.Information("MainWindow - Window_Loaded");
     }
 
     private void VolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        //Log.Information("MainWindow - VolumeSlider_ValueChanged");
         AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.VolumeSlider.Value / 100;
-    }
-
-    public void StopTrack()
-    {
-        //Log.Information("MainWindow - StopTrack");
-
-        _playerControlsViewModel.State = PlayerState.Stopped;
-        SeekBarTimer.Stop();
-        AudioStreamControl.CurrentTrackPosition = 0;
     }
 
     public void Music_StoppedEvent(object? sender, EventArgs e)
