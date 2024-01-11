@@ -96,6 +96,9 @@
                 <MenuItem Header="New Playlist" Click="MenuItem_NewPlaylist" />
                 <MenuItem Header="Load Playlist" Click="MenuItem_LoadPlaylist" />
                 <Separator/>
+                <MenuItem Header="Add Folder" Click="MenuItem_AddFolder" />
+                <MenuItem Header="Add Files" Click="MenuItem_AddFiles" />
+                <Separator/>
                 <MenuItem Header="Rename Playlist" Click="MenuItem_RenamePlaylist" />
                 <Separator/>
                 <MenuItem Header="Remove Playlist" Click="MenuItem_RemovePlaylist" />

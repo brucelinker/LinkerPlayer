@@ -15,7 +15,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Threading;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
 
@@ -24,15 +23,17 @@ namespace LinkerPlayer.ViewModels;
 public partial class PlaylistTabsViewModel : ObservableObject
 {
     [ObservableProperty]
+    private static PlaylistTab? _selectedPlaylistTab;
+    [ObservableProperty]
     private string? _selectedPlaylistName;
+    [ObservableProperty]
+    private int? _selectedPlaylistIndex;
+    [ObservableProperty]
+    private static Playlist? _selectedPlaylist;
     [ObservableProperty]
     private static MediaFile? _selectedTrack;
     [ObservableProperty]
     private static int _selectedIndex;
-    [ObservableProperty]
-    private static Playlist? _selectedPlaylist;
-    [ObservableProperty]
-    private static PlaylistTab? _selectedPlaylistTab;
     [ObservableProperty]
     private static PlayerState _state;
     [ObservableProperty]
@@ -66,7 +67,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             _dataGrid = dataGrid;
 
             _dataGrid.SelectedItem = SelectedTrack;
-            _dataGrid!.SelectedIndex = SelectedIndex;
+            _dataGrid.SelectedIndex = SelectedIndex;
         }
     }
 
@@ -75,7 +76,25 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (sender is TabControl tabControl)
         {
             _tabControl = tabControl;
-            SelectedPlaylistTab = (tabControl.SelectedContent as PlaylistTab);
+
+            SelectedPlaylistIndex = tabControl.SelectedIndex;
+            if (SelectedPlaylistIndex < 0) return;
+
+            SelectedPlaylistTab = tabControl.SelectedContent as PlaylistTab;
+            if (SelectedPlaylistTab == null) return;
+
+            SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedPlaylistTab.Header!);
+
+            if (!SelectedPlaylistTab!.Tracks.Any()) return;
+
+            SelectedPlaylistTab!.LastSelectedIndex ??= 0;
+            SelectedIndex = (int)SelectedPlaylistTab!.LastSelectedIndex;
+            SelectedTrack = SelectedPlaylistTab.Tracks[SelectedIndex];
+
+            if (_dataGrid != null)
+            {
+                _dataGrid!.SelectedIndex = SelectedIndex;
+            }
         }
     }
 
@@ -83,10 +102,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         _dataGrid = (sender as DataGrid);
 
-        if (_dataGrid != null)
+        if (_dataGrid is { SelectedItem: not null })
         {
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             SelectedIndex = _dataGrid.SelectedIndex;
+            SelectedPlaylistTab!.LastSelectedMediaFile = SelectedTrack;
+            SelectedPlaylistTab.LastSelectedIndex = SelectedIndex;
         }
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
@@ -138,6 +159,33 @@ public partial class PlaylistTabsViewModel : ObservableObject
         LoadPlaylistFile(openFileDialog.FileName);
     }
 
+    public void AddFolder(object sender, RoutedEventArgs routedEventArgs)
+    {
+        throw new NotImplementedException();
+    }
+
+    public void AddFiles(object sender, RoutedEventArgs routedEventArgs)
+    {
+        using OpenFileDialog openFileDialog = new();
+        openFileDialog.Filter = SupportedExtensions;
+        openFileDialog.Multiselect = true;
+        openFileDialog.Title = "Select file(s)";
+
+        DialogResult fileDialogRes = openFileDialog.ShowDialog();
+
+        if (fileDialogRes != DialogResult.OK) return;
+
+        foreach (string fileName in openFileDialog.FileNames)
+        {
+            var extension = Path.GetExtension(fileName);
+
+            if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
+            {
+                LoadAudioFile(fileName);
+            }
+        }
+    }
+
     public void RenamePlaylist(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem item)
@@ -160,7 +208,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         SelectedTrack = track;
 
-        SelectedIndex = SelectedPlaylistTab!.Tracks!.ToList()
+        SelectedIndex = SelectedPlaylistTab!.Tracks.ToList()
             .FindIndex(x => x.Id.Contains(track.Id));
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
@@ -171,11 +219,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public MediaFile SelectFirstTrack()
     {
         SelectedIndex = 0;
-        SelectedTrack = SelectedPlaylistTab!.Tracks![SelectedIndex];
+        SelectedTrack = SelectedPlaylistTab!.Tracks[SelectedIndex];
 
 
         _dataGrid!.SelectedItem = SelectedTrack;
-        _dataGrid!.SelectedIndex = SelectedIndex;
+        _dataGrid.SelectedIndex = SelectedIndex;
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
 
@@ -197,13 +245,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
             else
             {
                 if (SelectedIndex == 0)
-                    newIndex = SelectedPlaylistTab!.Tracks!.Count - 1;
+                    newIndex = SelectedPlaylistTab!.Tracks.Count - 1;
                 else
                     newIndex = SelectedIndex - 1;
             }
 
             _dataGrid.SelectedIndex = newIndex;
-            SelectedTrack = SelectedPlaylistTab!.Tracks![newIndex];
+            SelectedTrack = SelectedPlaylistTab!.Tracks[newIndex];
 
             _dataGrid.SelectedItem = SelectedTrack;
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
@@ -227,14 +275,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
             else
             {
-                if (SelectedIndex == SelectedPlaylistTab!.Tracks!.Count - 1)
+                if (SelectedIndex == SelectedPlaylistTab!.Tracks.Count - 1)
                     newIndex = 0;
                 else
                     newIndex = SelectedIndex + 1;
             }
 
             _dataGrid.SelectedIndex = newIndex;
-            SelectedTrack = SelectedPlaylistTab!.Tracks![newIndex];
+            SelectedTrack = SelectedPlaylistTab!.Tracks[newIndex];
 
             _dataGrid.SelectedItem = SelectedTrack;
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
@@ -279,7 +327,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             if (tab.Header == playlistName)
             {
-                tab.Tracks!.Add(song);
+                tab.Tracks.Add(song);
             }
         }
     }
@@ -290,9 +338,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         if (shuffleMode)
         {
-            if (SelectedPlaylistTab != null && SelectedPlaylistTab!.Tracks!.Any())
+            if (SelectedPlaylistTab != null && SelectedPlaylistTab!.Tracks.Any())
             {
-                List<MediaFile> tempList = SelectedPlaylistTab!.Tracks!.ToList();
+                List<MediaFile> tempList = SelectedPlaylistTab!.Tracks.ToList();
 
                 Random random = new Random();
 
@@ -318,7 +366,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         else
             _shuffledIndex += 1;
 
-        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
+        int newIndex = SelectedPlaylistTab!.Tracks.ToList()
             .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
 
         return newIndex;
@@ -331,7 +379,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         else
             _shuffledIndex -= 1;
 
-        int newIndex = SelectedPlaylistTab!.Tracks!.ToList()
+        int newIndex = SelectedPlaylistTab!.Tracks.ToList()
             .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
 
         return newIndex;
@@ -408,7 +456,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (MusicLibrary.AddSong(mediaFile))
             {
-                LoadAudioFile(file.FullName, playlistName);
+                LoadAudioFile(file.FullName);
             }
         }
 
@@ -416,7 +464,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         _mainWindow.SelectPlaylistByName(playlistTab.Header!);
     }
 
-    private void LoadAudioFile(string fileName, string playlistName = "")
+    private void LoadAudioFile(string fileName)
     {
         if (File.Exists(fileName))
         {
@@ -424,24 +472,22 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (MusicLibrary.AddSong(song))
             {
-                Playlist? selectedPlaylist = _mainWindow.SelectedPlaylist;
-
-                if (selectedPlaylist == null)
+                if (SelectedPlaylist == null)
                 {
-                    selectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
+                    SelectedPlaylist = MusicLibrary.GetPlaylists().FirstOrDefault();
 
-                    if (selectedPlaylist != null && !string.IsNullOrWhiteSpace(selectedPlaylist.Name))
+                    if (SelectedPlaylist != null && !string.IsNullOrWhiteSpace(SelectedPlaylist.Name))
                     {
-                        _mainWindow.SelectPlaylistByName(selectedPlaylist.Name);
+                        _mainWindow.SelectPlaylistByName(SelectedPlaylist.Name);
 
-                        MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                        AddSongToPlaylistTab(song, selectedPlaylist.Name);
+                        MusicLibrary.AddSongToPlaylist(song.Id, SelectedPlaylist.Name);
+                        AddSongToPlaylistTab(song, SelectedPlaylist.Name);
                     }
                 }
                 else
                 {
-                    MusicLibrary.AddSongToPlaylist(song.Id, selectedPlaylist.Name);
-                    AddSongToPlaylistTab(song, selectedPlaylist.Name);
+                    MusicLibrary.AddSongToPlaylist(song.Id, SelectedPlaylist.Name);
+                    AddSongToPlaylistTab(song, SelectedPlaylist.Name!);
                 }
             }
         }
@@ -459,7 +505,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             if (fileName.EndsWith("m3u"))
             {
                 string directoryName = Path.GetDirectoryName(fileName)!;
-                string playlistName = Path.GetFileNameWithoutExtension(fileName)!;
+                string playlistName = Path.GetFileNameWithoutExtension(fileName);
 
                 M3uContent content = new M3uContent();
                 FileStream stream = File.OpenRead(fileName);

@@ -67,4 +67,14 @@ public partial class PlaylistTabs
     {
         _playlistTabsViewModel.RemovePlaylist(sender, e);
     }
+
+    private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.AddFolder(sender, e);
+    }
+
+    private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.AddFiles(sender, e);
+    }
 }

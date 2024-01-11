@@ -13,8 +13,8 @@ namespace LinkerPlayer.Core;
 public class MusicLibrary
 {
     private static readonly string JsonFilePath;
-    private static List<MediaFile>? _mediaFiles = new();
-    private static List<Playlist>? _playlists = new();
+    private static List<MediaFile?> _mediaFiles = new();
+    private static List<Playlist?> _playlists = new();
 
     static MusicLibrary()
     {
@@ -269,6 +269,22 @@ public class MusicLibrary
         }
 
         return playlists;
+    }
+
+    public static Playlist? GetPlaylistByName(string name)
+    {
+        //Log.Information("MusicLibrary - GetPlaylistByName");
+        if (!_playlists.Any()) return null;
+
+        foreach (Playlist? playlist in _playlists)
+        {
+            if (playlist!.Name == name)
+            {
+                return playlist;
+            }
+        }
+
+        return null;
     }
 
     public static List<MediaFile> GetSongsFromPlaylist(string? playlistName)
