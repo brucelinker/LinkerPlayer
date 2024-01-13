@@ -1,4 +1,5 @@
 ﻿using LinkerPlayer.Models;
+using MahApps.Metro.Controls;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -13,7 +14,7 @@ namespace LinkerPlayer.Core;
 public class MusicLibrary
 {
     private static readonly string JsonFilePath;
-    private static List<MediaFile?> _mediaFiles = new();
+    private static List<MediaFile?> _mainLibrary = new();
     private static List<Playlist?> _playlists = new();
 
     static MusicLibrary()
@@ -34,7 +35,7 @@ public class MusicLibrary
 
             if (data != null)
             {
-                _mediaFiles = ((JArray)data["songs"]).ToObject<List<MediaFile>>();
+                _mainLibrary = ((JArray)data["songs"]).ToObject<List<MediaFile>>();
                 _playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>();
 
                 if (_playlists == null || !_playlists.Any())
@@ -61,13 +62,13 @@ public class MusicLibrary
 
     private static void SaveToJson()
     {
-        if (_mediaFiles != null)
+        if (_mainLibrary != null)
         {
             if (_playlists != null)
             {
                 Dictionary<string, object> data = new Dictionary<string, object>
                 {
-                    { "songs", JArray.FromObject(_mediaFiles) },
+                    { "songs", JArray.FromObject(_mainLibrary) },
                     { "playlists", JArray.FromObject(_playlists) }
                 };
 
@@ -85,7 +86,7 @@ public class MusicLibrary
         if (!string.IsNullOrEmpty(mediaFile.Path) && Path.GetExtension(mediaFile.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
             mediaFile.UpdateFromFileMetadata(true);
-            _mediaFiles?.Add(mediaFile.Clone());
+            _mainLibrary?.Add(mediaFile.Clone());
             SaveToJson();
 
             return true;
@@ -94,19 +95,21 @@ public class MusicLibrary
         return false;
     }
 
-    public static void RemoveSong(string songId)
+    public static void RemoveTrackFromPlaylist(string playlistName, string songId)
     {
-        _mediaFiles?.RemoveAll(s => s.Id == songId);
+        Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
 
-        if (_playlists != null)
-            foreach (Playlist playlist in _playlists)
+        if (playlist != null)
+        {
+            if (!playlist.SongIds!.Contains(songId))
             {
-                playlist.SongIds.Remove(songId);
+                    playlist.SongIds.Remove(songId);
+
+                SaveToJson();
             }
+        }
 
         Log.Information($"Song with id {songId} removed");
-
-        SaveToJson();
     }
 
     public static bool AddPlaylist(Playlist newPlaylist)
@@ -198,7 +201,7 @@ public class MusicLibrary
 
     public static bool RenameSong(string songId, string newName)
     {
-        MediaFile? song = _mediaFiles?.Find(s => s.Id == songId);
+        MediaFile? song = _mainLibrary?.Find(s => s.Id == songId);
 
         if (song != null && !string.IsNullOrEmpty(newName))
         {
@@ -237,8 +240,8 @@ public class MusicLibrary
 
         List<MediaFile> songs = new List<MediaFile>();
 
-        if (_mediaFiles != null)
-            foreach (MediaFile song in _mediaFiles)
+        if (_mainLibrary != null)
+            foreach (MediaFile song in _mainLibrary)
             {
                 songs.Add(song);
             }
@@ -298,7 +301,7 @@ public class MusicLibrary
         {
             foreach (string songId in playlist.SongIds)
             {
-                songsFromPlaylist.Add(_mediaFiles?.Find(p => p.Id == songId)!);
+                songsFromPlaylist.Add(_mainLibrary?.Find(p => p.Id == songId)!);
             }
         }
 

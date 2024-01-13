@@ -24,8 +24,8 @@
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
 
       <Style TargetType="{x:Type Separator}">
-        <Setter Property="BorderThickness" Value="0.5" />
-        <Setter Property="Height" Value="0.5" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Height" Value="1" />
         <Setter Property="Background" Value="Blue" />
         <Setter Property="BorderBrush" Value="Green" />
 
@@ -39,7 +39,7 @@
       </Style>
 
       <Style TargetType="{x:Type MenuItem}">
-        <Setter Property="Padding" Value="7" />
+        <Setter Property="Padding" Value="2" />
         <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}" />
         <Style.Triggers>
@@ -88,6 +88,12 @@
 
   <Grid>
     <TabControl ItemsSource="{Binding TabList}" SelectionChanged="TabControl_SelectionChanged">
+      <TabControl.ContextMenu>
+        <ContextMenu>
+          <MenuItem Header="New Playlist" Click="MenuItem_NewPlaylist" />
+          <MenuItem Header="Load Playlist" Click="MenuItem_LoadPlaylist" />
+        </ContextMenu>
+      </TabControl.ContextMenu>
       <TabControl.ItemTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
           <TextBlock Text="{Binding Header}" >
@@ -396,6 +402,11 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>-->
             </DataGrid.Columns>
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Remove Track" Click="MenuItem_RemoveTrack"/>
+              </ContextMenu>
+            </DataGrid.ContextMenu>
           </DataGrid>
           <!--<uc:TracksDataGrid Width="Auto" Height="Auto" VerticalAlignment="Top" Content="{Binding Tracks}"/>-->
         </DataTemplate>

@@ -15,6 +15,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
 
@@ -530,6 +531,29 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     }
                 }
             }
+        }
+    }
+
+    public void RemoveTrack(object sender, RoutedEventArgs e)
+    {
+        if (_dataGrid is { SelectedItem: null }) return;
+
+        ObservableCollection<MediaFile> tracks = TabList[(int)SelectedPlaylistIndex!].Tracks;
+
+        if (SelectedIndex >= 0 && SelectedIndex < tracks.Count)
+        {
+            int indexToRemove = SelectedIndex;
+            string songId = tracks[SelectedIndex].Id;
+
+            MusicLibrary.RemoveTrackFromPlaylist(SelectedPlaylist!.Name!, songId);
+            
+            if (_dataGrid!.SelectedIndex == tracks.Count - 1)
+            {
+                indexToRemove = SelectedIndex;
+                _dataGrid.SelectedIndex = SelectedIndex - 1;
+            }
+
+            tracks.RemoveAt(indexToRemove);
         }
     }
 }

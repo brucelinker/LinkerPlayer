@@ -77,4 +77,10 @@ public partial class PlaylistTabs
     {
         _playlistTabsViewModel.AddFiles(sender, e);
     }
+
+    private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.RemoveTrack(sender, e);
+
+    }
 }
