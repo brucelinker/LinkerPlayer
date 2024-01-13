@@ -97,16 +97,12 @@ public class MusicLibrary
 
     public static void RemoveTrackFromPlaylist(string playlistName, string songId)
     {
-        Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
+        int playlistIndex = (int)_playlists?.FindIndex(p => p.Name == playlistName);
 
-        if (playlist != null)
+        if (_playlists[playlistIndex] != null && _playlists[playlistIndex]!.SongIds!.Contains(songId))
         {
-            if (!playlist.SongIds!.Contains(songId))
-            {
-                    playlist.SongIds.Remove(songId);
-
-                SaveToJson();
-            }
+            _playlists[playlistIndex]!.SongIds!.Remove(songId);
+            SaveToJson();
         }
 
         Log.Information($"Song with id {songId} removed");
@@ -323,7 +319,7 @@ public class MusicLibrary
             Name = playlistName,
             SongIds = new()
         };
-        
+
         AddPlaylist(playlist);
 
         return playlist;
