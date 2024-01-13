@@ -247,8 +247,6 @@ public class MusicLibrary
 
     public static List<Playlist> GetPlaylists()
     {
-        Log.Information("MusicLibrary - GetPlaylists");
-
         List<Playlist> playlists = new List<Playlist>();
 
         if (_playlists != null && _playlists.Any())
@@ -272,7 +270,6 @@ public class MusicLibrary
 
     public static Playlist? GetPlaylistByName(string name)
     {
-        //Log.Information("MusicLibrary - GetPlaylistByName");
         if (!_playlists.Any()) return null;
 
         foreach (Playlist? playlist in _playlists)

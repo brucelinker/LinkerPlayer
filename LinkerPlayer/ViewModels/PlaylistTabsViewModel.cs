@@ -162,7 +162,58 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public void AddFolder(object sender, RoutedEventArgs routedEventArgs)
     {
-        throw new NotImplementedException();
+        using FolderBrowserDialog folderDialog = new FolderBrowserDialog();
+        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
+
+        DialogResult fileDialogResult = folderDialog.ShowDialog();
+
+        if (fileDialogResult != DialogResult.OK) return;
+
+        string selectedFolderPath = folderDialog.SelectedPath;
+        DirectoryInfo dirInfo = new DirectoryInfo(selectedFolderPath);
+        List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
+
+        if (!files.Any())
+        {
+            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
+            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
+                false, true, TimeSpan.FromSeconds(3));
+        }
+
+        foreach (FileInfo? file in files)
+        {
+            LoadAudioFile(file.FullName);
+        }
+    }
+    public void NewPlaylistFromFolder(object sender, RoutedEventArgs routedEventArgs)
+    {
+        using FolderBrowserDialog folderDialog = new FolderBrowserDialog();
+        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
+
+        DialogResult fileDialogResult = folderDialog.ShowDialog();
+
+        if (fileDialogResult != DialogResult.OK) return;
+
+        string selectedFolderPath = folderDialog.SelectedPath;
+        DirectoryInfo dirInfo = new DirectoryInfo(selectedFolderPath);
+        List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
+
+        if (!files.Any())
+        {
+            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
+            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
+                false, true, TimeSpan.FromSeconds(3));
+        }
+
+        string playlistName = dirInfo.Name;
+        Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+        PlaylistTab playlistTab = AddPlaylistTab(playlist);
+        _tabControl!.SelectedIndex = _tabControl.Items.IndexOf(playlistTab);
+
+        foreach (FileInfo? file in files)
+        {
+            LoadAudioFile(file.FullName);
+        }
     }
 
     public void AddFiles(object sender, RoutedEventArgs routedEventArgs)
@@ -546,7 +597,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             string songId = tracks[SelectedIndex].Id;
 
             MusicLibrary.RemoveTrackFromPlaylist(SelectedPlaylist!.Name!, songId);
-            
+
             if (_dataGrid!.SelectedIndex == tracks.Count - 1)
             {
                 indexToRemove = SelectedIndex;

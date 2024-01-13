@@ -83,4 +83,9 @@ public partial class PlaylistTabs
         _playlistTabsViewModel.RemoveTrack(sender, e);
 
     }
+
+    private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
+    {
+        _playlistTabsViewModel.NewPlaylistFromFolder(sender, e);
+    }
 }
