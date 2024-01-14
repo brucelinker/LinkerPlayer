@@ -463,6 +463,8 @@ public partial class MainWindow
 
     public void Window_Closed(object sender, EventArgs e)
     {
+        MusicLibrary.SaveToJson();
+
         Properties.Settings.Default.VolumeSliderValue = PlayerControls.VolumeSlider.Value;
         //Properties.Settings.Default.AdditionalVolumeSliderValue = PlayerControls.AdditionalVolumeSlider.Value;
 

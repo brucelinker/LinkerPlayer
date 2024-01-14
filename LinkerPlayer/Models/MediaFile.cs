@@ -17,7 +17,7 @@ public interface IMediaFile
     string Id { get; }
     string Path { get; }
     string FileName { get; }
-    uint Track { get; }
+    string Track { get; }
     uint TrackCount { get; }
     uint Disc { get; }
     uint DiscCount { get; }
@@ -58,8 +58,9 @@ public class MediaFile : ObservableObject, IMediaFile
     public string Path { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
     public string FileName { get; set; } = string.Empty;
+
     [JsonProperty(Required = Required.AllowNull)]
-    public uint Track { get; set; }
+    public string Track { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
     public uint TrackCount { get; set; }
     [JsonProperty(Required = Required.AllowNull)]
@@ -174,7 +175,7 @@ public class MediaFile : ObservableObject, IMediaFile
             // Genres
             Genres = file.Tag.Genres.Length > 1 ? string.Join("/", Genres) : file.Tag.FirstGenre;
 
-            Track = file.Tag.Track;
+            Track = file.Tag.Track == 0 ? String.Empty : $"{file.Tag.Track}";
             TrackCount = file.Tag.TrackCount;
             Disc = file.Tag.Disc;
             DiscCount = file.Tag.DiscCount;

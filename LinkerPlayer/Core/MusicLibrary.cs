@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Windows.Controls.Ribbon.Primitives;
 
 namespace LinkerPlayer.Core;
 
@@ -60,25 +61,17 @@ public class MusicLibrary
         }
     }
 
-    private static void SaveToJson()
+    public static void SaveToJson()
     {
-        if (_mainLibrary != null)
+        Dictionary<string, object> data = new Dictionary<string, object>
         {
-            if (_playlists != null)
-            {
-                Dictionary<string, object> data = new Dictionary<string, object>
-                {
-                    { "songs", JArray.FromObject(_mainLibrary) },
-                    { "playlists", JArray.FromObject(_playlists) }
-                };
+            { "songs", JArray.FromObject(_mainLibrary) },
+            { "playlists", JArray.FromObject(_playlists) }
+        };
 
-                JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
-                string json = JsonConvert.SerializeObject(data, Formatting.Indented, settings);
-                File.WriteAllText(JsonFilePath, json);
-            }
-        }
-
-        Log.Information("Data saved to json");
+        JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
+        string json = JsonConvert.SerializeObject(data, Formatting.Indented, settings);
+        File.WriteAllText(JsonFilePath, json);
     }
 
     public static bool AddSong(MediaFile mediaFile)
@@ -87,7 +80,7 @@ public class MusicLibrary
         {
             mediaFile.UpdateFromFileMetadata(true);
             _mainLibrary?.Add(mediaFile.Clone());
-            SaveToJson();
+            //SaveToJson();
 
             return true;
         }
@@ -102,7 +95,7 @@ public class MusicLibrary
         if (_playlists[playlistIndex] != null && _playlists[playlistIndex]!.SongIds!.Contains(songId))
         {
             _playlists[playlistIndex]!.SongIds!.Remove(songId);
-            SaveToJson();
+            //SaveToJson();
         }
 
         Log.Information($"Song with id {songId} removed");
@@ -125,9 +118,42 @@ public class MusicLibrary
         return false;
     }
 
+    public static Playlist AddNewPlaylist(string playlistName)
+    {
+        foreach (Playlist pl in _playlists)
+        {
+            if (pl.Name == playlistName)
+            {
+                return pl;
+            }
+        }
+
+        Playlist playlist = new Playlist
+        {
+            Name = playlistName,
+            SongIds = new()
+        };
+
+        AddPlaylist(playlist);
+
+        return playlist;
+    }
+
     public static void RemovePlaylist(string? playlistName)
     {
-        _playlists?.RemoveAll(p => p.Name == playlistName);
+        Playlist playlist = _playlists.Find(x => x.Name == playlistName);
+
+        if (playlist != null && playlist.SongIds!.Any())
+        {
+            foreach (var songId in playlist.SongIds!.ToList())
+            {
+                playlist.SongIds!.ToList().RemoveAll(x => x == songId);
+                _mainLibrary.RemoveAll(x => x.Id == songId);
+            }
+
+            _playlists?.RemoveAll(p => p.Name == playlistName);
+        }
+        
         SaveToJson();
 
         Log.Information($"Playlist \'{playlistName}\' removed");
@@ -135,8 +161,6 @@ public class MusicLibrary
 
     public static void AddSongToPlaylist(string songId, string? playlistName, int position = -1)
     {
-        Log.Information("MusicLibrary - AddSongToPlaylist");
-
         Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
 
         if (playlist != null)
@@ -155,24 +179,8 @@ public class MusicLibrary
                     }
                 }
 
-                SaveToJson();
+                //SaveToJson();
             }
-        }
-    }
-
-    public static void RemoveSongFromPlaylist(string songId, string? playlistName)
-    {
-        Log.Information("MusicLibrary - RemoveSongFromPlaylist");
-
-        Playlist? playlist = _playlists?.Find(p => p.Name == playlistName);
-
-        if (playlist != null)
-        {
-            playlist.SongIds.Remove(songId);
-
-            Log.Information($"Song with id {songId} removed from playlist \'{playlistName}\'");
-
-            SaveToJson();
         }
     }
 
@@ -191,7 +199,7 @@ public class MusicLibrary
 
             Log.Information($"Song with id {songId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'");
 
-            SaveToJson();
+            //SaveToJson();
         }
     }
 
@@ -204,7 +212,7 @@ public class MusicLibrary
             Log.Information($"Song with id {songId} has been renamed");
 
             song.Title = newName;
-            SaveToJson();
+            //SaveToJson();
 
             return true;
         }
@@ -221,7 +229,7 @@ public class MusicLibrary
             Log.Information($"Playlist with name {oldName} has been renamed to {newName}");
 
             playlist.Name = newName;
-            SaveToJson();
+            //SaveToJson();
 
             return true;
         }
@@ -299,26 +307,5 @@ public class MusicLibrary
         }
 
         return songsFromPlaylist;
-    }
-
-    public static Playlist CreatePlaylist(string playlistName)
-    {
-        foreach (Playlist pl in _playlists)
-        {
-            if (pl.Name == playlistName)
-            {
-                return pl;
-            }
-        }
-
-        Playlist playlist = new Playlist
-        {
-            Name = playlistName,
-            SongIds = new()
-        };
-
-        AddPlaylist(playlist);
-
-        return playlist;
     }
 }

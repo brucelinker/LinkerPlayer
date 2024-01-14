@@ -113,7 +113,7 @@ public partial class FunctionButtons
         }
 
         string playlistName = dirInfo.Name;
-        Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+        Playlist playlist = MusicLibrary.AddNewPlaylist(playlistName);
         win.SelectedPlaylist = playlist;
 
         foreach (FileInfo? file in files)

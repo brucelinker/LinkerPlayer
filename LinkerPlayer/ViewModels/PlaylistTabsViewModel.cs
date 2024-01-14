@@ -10,11 +10,13 @@ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using static System.Net.Mime.MediaTypeNames;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
@@ -141,7 +143,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
         }
 
-        Playlist newPlaylist = MusicLibrary.CreatePlaylist(playlistName);
+        Playlist newPlaylist = MusicLibrary.AddNewPlaylist(playlistName);
         AddPlaylistTab(newPlaylist);
         _tabControl!.SelectedIndex = TabList.Count - 1;
     }
@@ -184,6 +186,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             LoadAudioFile(file.FullName);
         }
+
+        MusicLibrary.SaveToJson();
     }
     public void NewPlaylistFromFolder(object sender, RoutedEventArgs routedEventArgs)
     {
@@ -206,14 +210,23 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         string playlistName = dirInfo.Name;
-        Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+        Playlist playlist = MusicLibrary.AddNewPlaylist(playlistName);
         PlaylistTab playlistTab = AddPlaylistTab(playlist);
         _tabControl!.SelectedIndex = _tabControl.Items.IndexOf(playlistTab);
+
+        Stopwatch timer = new Stopwatch();
+        timer.Reset();
+        timer.Start();
 
         foreach (FileInfo? file in files)
         {
             LoadAudioFile(file.FullName);
         }
+
+        MusicLibrary.SaveToJson();
+
+        timer.Stop();
+        Log.Information($"{playlistName} playlist took {timer.Elapsed.TotalSeconds} seconds to load.");
     }
 
     public void AddFiles(object sender, RoutedEventArgs routedEventArgs)
@@ -236,6 +249,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 LoadAudioFile(fileName);
             }
         }
+
+        MusicLibrary.SaveToJson();
     }
 
     public void RenamePlaylist(object sender, RoutedEventArgs e)
@@ -253,6 +268,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
             MusicLibrary.RemovePlaylist(playlistTab.Header);
             int tabIndex = TabList.ToList().FindIndex(x => x.Header!.Contains(playlistTab.Header!));
             TabList.RemoveAt(tabIndex);
+
+            MusicLibrary.SaveToJson();
         }
     }
 
@@ -373,8 +390,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public static void AddSongToPlaylistTab(MediaFile song, string playlistName)
     {
-        Log.Information("MainWindow - LoadPlaylistTracks");
-
         foreach (PlaylistTab tab in TabList)
         {
             if (tab.Header == playlistName)
@@ -439,8 +454,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     private static ObservableCollection<MediaFile> LoadPlaylistTracks(string? playListName)
     {
-        Log.Information("MainWindow - LoadPlaylistTracks");
-
         ObservableCollection<MediaFile> tracks = new();
         List<MediaFile> songs = MusicLibrary.GetSongsFromPlaylist(playListName);
 
@@ -451,6 +464,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         return tracks;
     }
+
     private void LoadFileButton_Click(object sender, RoutedEventArgs e)
     {
         using OpenFileDialog openFileDialog = new();
@@ -499,7 +513,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         string playlistName = dirInfo.Name;
-        Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+        Playlist playlist = MusicLibrary.AddNewPlaylist(playlistName);
         SelectedPlaylist = playlist;
 
         foreach (FileInfo? file in files)
@@ -565,7 +579,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                 List<string> paths = m3UPlaylist.GetTracksPaths();
 
-                Playlist playlist = MusicLibrary.CreatePlaylist(playlistName);
+                Playlist playlist = MusicLibrary.AddNewPlaylist(playlistName);
                 SelectedPlaylist = playlist;
                 PlaylistTab playlistTab = AddPlaylistTab(playlist);
                 _tabControl!.SelectedIndex = TabList.Count - 1;
