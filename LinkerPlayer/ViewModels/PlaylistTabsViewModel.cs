@@ -16,8 +16,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
 
@@ -96,7 +94,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (_dataGrid != null)
             {
-                _dataGrid!.SelectedIndex = SelectedIndex;
+                _dataGrid.SelectedIndex = SelectedIndex;
             }
         }
     }
@@ -265,7 +263,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (sender is MenuItem item)
         {
             PlaylistTab playlistTab = (item.DataContext as PlaylistTab)!;
-            MusicLibrary.RemovePlaylist(playlistTab.Header);
+            MusicLibrary.RemovePlaylist(playlistTab.Header!);
             int tabIndex = TabList.ToList().FindIndex(x => x.Header!.Contains(playlistTab.Header!));
             TabList.RemoveAt(tabIndex);
 
@@ -463,71 +461,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         return tracks;
-    }
-
-    private void LoadFileButton_Click(object sender, RoutedEventArgs e)
-    {
-        using OpenFileDialog openFileDialog = new();
-        openFileDialog.Filter = SupportedExtensions;
-        openFileDialog.Multiselect = true;
-        openFileDialog.Title = "Select file(s)";
-
-        DialogResult fileDialogRes = openFileDialog.ShowDialog();
-
-        if (fileDialogRes != DialogResult.OK) return;
-
-        foreach (string fileName in openFileDialog.FileNames)
-        {
-            var extension = Path.GetExtension(fileName);
-
-            if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
-            {
-                LoadAudioFile(fileName);
-            }
-
-            if (string.Equals(".m3u", extension, StringComparison.OrdinalIgnoreCase))
-            {
-                LoadPlaylistFile(fileName);
-            }
-        }
-    }
-
-    private void LoadFolderButton_Click(object sender, RoutedEventArgs e)
-    {
-        using FolderBrowserDialog folderDialog = new FolderBrowserDialog();
-        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
-
-        DialogResult fileDialogResult = folderDialog.ShowDialog();
-
-        if (fileDialogResult != DialogResult.OK) return;
-
-        string selectedFolderPath = folderDialog.SelectedPath;
-        DirectoryInfo dirInfo = new DirectoryInfo(selectedFolderPath);
-        List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
-
-        if (!files.Any())
-        {
-            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
-            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
-                false, true, TimeSpan.FromSeconds(3));
-        }
-
-        string playlistName = dirInfo.Name;
-        Playlist playlist = MusicLibrary.AddNewPlaylist(playlistName);
-        SelectedPlaylist = playlist;
-
-        foreach (FileInfo? file in files)
-        {
-            MediaFile mediaFile = new MediaFile(file.FullName);
-
-            if (MusicLibrary.AddSong(mediaFile))
-            {
-                LoadAudioFile(file.FullName);
-            }
-        }
-
-        PlaylistTab playlistTab = AddPlaylistTab(playlist);
-        _mainWindow.SelectPlaylistByName(playlistTab.Header!);
     }
 
     private void LoadAudioFile(string fileName)

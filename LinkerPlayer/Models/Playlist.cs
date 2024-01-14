@@ -7,5 +7,5 @@ public partial class Playlist : ObservableObject
 {
     [ObservableProperty] private string? _name = "New Playlist";
     [ObservableProperty] private string _selectedSong = "";
-    public ObservableCollection<string>? SongIds { get; set; }
+    public ObservableCollection<string>? SongIds { get; set; } = new();
 }

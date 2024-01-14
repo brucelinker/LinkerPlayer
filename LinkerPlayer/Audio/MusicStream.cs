@@ -242,6 +242,8 @@ public class MusicStream : AudioStream
 
     public float GetBandGain(int index)
     {
+        // Log.Information("MusicStream - GetBandGain");
+
         if (_bands != null && index is >= 0 and <= 7)
         {
             return _bands[index].Gain;
@@ -250,7 +252,6 @@ public class MusicStream : AudioStream
         {
             return 0;
         }
-        Log.Information("MusicStream - GetBandGain");
     }
 
     public void SetBandGain(int index, float value)
