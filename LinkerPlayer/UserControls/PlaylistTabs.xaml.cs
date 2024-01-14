@@ -4,6 +4,8 @@ using LinkerPlayer.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.VisualBasic.Logging;
+using Log = Serilog.Log;
 
 namespace LinkerPlayer.UserControls;
 
@@ -87,5 +89,13 @@ public partial class PlaylistTabs
     private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
     {
         _playlistTabsViewModel.NewPlaylistFromFolder(sender, e);
+    }
+
+    private void TabHeader_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        TextBlock textBlock = (TextBlock)sender;
+        PlaylistTab tabToSelect = (PlaylistTab)textBlock.DataContext;
+
+        _playlistTabsViewModel.RightMouseDownSelect(tabToSelect);
     }
 }

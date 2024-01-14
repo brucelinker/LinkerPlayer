@@ -554,4 +554,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
             tracks.RemoveAt(indexToRemove);
         }
     }
+
+    public void RightMouseDownSelect(PlaylistTab tabToSelect)
+    {
+        int index = TabList.IndexOf(tabToSelect);
+        _tabControl!.SelectedIndex = index;
+    }
 }

@@ -97,7 +97,7 @@
       </TabControl.ContextMenu>
       <TabControl.ItemTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
-          <TextBlock Text="{Binding Header}" >
+          <TextBlock Text="{Binding Header}" MouseRightButtonDown="TabHeader_MouseRightButtonDown">
             <TextBlock.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="New Playlist" Click="MenuItem_NewPlaylist" />
