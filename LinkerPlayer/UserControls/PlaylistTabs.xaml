@@ -1,12 +1,13 @@
 ﻿<UserControl
   x:Class="LinkerPlayer.UserControls.PlaylistTabs"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
-  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   xmlns:vm="clr-namespace:LinkerPlayer.ViewModels"
   d:DesignHeight="80"
   d:DesignWidth="800"
@@ -81,35 +82,76 @@
           </Setter.Value>
         </Setter>
       </Style>
+      <Style x:Key="EditableTabHeaderControl" TargetType="{x:Type userControls:EditableTabHeaderControl}">
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type userControls:EditableTabHeaderControl}">
+              <Grid>
 
+                <TextBox
+                  x:Name="PART_TabHeader"
+                  Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}"
+                  Visibility="Collapsed" />
+                <TextBlock x:Name="PART_TextBlock" Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}" />
+
+              </Grid>
+              <ControlTemplate.Triggers>
+
+                <Trigger Property="IsInEditMode" Value="True">
+                  <Trigger.Setters>
+                    <Setter TargetName="PART_TabHeader" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="PART_TextBlock" Property="Visibility" Value="Collapsed" />
+                  </Trigger.Setters>
+                </Trigger>
+
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+      <Style x:Key="ItemContainerStyle" TargetType="TabItem">
+        <Setter Property="HeaderTemplate">
+          <Setter.Value>
+            <DataTemplate>
+              <userControls:EditableTabHeaderControl Style="{StaticResource EditableTabHeaderControl}">
+                <userControls:EditableTabHeaderControl.Content>
+                  <Binding Mode="TwoWay" Path="Name" />
+                </userControls:EditableTabHeaderControl.Content>
+              </userControls:EditableTabHeaderControl>
+            </DataTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
     </ResourceDictionary>
   </UserControl.Resources>
 
 
   <Grid>
-    <TabControl ItemsSource="{Binding TabList}" SelectionChanged="TabControl_SelectionChanged">
+    <TabControl
+      ItemsSource="{Binding TabList}"
+      SelectionChanged="TabControl_SelectionChanged">
       <TabControl.ContextMenu>
         <ContextMenu>
-          <MenuItem Header="New Playlist" Click="MenuItem_NewPlaylist" />
-          <MenuItem Header="New Playlist From Folder" Click="MenuItem_NewPlaylistFromFolder" />
-          <MenuItem Header="Load Playlist" Click="MenuItem_LoadPlaylist" />
+          <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />
+          <MenuItem Click="MenuItem_NewPlaylistFromFolder" Header="New Playlist From Folder" />
+          <MenuItem Click="MenuItem_LoadPlaylist" Header="Load Playlist" />
         </ContextMenu>
       </TabControl.ContextMenu>
       <TabControl.ItemTemplate>
         <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
-          <TextBlock Text="{Binding Header}" MouseRightButtonDown="TabHeader_MouseRightButtonDown">
+          <TextBlock MouseRightButtonDown="TabHeader_MouseRightButtonDown" Text="{Binding Header}">
             <TextBlock.ContextMenu>
               <ContextMenu>
-                <MenuItem Header="New Playlist" Click="MenuItem_NewPlaylist" />
-                <MenuItem Header="New Playlist From Folder" Click="MenuItem_NewPlaylistFromFolder" />
-                <MenuItem Header="Load Playlist" Click="MenuItem_LoadPlaylist" />
-                <Separator/>
-                <MenuItem Header="Add Folder" Click="MenuItem_AddFolder" />
-                <MenuItem Header="Add Files" Click="MenuItem_AddFiles" />
-                <Separator/>
-                <MenuItem Header="Rename Playlist" Click="MenuItem_RenamePlaylist" />
-                <Separator/>
-                <MenuItem Header="Remove Playlist" Click="MenuItem_RemovePlaylist" />
+                <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />
+                <MenuItem Click="MenuItem_NewPlaylistFromFolder" Header="New Playlist From Folder" />
+                <MenuItem Click="MenuItem_LoadPlaylist" Header="Load Playlist" />
+                <Separator />
+                <MenuItem Click="MenuItem_AddFolder" Header="Add Folder" />
+                <MenuItem Click="MenuItem_AddFiles" Header="Add Files" />
+                <Separator />
+                <MenuItem Click="MenuItem_RenamePlaylist" Header="Rename Playlist" />
+                <Separator />
+                <MenuItem Click="MenuItem_RemovePlaylist" Header="Remove Playlist" />
               </ContextMenu>
             </TextBlock.ContextMenu>
           </TextBlock>
@@ -406,7 +448,7 @@
             </DataGrid.Columns>
             <DataGrid.ContextMenu>
               <ContextMenu>
-                <MenuItem Header="Remove Track" Click="MenuItem_RemoveTrack"/>
+                <MenuItem Click="MenuItem_RemoveTrack" Header="Remove Track" />
               </ContextMenu>
             </DataGrid.ContextMenu>
           </DataGrid>

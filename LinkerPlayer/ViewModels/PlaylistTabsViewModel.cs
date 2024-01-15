@@ -18,6 +18,7 @@ using System.Windows.Controls;
 using System.Windows.Forms;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
+using TextBox = System.Windows.Controls.TextBox;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -40,7 +41,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     [ObservableProperty]
     private static bool _shuffleMode;
     public static ObservableCollection<PlaylistTab> TabList { get; set; } = new();
-
+    
     private static TabControl? _tabControl;
     private static DataGrid? _dataGrid;
     private readonly List<MediaFile?> _shuffleList = new();
@@ -253,7 +254,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public void RenamePlaylist(object sender, RoutedEventArgs e)
     {
-        if (sender is MenuItem item)
+        MenuItem menuItem = sender as MenuItem;
+        if (menuItem != null)
         {
         }
     }
@@ -266,6 +268,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
             MusicLibrary.RemovePlaylist(playlistTab.Header!);
             int tabIndex = TabList.ToList().FindIndex(x => x.Header!.Contains(playlistTab.Header!));
             TabList.RemoveAt(tabIndex);
+
+            if (!TabList.Any())
+            {
+                NewPlaylist();
+            }
 
             MusicLibrary.SaveToJson();
         }
@@ -557,6 +564,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public void RightMouseDownSelect(PlaylistTab tabToSelect)
     {
+        // Select the tab that was right-clicked on
         int index = TabList.IndexOf(tabToSelect);
         _tabControl!.SelectedIndex = index;
     }
