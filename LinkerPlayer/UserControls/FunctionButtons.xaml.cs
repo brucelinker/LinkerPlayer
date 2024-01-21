@@ -127,7 +127,7 @@ public partial class FunctionButtons
         }
 
         PlaylistTab playlistTab = PlaylistTabsViewModel.AddPlaylistTab(playlist);
-        win.SelectPlaylistByName(playlistTab.Header!);
+        win.SelectPlaylistByName(playlistTab.Name!);
     }
 
     private void LoadAudioFile(string fileName, string playlistName = "")

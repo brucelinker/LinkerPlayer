@@ -4,6 +4,9 @@ using LinkerPlayer.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.VisualBasic.Logging;
+using Serilog;
+using Log = Serilog.Log;
 
 namespace LinkerPlayer.UserControls;
 
@@ -11,6 +14,7 @@ namespace LinkerPlayer.UserControls;
 public partial class PlaylistTabs
 {
     private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
+    private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
 
     public PlaylistTabs()
     {
@@ -60,7 +64,7 @@ public partial class PlaylistTabs
 
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.RenamePlaylist(sender, e);
+        _selectedEditableTabHeaderControl?.SetEditMode(true);
     }
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
@@ -89,11 +93,15 @@ public partial class PlaylistTabs
         _playlistTabsViewModel.NewPlaylistFromFolder(sender, e);
     }
 
+    private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
+    }
+
     private void TabHeader_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
-        TextBlock textBlock = (TextBlock)sender;
-        PlaylistTab tabToSelect = (PlaylistTab)textBlock.DataContext;
+        _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
 
-        _playlistTabsViewModel.RightMouseDownSelect(tabToSelect);
+        _playlistTabsViewModel.RightMouseDownSelect((string)_selectedEditableTabHeaderControl.Content);
     }
 }

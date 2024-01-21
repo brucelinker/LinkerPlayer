@@ -85,7 +85,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedPlaylistTab = tabControl.SelectedContent as PlaylistTab;
             if (SelectedPlaylistTab == null) return;
 
-            SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedPlaylistTab.Header!);
+            SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedPlaylistTab.Name!);
 
             if (!SelectedPlaylistTab!.Tracks.Any()) return;
 
@@ -265,8 +265,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (sender is MenuItem item)
         {
             PlaylistTab playlistTab = (item.DataContext as PlaylistTab)!;
-            MusicLibrary.RemovePlaylist(playlistTab.Header!);
-            int tabIndex = TabList.ToList().FindIndex(x => x.Header!.Contains(playlistTab.Header!));
+            MusicLibrary.RemovePlaylist(playlistTab.Name!);
+            int tabIndex = TabList.ToList().FindIndex(x => x.Name!.Contains(playlistTab.Name!));
             TabList.RemoveAt(tabIndex);
 
             if (!TabList.Any())
@@ -382,11 +382,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public static PlaylistTab AddPlaylistTab(Playlist p)
     {
-        PlaylistTab tab = new PlaylistTab
-        {
-            Header = p.Name,
-            Tracks = LoadPlaylistTracks(p.Name)
-        };
+        PlaylistTab tab = new PlaylistTab();
+
+        tab.Name = p.Name ?? "Bupkis";
+        tab.Tracks = LoadPlaylistTracks(p.Name);
+    
 
         TabList.Add(tab);
 
@@ -397,7 +397,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         foreach (PlaylistTab tab in TabList)
         {
-            if (tab.Header == playlistName)
+            if (tab.Name == playlistName)
             {
                 tab.Tracks.Add(song);
             }
@@ -523,7 +523,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 SelectedPlaylist = playlist;
                 PlaylistTab playlistTab = AddPlaylistTab(playlist);
                 _tabControl!.SelectedIndex = TabList.Count - 1;
-                _mainWindow.SelectPlaylistByName(playlistTab.Header!);
+                _mainWindow.SelectPlaylistByName(playlistTab.Name!);
 
                 foreach (string path in paths)
                 {
@@ -562,10 +562,17 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
-    public void RightMouseDownSelect(PlaylistTab tabToSelect)
+    public void RightMouseDownSelect(string tabName)
     {
-        // Select the tab that was right-clicked on
-        int index = TabList.IndexOf(tabToSelect);
+        int index = TabList.ToList().FindIndex(x => x.Name == tabName);
         _tabControl!.SelectedIndex = index;
+    }
+
+    public void ChangeSelectedPlaylistName(string newPlaylistName)
+    {
+        TabList[SelectedIndex].Name = newPlaylistName;
+        SelectedPlaylist!.Name = newPlaylistName;
+        SelectedPlaylistTab!.Name = newPlaylistName;
+        SelectedPlaylistName = newPlaylistName;
     }
 }

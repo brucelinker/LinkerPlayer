@@ -1,8 +1,9 @@
-﻿using System.Windows;
-using System;
+﻿using System;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.UserControls;
 
@@ -12,10 +13,17 @@ public class EditableTabHeaderControl : ContentControl
     /// Dependency property to bind EditMode with XAML Trigger
     /// </summary>
     private static readonly DependencyProperty IsInEditModeProperty = DependencyProperty.Register("IsInEditMode", typeof(bool), typeof(EditableTabHeaderControl));
-    private TextBox textBox;
-    private string oldText;
-    private DispatcherTimer timer;
+    private TextBox? _textBox;
+    private string? _oldText;
+    private DispatcherTimer? _timer;
     private delegate void FocusTextBox();
+
+    private PlaylistTabsViewModel _playlistTabsViewModel;
+
+    public EditableTabHeaderControl()
+    {
+        _playlistTabsViewModel = new PlaylistTabsViewModel();
+    }
 
     /// <summary>
     /// Gets or sets a value indicating whether this instance is in edit mode.
@@ -24,17 +32,17 @@ public class EditableTabHeaderControl : ContentControl
     {
         get
         {
-            return (bool)this.GetValue(IsInEditModeProperty);
+            return (bool)GetValue(IsInEditModeProperty);
         }
         set
         {
-            if (string.IsNullOrEmpty(this.textBox.Text))
+            if (string.IsNullOrEmpty(_textBox.Text))
             {
-                this.textBox.Text = this.oldText;
+                _textBox.Text = _oldText;
             }
 
-            this.oldText = this.textBox.Text;
-            this.SetValue(IsInEditModeProperty, value);
+            _oldText = _textBox.Text;
+            SetValue(IsInEditModeProperty, value);
         }
     }
 
@@ -44,15 +52,16 @@ public class EditableTabHeaderControl : ContentControl
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
-        this.textBox = this.Template.FindName("PART_TabHeader", this) as TextBox;
-        if (this.textBox != null)
+        _textBox = Template.FindName("PART_TabHeader", this) as TextBox;
+
+        if (_textBox != null)
         {
-            this.timer = new DispatcherTimer();
-            this.timer.Tick += TimerTick;
-            this.timer.Interval = TimeSpan.FromMilliseconds(1);
-            this.LostFocus += TextBoxLostFocus;
-            this.textBox.KeyDown += TextBoxKeyDown;
-            this.MouseDoubleClick += EditableTabHeaderControlMouseDoubleClick;
+            _timer = new DispatcherTimer();
+            _timer.Tick += TimerTick!;
+            _timer.Interval = TimeSpan.FromMilliseconds(1);
+            LostFocus += TextBoxLostFocus;
+            _textBox.KeyDown += TextBoxKeyDown;
+            MouseDoubleClick += EditableTabHeaderControlMouseDoubleClick;
         }
     }
 
@@ -62,29 +71,29 @@ public class EditableTabHeaderControl : ContentControl
     /// <param name="value">if set to <c>true</c> [value].</param>
     public void SetEditMode(bool value)
     {
-        this.IsInEditMode = value;
-        this.timer.Start();
+        IsInEditMode = value;
+        _timer.Start();
     }
 
     private void TimerTick(object sender, EventArgs e)
     {
-        this.timer.Stop();
-        this.MoveTextBoxInFocus();
+        _timer.Stop();
+        MoveTextBoxInFocus();
     }
 
     private void MoveTextBoxInFocus()
     {
-        if (this.textBox.CheckAccess())
+        if (_textBox.CheckAccess())
         {
-            if (!string.IsNullOrEmpty(this.textBox.Text))
+            if (!string.IsNullOrEmpty(_textBox.Text))
             {
-                this.textBox.CaretIndex = 0;
-                this.textBox.Focus();
+                _textBox.CaretIndex = 0;
+                _textBox.Focus();
             }
         }
         else
         {
-            this.textBox.Dispatcher.BeginInvoke(DispatcherPriority.Render, new FocusTextBox(this.MoveTextBoxInFocus));
+            _textBox.Dispatcher.BeginInvoke(DispatcherPriority.Render, new FocusTextBox(MoveTextBoxInFocus));
         }
     }
 
@@ -92,25 +101,26 @@ public class EditableTabHeaderControl : ContentControl
     {
         if (e.Key == Key.Escape)
         {
-            this.textBox.Text = oldText;
-            this.IsInEditMode = false;
+            _textBox!.Text = _oldText;
+            IsInEditMode = false;
         }
         else if (e.Key == Key.Enter)
         {
-            this.IsInEditMode = false;
+            IsInEditMode = false;
+            _playlistTabsViewModel.ChangeSelectedPlaylistName(_textBox!.Text);
         }
     }
 
     private void TextBoxLostFocus(object sender, RoutedEventArgs e)
     {
-        this.IsInEditMode = false;
+        IsInEditMode = false;
     }
 
     private void EditableTabHeaderControlMouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (e.LeftButton == MouseButtonState.Pressed)
         {
-            this.SetEditMode(true);
+            SetEditMode(true);
         }
     }
 }

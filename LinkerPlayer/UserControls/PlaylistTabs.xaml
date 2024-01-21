@@ -7,8 +7,8 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
-  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   xmlns:vm="clr-namespace:LinkerPlayer.ViewModels"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   d:DesignHeight="80"
   d:DesignWidth="800"
   mc:Ignorable="d">
@@ -24,142 +24,63 @@
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
 
-      <Style TargetType="{x:Type Separator}">
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Height" Value="1" />
-        <Setter Property="Background" Value="Blue" />
-        <Setter Property="BorderBrush" Value="Green" />
-
-        <Setter Property="Template">
-          <Setter.Value>
-            <ControlTemplate TargetType="{x:Type Separator}">
-              <Rectangle Height="{TemplateBinding Height}" Fill="{TemplateBinding Background}" />
-            </ControlTemplate>
-          </Setter.Value>
-        </Setter>
-      </Style>
-
-      <Style TargetType="{x:Type MenuItem}">
-        <Setter Property="Padding" Value="2" />
-        <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundBrush}" />
-        <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}" />
-        <Style.Triggers>
-          <Trigger Property="IsHighlighted" Value="True">
-            <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundBrush}" />
-          </Trigger>
-          <Trigger Property="IsEnabled" Value="False">
-            <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}" />
-          </Trigger>
-        </Style.Triggers>
-      </Style>
-
-      <Style TargetType="{x:Type ContextMenu}">
-        <Setter Property="OverridesDefaultStyle" Value="True" />
-        <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="Foreground" Value="{DynamicResource MenuTextBrush}" />
-        <Setter Property="FontSize" Value="{DynamicResource FontSizeBig}" />
-        <Setter Property="Opacity" Value="1" />
-        <Setter Property="Padding" Value="10" />
-        <Setter Property="Margin" Value="10" />
-        <Setter Property="Template">
-          <Setter.Value>
-            <ControlTemplate TargetType="{x:Type ContextMenu}">
-              <Border
-                Margin="10"
-                Background="{DynamicResource MenuBrush}"
-                BorderBrush="{DynamicResource MenuDisabledTextBrush}"
-                BorderThickness="1"
-                CornerRadius="1"
-                Opacity="1">
-                <StackPanel
-                  Margin="0"
-                  ClipToBounds="True"
-                  IsItemsHost="True"
-                  Opacity="1"
-                  Orientation="Vertical" />
-              </Border>
-            </ControlTemplate>
-          </Setter.Value>
-        </Setter>
-      </Style>
       <Style x:Key="EditableTabHeaderControl" TargetType="{x:Type userControls:EditableTabHeaderControl}">
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type userControls:EditableTabHeaderControl}">
+              
               <Grid>
-
-                <TextBox
-                  x:Name="PART_TabHeader"
-                  Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}"
-                  Visibility="Collapsed" />
-                <TextBlock x:Name="PART_TextBlock" Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}" />
-
+                <TextBox x:Name="PART_TabHeader" Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}" Visibility="Collapsed"/>
+                <TextBlock x:Name="PART_TextBlock" Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}"/>
               </Grid>
-              <ControlTemplate.Triggers>
 
+              <ControlTemplate.Triggers>
                 <Trigger Property="IsInEditMode" Value="True">
                   <Trigger.Setters>
-                    <Setter TargetName="PART_TabHeader" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="PART_TextBlock" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="PART_TabHeader" Property="Visibility" Value="Visible"/>
+                    <Setter TargetName="PART_TextBlock" Property="Visibility" Value="Collapsed"/>
                   </Trigger.Setters>
                 </Trigger>
-
               </ControlTemplate.Triggers>
+
             </ControlTemplate>
           </Setter.Value>
         </Setter>
       </Style>
+
       <Style x:Key="ItemContainerStyle" TargetType="TabItem">
         <Setter Property="HeaderTemplate">
           <Setter.Value>
             <DataTemplate>
-              <userControls:EditableTabHeaderControl Style="{StaticResource EditableTabHeaderControl}">
+              <userControls:EditableTabHeaderControl
+                   Style="{StaticResource EditableTabHeaderControl}"
+                   MouseLeftButtonDown="TabHeader_MouseLeftButtonDown"
+                   MouseRightButtonDown="TabHeader_MouseRightButtonDown">
+                <userControls:EditableTabHeaderControl.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />
+                    <MenuItem Click="MenuItem_NewPlaylistFromFolder" Header="New Playlist From Folder" />
+                    <MenuItem Click="MenuItem_LoadPlaylist" Header="Load Playlist" />
+                    <Separator />
+                    <MenuItem Click="MenuItem_AddFolder" Header="Add Folder" />
+                    <MenuItem Click="MenuItem_AddFiles" Header="Add Files" />
+                    <Separator />
+                    <MenuItem Click="MenuItem_RenamePlaylist" Header="Rename Playlist" />
+                    <Separator />
+                    <MenuItem Click="MenuItem_RemovePlaylist" Header="Remove Playlist" />
+                  </ContextMenu>
+                </userControls:EditableTabHeaderControl.ContextMenu>
                 <userControls:EditableTabHeaderControl.Content>
-                  <Binding Mode="TwoWay" Path="Name" />
+                  <Binding Path="Name" Mode="TwoWay"/>
                 </userControls:EditableTabHeaderControl.Content>
               </userControls:EditableTabHeaderControl>
             </DataTemplate>
           </Setter.Value>
         </Setter>
       </Style>
-    </ResourceDictionary>
-  </UserControl.Resources>
 
-
-  <Grid>
-    <TabControl
-      ItemsSource="{Binding TabList}"
-      SelectionChanged="TabControl_SelectionChanged">
-      <TabControl.ContextMenu>
-        <ContextMenu>
-          <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />
-          <MenuItem Click="MenuItem_NewPlaylistFromFolder" Header="New Playlist From Folder" />
-          <MenuItem Click="MenuItem_LoadPlaylist" Header="Load Playlist" />
-        </ContextMenu>
-      </TabControl.ContextMenu>
-      <TabControl.ItemTemplate>
-        <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
-          <TextBlock MouseRightButtonDown="TabHeader_MouseRightButtonDown" Text="{Binding Header}">
-            <TextBlock.ContextMenu>
-              <ContextMenu>
-                <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />
-                <MenuItem Click="MenuItem_NewPlaylistFromFolder" Header="New Playlist From Folder" />
-                <MenuItem Click="MenuItem_LoadPlaylist" Header="Load Playlist" />
-                <Separator />
-                <MenuItem Click="MenuItem_AddFolder" Header="Add Folder" />
-                <MenuItem Click="MenuItem_AddFiles" Header="Add Files" />
-                <Separator />
-                <MenuItem Click="MenuItem_RenamePlaylist" Header="Rename Playlist" />
-                <Separator />
-                <MenuItem Click="MenuItem_RemovePlaylist" Header="Remove Playlist" />
-              </ContextMenu>
-            </TextBlock.ContextMenu>
-          </TextBlock>
-        </DataTemplate>
-      </TabControl.ItemTemplate>
-      <TabControl.ContentTemplate>
-        <DataTemplate DataType="{x:Type vm:PlaylistTabsViewModel}">
-          <DataGrid
+      <DataTemplate x:Key="ContentTemplate" DataType="{x:Type models:PlaylistTab}" >
+        <DataGrid
             Name="TracksTable"
             Width="Auto"
             Height="Auto"
@@ -190,78 +111,78 @@
             VirtualizingStackPanel.IsVirtualizing="True"
             VirtualizingStackPanel.VirtualizationMode="Standard">
 
-            <DataGrid.ColumnHeaderStyle>
-              <Style TargetType="DataGridColumnHeader">
-                <Style.Setters>
-                  <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
-                  <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
-                  <Setter Property="Padding" Value="6" />
-                  <Setter Property="FontSize" Value="{DynamicResource FontSizeBigger}" />
-                  <Setter Property="BorderBrush" Value="{DynamicResource FirstLightBrush}" />
-                  <Setter Property="BorderThickness" Value="0,0,0,0.5" />
-                </Style.Setters>
-              </Style>
-            </DataGrid.ColumnHeaderStyle>
+          <DataGrid.ColumnHeaderStyle>
+            <Style TargetType="DataGridColumnHeader">
+              <Style.Setters>
+                <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
+                <Setter Property="Padding" Value="6" />
+                <Setter Property="FontSize" Value="{DynamicResource FontSizeBigger}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource FirstLightBrush}" />
+                <Setter Property="BorderThickness" Value="0,0,0,0.5" />
+              </Style.Setters>
+            </Style>
+          </DataGrid.ColumnHeaderStyle>
 
-            <DataGrid.CellStyle>
-              <Style TargetType="DataGridCell">
-                <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
-                <Setter Property="FontStyle" Value="Normal" />
-                <Setter Property="FontWeight" Value="Normal" />
-                <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundBrush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
-                <Style.Triggers>
-                  <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource TrackListSelectedItemForegroundBrush}" />
-                    <Setter Property="FontWeight" Value="Bold" />
-                  </Trigger>
-                </Style.Triggers>
-              </Style>
-            </DataGrid.CellStyle>
+          <DataGrid.CellStyle>
+            <Style TargetType="DataGridCell">
+              <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+              <Setter Property="FontStyle" Value="Normal" />
+              <Setter Property="FontWeight" Value="Normal" />
+              <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundBrush}" />
+              <Setter Property="BorderThickness" Value="0" />
+              <Setter Property="VerticalAlignment" Value="Center" />
+              <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+              <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource TrackListSelectedItemForegroundBrush}" />
+                  <Setter Property="FontWeight" Value="Bold" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </DataGrid.CellStyle>
 
-            <DataGrid.RowStyle>
-              <Style TargetType="DataGridRow">
-                <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
-                <Setter Property="FontStyle" Value="Normal" />
-                <Setter Property="FontWeight" Value="Light" />
-                <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+          <DataGrid.RowStyle>
+            <Style TargetType="DataGridRow">
+              <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+              <Setter Property="FontStyle" Value="Normal" />
+              <Setter Property="FontWeight" Value="Light" />
+              <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
+              <Setter Property="BorderThickness" Value="0" />
+              <Setter Property="VerticalAlignment" Value="Center" />
+              <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
 
-                <Style.Triggers>
+              <Style.Triggers>
 
-                  <Trigger Property="ItemsControl.AlternationIndex" Value="1">
-                    <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
-                  </Trigger>
-                  <Trigger Property="ItemsControl.AlternationIndex" Value="0">
-                    <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt2Brush}" />
-                  </Trigger>
-                  <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
-                    <Setter Property="FontWeight" Value="Bold" />
-                  </Trigger>
-                  <Trigger Property="IsVisible" Value="False">
-                    <Setter Property="Visibility" Value="Collapsed" />
-                  </Trigger>
+                <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                  <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
+                </Trigger>
+                <Trigger Property="ItemsControl.AlternationIndex" Value="0">
+                  <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt2Brush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
+                  <Setter Property="FontWeight" Value="Bold" />
+                </Trigger>
+                <Trigger Property="IsVisible" Value="False">
+                  <Setter Property="Visibility" Value="Collapsed" />
+                </Trigger>
 
-                </Style.Triggers>
-              </Style>
-            </DataGrid.RowStyle>
+              </Style.Triggers>
+            </Style>
+          </DataGrid.RowStyle>
 
-            <DataGrid.Columns>
-              <DataGridTemplateColumn
+          <DataGrid.Columns>
+            <DataGridTemplateColumn
                 Width="Auto"
                 MinWidth="{DynamicResource TrackTableImageSize}"
                 Header="">
 
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <Grid>
-                      <iconPacks:PackIconFontAwesome
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Grid>
+                    <iconPacks:PackIconFontAwesome
                         x:Name="PlayImage"
                         Width="20"
                         Height="10"
@@ -272,7 +193,7 @@
                         Kind="PlaySolid"
                         Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}" />
 
-                      <iconPacks:PackIconMaterial
+                    <iconPacks:PackIconMaterial
                         x:Name="PauseImage"
                         Width="20"
                         Height="10"
@@ -282,34 +203,34 @@
                         Foreground="{StaticResource TrackListItemForegroundBrush}"
                         Kind="Pause"
                         Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static models:PlayerState.Paused}}" />
-                    </Grid>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
+                  </Grid>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
-              <DataGridTemplateColumn
+            <DataGridTemplateColumn
                 Width="Auto"
                 Header="Track"
                 SortMemberPath="Track">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock
                       Margin="5,0,5,0"
                       HorizontalAlignment="Right"
                       d:DataContext="{d:DesignData IMediaFile}"
                       FontSize="{DynamicResource FontSizeNormal}"
                       Text="{Binding Track}" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
-              <DataGridTemplateColumn
+            <DataGridTemplateColumn
                 Width="20*"
                 Header="Title"
                 SortMemberPath="Title">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock
                       Margin="5,0,5,0"
                       d:DataContext="{d:DesignData IMediaFile}"
                       FontSize="{DynamicResource FontSizeNormal}"
@@ -346,44 +267,44 @@
                       <!--
                   </Style>
                 </TextBlock.Style>-->
-                    </TextBlock>
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
+                  </TextBlock>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
-              <DataGridTemplateColumn
+            <DataGridTemplateColumn
                 Width="20*"
                 Header="Artist"
                 SortMemberPath="Artists">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock
                       Margin="5,0,5,0"
                       d:DataContext="{d:DesignData IMediaFile}"
                       FontSize="{DynamicResource FontSizeNormal}"
                       Text="{Binding Artists}"
                       ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
-              <DataGridTemplateColumn
+            <DataGridTemplateColumn
                 Width="20*"
                 Header="Album"
                 SortMemberPath="Album">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock
                       Margin="5,0,5,0"
                       d:DataContext="{d:DesignData IMediaFile}"
                       FontSize="{DynamicResource FontSizeNormal}"
                       Text="{Binding Album}"
                       ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
-              <!--<DataGridTemplateColumn
+            <!--<DataGridTemplateColumn
                 Width="Auto"
                 Header="Year"
                 SortMemberPath="Year">
@@ -399,7 +320,7 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>-->
 
-              <!--<DataGridTemplateColumn
+            <!--<DataGridTemplateColumn
                 Width="Auto"
                 Header="Genre"
                 SortMemberPath="Genres">
@@ -414,23 +335,23 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>-->
 
-              <DataGridTemplateColumn
+            <DataGridTemplateColumn
                 Width="Auto"
                 MinWidth="68"
                 Header="Length"
                 SortMemberPath="Duration">
-                <DataGridTemplateColumn.CellTemplate>
-                  <DataTemplate>
-                    <TextBlock
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock
                       Margin="5,0,5,0"
                       d:DataContext="{d:DesignData MediaFile}"
                       FontSize="{DynamicResource FontSizeNormal}"
                       Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
-                  </DataTemplate>
-                </DataGridTemplateColumn.CellTemplate>
-              </DataGridTemplateColumn>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
 
-              <!--<DataGridTemplateColumn
+            <!--<DataGridTemplateColumn
                 Width="Auto"
                 MinWidth="68"
                 Header="Bitrate"
@@ -445,17 +366,34 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>-->
-            </DataGrid.Columns>
-            <DataGrid.ContextMenu>
-              <ContextMenu>
-                <MenuItem Click="MenuItem_RemoveTrack" Header="Remove Track" />
-              </ContextMenu>
-            </DataGrid.ContextMenu>
-          </DataGrid>
-          <!--<uc:TracksDataGrid Width="Auto" Height="Auto" VerticalAlignment="Top" Content="{Binding Tracks}"/>-->
-        </DataTemplate>
-      </TabControl.ContentTemplate>
+          </DataGrid.Columns>
+          <DataGrid.ContextMenu>
+            <ContextMenu>
+              <MenuItem Click="MenuItem_RemoveTrack" Header="Remove Track" />
+            </ContextMenu>
+          </DataGrid.ContextMenu>
+        </DataGrid>
+      </DataTemplate>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Grid>
+    <TabControl Grid.Row="0"
+                ItemsSource="{Binding TabList}"
+                ItemContainerStyle="{StaticResource ItemContainerStyle}" 
+                ContentTemplate="{StaticResource ContentTemplate}"
+                SelectionChanged="TabControl_SelectionChanged" >
+      <TabControl.ContextMenu>
+        <ContextMenu>
+          <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />
+          <MenuItem Click="MenuItem_NewPlaylistFromFolder" Header="New Playlist From Folder" />
+          <MenuItem Click="MenuItem_LoadPlaylist" Header="Load Playlist" />
+        </ContextMenu>
+      </TabControl.ContextMenu>
     </TabControl>
+
+
+
   </Grid>
 
 </UserControl>

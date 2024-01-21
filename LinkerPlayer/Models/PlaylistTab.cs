@@ -1,12 +1,12 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 
 namespace LinkerPlayer.Models;
 
-public partial class PlaylistTab : ObservableObject
+public partial class PlaylistTab
 {
+    public string? Name { get; set; }
     public ObservableCollection<MediaFile> Tracks { get; set; } = new();
-    [ObservableProperty] private string? _header = "New Playlist";
-    [ObservableProperty] private MediaFile? _lastSelectedMediaFile;
-    [ObservableProperty] private int? _lastSelectedIndex;
+    public MediaFile? LastSelectedMediaFile;
+    public int? LastSelectedIndex;
+
 }
