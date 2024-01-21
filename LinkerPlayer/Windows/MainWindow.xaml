@@ -50,7 +50,6 @@
         MinWidth="240"
         MaxWidth="340" />
       <ColumnDefinition Width="75*" />
-      <ColumnDefinition Width="60" />
     </Grid.ColumnDefinitions>
 
     <userControls:TitlebarButtons
@@ -59,34 +58,34 @@
       Grid.ColumnSpan="3"
       Panel.ZIndex="1" />
 
-    <userControls:PlaylistTabs
-      x:Name="PlaylistTabs"
-      Grid.Row="1"
-      Grid.Column="1" />
-
     <userControls:TrackInfo
       x:Name="TrackInfo"
       Grid.Row="1"
       Grid.Column="0" />
 
+    <userControls:PlaylistTabs
+      x:Name="PlaylistTabs"
+      Grid.Row="1"
+      Grid.Column="1" />
+
     <materialDesign:Snackbar
       Name="InfoSnackbar"
       Grid.Row="1"
       Grid.Column="0"
-      Grid.ColumnSpan="3"
+      Grid.ColumnSpan="2"
       IsActive="False"
       MessageQueue="{materialDesign:MessageQueue}" />
 
-    <userControls:FunctionButtons
+    <!--<userControls:FunctionButtons
       x:Name="FunctionButtons"
       Grid.Row="1"
-      Grid.Column="2" />
+      Grid.Column="2" />-->
 
     <userControls:PlayerControls
       x:Name="PlayerControls"
       Grid.Row="2"
       Grid.Column="0"
-      Grid.ColumnSpan="3" />
+      Grid.ColumnSpan="2" />
 
   </Grid>
 </Window>

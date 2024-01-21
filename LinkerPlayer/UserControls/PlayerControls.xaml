@@ -42,13 +42,13 @@
     <Border Background="{DynamicResource PlayerBackgroundBrush}" />
     <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="270" />
+        <ColumnDefinition Width="265" />
         <ColumnDefinition />
-        <ColumnDefinition Width="90" />
-        <ColumnDefinition Width="250" />
+        <ColumnDefinition Width="260" />
+        <ColumnDefinition Width="120" />
       </Grid.ColumnDefinitions>
 
-      <Grid Grid.Column="0" Margin="40,0,40,0">
+      <Grid Grid.Column="0" Margin="30,0,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="Auto" />
@@ -120,18 +120,23 @@
           ToolTip="Next File (j)" />
       </Grid>
 
-      <Grid Grid.Column="1">
+      <Grid Grid.Column="1" Margin="0,0,30,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="65" />
           <ColumnDefinition />
           <ColumnDefinition Width="65" />
         </Grid.ColumnDefinitions>
 
+        <!--<Border Grid.Column="0" BorderBrush="YellowGreen" BorderThickness="2" />
+        <Border Grid.Column="1" BorderBrush="YellowGreen" BorderThickness="2" />
+        <Border Grid.Column="2" BorderBrush="YellowGreen" BorderThickness="2" />-->
+
         <Grid Grid.Column="1">
           <Grid.RowDefinitions>
             <RowDefinition Height="1*" />
             <RowDefinition Height="2*" />
           </Grid.RowDefinitions>
+
 
           <TextBlock
             Name="CurrentSongName"
@@ -153,10 +158,16 @@
               <ColumnDefinition Width="17*" />
             </Grid.ColumnDefinitions>
 
+            <!--<Border Grid.Column="0" BorderBrush="Yellow" BorderThickness="1" />
+            <Border Grid.Column="1" BorderBrush="Yellow" BorderThickness="1" />
+            <Border Grid.Column="2" BorderBrush="Yellow" BorderThickness="1" />
+            <Border Grid.Column="3" BorderBrush="Yellow" BorderThickness="1" />-->
+
             <Slider
+              Grid.Column="0"
               x:Name="SeekBar"
-              Grid.ColumnSpan="4"
               Margin="0,4,0,0"
+              Grid.ColumnSpan="4"
               VerticalAlignment="Top"
               Panel.ZIndex="1"
               Maximum="100"
@@ -171,6 +182,7 @@
               Rows="1"
               SizeChanged="UniGrid_SizeChanged" />
           </Grid>
+
         </Grid>
 
         <TextBlock
@@ -184,6 +196,7 @@
           Foreground="{DynamicResource PlayerForegroundBrush}">
           0:00
         </TextBlock>
+
         <TextBlock
           Name="TotalTime"
           Grid.Column="2"
@@ -197,53 +210,25 @@
         </TextBlock>
       </Grid>
 
-      <ToggleButton
-        Name="ShuffleModeButton"
-        Grid.Column="2"
-        Width="36"
-        Height="36"
-        Command="{Binding ShuffleCommand}"
-        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}">
-        <ToggleButton.Style>
-          <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
-            <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
-            <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
-            <Style.Triggers>
-              <Trigger Property="IsChecked" Value="true">
-                <Setter Property="Content" Value="{iconPacks:Entypo Shuffle, Width=17, Height=17}" />
-              </Trigger>
-            </Style.Triggers>
-          </Style>
-        </ToggleButton.Style>
-      </ToggleButton>
-
-      <Grid Name="VolumeSlidersGrid" Grid.Column="3">
+      <Grid Name="VolumeSlidersGrid" Grid.Column="2" Margin="0,0,30,0" >
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="60*" />
-          <ColumnDefinition Width="20*" />
-          <ColumnDefinition Width="20*" />
+          <ColumnDefinition Width="50" />
+          <ColumnDefinition  />
+          <!--<ColumnDefinition Width="20*" />-->
         </Grid.ColumnDefinitions>
 
-        <Grid.RowDefinitions>
+        <!--<Border Grid.Column="0" BorderBrush="White" BorderThickness="2" />
+        <Border Grid.Column="1" BorderBrush="White" BorderThickness="2" />-->
+
+        <!--<Grid.RowDefinitions>
           <RowDefinition Height="0*" />
           <RowDefinition Height="0*" />
           <RowDefinition Height="100*" />
-        </Grid.RowDefinitions>
-
-        <Slider
-          x:Name="VolumeSlider"
-          Grid.Row="2"
-          Grid.Column="0"
-          Margin="0,0,12,0"
-          VerticalAlignment="Center"
-          Maximum="100"
-          Style="{StaticResource CustomHorizontalSlider}"
-          ValueChanged="VolumeSlider_ValueChanged" />
+        </Grid.RowDefinitions>-->
 
         <ToggleButton
           Name="MuteButton"
-          Grid.Row="2"
-          Grid.Column="1"
+          Grid.Column="0"
           Width="36"
           Height="36"
           VerticalAlignment="Center"
@@ -264,6 +249,62 @@
           </ToggleButton.Style>
         </ToggleButton>
 
+        <Slider
+          x:Name="VolumeSlider"
+          Grid.Column="1"
+          Margin="6,0,10,0"
+          VerticalAlignment="Center"
+          Maximum="100"
+          Style="{StaticResource CustomHorizontalSlider}"
+          ValueChanged="VolumeSlider_ValueChanged" />
+
+      </Grid>
+
+      <Grid Grid.Column="3" Margin="0,0,30,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition />
+          <ColumnDefinition />
+        </Grid.ColumnDefinitions>
+
+        <!--<Border Grid.Column="0" BorderBrush="Cyan" BorderThickness="1" />
+        <Border Grid.Column="1" BorderBrush="Cyan" BorderThickness="1" />-->
+
+        <ToggleButton
+        Name="ShuffleModeButton"
+        Grid.Column="0"
+        Margin="0,0,0,0"
+        Width="36"
+        Height="36"
+        Command="{Binding ShuffleCommand}"
+        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}">
+          <ToggleButton.Style>
+            <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
+              <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
+              <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+              <Style.Triggers>
+                <Trigger Property="IsChecked" Value="true">
+                  <Setter Property="Content" Value="{iconPacks:Entypo Shuffle, Width=17, Height=17}" />
+                </Trigger>
+              </Style.Triggers>
+            </Style>
+          </ToggleButton.Style>
+        </ToggleButton>
+
+        <Button
+          Grid.Column="1"
+          Name="EqButton"
+          Width="36"
+          Height="36"
+          Margin="0,0,0,0"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Command="{Binding EqualizerCommand}"
+          Content="{iconPacks:Material Equalizer,
+                                       Width=12,
+                                       Height=12}"
+          Foreground="{DynamicResource PlayerForegroundBrush}"
+          Style="{StaticResource LinkerCircleButton}"
+          ToolTip="Equalizer" />
       </Grid>
     </Grid>
   </Grid>

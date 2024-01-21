@@ -307,4 +307,12 @@ public class MusicLibrary
 
         return songsFromPlaylist;
     }
+
+    public static void ClearPlayState()
+    {
+        foreach(MediaFile? file in _mainLibrary)
+        {
+            file!.State = PlayerState.Stopped;
+        }
+    }
 }

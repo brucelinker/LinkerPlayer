@@ -7,6 +7,7 @@ using LinkerPlayer.Windows;
 using Serilog;
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -66,6 +67,18 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         {
             State = PlayerState.Paused;
         }
+
+        WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
+    }
+    
+    public void PlayTrack()
+    {
+        SelectedMediaFile = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
+
+        StopTrack();
+
+        State = PlayerState.Playing;
+        _mainWindow!.PlayTrack(SelectedMediaFile);
 
         WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
     }

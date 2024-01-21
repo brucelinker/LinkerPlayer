@@ -170,6 +170,8 @@ public partial class MainWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        MusicLibrary.ClearPlayState();
+
         string? lastSelectedPlaylistName = Properties.Settings.Default.LastSelectedPlaylistName;
 
         if (!string.IsNullOrEmpty(lastSelectedPlaylistName))
@@ -463,6 +465,7 @@ public partial class MainWindow
 
     public void Window_Closed(object sender, EventArgs e)
     {
+        MusicLibrary.ClearPlayState();
         MusicLibrary.SaveToJson();
 
         Properties.Settings.Default.VolumeSliderValue = PlayerControls.VolumeSlider.Value;

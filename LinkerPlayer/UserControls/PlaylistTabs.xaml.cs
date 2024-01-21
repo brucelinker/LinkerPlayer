@@ -14,6 +14,7 @@ namespace LinkerPlayer.UserControls;
 public partial class PlaylistTabs
 {
     private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
+    private readonly PlayerControlsViewModel _playerControlsViewModel = new();
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
 
     public PlaylistTabs()
@@ -38,18 +39,16 @@ public partial class PlaylistTabs
         _playlistTabsViewModel.OnTabSelectionChanged(sender, e);
     }
 
-    private void TrackRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (_playlistTabsViewModel.SelectedTrack is { State: PlayerState.Playing })
+        MediaFile? runningTrack = _playlistTabsViewModel.GetRunningTrack();
+
+        if (runningTrack != null)
         {
-            _playlistTabsViewModel.SelectedTrack.State = PlayerState.Stopped;
+            runningTrack.State = PlayerState.Stopped;
         }
 
-        if (sender is DataGrid { SelectedItem: not null } grid)
-        {
-            _playlistTabsViewModel.SelectedTrack = ((grid.SelectedItem as MediaFile)!);
-            _playlistTabsViewModel.SelectedTrack.State = PlayerState.Playing;
-        }
+        _playerControlsViewModel.PlayTrack();
     }
 
     private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)

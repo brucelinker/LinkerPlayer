@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   d:DesignHeight="40"
   d:DesignWidth="800"
   mc:Ignorable="d">
@@ -73,6 +74,23 @@
       Background="{DynamicResource TitleBarBackgroundBrush}"
       Orientation="Horizontal"
       WindowChrome.IsHitTestVisibleInChrome="True">
+
+      <Button
+        Name="SettingsButton"
+        Width="36"
+        Height="36"
+        Command="{Binding SettingsCommand}"
+        Style="{DynamicResource MaximizeMinimizeButton}"
+        ToolTip="Settings">
+        <Image
+          Margin="0, 0, 14, 0"
+          Width="14"
+          Height="14"
+          Opacity="0.6"
+          Source="/Images/settings.png" />
+      </Button>
+
+      <Rectangle Width="1" Height="20" Fill="Azure"/>
 
       <Button
         Name="MinimizeButton"

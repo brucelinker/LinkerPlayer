@@ -16,9 +16,9 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
-using TextBox = System.Windows.Controls.TextBox;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -36,6 +36,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private static MediaFile? _selectedTrack;
     [ObservableProperty]
     private static int _selectedIndex;
+    [ObservableProperty]
+    private static MediaFile? _runningTrack;
     [ObservableProperty]
     private static PlayerState _state;
     [ObservableProperty]
@@ -89,8 +91,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (!SelectedPlaylistTab!.Tracks.Any()) return;
 
-            SelectedPlaylistTab!.LastSelectedIndex ??= 0;
-            SelectedIndex = (int)SelectedPlaylistTab!.LastSelectedIndex;
+            SelectedPlaylistTab!.SelectedIndex ??= 0;
+            SelectedIndex = (int)SelectedPlaylistTab!.SelectedIndex;
             SelectedTrack = SelectedPlaylistTab.Tracks[SelectedIndex];
 
             if (_dataGrid != null)
@@ -108,8 +110,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             SelectedIndex = _dataGrid.SelectedIndex;
-            SelectedPlaylistTab!.LastSelectedMediaFile = SelectedTrack;
-            SelectedPlaylistTab.LastSelectedIndex = SelectedIndex;
+            SelectedPlaylistTab!.SelectedTrack = SelectedTrack;
+            SelectedPlaylistTab.SelectedIndex = SelectedIndex;
         }
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
@@ -250,14 +252,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         MusicLibrary.SaveToJson();
-    }
-
-    public void RenamePlaylist(object sender, RoutedEventArgs e)
-    {
-        MenuItem menuItem = sender as MenuItem;
-        if (menuItem != null)
-        {
-        }
     }
 
     public void RemovePlaylist(object sender, RoutedEventArgs e)
@@ -574,5 +568,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
         SelectedPlaylist!.Name = newPlaylistName;
         SelectedPlaylistTab!.Name = newPlaylistName;
         SelectedPlaylistName = newPlaylistName;
+    }
+
+    public MediaFile? GetRunningTrack()
+    {
+        return SelectedPlaylistTab!.Tracks.FirstOrDefault(x => x.State != PlayerState.Stopped);
     }
 }
