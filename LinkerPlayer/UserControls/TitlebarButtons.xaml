@@ -68,6 +68,7 @@
       FontWeight="Light"
       Foreground="{DynamicResource TitleBarForegroundBrush}"
       Text="LinkerPlayer" />
+
     <StackPanel
       HorizontalAlignment="Right"
       VerticalAlignment="Top"
@@ -79,7 +80,7 @@
         Name="SettingsButton"
         Width="36"
         Height="36"
-        Command="{Binding SettingsCommand}"
+        Click="SettingsButton_Click"
         Style="{DynamicResource MaximizeMinimizeButton}"
         ToolTip="Settings">
         <Image

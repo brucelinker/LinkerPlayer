@@ -1,7 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
+using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using LinkerPlayer.Windows;
 using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
 using System;
@@ -12,7 +14,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.UserControls;
 
@@ -33,6 +34,11 @@ public partial class PlayerControls
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (r, m) =>
         {
             OnSelectedTrackChanged(m.Value);
+        });
+
+        WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (r, m) =>
+        {
+            OnDataGridPlay(m.Value);
         });
 
     }
@@ -178,6 +184,12 @@ public partial class PlayerControls
         TimeSpan ts = selectedTrack.Duration;
         TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
         CurrentTime.Text = "0:00";
+    }
+
+    private void OnDataGridPlay(PlayerState value)
+    {
+        _playerControlsViewModel.StopTrack();
+        PlayButton.Command.Execute(value);
     }
 
     private async Task Render(string? path, List<float> peaks)
@@ -349,6 +361,51 @@ public partial class PlayerControls
 
     //    slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
     //}
+
+    private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
+    {
+        bool isEqualizerWindowOpen = false;
+
+        //if (_isEqualizerWindowOpen)
+        //{
+        //    if (_equalizerWin.WindowState == WindowState.Minimized)
+        //    {
+        //        _equalizerWin.WindowState = WindowState.Normal;
+        //    }
+        //    return;
+        //}
+
+        EqualizerWindow equalizerWindow = new EqualizerWindow
+        {
+            Owner = Window.GetWindow(this),
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        //equalizerWindow.Closed += (_, _) => { isEqualizerWindowOpen = false; };
+        //equalizerWindow.Closing += (_, _) => { equalizerWindow.Owner = null; };
+        //isEqualizerWindowOpen = true;
+
+        equalizerWindow.Show();
+
+        MainWindow win = (MainWindow)Window.GetWindow(this)!;
+
+        if (win.AudioStreamControl.MainMusic!.IsEqualizerWorking)
+        {
+            equalizerWindow.StartStopText.Text = "Stop";
+        }
+        else
+        {
+            equalizerWindow.StartStopText.Text = "Start";
+        }
+
+        equalizerWindow.LoadSelectedBand(win.SelectedBandsSettings);
+
+        if (equalizerWindow.StartStopText.Text == "Start")
+        {
+            equalizerWindow.ButtonsSetEnabledState(false);
+            equalizerWindow.SliderSetEnabledState(false);
+        }
+    }
 }
 
 public static class ListExtensions

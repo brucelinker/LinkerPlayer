@@ -73,7 +73,7 @@
           ToolTip="Previous Track" />
 
         <Button
-          Name="PlayButton"
+          x:Name="PlayButton"
           Grid.Column="1"
           Width="55"
           Height="55"
@@ -81,7 +81,7 @@
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           Command="{Binding PlayPauseCommand}"
-          Content="{Binding State, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}"
+          Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}"
           Foreground="{DynamicResource PlayerForegroundBrush}"
           Style="{StaticResource LinkerCircleButton}" />
 
@@ -164,10 +164,10 @@
             <Border Grid.Column="3" BorderBrush="Yellow" BorderThickness="1" />-->
 
             <Slider
-              Grid.Column="0"
               x:Name="SeekBar"
-              Margin="0,4,0,0"
+              Grid.Column="0"
               Grid.ColumnSpan="4"
+              Margin="0,4,0,0"
               VerticalAlignment="Top"
               Panel.ZIndex="1"
               Maximum="100"
@@ -210,10 +210,13 @@
         </TextBlock>
       </Grid>
 
-      <Grid Name="VolumeSlidersGrid" Grid.Column="2" Margin="0,0,30,0" >
+      <Grid
+        Name="VolumeSlidersGrid"
+        Grid.Column="2"
+        Margin="0,0,30,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="50" />
-          <ColumnDefinition  />
+          <ColumnDefinition />
           <!--<ColumnDefinition Width="20*" />-->
         </Grid.ColumnDefinitions>
 
@@ -270,13 +273,13 @@
         <Border Grid.Column="1" BorderBrush="Cyan" BorderThickness="1" />-->
 
         <ToggleButton
-        Name="ShuffleModeButton"
-        Grid.Column="0"
-        Margin="0,0,0,0"
-        Width="36"
-        Height="36"
-        Command="{Binding ShuffleCommand}"
-        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}">
+          Name="ShuffleModeButton"
+          Grid.Column="0"
+          Width="36"
+          Height="36"
+          Margin="0,0,0,0"
+          Command="{Binding ShuffleCommand}"
+          CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}">
           <ToggleButton.Style>
             <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
               <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
@@ -291,14 +294,14 @@
         </ToggleButton>
 
         <Button
+          Name="EqualizerButton"
           Grid.Column="1"
-          Name="EqButton"
           Width="36"
           Height="36"
           Margin="0,0,0,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Command="{Binding EqualizerCommand}"
+          Click="OnEqualizerButton_Click"
           Content="{iconPacks:Material Equalizer,
                                        Width=12,
                                        Height=12}"

@@ -60,7 +60,7 @@ public partial class SettingsWindow
         //}
 
         //AdditionalOutputEnabled.IsChecked = Properties.Settings.Default.AdditionalOutputEnabled;
-        EqualizerOnStartEnabled.IsChecked = Properties.Settings.Default.EqualizerOnStartEnabled;
+        //EqualizerOnStartEnabled.IsChecked = Properties.Settings.Default.EqualizerOnStartEnabled;
 
         int selectedThemeIndex = ThemeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme);
         if (ThemesList.Items.Count >= 0 && selectedThemeIndex <= ThemesList.Items.Count)
@@ -74,10 +74,10 @@ public partial class SettingsWindow
 
         _themeManager.ModifyTheme((ThemeColors)ThemesList.SelectedIndex);
 
-        VisualizationEnabled.IsChecked = Properties.Settings.Default.VisualizationEnabled;
-        MinimizeToTrayEnabled.IsChecked = Properties.Settings.Default.MinimizeToTrayEnabled;
+        //VisualizationEnabled.IsChecked = Properties.Settings.Default.VisualizationEnabled;
+        //MinimizeToTrayEnabled.IsChecked = Properties.Settings.Default.MinimizeToTrayEnabled;
 
-        PopulateHotkeyStackPanel();
+        //PopulateHotkeyStackPanel();
     }
 
     private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -155,23 +155,23 @@ public partial class SettingsWindow
             Properties.Settings.Default.SelectedTheme = ThemeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
         }
 
-        Properties.Settings.Default.MinimizeToTrayEnabled = MinimizeToTrayEnabled.IsChecked.GetValueOrDefault();
-        Properties.Settings.Default.EqualizerOnStartEnabled = EqualizerOnStartEnabled.IsChecked.GetValueOrDefault();
+        //Properties.Settings.Default.MinimizeToTrayEnabled = MinimizeToTrayEnabled.IsChecked.GetValueOrDefault();
+        //Properties.Settings.Default.EqualizerOnStartEnabled = EqualizerOnStartEnabled.IsChecked.GetValueOrDefault();
 
-        if (VisualizationEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.VisualizationEnabled)
-        {
-            Properties.Settings.Default.VisualizationEnabled = VisualizationEnabled.IsChecked.GetValueOrDefault();
-            mainWindow.VisualizationEnabled = Properties.Settings.Default.VisualizationEnabled;
+        //if (VisualizationEnabled.IsChecked.GetValueOrDefault() != Properties.Settings.Default.VisualizationEnabled)
+        //{
+        //    Properties.Settings.Default.VisualizationEnabled = VisualizationEnabled.IsChecked.GetValueOrDefault();
+        //    mainWindow.VisualizationEnabled = Properties.Settings.Default.VisualizationEnabled;
 
-            if (Properties.Settings.Default.VisualizationEnabled)
-            {
-                mainWindow.StartVisualization();
-            }
-            else
-            {
-                mainWindow.StopVisualization();
-            }
-        }
+        //    if (Properties.Settings.Default.VisualizationEnabled)
+        //    {
+        //        mainWindow.StartVisualization();
+        //    }
+        //    else
+        //    {
+        //        mainWindow.StopVisualization();
+        //    }
+        //}
 
         foreach (KeyValuePair<string, string> prop in _tempHotkeys)
         {
@@ -268,78 +268,94 @@ public partial class SettingsWindow
         return modifierKeys.Contains(key);
     }
 
-    void PopulateHotkeyStackPanel()
-    {
-        string[] hotkeys = { // names of hotkeys
-                "Play/Pause",
-                "Next Song",
-                "Previous Song",
-                "Increase Main Volume",
-                "Decrease Main Volume"
-            };
+//    void PopulateHotkeyStackPanel()
+//    {
+//        string[] hotkeys = { // names of hotkeys
+//                "Play/Pause",
+//                "Next Song",
+//                "Previous Song",
+//                "Increase Main Volume",
+//                "Decrease Main Volume"
+//            };
 
-        foreach (string hk in hotkeys)
-        {
-            string name = Regex.Replace(hk, @"[^a-zA-Z0-9_]", ""); // e.g. Play/Pause -> PlayPause
+//        foreach (string hk in hotkeys)
+//        {
+//            string name = Regex.Replace(hk, @"[^a-zA-Z0-9_]", ""); // e.g. Play/Pause -> PlayPause
 
-            Grid grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(200) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition());
-            grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(40) });
+//            Grid grid = new Grid();
+//            grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(200) });
+//            grid.ColumnDefinitions.Add(new ColumnDefinition());
+//            grid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(40) });
 
-            TextBlock tb1 = new TextBlock() { Text = hk, Style = (Style)TabControl.FindResource(typeof(TextBlock)) };
-            Grid.SetColumn(tb1, 0);
-            grid.Children.Add(tb1);
+//  //          TextBlock tb1 = new TextBlock() { Text = hk, Style = (Style)TabControl.FindResource(typeof(TextBlock)) };
+//            Grid.SetColumn(tb1, 0);
+//            grid.Children.Add(tb1);
 
-            TextBlock tb2 = new TextBlock
-            {
-                Name = name + "Hotkey", Style = (Style)TabControl.FindResource(typeof(TextBlock)),
-                TextAlignment = TextAlignment.Center,
-                Text = Properties.Settings.Default[name + "Hotkey"].ToString()
-            };
+//            TextBlock tb2 = new TextBlock
+//            {
+////                Name = name + "Hotkey", Style = (Style)TabControl.FindResource(typeof(TextBlock)),
+//                TextAlignment = TextAlignment.Center,
+//                Text = Properties.Settings.Default[name + "Hotkey"].ToString()
+//            };
 
-            _tempHotkeys[name + "Hotkey"] = tb2.Text!;
-            Grid.SetColumn(tb2, 1);
-            grid.Children.Add(tb2);
-            HotkeyStackPanel.RegisterName(tb2.Name, tb2);
+//            _tempHotkeys[name + "Hotkey"] = tb2.Text!;
+//            Grid.SetColumn(tb2, 1);
+//            grid.Children.Add(tb2);
+//            HotkeyStackPanel.RegisterName(tb2.Name, tb2);
 
-            Button btn = new Button() { Name = name + "HotkeyBtn", Style = (Style)FindResource("NoStylingButton") };
-            btn.Click += EditHotkey;
+//            Button btn = new Button() { Name = name + "HotkeyBtn", Style = (Style)FindResource("NoStylingButton") };
+//            btn.Click += EditHotkey;
 
-            PackIcon packIcon = new PackIcon() { Kind = PackIconKind.PencilOutline, Foreground = Brushes.White };
-            btn.Content = packIcon;
+//            PackIcon packIcon = new PackIcon() { Kind = PackIconKind.PencilOutline, Foreground = Brushes.White };
+//            btn.Content = packIcon;
 
-            Grid.SetColumn(btn, 2);
-            grid.Children.Add(btn);
-            HotkeyStackPanel.RegisterName(btn.Name, btn);
+//            Grid.SetColumn(btn, 2);
+//            grid.Children.Add(btn);
+//            HotkeyStackPanel.RegisterName(btn.Name, btn);
 
-            HotkeyStackPanel.Children.Add(grid);
-        }
-    }
+//            HotkeyStackPanel.Children.Add(grid);
+//        }
+//    }
 
     private void Window_Closing(object sender, EventArgs e)
     {
 
     }
 
-    private void Window_StateChanged(object sender, EventArgs e)
-    {
-        if (WindowState == WindowState.Maximized)
-        {
-            Uri uri = new Uri("/Images/Icons/restore.png", UriKind.Relative);
-            ImageSource imgSource = new BitmapImage(uri);
-            TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        }
-        else if (WindowState == WindowState.Normal)
-        {
-            Uri uri = new Uri("/Images/Icons/maximize.png", UriKind.Relative);
-            ImageSource imgSource = new BitmapImage(uri);
-            TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        }
-    }
+    //private void Window_StateChanged(object sender, EventArgs e)
+    //{
+    //    if (WindowState == WindowState.Maximized)
+    //    {
+    //        Uri uri = new Uri("/Images/Icons/restore.png", UriKind.Relative);
+    //        ImageSource imgSource = new BitmapImage(uri);
+    //        TitlebarButtons.MaximizeButtonImage.Source = imgSource;
+    //    }
+    //    else if (WindowState == WindowState.Normal)
+    //    {
+    //        Uri uri = new Uri("/Images/Icons/maximize.png", UriKind.Relative);
+    //        ImageSource imgSource = new BitmapImage(uri);
+    //        TitlebarButtons.MaximizeButtonImage.Source = imgSource;
+    //    }
+    //}
 
     private void Window_MouseDown(object sender, MouseButtonEventArgs e)
     {
         Helper.FindVisualChildren<Grid>(this).FirstOrDefault()!.Focus();
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Window? win = Window.GetWindow(this);
+        if (win != null) win.Close();
+    }
+
+    private void ButtonMouseEnter(object sender, MouseEventArgs e)
+    {
+        ((sender as Button)?.Content as Image)!.Opacity = 1;
+    }
+
+    private void ButtonMouseLeave(object sender, MouseEventArgs e)
+    {
+        (((sender as Button)?.Content as Image)!).Opacity = 0.6;
     }
 }

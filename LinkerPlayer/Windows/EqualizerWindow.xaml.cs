@@ -92,19 +92,6 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
-        if (WindowState == WindowState.Maximized)
-        {
-            Uri uri = new Uri("/Images/restore.png", UriKind.Relative);
-            ImageSource imgSource = new BitmapImage(uri);
-            TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-
-        }
-        else if (WindowState == WindowState.Normal)
-        {
-            Uri uri = new Uri("/Images/maximize.png", UriKind.Relative);
-            ImageSource imgSource = new BitmapImage(uri);
-            TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        }
     }
 
     private void StartStopButton_Click(object sender, RoutedEventArgs e)
@@ -408,4 +395,21 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     {
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        Window? win = Window.GetWindow(this);
+        if (win != null) win.Close();
+    }
+
+    private void ButtonMouseEnter(object sender, MouseEventArgs e)
+    {
+        ((sender as Button)?.Content as Image)!.Opacity = 1;
+    }
+
+    private void ButtonMouseLeave(object sender, MouseEventArgs e)
+    {
+        (((sender as Button)?.Content as Image)!).Opacity = 0.6;
+    }
+
 }

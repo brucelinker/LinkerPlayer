@@ -1,12 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.VisualBasic.Logging;
-using Serilog;
-using Log = Serilog.Log;
 
 namespace LinkerPlayer.UserControls;
 
@@ -48,7 +47,7 @@ public partial class PlaylistTabs
             runningTrack.State = PlayerState.Stopped;
         }
 
-        _playerControlsViewModel.PlayTrack();
+        WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlayerState.Playing));
     }
 
     private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
@@ -81,6 +80,11 @@ public partial class PlaylistTabs
         _playlistTabsViewModel.AddFiles(sender, e);
     }
 
+    private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
+    {
+        _playerControlsViewModel.PlayTrack();
+    }
+    
     private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
     {
         _playlistTabsViewModel.RemoveTrack(sender, e);
@@ -101,6 +105,6 @@ public partial class PlaylistTabs
     {
         _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
 
-        _playlistTabsViewModel.RightMouseDownSelect((string)_selectedEditableTabHeaderControl.Content);
+        _playlistTabsViewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
     }
 }

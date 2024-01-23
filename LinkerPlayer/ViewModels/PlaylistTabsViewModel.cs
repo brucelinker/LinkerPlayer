@@ -16,7 +16,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
-using System.Windows.Input;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
 
@@ -556,7 +555,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
-    public void RightMouseDownSelect(string tabName)
+    public void RightMouseDown_TabSelect(string tabName)
     {
         int index = TabList.ToList().FindIndex(x => x.Name == tabName);
         _tabControl!.SelectedIndex = index;

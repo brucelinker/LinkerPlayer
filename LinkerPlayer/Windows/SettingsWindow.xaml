@@ -6,63 +6,74 @@
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
-  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   Title="Settings"
-  Width="610"
-  Height="400"
-  MinWidth="610"
-  MinHeight="400"
+  Width="510"
+  Height="300"
+  MinWidth="510"
+  MinHeight="300"
   AllowsTransparency="True"
   Closing="Window_Closing"
   Loaded="Window_Loaded"
   MouseDown="Window_MouseDown"
-  StateChanged="Window_StateChanged"
   WindowStyle="None"
-  mc:Ignorable="d"
-  xmlns:wpf="clr-namespace:MaterialDesignThemes.Wpf;assembly=MaterialDesignThemes.Wpf"
-  xmlns:converters="clr-namespace:MaterialDesignThemes.Wpf.Converters;assembly=MaterialDesignThemes.Wpf">
+  mc:Ignorable="d">
 
   <WindowChrome.WindowChrome>
-    <WindowChrome CaptionHeight="25" />
+    <WindowChrome CaptionHeight="35" />
   </WindowChrome.WindowChrome>
 
   <Window.Resources>
-    <Style x:Key="NoStylingButton" TargetType="{x:Type Button}">
+    <Style x:Key="CloseButton" TargetType="{x:Type Button}">
       <Setter Property="Template">
         <Setter.Value>
-          <ControlTemplate TargetType="Button">
-            <Border
-              x:Name="border"
-              Background="Transparent"
-              CornerRadius="10">
-              <ContentPresenter />
-            </Border>
+          <ControlTemplate TargetType="{x:Type Button}">
+            <Grid Width="45" Height="30">
+              <Border x:Name="border" Background="Black" />
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
 
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="border" Property="Background" Value="#3b3b42" />
+                <Setter TargetName="border" Property="Background">
+                  <Setter.Value>
+                    <SolidColorBrush Opacity="0.9" Color="Red" />
+                  </Setter.Value>
+                </Setter>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
-
     </Style>
-    <Style x:Key="FocusVisual">
-      <Setter>
-        <Setter.Value>
-          <ControlTemplate>
-            <Rectangle Margin="2" StrokeDashArray="1 2" Stroke="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" SnapsToDevicePixels="true" StrokeThickness="1"/>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
+
+    <Style TargetType="TextBlock">
+      <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Foreground" Value="#FAFAFA" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Height" Value="27" />
+    </Style>
+
+    <Style TargetType="Grid">
+      <Setter Property="Margin" Value="0,0,0,20" />
+    </Style>
+
+    <Style TargetType="materialDesign:PackIcon">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
 
   </Window.Resources>
 
   <Grid Focusable="True">
     <Grid.RowDefinitions>
-      <RowDefinition Height="35" />
+      <RowDefinition Height="55" />
       <RowDefinition />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
@@ -71,129 +82,117 @@
       <SolidColorBrush Color="{DynamicResource ChildWindowBackgroundColor}" />
     </Grid.Background>
 
-    <userControls:TitlebarButtons x:Name="TitlebarButtons" Panel.ZIndex="1" />
+    <Grid Grid.Row="0">
+      <TextBlock
+        Margin="12,2,0,0"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        d:Foreground=" White"
+        FontSize="22"
+        FontWeight="Light"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
+        Text="Settings" />
 
-    <TabControl Name="TabControl" Grid.Row="1">
-      <TabControl.Resources>
-        <Style TargetType="TextBlock">
-          <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
-          <Setter Property="FontSize" Value="16" />
-          <Setter Property="Foreground" Value="#BDBDBD" />
-          <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
+      <StackPanel
+        HorizontalAlignment="Right"
+        VerticalAlignment="Top"
+        Background="{DynamicResource TitleBarBackgroundBrush}"
+        Orientation="Horizontal"
+        WindowChrome.IsHitTestVisibleInChrome="True">
 
-        <Style TargetType="ComboBox">
-          <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
-          <Setter Property="FontSize" Value="16" />
-          <Setter Property="VerticalAlignment" Value="Center" />
-          <Setter Property="Height" Value="27" />
-        </Style>
+        <Button
+          Name="CloseButton"
+          Click="CloseButton_Click"
+          MouseEnter="ButtonMouseEnter"
+          MouseLeave="ButtonMouseLeave"
+          Style="{DynamicResource CloseButton}">
+          <Image
+            Name="CloseButtonImage"
+            Width="10"
+            Height="10"
+            Opacity="0.6"
+            Source="/Images/close.png" />
+        </Button>
+      </StackPanel>
+    </Grid>
 
-        <Style TargetType="Grid">
-          <Setter Property="Margin" Value="0,0,0,20" />
-        </Style>
+    <Grid Grid.Row="1">
+      <StackPanel Margin="30,20,30,0">
 
-        <Style TargetType="materialDesign:PackIcon">
-          <Setter Property="VerticalAlignment" Value="Center" />
-          <Setter Property="HorizontalAlignment" Value="Center" />
-        </Style>
-      </TabControl.Resources>
+        <!--  Main Output Device  -->
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition />
+          </Grid.ColumnDefinitions>
 
-      <!--  General Tab  -->
-      <TabItem>
-        <TabItem.Header>
-          <TextBlock>General</TextBlock>
-        </TabItem.Header>
+          <TextBlock Grid.Column="0" HorizontalAlignment="Right">Main Output Device:</TextBlock>
 
-        <TabItem.Content>
-          <StackPanel Margin="30,50,30,0">
+          <ComboBox
+            Name="MainOutputDevicesList"
+            Grid.Column="2"
+            Foreground="Black" />
+        </Grid>
 
-            <!--  Main Output Device  -->
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="265" />
-                <ColumnDefinition />
-              </Grid.ColumnDefinitions>
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition Width="100" />
+          </Grid.ColumnDefinitions>
 
-              <TextBlock Grid.Column="0">Select main output device</TextBlock>
+          <TextBlock Grid.Column="0" HorizontalAlignment="Right">Color Theme:</TextBlock>
+          <ComboBox
+            x:Name="ThemesList"
+            Grid.Column="2"
+            HorizontalContentAlignment="Center"
+            ItemsSource="{Binding Path=ThemeColors}"
+            SelectionChanged="OnThemeSelectionChanged">
+            <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
+            <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
+            <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
+            <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />
+            <ComboBoxItem Content="Black" Tag="{x:Static models:ThemeColors.Midnight}" />
+          </ComboBox>
+        </Grid>
 
-              <ComboBox
-                Name="MainOutputDevicesList"
-                Grid.Column="1"
-                Foreground="#BDBDBD" />
-            </Grid>
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="180" />
-                <ColumnDefinition />
-                <ColumnDefinition Width="100" />
-              </Grid.ColumnDefinitions>
+        <!--  Enable Sound Wave Visualization  -->
+        <!--<Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="40" />
+          </Grid.ColumnDefinitions>
 
-              <TextBlock Grid.Column="0">Theme</TextBlock>
-              <ComboBox
-                x:Name="ThemesList"
-                Grid.Column="2"
-                HorizontalContentAlignment="Center"
-                ItemsSource="{Binding Path=ThemeColors}"
-                SelectionChanged="OnThemeSelectionChanged">
-                <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
-                <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
-                <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
-                <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />
-                <ComboBoxItem Content="Black" Tag="{x:Static models:ThemeColors.Midnight}" />
-              </ComboBox>
-            </Grid>
+          <TextBlock Grid.Column="0">Enable sound wave visualization</TextBlock>
+          <ToggleButton Name="VisualizationEnabled" Grid.Column="1" />
+        </Grid>-->
 
-            <!--  Enable Sound Wave Visualization  -->
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition />
-                <ColumnDefinition Width="40" />
-              </Grid.ColumnDefinitions>
+        <!--  Minimize to Tray On Close  -->
+        <!--<Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="40" />
+          </Grid.ColumnDefinitions>
 
-              <TextBlock Grid.Column="0">Enable sound wave visualization</TextBlock>
-              <ToggleButton Name="VisualizationEnabled" Grid.Column="1" />
-            </Grid>
+          <TextBlock Grid.Column="0">Minimize to tray on close</TextBlock>
+          <ToggleButton Name="MinimizeToTrayEnabled" Grid.Column="1" />
+        </Grid>-->
 
-            <!--  Minimize to Tray On Close  -->
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition />
-                <ColumnDefinition Width="40" />
-              </Grid.ColumnDefinitions>
+        <!--  Enable equalizer on start  -->
+        <!--<Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="40" />
+          </Grid.ColumnDefinitions>
 
-              <TextBlock Grid.Column="0">Minimize to tray on close</TextBlock>
-              <ToggleButton Name="MinimizeToTrayEnabled" Grid.Column="1" />
-            </Grid>
+          <TextBlock Grid.Column="0">Enable equalizer on start</TextBlock>
+          <ToggleButton Name="EqualizerOnStartEnabled" Grid.Column="1" />
+        </Grid>-->
+      </StackPanel>
+    </Grid>
 
-            <!--  Enable equalizer on start  -->
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition />
-                <ColumnDefinition Width="40" />
-              </Grid.ColumnDefinitions>
-
-              <TextBlock Grid.Column="0">Enable equalizer on start</TextBlock>
-              <ToggleButton Name="EqualizerOnStartEnabled" Grid.Column="1" />
-            </Grid>
-          </StackPanel>
-        </TabItem.Content>
-      </TabItem>
-
-      <!--  Hotkeys Tab  -->
-      <TabItem>
-        <TabItem.Header>
-          <TextBlock Foreground="White">Hotkeys</TextBlock>
-        </TabItem.Header>
-
-        <TabItem.Content>
-          <StackPanel Name="HotkeyStackPanel" Margin="30,50,30,0" />
-        </TabItem.Content>
-      </TabItem>
-
-    </TabControl>
-
-    <Button Style="{DynamicResource TransparentButton}"
+    <Button
       Grid.Row="2"
       Width="100"
       Height="30"
@@ -202,12 +201,16 @@
       Background="Transparent"
       Click="Save_Click"
       Content="Save"
-      Foreground="{DynamicResource ControlPrimaryAccentBrush}" />
+      Foreground="{DynamicResource ControlPrimaryAccentBrush}"
+      Style="{DynamicResource TransparentButton}" />
 
     <materialDesign:Snackbar
       Name="InfoSnackbar"
+      Foreground="#FAFAFA"
+      BorderBrush="red"
+      HorizontalAlignment="Center"
       Grid.Row="1"
-      IsActive="False"
+      IsActive="True"
       MessageQueue="{materialDesign:MessageQueue}" />
   </Grid>
 </Window>

@@ -71,8 +71,16 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
     }
     
+
     public void PlayTrack()
     {
+        MediaFile? runningTrack = _playlistTabsViewModel.GetRunningTrack();
+
+        if (runningTrack != null)
+        {
+            runningTrack.State = PlayerState.Stopped;
+        }
+
         SelectedMediaFile = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
 
         StopTrack();
@@ -89,7 +97,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         StopTrack();
     }
 
-    private void StopTrack()
+    public void StopTrack()
     {
         State = PlayerState.Stopped;
         WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
