@@ -20,8 +20,8 @@ namespace LinkerPlayer.Core;
         {
         }
 
-        protected MediaFileException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-        }
+        //protected MediaFileException(SerializationInfo info, StreamingContext context)
+        //    : base(info, context)
+        //{
+        //}
     }

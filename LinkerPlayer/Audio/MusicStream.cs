@@ -209,14 +209,16 @@ public class MusicStream : AudioStream
         {
             _bands = new[]
             {
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 40, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 80, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 320, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 640, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 1280, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 2560, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 5120, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 10240, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 32f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 64f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 125f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 250f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 500f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 1000f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 2000f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 4000f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 8000f, Gain = 0 },
+                new EqualizerBand { Bandwidth = 0.8f, Frequency = 16000f, Gain = 0 },
             };
 
             _equalizer = new Equalizer(_audioFile, _bands);
@@ -236,15 +238,15 @@ public class MusicStream : AudioStream
 
     public bool IsEqualizerWorking => _equalizer != null;
 
-    public float MinimumGain => -30;
+    public float MinimumGain => -12;
 
-    public float MaximumGain => 30;
+    public float MaximumGain => 12;
 
     public float GetBandGain(int index)
     {
         // Log.Information("MusicStream - GetBandGain");
 
-        if (_bands != null && index is >= 0 and <= 7)
+        if (_bands != null && index is >= 0 and <= 9)
         {
             return _bands[index].Gain;
         }
@@ -256,7 +258,7 @@ public class MusicStream : AudioStream
 
     public void SetBandGain(int index, float value)
     {
-        if (_bands != null && index is >= 0 and <= 7)
+        if (_bands != null && index is >= 0 and <= 9)
         {
             if (Math.Abs(_bands[index].Gain - value) > 0)
             {
@@ -288,7 +290,7 @@ public class MusicStream : AudioStream
 
     public void SetBandsList(List<EqualizerBand>? equalizerBandsToAdd)
     {
-        if (equalizerBandsToAdd is { Count: 8 })
+        if (equalizerBandsToAdd is { Count: 10 })
         {
             for (int i = 0; i < 8; i++)
             {

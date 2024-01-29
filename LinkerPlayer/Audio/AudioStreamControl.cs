@@ -52,9 +52,9 @@ public class AudioStreamControl
 
             if (MainMusic is { IsEqualizerWorking: true })
             {
-                EqualizerLibrary.LoadFromJson();
+                EqualizerSettings.LoadFromJson();
 
-                var band = EqualizerLibrary.BandsSettings!.FirstOrDefault(n => n.Name == _selectedBandName);
+                var band = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == _selectedBandName);
 
                 if (band != null)
                 {

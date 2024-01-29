@@ -7,8 +7,8 @@ namespace LinkerPlayer.UserControls;
 
 public partial class TitlebarButtons
 {
-    private bool _isSettingsWindowOpen = false;
-    private SettingsWindow _settingsWin;
+    //private bool _isSettingsWindowOpen = false;
+    //private SettingsWindow _settingsWin;
 
     public TitlebarButtons()
     {
@@ -27,26 +27,26 @@ public partial class TitlebarButtons
     
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_isSettingsWindowOpen)
-        {
-            if (_settingsWin.WindowState == WindowState.Minimized)
-            {
-                _settingsWin.WindowState = WindowState.Normal;
-            }
-            return;
-        }
+        //if (_isSettingsWindowOpen)
+        //{
+        //    if (_settingsWin.WindowState == WindowState.Minimized)
+        //    {
+        //        _settingsWin.WindowState = WindowState.Normal;
+        //    }
+        //    return;
+        //}
 
-        _settingsWin = new SettingsWindow
+        SettingsWindow settingsWindow = new()
         {
             Owner = Window.GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
 
-        _settingsWin.Closed += (_, _) => { _isSettingsWindowOpen = false; };
-        _settingsWin.Closing += (_, _) => { _settingsWin.Owner = null; };
-        _isSettingsWindowOpen = true;
+        //settingsWindow.Closed += (_, _) => { _isSettingsWindowOpen = false; };
+        //settingsWindow.Closing += (_, _) => { settingsWindow.Owner = null; };
+        //_isSettingsWindowOpen = true;
 
-        _settingsWin.Show();
+        settingsWindow.Show();
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)

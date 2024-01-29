@@ -13,8 +13,8 @@ namespace LinkerPlayer.Core;
 public class MusicLibrary
 {
     private static readonly string JsonFilePath;
-    private static List<MediaFile?> _mainLibrary = new();
-    private static List<Playlist?> _playlists = new();
+    public static List<MediaFile?> MainLibrary = new();
+    public static List<Playlist?> Playlists = new();
 
     static MusicLibrary()
     {
@@ -34,12 +34,12 @@ public class MusicLibrary
 
             if (data != null)
             {
-                _mainLibrary = ((JArray)data["songs"]).ToObject<List<MediaFile>>()!;
-                _playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>()!;
+                MainLibrary = ((JArray)data["songs"]).ToObject<List<MediaFile>>()!;
+                Playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>()!;
 
-                if (_playlists == null || !_playlists.Any())
+                if (Playlists == null || !Playlists.Any())
                 {
-                    _playlists!.Add(new Playlist
+                    Playlists!.Add(new Playlist
                     {
                         Name = "New Playlist",
                         SongIds = new ObservableCollection<string>()
@@ -63,8 +63,8 @@ public class MusicLibrary
     {
         Dictionary<string, object> data = new Dictionary<string, object>
         {
-            { "songs", JArray.FromObject(_mainLibrary) },
-            { "playlists", JArray.FromObject(_playlists) }
+            { "songs", JArray.FromObject(MainLibrary) },
+            { "playlists", JArray.FromObject(Playlists) }
         };
 
         JsonSerializerSettings settings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
@@ -77,7 +77,7 @@ public class MusicLibrary
         if (!string.IsNullOrEmpty(mediaFile.Path) && Path.GetExtension(mediaFile.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
             mediaFile.UpdateFromFileMetadata();
-            _mainLibrary?.Add(mediaFile.Clone());
+            MainLibrary?.Add(mediaFile.Clone());
             //SaveToJson();
 
             return true;
@@ -88,11 +88,11 @@ public class MusicLibrary
 
     public static void RemoveTrackFromPlaylist(string playlistName, string songId)
     {
-        int playlistIndex = _playlists.FindIndex(p => p!.Name == playlistName);
+        int playlistIndex = Playlists.FindIndex(p => p!.Name == playlistName);
 
-        if (_playlists[playlistIndex] != null && _playlists[playlistIndex]!.SongIds!.Contains(songId))
+        if (Playlists[playlistIndex] != null && Playlists[playlistIndex]!.SongIds!.Contains(songId))
         {
-            _playlists[playlistIndex]!.SongIds!.Remove(songId);
+            Playlists[playlistIndex]!.SongIds!.Remove(songId);
             //SaveToJson();
         }
 
@@ -103,9 +103,9 @@ public class MusicLibrary
     {
         Log.Information("MusicLibrary - AddPlaylist");
 
-        if (_playlists.Find(p => p!.Name == newPlaylist.Name) == null)
+        if (Playlists.Find(p => p!.Name == newPlaylist.Name) == null)
         {
-            _playlists.Add(newPlaylist);
+            Playlists.Add(newPlaylist);
             SaveToJson();
 
             Log.Information($"New playlist \'{newPlaylist.Name}\' added");
@@ -118,7 +118,7 @@ public class MusicLibrary
 
     public static Playlist AddNewPlaylist(string playlistName)
     {
-        foreach (Playlist? pl in _playlists)
+        foreach (Playlist? pl in Playlists)
         {
             if (pl!.Name == playlistName)
             {
@@ -139,17 +139,17 @@ public class MusicLibrary
 
     public static void RemovePlaylist(string playlistName)
     {
-        Playlist? playlist = _playlists.Find(x => x!.Name == playlistName)!;
+        Playlist? playlist = Playlists.Find(x => x!.Name == playlistName)!;
 
         if (playlist.SongIds!.Any())
         {
             foreach (var songId in playlist.SongIds!.ToList())
             {
                 playlist.SongIds!.ToList().RemoveAll(x => x == songId);
-                _mainLibrary.RemoveAll(x => x!.Id == songId);
+                MainLibrary.RemoveAll(x => x!.Id == songId);
             }
 
-            _playlists?.RemoveAll(p => p!.Name == playlistName);
+            Playlists?.RemoveAll(p => p!.Name == playlistName);
 
             SaveToJson();
         }
@@ -159,7 +159,7 @@ public class MusicLibrary
 
     public static void AddSongToPlaylist(string songId, string? playlistName, int position = -1)
     {
-        Playlist? playlist = _playlists?.Find(p => p!.Name == playlistName);
+        Playlist? playlist = Playlists?.Find(p => p!.Name == playlistName);
 
         if (playlist != null)
         {
@@ -187,8 +187,8 @@ public class MusicLibrary
     {
         Log.Information("MusicLibrary - AddPlaylist");
 
-        Playlist? from = _playlists?.Find(p => p!.Name == fromPlaylist);
-        Playlist? to = _playlists?.Find(p => p!.Name == toPlaylist);
+        Playlist? from = Playlists?.Find(p => p!.Name == fromPlaylist);
+        Playlist? to = Playlists?.Find(p => p!.Name == toPlaylist);
 
         if (from != null && to != null)
         {
@@ -203,7 +203,7 @@ public class MusicLibrary
 
     public static bool RenameSong(string songId, string newName)
     {
-        MediaFile? song = _mainLibrary?.Find(s => s!.Id == songId);
+        MediaFile? song = MainLibrary?.Find(s => s!.Id == songId);
 
         if (song != null && !string.IsNullOrEmpty(newName))
         {
@@ -220,9 +220,9 @@ public class MusicLibrary
 
     public static bool RenamePlaylist(string oldName, string? newName)
     {
-        Playlist? playlist = _playlists?.Find(s => s!.Name == oldName);
+        Playlist? playlist = Playlists?.Find(s => s!.Name == oldName);
 
-        if (playlist != null && !string.IsNullOrEmpty(newName) && _playlists?.Find(s => s!.Name == newName) == null)
+        if (playlist != null && !string.IsNullOrEmpty(newName) && Playlists?.Find(s => s!.Name == newName) == null)
         {
             Log.Information($"Playlist with name {oldName} has been renamed to {newName}");
 
@@ -241,9 +241,9 @@ public class MusicLibrary
 
         List<MediaFile> songs = new List<MediaFile>();
 
-        if (_mainLibrary.Any())
+        if (MainLibrary.Any())
         {
-            foreach (MediaFile? song in _mainLibrary)
+            foreach (MediaFile? song in MainLibrary)
             {
                 songs.Add(song!);
             }
@@ -256,9 +256,9 @@ public class MusicLibrary
     {
         List<Playlist> playlists = new List<Playlist>();
 
-        if (_playlists.Any())
+        if (Playlists.Any())
         {
-            foreach (Playlist? playlist in _playlists)
+            foreach (Playlist? playlist in Playlists)
             {
                 playlists.Add(playlist!);
             }
@@ -277,9 +277,9 @@ public class MusicLibrary
 
     public static Playlist? GetPlaylistByName(string name)
     {
-        if (!_playlists.Any()) return null;
+        if (!Playlists.Any()) return null;
 
-        foreach (Playlist? playlist in _playlists)
+        foreach (Playlist? playlist in Playlists)
         {
             if (playlist!.Name == name)
             {
@@ -294,14 +294,14 @@ public class MusicLibrary
     {
         Log.Information("MusicLibrary - GetSongsFromPlaylist");
 
-        Playlist? playlist = _playlists?.Find(p => p!.Name == playlistName);
+        Playlist? playlist = Playlists?.Find(p => p!.Name == playlistName);
         List<MediaFile> songsFromPlaylist = new List<MediaFile>();
 
         if (playlist != null && playlist.SongIds != null)
         {
             foreach (string songId in playlist.SongIds)
             {
-                songsFromPlaylist.Add(_mainLibrary?.Find(p => p!.Id == songId)!);
+                songsFromPlaylist.Add(MainLibrary?.Find(p => p!.Id == songId)!);
             }
         }
 
@@ -310,7 +310,7 @@ public class MusicLibrary
 
     public static void ClearPlayState()
     {
-        foreach(MediaFile? file in _mainLibrary)
+        foreach(MediaFile? file in MainLibrary)
         {
             file!.State = PlayerState.Stopped;
         }

@@ -1,18 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using LinkerPlayer.Models;
+﻿using LinkerPlayer.Models;
 using Newtonsoft.Json;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace LinkerPlayer.Core;
 
-public class EqualizerLibrary
+public class EqualizerSettings
 {
     public static List<BandsSettings>? BandsSettings = new();
     private static readonly string JsonFilePath;
 
-    static EqualizerLibrary()
+    static EqualizerSettings()
     {
         JsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "LinkerPlayer", "bandsSettings.json");
@@ -31,10 +31,10 @@ public class EqualizerLibrary
             }
             else
             {
-                Log.Warning("Json is empty");
+                Log.Warning("BandSettings json is empty");
             }
 
-            Log.Information("Load from json");
+            Log.Information("Loaded BandSettings from json");
         }
         else
         {
@@ -49,6 +49,6 @@ public class EqualizerLibrary
         string json = JsonConvert.SerializeObject(BandsSettings, Formatting.Indented, settings);
         File.WriteAllText(JsonFilePath, json);
 
-        Log.Information("Save to json");
+        Log.Information("Saved BandSettings to json");
     }
 }

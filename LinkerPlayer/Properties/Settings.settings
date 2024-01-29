@@ -53,8 +53,8 @@
     <Setting Name="EqualizerOnStartEnabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="EqualizerBandName" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
+    <Setting Name="EqualizerProfileName" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Flat</Value>
     </Setting>
     <Setting Name="FontSize" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">9</Value>

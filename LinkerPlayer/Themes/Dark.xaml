@@ -8,8 +8,10 @@
 
   <Color x:Key="ChildWindowBackgroundColor">#CCCCCC</Color>
 
-  <Color x:Key="ControlPrimaryAccentColor">LightGray</Color>
-  <Color x:Key="ControlSecondaryAccentColor">MediumPurple</Color>
+  <Color x:Key="ControlAccentColor">MediumPurple</Color>
+  <Color x:Key="ControlForegroundColor">White</Color>
+  <Color x:Key="ControlBackgroundColor">Transparent</Color>
+  <Color x:Key="ControlBorderColor">White</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
 
   <Color x:Key="DefaultTextColor">Black</Color>

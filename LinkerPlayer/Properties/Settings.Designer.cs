@@ -229,13 +229,13 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string EqualizerBandName {
+        [global::System.Configuration.DefaultSettingValueAttribute("Flat")]
+        public string EqualizerProfileName {
             get {
-                return ((string)(this["EqualizerBandName"]));
+                return ((string)(this["EqualizerProfileName"]));
             }
             set {
-                this["EqualizerBandName"] = value;
+                this["EqualizerProfileName"] = value;
             }
         }
         

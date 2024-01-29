@@ -4,12 +4,14 @@
   <Color x:Key="TitleBarBackgroundColor">#40586A</Color>
 
   <Color x:Key="MainWindowGradientStartColor">#40586A</Color>
-  <Color x:Key="MainWindowGradientEndColor">#597080</Color>
+  <Color x:Key="MainWindowGradientEndColor">#668396</Color>
 
   <Color x:Key="ChildWindowBackgroundColor">#475966</Color>
 
-  <Color x:Key="ControlPrimaryAccentColor">DeepSkyBlue</Color>
-  <Color x:Key="ControlSecondaryAccentColor">DarkCyan</Color>
+  <Color x:Key="ControlAccentColor">#007AD9</Color>
+  <Color x:Key="ControlForegroundColor">White</Color>
+  <Color x:Key="ControlBackgroundColor">Transparent</Color>
+  <Color x:Key="ControlBorderColor">#BBBBBB</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
 
   <Color x:Key="DefaultTextColor">White</Color>

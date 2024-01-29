@@ -6,8 +6,10 @@
   <SolidColorBrush x:Key="TitleBarForegroundBrush" Color="{DynamicResource TitleBarForegroundColor}" />
   <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="{DynamicResource TitleBarBackgroundColor}" />
 
-  <SolidColorBrush x:Key="ControlPrimaryAccentBrush" Color="{DynamicResource ControlPrimaryAccentColor}" />
-  <SolidColorBrush x:Key="ControlSecondaryAccentBrush" Color="{DynamicResource ControlSecondaryAccentColor}" />
+  <SolidColorBrush x:Key="ControlAccentBrush" Color="{DynamicResource ControlAccentColor}" />
+  <SolidColorBrush x:Key="ControlForegroundBrush" Color="{DynamicResource ControlForegroundColor}" />
+  <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{DynamicResource ControlBackgroundColor}" />
+  <SolidColorBrush x:Key="ControlBorderBrush" Color="{DynamicResource ControlBorderColor}" />
   <SolidColorBrush x:Key="ControlDisabledBrush" Color="{DynamicResource ControlDisabledColor}" />
 
   <SolidColorBrush x:Key="DefaultTextBrush" Color="{DynamicResource DefaultTextColor}" />

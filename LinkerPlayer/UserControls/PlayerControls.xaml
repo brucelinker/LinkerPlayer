@@ -15,7 +15,6 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CircularButton.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/TransparentButton.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <converters:EnumBooleanConverter x:Key="PlayerStateToIconConverter">

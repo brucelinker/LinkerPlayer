@@ -364,7 +364,7 @@ public partial class PlayerControls
 
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
-        bool isEqualizerWindowOpen = false;
+        //bool isEqualizerWindowOpen = false;
 
         //if (_isEqualizerWindowOpen)
         //{
@@ -391,16 +391,16 @@ public partial class PlayerControls
 
         if (win.AudioStreamControl.MainMusic!.IsEqualizerWorking)
         {
-            equalizerWindow.StartStopText.Text = "Stop";
+            equalizerWindow.StartStopText.Content = "Stop";
         }
         else
         {
-            equalizerWindow.StartStopText.Text = "Start";
+            equalizerWindow.StartStopText.Content = "Start";
         }
 
         equalizerWindow.LoadSelectedBand(win.SelectedBandsSettings);
 
-        if (equalizerWindow.StartStopText.Text == "Start")
+        if (equalizerWindow.StartStopText.Content.Equals("Start"))
         {
             equalizerWindow.ButtonsSetEnabledState(false);
             equalizerWindow.SliderSetEnabledState(false);

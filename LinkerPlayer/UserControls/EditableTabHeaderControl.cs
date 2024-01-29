@@ -36,7 +36,7 @@ public class EditableTabHeaderControl : ContentControl
         }
         set
         {
-            if (string.IsNullOrEmpty(_textBox.Text))
+            if (string.IsNullOrEmpty(_textBox!.Text))
             {
                 _textBox.Text = _oldText;
             }
@@ -72,18 +72,18 @@ public class EditableTabHeaderControl : ContentControl
     public void SetEditMode(bool value)
     {
         IsInEditMode = value;
-        _timer.Start();
+        _timer!.Start();
     }
 
     private void TimerTick(object sender, EventArgs e)
     {
-        _timer.Stop();
+        _timer!.Stop();
         MoveTextBoxInFocus();
     }
 
     private void MoveTextBoxInFocus()
     {
-        if (_textBox.CheckAccess())
+        if (_textBox!.CheckAccess())
         {
             if (!string.IsNullOrEmpty(_textBox.Text))
             {

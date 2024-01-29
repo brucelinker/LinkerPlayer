@@ -7,14 +7,13 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
   Title="Settings"
-  Width="510"
-  Height="300"
-  MinWidth="510"
-  MinHeight="300"
-  AllowsTransparency="True"
+  MinWidth="420"
+  MinHeight="200"
   Closing="Window_Closing"
   Loaded="Window_Loaded"
-  MouseDown="Window_MouseDown"
+  ResizeMode="NoResize"
+  ShowInTaskbar="False"
+  SizeToContent="WidthAndHeight"
   WindowStyle="None"
   mc:Ignorable="d">
 
@@ -23,7 +22,12 @@
   </WindowChrome.WindowChrome>
 
   <Window.Resources>
-    <Style x:Key="CloseButton" TargetType="{x:Type Button}">
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
+<Style x:Key="CloseButton" TargetType="{x:Type Button}">
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type Button}">
@@ -60,26 +64,31 @@
       <Setter Property="Height" Value="27" />
     </Style>
 
-    <Style TargetType="Grid">
-      <Setter Property="Margin" Value="0,0,0,20" />
-    </Style>
+    <!--<Style TargetType="Grid">
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>-->
 
     <Style TargetType="materialDesign:PackIcon">
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
 
+    </ResourceDictionary>
   </Window.Resources>
 
   <Grid Focusable="True">
     <Grid.RowDefinitions>
-      <RowDefinition Height="55" />
+      <RowDefinition Height="45" />
       <RowDefinition />
-      <RowDefinition Height="Auto" />
+      <RowDefinition />
     </Grid.RowDefinitions>
 
     <Grid.Background>
-      <SolidColorBrush Color="{DynamicResource ChildWindowBackgroundColor}" />
+      <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
+        <GradientStop Offset=".1" Color="{DynamicResource MainWindowGradientStartColor}" />
+        <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientEndColor}" />
+      </LinearGradientBrush>
     </Grid.Background>
 
     <Grid Grid.Row="0">
@@ -117,17 +126,22 @@
     </Grid>
 
     <Grid Grid.Row="1">
-      <StackPanel Margin="30,20,30,0">
+      <StackPanel Margin="30,10,30,0">
 
         <!--  Main Output Device  -->
-        <Grid>
+        <Grid Margin="0, 0, 0, 18">
+
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150" />
             <ColumnDefinition Width="10" />
             <ColumnDefinition />
           </Grid.ColumnDefinitions>
 
-          <TextBlock Grid.Column="0" HorizontalAlignment="Right">Main Output Device:</TextBlock>
+          <TextBlock 
+            Grid.Column="0" 
+            HorizontalAlignment="Right"
+            Text="Main Output Device:"
+            />
 
           <ComboBox
             Name="MainOutputDevicesList"
@@ -135,6 +149,7 @@
             Foreground="Black" />
         </Grid>
 
+        <!--  Color Theme  -->
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150" />
@@ -142,7 +157,11 @@
             <ColumnDefinition Width="100" />
           </Grid.ColumnDefinitions>
 
-          <TextBlock Grid.Column="0" HorizontalAlignment="Right">Color Theme:</TextBlock>
+          <TextBlock 
+            Grid.Column="0" 
+            HorizontalAlignment="Right" 
+            Text="Color Theme:" />
+
           <ComboBox
             x:Name="ThemesList"
             Grid.Column="2"
@@ -192,25 +211,28 @@
       </StackPanel>
     </Grid>
 
-    <Button
-      Grid.Row="2"
-      Width="100"
-      Height="30"
-      Margin="0,0,25,25"
-      HorizontalAlignment="Center"
-      Background="Transparent"
-      Click="Save_Click"
-      Content="Save"
-      Foreground="{DynamicResource ControlPrimaryAccentBrush}"
-      Style="{DynamicResource TransparentButton}" />
-
     <materialDesign:Snackbar
       Name="InfoSnackbar"
-      Foreground="#FAFAFA"
-      BorderBrush="red"
-      HorizontalAlignment="Center"
       Grid.Row="1"
+      HorizontalAlignment="Center"
+      BorderBrush="red"
+      Foreground="#FAFAFA"
       IsActive="True"
       MessageQueue="{materialDesign:MessageQueue}" />
+
+    <Grid Grid.Row="2" VerticalAlignment="Bottom" Background="{DynamicResource MainWindowGradientStartBrush}">
+      <Button
+        Width="100"
+        Height="30"
+        Margin="0,7,0,7"
+        HorizontalAlignment="Center"
+        Click="Save_Click"
+        Content="Save"
+        FontSize="18"
+        FontWeight="Light"
+        Foreground="{DynamicResource ControlForegroundBrush}"
+        Style="{StaticResource LinkerRectangleButton}" />
+    </Grid>
+
   </Grid>
 </Window>

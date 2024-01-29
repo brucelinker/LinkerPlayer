@@ -112,7 +112,7 @@ public partial class MainWindow
         //    AudioStreamControl.AdditionalMusic.StoppedEvent += Music_StoppedEvent!;
         //}
 
-        PlaylistTabsViewModel.LoadPlaylists();
+        PlaylistTabsViewModel.LoadPlaylistTabs();
 
         //PlayerControls.PlayButton.Click += PlayButton_Click;
         //PlayerControls.PrevButton.Click += PrevButton_Click;
@@ -128,11 +128,11 @@ public partial class MainWindow
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
-            if (!String.IsNullOrEmpty(Properties.Settings.Default.EqualizerBandName))
+            if (!String.IsNullOrEmpty(Properties.Settings.Default.EqualizerProfileName))
             {
-                SelectedBandsSettings = new BandsSettings() { Name = Properties.Settings.Default.EqualizerBandName };
+                SelectedBandsSettings = new BandsSettings() { Name = Properties.Settings.Default.EqualizerProfileName ?? "Flat" };
 
-                AudioStreamControl.InitializeEqualizer(Properties.Settings.Default.EqualizerBandName);
+                AudioStreamControl.InitializeEqualizer(Properties.Settings.Default.EqualizerProfileName);
             }
         }
 
@@ -170,33 +170,7 @@ public partial class MainWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        MusicLibrary.ClearPlayState();
-
-        string? lastSelectedPlaylistName = Properties.Settings.Default.LastSelectedPlaylistName;
-
-        if (!string.IsNullOrEmpty(lastSelectedPlaylistName))
-        {
-            SelectedPlaylist = MusicLibrary.GetPlaylists().Find(p => p.Name == lastSelectedPlaylistName);
-
-            if (SelectedPlaylist != null)
-            {
-                SelectPlaylistByName(lastSelectedPlaylistName);
-
-                string? lastSelectedSongId = Properties.Settings.Default.LastSelectedSongId;
-
-                if (!string.IsNullOrEmpty(lastSelectedSongId))
-                {
-                    SelectedTrack = MusicLibrary.GetSongsFromPlaylist(lastSelectedPlaylistName)
-                        .Find(s => s.Id == lastSelectedSongId);
-
-                    if (SelectedTrack != null)
-                    {
-                        _playlistTabsViewModel.SelectTrack(SelectedTrack);
-                    }
-                }
-            }
-        }
-
+        _playlistTabsViewModel.InitializePlaylists();
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
 
@@ -327,26 +301,26 @@ public partial class MainWindow
         }
     }
 
-    public void SelectPlaylistByName(string name)
-    {
-        //Log.Information("MainWindow - SelectPlaylistByName");
+    //public void SelectPlaylistByName(string name)
+    //{
+    //    //Log.Information("MainWindow - SelectPlaylistByName");
 
-        if (SelectedPlaylist != null && string.Equals(SelectedPlaylist.Name, name) && PlaylistLoaded)
-        {
-            return;
-        }
+    //    if (SelectedPlaylist != null && string.Equals(SelectedPlaylist.Name, name) && PlaylistLoaded)
+    //    {
+    //        return;
+    //    }
 
-        foreach (Playlist playlist in MusicLibrary.GetPlaylists())
-        {
-            if (playlist.Name == name)
-            {
-                SelectedPlaylist = playlist;
-                //PlaylistLoaded = LoadSelectedPlaylist();
+    //    foreach (Playlist playlist in MusicLibrary.GetPlaylists())
+    //    {
+    //        if (playlist.Name == name)
+    //        {
+    //            SelectedPlaylist = playlist;
+    //            //PlaylistLoaded = LoadSelectedPlaylist();
 
-                break;
-            }
-        }
-    }
+    //            break;
+    //        }
+    //    }
+    //}
 
     //private bool LoadSelectedPlaylist()
     //{
@@ -471,7 +445,7 @@ public partial class MainWindow
         Properties.Settings.Default.VolumeSliderValue = PlayerControls.VolumeSlider.Value;
         //Properties.Settings.Default.AdditionalVolumeSliderValue = PlayerControls.AdditionalVolumeSlider.Value;
 
-        Properties.Settings.Default.LastSelectedPlaylistName = SelectedPlaylist != null ? SelectedPlaylist.Name : "";
+        Properties.Settings.Default.LastSelectedPlaylistName = _playlistTabsViewModel.SelectedPlaylist!.Name;
         Properties.Settings.Default.LastSelectedSongId = SelectedTrack != null ? SelectedTrack.Id : "";
         Properties.Settings.Default.ShuffleMode = _playerControlsViewModel.ShuffleMode;
 
@@ -482,7 +456,7 @@ public partial class MainWindow
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
-            Properties.Settings.Default.EqualizerBandName =
+            Properties.Settings.Default.EqualizerProfileName =
                 SelectedBandsSettings != null! ? SelectedBandsSettings.Name : null;
         }
 
