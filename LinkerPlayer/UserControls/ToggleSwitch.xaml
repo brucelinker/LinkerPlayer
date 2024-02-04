@@ -24,7 +24,7 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <Style x:Key="ToggleSwitchButton" TargetType="{x:Type Button}">
+    <Style x:Key="ToggleSwitchButton" x:Name="ToggleSwitch" TargetType="{x:Type Button}">
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
       <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
       <Setter Property="BorderThickness" Value="1" />

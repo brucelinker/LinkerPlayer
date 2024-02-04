@@ -216,35 +216,23 @@
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="50" />
           <ColumnDefinition />
-          <!--<ColumnDefinition Width="20*" />-->
         </Grid.ColumnDefinitions>
-
-        <!--<Border Grid.Column="0" BorderBrush="White" BorderThickness="2" />
-        <Border Grid.Column="1" BorderBrush="White" BorderThickness="2" />-->
-
-        <!--<Grid.RowDefinitions>
-          <RowDefinition Height="0*" />
-          <RowDefinition Height="0*" />
-          <RowDefinition Height="100*" />
-        </Grid.RowDefinitions>-->
 
         <ToggleButton
           Name="MuteButton"
           Grid.Column="0"
           Width="36"
           Height="36"
-          VerticalAlignment="Center"
-          HorizontalContentAlignment="Center"
           Command="{Binding MuteCommand}"
+          CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
           ToolTip="Mute (m)">
           <ToggleButton.Style>
-            <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="{x:Type ToggleButton}">
+            <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
               <Setter Property="Content" Value="{iconPacks:Octicons Unmute, Width=15, Height=15}" />
               <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
               <Style.Triggers>
                 <Trigger Property="IsChecked" Value="true">
                   <Setter Property="Content" Value="{iconPacks:Octicons Mute, Width=15, Height=15}" />
-                  <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
                 </Trigger>
               </Style.Triggers>
             </Style>
@@ -257,8 +245,7 @@
           Margin="6,0,10,0"
           VerticalAlignment="Center"
           Maximum="100"
-          Style="{StaticResource CustomHorizontalSlider}"
-          ValueChanged="VolumeSlider_ValueChanged" />
+          Style="{StaticResource CustomHorizontalSlider}" />
 
       </Grid>
 
@@ -268,9 +255,6 @@
           <ColumnDefinition />
         </Grid.ColumnDefinitions>
 
-        <!--<Border Grid.Column="0" BorderBrush="Cyan" BorderThickness="1" />
-        <Border Grid.Column="1" BorderBrush="Cyan" BorderThickness="1" />-->
-
         <ToggleButton
           Name="ShuffleModeButton"
           Grid.Column="0"
@@ -278,7 +262,8 @@
           Height="36"
           Margin="0,0,0,0"
           Command="{Binding ShuffleCommand}"
-          CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}">
+          CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
+          ToolTip="Shuffle (s)">
           <ToggleButton.Style>
             <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
               <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />

@@ -7,7 +7,6 @@ using LinkerPlayer.Windows;
 using Serilog;
 using System.IO;
 using System.Windows;
-using System.Windows.Input;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -157,8 +156,9 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     private void Mute(bool isMuted)
     {
         IsMuted = isMuted;
+        WeakReferenceMessenger.Default.Send(new MuteMessage(isMuted));
     }
-    
+
     private bool CanPlayPause()
     {
         return true;

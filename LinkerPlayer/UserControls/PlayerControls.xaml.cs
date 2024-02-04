@@ -4,7 +4,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
-using MaterialDesignThemes.Wpf;
 using NAudio.Wave;
 using System;
 using System.Collections.Generic;
@@ -12,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -39,6 +39,11 @@ public partial class PlayerControls
         WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (r, m) =>
         {
             OnDataGridPlay(m.Value);
+        });
+
+        WeakReferenceMessenger.Default.Register<MuteMessage>(this, (r, m) =>
+        {
+            OnMuteChanged(m.Value);
         });
 
     }
@@ -309,81 +314,61 @@ public partial class PlayerControls
         }
     }
 
-    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        PackIcon? icon = MuteButton.Content as PackIcon;
-        double val = VolumeSlider.Value;
+    //private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    //{
+    //    PackIcon? icon = MuteButton.Content as PackIcon;
+    //    double val = VolumeSlider.Value;
 
-        if (val == 0)
+    //    if (val == 0)
+    //    {
+    //        if (icon != null) icon.Kind = PackIconKind.VolumeMute;
+    //    }
+    //    else if (val < 50)
+    //    {
+    //        if (icon != null) icon.Kind = PackIconKind.VolumeMedium;
+    //    }
+    //    else if (val >= 50)
+    //    {
+    //        if (icon != null) icon.Kind = PackIconKind.VolumeHigh;
+    //    }
+    //}
+
+    double _mainVolumeSliderBeforeMuteValue;
+
+    private void OnMuteChanged(bool isMuted)
+    {
+        if (isMuted)
         {
-            if (icon != null) icon.Kind = PackIconKind.VolumeMute;
+            _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
+
+            AnimateVolumeSliderValue(VolumeSlider, 0);
         }
-        else if (val < 50)
+        else
         {
-            if (icon != null) icon.Kind = PackIconKind.VolumeMedium;
-        }
-        else if (val >= 50)
-        {
-            if (icon != null) icon.Kind = PackIconKind.VolumeHigh;
+            AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
         }
     }
 
-    //double _mainVolumeSliderBeforeMuteValue;
+    private void AnimateVolumeSliderValue(Slider slider, double newVal)
+    {
+        DoubleAnimation doubleAnimation = new DoubleAnimation
+        {
+            From = slider.Value,
+            To = newVal,
+            Duration = TimeSpan.FromMilliseconds(300),
+            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
+        };
 
-    //private void MainVolumeButton_Click(object sender, RoutedEventArgs e)
-    //{
-    //    if (VolumeSlider.Value != 0)
-    //    {
-    //        _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
-
-    //        AnimateVolumeSliderValue(VolumeSlider, 0);
-    //    }
-    //    else
-    //    {
-    //        AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
-    //    }
-    //}
-
-    //private void ShuffleModeButton_Click(object sender, RoutedEventArgs e)
-    //{
-    //    _playerControlsViewModel.ShuffleMode = !_playerControlsViewModel.ShuffleMode;
-    //}
-
-    //private void AnimateVolumeSliderValue(Slider slider, double newVal)
-    //{
-    //    DoubleAnimation doubleAnimation = new DoubleAnimation
-    //    {
-    //        From = slider.Value,
-    //        To = newVal,
-    //        Duration = TimeSpan.FromMilliseconds(300),
-    //        EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-    //    };
-
-    //    slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
-    //}
+        slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
+    }
 
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
-        //bool isEqualizerWindowOpen = false;
-
-        //if (_isEqualizerWindowOpen)
-        //{
-        //    if (_equalizerWin.WindowState == WindowState.Minimized)
-        //    {
-        //        _equalizerWin.WindowState = WindowState.Normal;
-        //    }
-        //    return;
-        //}
-
         EqualizerWindow equalizerWindow = new EqualizerWindow
         {
             Owner = Window.GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
-
-        //equalizerWindow.Closed += (_, _) => { isEqualizerWindowOpen = false; };
-        //equalizerWindow.Closing += (_, _) => { equalizerWindow.Owner = null; };
-        //isEqualizerWindowOpen = true;
 
         equalizerWindow.Show();
 
@@ -400,7 +385,7 @@ public partial class PlayerControls
 
         equalizerWindow.LoadSelectedBand(win.SelectedBandsSettings);
 
-        if (equalizerWindow.StartStopText.Content.Equals("Start"))
+        if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
             equalizerWindow.ButtonsSetEnabledState(false);
             equalizerWindow.SliderSetEnabledState(false);

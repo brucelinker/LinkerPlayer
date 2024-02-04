@@ -96,13 +96,13 @@ public partial class MainWindow
 
         AudioStreamControl.MainMusic!.MusicVolume = (float)Properties.Settings.Default.VolumeSliderValue / 100;
 
-        if (Properties.Settings.Default.AdditionalOutputEnabled &&
-            !string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
-        {
-            //AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice);
-            AudioStreamControl.AdditionalMusic!.MusicVolume =
-                (float)Properties.Settings.Default.AdditionalVolumeSliderValue / 100;
-        }
+        //if (Properties.Settings.Default.AdditionalOutputEnabled &&
+        //    !string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
+        //{
+        //    //AudioStreamControl.ActivateAdditionalMusic(Properties.Settings.Default.AdditionalOutputDevice);
+        //    AudioStreamControl.AdditionalMusic!.MusicVolume =
+        //        (float)Properties.Settings.Default.AdditionalVolumeSliderValue / 100;
+        //}
 
         AudioStreamControl.MainMusic.StoppedEvent += Music_StoppedEvent!;
 
@@ -147,7 +147,7 @@ public partial class MainWindow
         // Sets the theme
         SelectedTheme = ThemeManager.ModifyTheme(SelectedTheme);
 
-        PlayerControls.VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
+        //PlayerControls.VolumeSlider.ValueChanged += VolumeSlider_ValueChanged;
         //PlayerControls.AdditionalVolumeSlider.ValueChanged += AdditionalVolumeSlider_ValueChanged;
 
         //PlaylistTabs.ClickRowElement += Song_Click;
@@ -173,10 +173,10 @@ public partial class MainWindow
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
 
-    private void VolumeSlider_ValueChanged(object sender, EventArgs e)
-    {
-        AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.VolumeSlider.Value / 100;
-    }
+    //private void VolumeSlider_ValueChanged(object sender, EventArgs e)
+    //{
+    //    AudioStreamControl.MainMusic!.MusicVolume = (float)PlayerControls.VolumeSlider.Value / 100;
+    //}
 
     public void Music_StoppedEvent(object? sender, EventArgs e)
     {

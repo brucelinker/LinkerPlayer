@@ -5,12 +5,6 @@
     <Setting Name="SelectedTheme" Type="System.String" Scope="User">
       <Value Profile="(Default)">Dark</Value>
     </Setting>
-    <Setting Name="VisualizationEnabled" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="AdditionalOutputEnabled" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
     <Setting Name="VolumeSliderValue" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
@@ -35,21 +29,6 @@
     <Setting Name="AdditionalOutputDevice" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="PlayPauseHotkey" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="NextSongHotkey" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="PreviousSongHotkey" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="IncreaseMainVolumeHotkey" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
-    <Setting Name="DecreaseMainVolumeHotkey" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
-    </Setting>
     <Setting Name="EqualizerOnStartEnabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
@@ -59,10 +38,10 @@
     <Setting Name="FontSize" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">9</Value>
     </Setting>
-    <Setting Name="AdditionalVolumeSliderValue" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
     <Setting Name="ShuffleMode" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="VisualizationEnabled" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
   </Settings>

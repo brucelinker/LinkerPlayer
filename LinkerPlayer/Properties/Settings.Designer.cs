@@ -37,30 +37,6 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool VisualizationEnabled {
-            get {
-                return ((bool)(this["VisualizationEnabled"]));
-            }
-            set {
-                this["VisualizationEnabled"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool AdditionalOutputEnabled {
-            get {
-                return ((bool)(this["AdditionalOutputEnabled"]));
-            }
-            set {
-                this["AdditionalOutputEnabled"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public double VolumeSliderValue {
             get {
@@ -157,66 +133,6 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string PlayPauseHotkey {
-            get {
-                return ((string)(this["PlayPauseHotkey"]));
-            }
-            set {
-                this["PlayPauseHotkey"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string NextSongHotkey {
-            get {
-                return ((string)(this["NextSongHotkey"]));
-            }
-            set {
-                this["NextSongHotkey"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string PreviousSongHotkey {
-            get {
-                return ((string)(this["PreviousSongHotkey"]));
-            }
-            set {
-                this["PreviousSongHotkey"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string IncreaseMainVolumeHotkey {
-            get {
-                return ((string)(this["IncreaseMainVolumeHotkey"]));
-            }
-            set {
-                this["IncreaseMainVolumeHotkey"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string DecreaseMainVolumeHotkey {
-            get {
-                return ((string)(this["DecreaseMainVolumeHotkey"]));
-            }
-            set {
-                this["DecreaseMainVolumeHotkey"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool EqualizerOnStartEnabled {
             get {
@@ -253,18 +169,6 @@ namespace LinkerPlayer.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("0")]
-        public double AdditionalVolumeSliderValue {
-            get {
-                return ((double)(this["AdditionalVolumeSliderValue"]));
-            }
-            set {
-                this["AdditionalVolumeSliderValue"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool ShuffleMode {
             get {
@@ -272,6 +176,18 @@ namespace LinkerPlayer.Properties {
             }
             set {
                 this["ShuffleMode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool VisualizationEnabled {
+            get {
+                return ((bool)(this["VisualizationEnabled"]));
+            }
+            set {
+                this["VisualizationEnabled"] = value;
             }
         }
     }
