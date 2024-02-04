@@ -8,10 +8,14 @@
 
   <Color x:Key="ChildWindowBackgroundColor">#333333</Color>
 
-  <Color x:Key="ControlAccentColor">#673AB7</Color>
+  <Color x:Key="ControlAccentLightColor">#673AB7</Color>
+  <Color x:Key="ControlAccentDarkColor">#673AB7</Color>
   <Color x:Key="ControlForegroundColor">White</Color>
   <Color x:Key="ControlBackgroundColor">Transparent</Color>
-  <Color x:Key="ControlBorderColor">White</Color>
+  <Color x:Key="ControlBorderLightColor">#FFAAAAAA</Color>
+  <Color x:Key="ControlBorderDarkColor">#FF888888</Color>
+  <Color x:Key="ControlMouseOverColor">SteelBlue</Color>
+  <Color x:Key="ControlPressedColor">#FF211AA9</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
 
   <Color x:Key="DefaultTextColor">White</Color>

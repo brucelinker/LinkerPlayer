@@ -27,8 +27,8 @@
         <ControlTemplate TargetType="RepeatButton">
           <Border
             Height="6"
-            Background="{DynamicResource ControlAccentBrush}"
-            BorderBrush="{DynamicResource ControlAccentBrush}"
+            Background="{DynamicResource ControlAccentDarkBrush}"
+            BorderBrush="{DynamicResource ControlAccentDarkBrush}"
             BorderThickness="1"
             CornerRadius="2"
             SnapsToDevicePixels="True" />
@@ -48,10 +48,10 @@
             x:Name="Ellipse"
             Width="20"
             Height="20"
-            Fill="{DynamicResource ControlAccentBrush}" />
+            Fill="{DynamicResource ControlAccentDarkBrush}" />
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter TargetName="Ellipse" Property="Fill" Value="Yellow" />
+              <Setter TargetName="Ellipse" Property="Fill" Value="{DynamicResource ControlMouseOverBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -84,6 +84,7 @@
     <Setter Property="Focusable" Value="False" />
     <Setter Property="SnapsToDevicePixels" Value="true" />
     <Setter Property="OverridesDefaultStyle" Value="true" />
+    <Setter Property="IsMoveToPointEnabled" Value="true" />
     <Style.Triggers>
       <Trigger Property="Orientation" Value="Horizontal">
         <Setter Property="MinHeight" Value="21" />

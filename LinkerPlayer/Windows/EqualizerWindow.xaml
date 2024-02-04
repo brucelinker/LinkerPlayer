@@ -6,6 +6,7 @@
   xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   Title="Equalizer"
   Width="500"
   Height="351"
@@ -147,26 +148,13 @@
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
-      <!--<StackPanel
+      <userControls:ToggleSwitch
+        x:Name="EqSwitch"
         Grid.Column="0"
-        Margin="0,4,0,0"
+        Margin="18, 0, 0, 0"
         HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        Orientation="Horizontal">-->
-        <mah:ToggleSwitch
-          Name="EqSwitch"
-          Grid.Column="0"
-          MinWidth="80"
-          BorderBrush="red"
-          Foreground="White"
-          Background="orange"
-          BorderThickness="1"
-          HorizontalAlignment="Center"
-          IsOn="{Binding Equalizer.IsEnabled}"
-          OffContent="Off"
-          OnContent="On"
-          Toggled="ToggleSwitch_Toggled" />
-      <!--</StackPanel>-->
+        IsOn="{Binding IsOn}"
+        BorderBrush="{DynamicResource ControlBorderBrush}" />
 
       <ComboBox
         Name="Profiles"
@@ -180,9 +168,6 @@
         IsTextSearchEnabled="false"
         SelectionChanged="Profiles_SelectionChanged"
         ToolTip="Profiles">
-        <!--<ComboBox.Resources>
-          <SolidColorBrush x:Key="MaterialDesignPaper" Color="#212128" />
-        </ComboBox.Resources>-->
       </ComboBox>
 
       <Grid x:Name="ControlButtons" Grid.Column="2">
@@ -414,7 +399,7 @@
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
           FontFamily="/Fonts/#Montserrat"
-          Foreground="{DynamicResource ControlAccentBrush}"
+          Foreground="{DynamicResource ControlAccentDarkBrush}"
           Text="Start" />
       </Button>-->
 

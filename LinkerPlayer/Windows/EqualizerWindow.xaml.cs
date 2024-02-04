@@ -27,6 +27,10 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
         EqualizerSettings.LoadFromJson();
         UpdateProfiles();
+
+        EqSwitch.Switched += OnEqSwitched;
+
+        EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
     }
 
     public float Maximum => _mainWindow!.AudioStreamControl.MainMusic!.MaximumGain;
@@ -152,7 +156,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
     private void ReloadButton_Click(object sender, RoutedEventArgs e)
     {
-        for (int i = 0; i < 8; i++)
+        for (int i = 0; i < 10; i++)
         {
             AnimationChangingSliderValue(i, 0);
         }
@@ -162,14 +166,14 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     {
         //if (StartStopText.Content.Equals("Stop"))
         //{
-            if (!String.IsNullOrEmpty(Profiles.SelectedItem as String))
-            {
-                BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
+        if (!String.IsNullOrEmpty(Profiles.SelectedItem as String))
+        {
+            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
 
-                bandsSettings!.EqualizerBands = _mainWindow!.AudioStreamControl.MainMusic!.GetBandsList();
+            bandsSettings!.EqualizerBands = _mainWindow!.AudioStreamControl.MainMusic!.GetBandsList();
 
-                EqualizerSettings.SaveToJson();
-            }
+            EqualizerSettings.SaveToJson();
+        }
         //}
     }
 
@@ -177,22 +181,22 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     {
         //if (StartStopText.Content.Equals("Stop"))
         //{
-            if (!String.IsNullOrEmpty(Profiles.SelectedItem as String))
-            {
-                EqualizerSettings.BandsSettings!.Remove(EqualizerSettings.BandsSettings.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String)!);
+        if (!String.IsNullOrEmpty(Profiles.SelectedItem as String))
+        {
+            EqualizerSettings.BandsSettings!.Remove(EqualizerSettings.BandsSettings.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String)!);
 
-                Profiles.SelectedItem = -1;
+            Profiles.SelectedItem = -1;
 
-                ReloadButton_Click(null!, null!);
+            ReloadButton_Click(null!, null!);
 
-                UpdateProfiles();
+            UpdateProfiles();
 
-                _mainWindow!.SelectedBandsSettings = null!;
+            _mainWindow!.SelectedBandsSettings = null!;
 
-                Log.Information("Delete profile");
+            Log.Information("Delete profile");
 
-                EqualizerSettings.SaveToJson();
-            }
+            EqualizerSettings.SaveToJson();
+        }
         //}
     }
 
@@ -200,8 +204,8 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     {
         //if (StartStopText.Content.Equals("Stop"))
         //{
-            NamePopup.IsOpen = true;
-            NamePopupTextBox.Focus();
+        NamePopup.IsOpen = true;
+        NamePopupTextBox.Focus();
         //}
     }
 
@@ -209,8 +213,8 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     {
         //if (StartStopText.Content.Equals("Stop"))
         //{
-            RenamePopup.IsOpen = true;
-            ReNamePopupTextBox.Focus();
+        RenamePopup.IsOpen = true;
+        ReNamePopupTextBox.Focus();
         //}
     }
 
@@ -367,7 +371,8 @@ public partial class EqualizerWindow : INotifyPropertyChanged
             Duration = TimeSpan.FromMilliseconds(500)
         };
 
-        doubleAnimation.Completed += (_, _) => {
+        doubleAnimation.Completed += (_, _) =>
+        {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = GetBand(index);
         };
@@ -443,16 +448,16 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         (((sender as Button)?.Content as Image)!).Opacity = 0.6;
     }
 
-    private void ToggleSwitch_Toggled(object sender, RoutedEventArgs e)
+    private void OnEqSwitched(object? sender, EventArgs e)
     {
-        if (sender is ToggleSwitch toggleSwitch)
-        {
-            if (toggleSwitch.IsOn == true)
-            {
-                MainWindow? win = Owner as MainWindow;
+        MainWindow? win = Owner as MainWindow;
 
-                //if (win!.AudioStreamControl.PathToMusic != null)
-                //{
+        if (win == null) { return; }
+
+        if (EqSwitch.IsOn)
+        {
+            if (win!.AudioStreamControl.PathToMusic != null)
+            {
                 win!.AudioStreamControl.InitializeEqualizer();
 
                 if (win.AudioStreamControl.MainMusic!.IsPlaying)
@@ -467,24 +472,25 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
                 Profiles_SelectionChanged(null!, null!);
             }
-            else
-            {
-                MainWindow? win = Owner as MainWindow;
-
-                win!.AudioStreamControl.StopEqualizer();
-
-                if (win.AudioStreamControl.MainMusic!.IsPlaying)
-                {
-                    win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
-                }
-
-                SliderSetEnabledState(false);
-                ButtonsSetEnabledState(false);
-
-                StartStopText.Content = "Start";
-
-                ReloadButton_Click(null!, null!);
-            }
         }
+        else
+        {
+            win!.AudioStreamControl.StopEqualizer();
+
+            if (win.AudioStreamControl.MainMusic!.IsPlaying)
+            {
+                win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+            }
+
+            SliderSetEnabledState(false);
+            ButtonsSetEnabledState(false);
+
+            StartStopText.Content = "Start";
+
+            ReloadButton_Click(null!, null!);
+        }
+
+        Properties.Settings.Default.EqualizerOnStartEnabled = EqSwitch.IsOn;
     }
 }
+
