@@ -180,7 +180,7 @@ public partial class MainWindow
 
     public void Music_StoppedEvent(object? sender, EventArgs e)
     {
-        if ((AudioStreamControl.CurrentTrackPosition + 0.3) >= AudioStreamControl.CurrentTrackLength)
+        if ((AudioStreamControl.CurrentTrackPosition + 10.0) >= AudioStreamControl.CurrentTrackLength)
         {
             SeekBarTimer.Stop();
             _playerControlsViewModel.NextTrack();

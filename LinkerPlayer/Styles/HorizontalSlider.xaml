@@ -46,8 +46,8 @@
           <!--  Add name to ellipse to use in  controltemplate triggers  -->
           <Ellipse
             x:Name="Ellipse"
-            Width="20"
-            Height="20"
+            Width="16"
+            Height="16"
             Fill="{DynamicResource ControlAccentDarkBrush}" />
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">

@@ -29,8 +29,8 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         UpdateProfiles();
 
         EqSwitch.Switched += OnEqSwitched;
-
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
+        OnEqSwitched(null, EventArgs.Empty);
     }
 
     public float Maximum => _mainWindow!.AudioStreamControl.MainMusic!.MaximumGain;
@@ -460,10 +460,10 @@ public partial class EqualizerWindow : INotifyPropertyChanged
             {
                 win!.AudioStreamControl.InitializeEqualizer();
 
-                //if (win.AudioStreamControl.MainMusic!.IsPlaying)
-                //{
-                //    win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
-                //}
+                if (win.AudioStreamControl.MainMusic!.IsPlaying)
+                {
+                    win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+                }
 
                 SliderSetEnabledState(true);
                 ButtonsSetEnabledState(true);
@@ -477,10 +477,10 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             win!.AudioStreamControl.StopEqualizer();
 
-            //if (win.AudioStreamControl.MainMusic!.IsPlaying)
-            //{
-            //    win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
-            //}
+            if (win.AudioStreamControl.MainMusic!.IsPlaying)
+            {
+                win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+            }
 
             SliderSetEnabledState(false);
             ButtonsSetEnabledState(false);

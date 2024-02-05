@@ -14,21 +14,27 @@
             Background="{DynamicResource ControlDisabledBrush}"
             BorderBrush="{DynamicResource ControlDisabledBrush}"
             BorderThickness="1">
-            <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            <ContentPresenter
+              x:Name="contentPresenter"
+              Margin="{TemplateBinding Padding}"
+              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+              Focusable="False"
+              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter Property="Background" TargetName="increaseBorder" Value="{StaticResource ControlMouseOverBrush}"/>
-              <Setter Property="BorderBrush" TargetName="increaseBorder" Value="{StaticResource ControlBorderDarkBrush}"/>
+              <Setter TargetName="increaseBorder" Property="Background" Value="{StaticResource ControlMouseOverBrush}" />
+              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="true">
-              <Setter Property="Background" TargetName="increaseBorder" Value="{StaticResource ControlBackgroundBrush}"/>
-              <Setter Property="BorderBrush" TargetName="increaseBorder" Value="{StaticResource ControlBorderDarkBrush}"/>
+              <Setter TargetName="increaseBorder" Property="Background" Value="{StaticResource ControlBackgroundBrush}" />
+              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="false">
-              <Setter Property="Opacity" TargetName="contentPresenter" Value="0.56"/>
-              <Setter Property="Background" TargetName="increaseBorder" Value="{StaticResource ControlDisabledBrush}"/>
-              <Setter Property="BorderBrush" TargetName="increaseBorder" Value="{StaticResource ControlDisabledBrush}"/>
+              <Setter TargetName="contentPresenter" Property="Opacity" Value="0.56" />
+              <Setter TargetName="increaseBorder" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
+              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlDisabledBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -49,21 +55,27 @@
             BorderBrush="{DynamicResource ControlAccentDarkBrush}"
             BorderThickness="1"
             SnapsToDevicePixels="True">
-            <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            <ContentPresenter
+              x:Name="contentPresenter"
+              Margin="{TemplateBinding Padding}"
+              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+              Focusable="False"
+              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter Property="Background" TargetName="decreaseBorder" Value="{StaticResource ControlMouseOverBrush}"/>
-              <Setter Property="BorderBrush" TargetName="decreaseBorder" Value="{StaticResource ControlBorderDarkBrush}"/>
+              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlMouseOverBrush}" />
+              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
             </Trigger>
             <Trigger Property="IsPressed" Value="true">
-              <Setter Property="Background" TargetName="decreaseBorder" Value="{StaticResource ControlBackgroundBrush}"/>
-              <Setter Property="BorderBrush" TargetName="decreaseBorder" Value="{StaticResource ControlBorderDarkBrush}"/>
+              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlBackgroundBrush}" />
+              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="false">
-              <Setter Property="Opacity" TargetName="contentPresenter" Value="0.56"/>
-              <Setter Property="Background" TargetName="decreaseBorder" Value="{StaticResource ControlDisabledBrush}"/>
-              <Setter Property="BorderBrush" TargetName="decreaseBorder" Value="{StaticResource ControlDisabledBrush}"/>
+              <Setter TargetName="contentPresenter" Property="Opacity" Value="0.56" />
+              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
+              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlDisabledBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

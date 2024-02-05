@@ -17,6 +17,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 using Application = System.Windows.Application;
 using TabControl = System.Windows.Controls.TabControl;
 
@@ -44,8 +45,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     private static TabControl? _tabControl;
     private static DataGrid? _dataGrid;
-    private readonly List<MediaFile?> _shuffleList = new();
-    private int _shuffledIndex = -1;
+    private static readonly List<MediaFile?> ShuffleList = new();
+    private static int _shuffledIndex = 0;
     private readonly MainWindow _mainWindow;
 
     private const string SupportedAudioFormats = "(*.mp3; *.flac)|*.mp3; *.flac";
@@ -281,7 +282,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             MusicLibrary.SaveToJson();
         }
     }
-    
+
     public MediaFile SelectTrack(Playlist playlist, MediaFile track)
     {
         if (!playlist.Name!.Equals(SelectedPlaylistTab!.Name) && _tabControl != null)
@@ -293,7 +294,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         SelectedIndex = SelectedPlaylistTab!.Tracks.ToList()
             .FindIndex(x => x.Id.Contains(track.Id));
-        
+
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
 
         return SelectedTrack;
@@ -419,36 +420,50 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         if (shuffleMode)
         {
-            if (SelectedPlaylistTab != null && SelectedPlaylistTab!.Tracks.Any())
+            if (SelectedPlaylistTab == null || !SelectedPlaylistTab.Tracks.Any())
             {
-                List<MediaFile> tempList = SelectedPlaylistTab!.Tracks.ToList();
-
-                Random random = new Random();
-
-                while (tempList.Count > 0)
-                {
-                    int index = random.Next(0, tempList.Count - 1);
-
-                    _shuffleList.Add(tempList[index]);
-                    tempList.RemoveAt(index);
-                }
+                return;
             }
+
+            List<MediaFile> tempList = SelectedPlaylistTab!.Tracks.ToList();
+
+            Random random = new Random();
+
+            while (tempList.Count > 0)
+            {
+                int index = random.Next(0, tempList.Count - 1);
+
+                ShuffleList.Add(tempList[index]);
+                tempList.RemoveAt(index);
+            }
+
+            MediaFile? runningTrack = GetRunningTrack();
+
+            if (runningTrack != null)
+            {
+                _shuffledIndex = ShuffleList.FindIndex(x => x.Id == runningTrack.Id);
+            }
+            else
+            {
+                _shuffledIndex = 0;
+            }
+
         }
         else
         {
-            _shuffleList.Clear();
+            ShuffleList.Clear();
         }
     }
 
     private int GetNextShuffledIndex()
     {
-        if (_shuffledIndex == _shuffleList.Count - 1)
+        if (_shuffledIndex == ShuffleList.Count - 1)
             _shuffledIndex = 0;
         else
             _shuffledIndex += 1;
 
         int newIndex = SelectedPlaylistTab!.Tracks.ToList()
-            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
+            .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex]!.Id));
 
         return newIndex;
     }
@@ -456,12 +471,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private int GetPreviousShuffledIndex()
     {
         if (_shuffledIndex == 0)
-            _shuffledIndex = _shuffleList.Count - 1;
+            _shuffledIndex = ShuffleList.Count - 1;
         else
             _shuffledIndex -= 1;
 
         int newIndex = SelectedPlaylistTab!.Tracks.ToList()
-            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex]!.Id));
+            .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex]!.Id));
 
         return newIndex;
     }
@@ -640,5 +655,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 }
             }
         }
+    }
+
+    public PlaylistTab? GetActiveTab()
+    {
+        return TabList.ToList().Find(x => x.HasActiveTrack == true);
     }
 }

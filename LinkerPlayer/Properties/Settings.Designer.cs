@@ -190,5 +190,65 @@ namespace LinkerPlayer.Properties {
                 this["VisualizationEnabled"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string PlayPauseHotkey {
+            get {
+                return ((string)(this["PlayPauseHotkey"]));
+            }
+            set {
+                this["PlayPauseHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string NextSongHotkey {
+            get {
+                return ((string)(this["NextSongHotkey"]));
+            }
+            set {
+                this["NextSongHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string PreviousSongHotkey {
+            get {
+                return ((string)(this["PreviousSongHotkey"]));
+            }
+            set {
+                this["PreviousSongHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string IncreaseMainVolumeHotkey {
+            get {
+                return ((string)(this["IncreaseMainVolumeHotkey"]));
+            }
+            set {
+                this["IncreaseMainVolumeHotkey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string DecreaseMainVolumeHotkey {
+            get {
+                return ((string)(this["DecreaseMainVolumeHotkey"]));
+            }
+            set {
+                this["DecreaseMainVolumeHotkey"] = value;
+            }
+        }
     }
 }
