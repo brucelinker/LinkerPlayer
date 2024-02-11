@@ -1,16 +1,16 @@
 ﻿using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using Serilog;
 using System;
 using System.Windows;
 using System.Windows.Media.Imaging;
-using Serilog;
 
 namespace LinkerPlayer.UserControls;
 
 public partial class TrackInfo
 {
     public MediaFile SelectedMediaFile = new();
-    private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/cdgraphic.png";
+    private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
 
     public TrackInfo()
     {

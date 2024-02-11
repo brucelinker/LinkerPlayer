@@ -68,7 +68,7 @@
       Grid.RowSpan="2"
       Grid.Column="1"
       HorizontalAlignment="Stretch"
-      Background="Transparent"/>
+      Background="Transparent" />
 
     <userControls:PlaylistTabs
       x:Name="PlaylistTabs"

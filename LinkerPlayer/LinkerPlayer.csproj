@@ -44,6 +44,7 @@
     <None Remove="Images\play.png" />
     <None Remove="Images\plus.png" />
     <None Remove="Images\prev.png" />
+    <None Remove="Images\Reel.png" />
     <None Remove="Images\reload.png" />
     <None Remove="Images\restore.png" />
     <None Remove="Images\save.png" />
@@ -158,6 +159,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\prev.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\Reel.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Images\reload.png">

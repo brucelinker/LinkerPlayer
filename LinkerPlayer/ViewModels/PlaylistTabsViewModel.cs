@@ -75,9 +75,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
             _dataGrid.SelectedIndex = SelectedTrackIndex;
             _dataGrid.UpdateLayout();
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
-
-            _shuffleMode = Settings.Default.ShuffleMode;
-            ShuffleTracks(_shuffleMode);
         }
     }
 
@@ -110,6 +107,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 _dataGrid.SelectedItem = SelectedTrack;
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
+
+            _shuffleMode = Settings.Default.ShuffleMode;
+            ShuffleTracks(_shuffleMode);
         }
     }
 
@@ -717,7 +717,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         ActivePlaylistIndex = null;
         ActiveTrackIndex = null;
 
-        string? lastSelectedPlaylistName = Properties.Settings.Default.LastSelectedPlaylistName;
+        string? lastSelectedPlaylistName = Settings.Default.LastSelectedPlaylistName;
 
         if (!string.IsNullOrEmpty(lastSelectedPlaylistName))
         {

@@ -49,21 +49,21 @@
           <Image.Style>
             <Style TargetType="Image">
               <Setter Property="Opacity" Value="1" />
-              <Style.Triggers>
+              <!--<Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                   <Setter Property="Opacity" Value="0.9" />
                   <Setter Property="Cursor" Value="Hand" />
                 </Trigger>
-              </Style.Triggers>
+              </Style.Triggers>-->
             </Style>
           </Image.Style>
         </Image>
         <TextBlock
           x:Name="TrackImageText"
-          Margin="0,0,0,58"
           HorizontalAlignment="Center"
-          VerticalAlignment="Stretch"
-          Height="5"
+          VerticalAlignment="Center"
+          Height="auto"
+          FontSize="20"
           Text="[ No Selection ]" />
 
       </Grid>
