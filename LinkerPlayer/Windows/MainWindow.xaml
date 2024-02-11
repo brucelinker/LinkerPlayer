@@ -45,10 +45,8 @@
     </Grid.RowDefinitions>
 
     <Grid.ColumnDefinitions>
-      <ColumnDefinition
-        Width="25*"
-        MinWidth="240"
-        MaxWidth="340" />
+      <ColumnDefinition Width="25*" />
+      <ColumnDefinition Width="5" />
       <ColumnDefinition Width="75*" />
     </Grid.ColumnDefinitions>
 
@@ -61,18 +59,29 @@
     <userControls:TrackInfo
       x:Name="TrackInfo"
       Grid.Row="1"
-      Grid.Column="0" />
+      Grid.Column="0"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Stretch" />
+
+    <GridSplitter
+      Grid.Row="1"
+      Grid.RowSpan="2"
+      Grid.Column="1"
+      HorizontalAlignment="Stretch"
+      Background="Transparent"/>
 
     <userControls:PlaylistTabs
       x:Name="PlaylistTabs"
       Grid.Row="1"
-      Grid.Column="1" />
+      Grid.Column="2"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Stretch" />
 
     <materialDesign:Snackbar
       Name="InfoSnackbar"
       Grid.Row="1"
       Grid.Column="0"
-      Grid.ColumnSpan="2"
+      Grid.ColumnSpan="3"
       IsActive="False"
       MessageQueue="{materialDesign:MessageQueue}" />
 
@@ -85,7 +94,7 @@
       x:Name="PlayerControls"
       Grid.Row="2"
       Grid.Column="0"
-      Grid.ColumnSpan="2" />
+      Grid.ColumnSpan="3" />
 
   </Grid>
 </Window>

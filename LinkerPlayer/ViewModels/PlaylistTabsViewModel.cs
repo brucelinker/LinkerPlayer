@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Properties;
 using LinkerPlayer.Windows;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
@@ -74,6 +75,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
             _dataGrid.SelectedIndex = SelectedTrackIndex;
             _dataGrid.UpdateLayout();
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+
+            _shuffleMode = Settings.Default.ShuffleMode;
+            ShuffleTracks(_shuffleMode);
         }
     }
 
@@ -106,8 +110,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 _dataGrid.SelectedItem = SelectedTrack;
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
-
-            ShuffleTracks(_shuffleMode);
         }
     }
 
