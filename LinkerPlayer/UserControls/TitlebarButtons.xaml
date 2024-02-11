@@ -13,7 +13,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="45" Height="30">
+            <Grid Width="48" Height="36">
               <Border x:Name="border" Background="{DynamicResource TitleBarBackgroundBrush}" />
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
@@ -36,7 +36,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="45" Height="30">
+            <Grid Width="48" Height="36">
               <Border x:Name="border" Background="Black" />
               <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
@@ -60,7 +60,7 @@
   <Grid>
     <!--<Border Background="{DynamicResource TitleBarBackgroundBrush}" />-->
     <TextBlock
-      Margin="15,7,0,0"
+      Margin="15,5,0,0"
       HorizontalAlignment="Left"
       VerticalAlignment="Top"
       d:Foreground=" White"
@@ -78,15 +78,15 @@
 
       <Button
         Name="SettingsButton"
-        Width="36"
+        Width="45"
         Height="36"
         Click="SettingsButton_Click"
         Style="{DynamicResource MaximizeMinimizeButton}"
         ToolTip="Settings">
         <Image
-          Width="14"
-          Height="14"
-          Margin="0,0,14,0"
+          Width="16"
+          Height="16"
+          Margin="0,0,8,0"
           Opacity="0.6"
           Source="/Images/settings.png" />
       </Button>
@@ -104,8 +104,8 @@
         Style="{DynamicResource MaximizeMinimizeButton}">
         <Image
           Name="MinimizeButtonImage"
-          Width="10"
-          Height="10"
+          Width="14"
+          Height="14"
           Opacity="0.6"
           Source="/Images/minimize.png" />
       </Button>
@@ -118,8 +118,8 @@
         Style="{DynamicResource MaximizeMinimizeButton}">
         <Image
           Name="MaximizeButtonImage"
-          Width="10"
-          Height="10"
+          Width="14"
+          Height="14"
           Opacity="0.6"
           Source="/Images/maximize.png" />
       </Button>
@@ -132,8 +132,8 @@
         Style="{DynamicResource CloseButton}">
         <Image
           Name="CloseButtonImage"
-          Width="10"
-          Height="10"
+          Width="14"
+          Height="14"
           Opacity="0.6"
           Source="/Images/close.png" />
       </Button>

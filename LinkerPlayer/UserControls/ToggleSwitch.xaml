@@ -9,7 +9,7 @@
   mc:Ignorable="d">
 
   <!--
-    Toggle state can be retrieved or set via public property "IsOn."    
+    Toggle state can be retrieved or set via public property "IsOn."
     Colors can be changed via the following public properties: TrackBackgroundOnColor, TrackBackgroundOffColor, CircleBackgroundColor, CircleBorderColor
     A public event handler, Switched, can be set to fire when the state changes.
   -->
@@ -24,7 +24,10 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <Style x:Key="ToggleSwitchButton" x:Name="ToggleSwitch" TargetType="{x:Type Button}">
+    <Style
+      x:Key="ToggleSwitchButton"
+      x:Name="ToggleSwitch"
+      TargetType="{x:Type Button}">
       <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
       <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
       <Setter Property="BorderThickness" Value="1" />
