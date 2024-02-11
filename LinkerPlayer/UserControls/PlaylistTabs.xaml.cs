@@ -40,12 +40,7 @@ public partial class PlaylistTabs
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        MediaFile? runningTrack = _playlistTabsViewModel.GetRunningTrack();
-
-        if (runningTrack != null)
-        {
-            runningTrack.State = PlayerState.Stopped;
-        }
+        _playlistTabsViewModel.OnDoubleClickDataGrid();
 
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlayerState.Playing));
     }

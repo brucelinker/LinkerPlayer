@@ -67,13 +67,13 @@ public partial class PlayerControlsViewModel : ObservableRecipient
             State = PlayerState.Paused;
         }
 
-        WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
+        WeakReferenceMessenger.Default.Send(new PlayerControlsStateMessage(State));
     }
     
 
     public void PlayTrack()
     {
-        MediaFile? runningTrack = _playlistTabsViewModel.GetRunningTrack();
+        MediaFile? runningTrack = _playlistTabsViewModel.GetActiveTrack();
 
         if (runningTrack != null)
         {
@@ -87,7 +87,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
         State = PlayerState.Playing;
         _mainWindow!.PlayTrack(SelectedMediaFile);
 
-        WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
+        WeakReferenceMessenger.Default.Send(new PlayerControlsStateMessage(State));
     }
 
     [RelayCommand]
@@ -99,7 +99,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     public void StopTrack()
     {
         State = PlayerState.Stopped;
-        WeakReferenceMessenger.Default.Send(new PlayerStateMessage(State));
+        WeakReferenceMessenger.Default.Send(new PlayerControlsStateMessage(State));
     }
 
     [RelayCommand]

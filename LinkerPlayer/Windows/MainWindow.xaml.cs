@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Forms.VisualStyles;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -50,7 +51,7 @@ public partial class MainWindow
         ((App)Application.Current).WindowPlace.Register(this);
         WinMax.DoSourceInitialized(this);
 
-        WeakReferenceMessenger.Default.Register<PlayerStateMessage>(this, (r, m) =>
+        WeakReferenceMessenger.Default.Register<PlayerControlsStateMessage>(this, (r, m) =>
         {
             OnPlayerStateChanged(m.Value);
         });
@@ -215,7 +216,7 @@ public partial class MainWindow
         PlayerControls.CurrentSongName.Text = SelectedTrack.Title;
         TimeSpan ts = SelectedTrack.Duration;
         PlayerControls.TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-        PlayerControls.CurrentTime.Text = "0:00";
+        PlayerControls.CurrentTime.Text = TimeSpan.MinValue.ToString(); //"0:00";
 
         TrackInfo.SetSelectedMediaFile(SelectedTrack);
 
