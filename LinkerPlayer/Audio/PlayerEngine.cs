@@ -58,6 +58,11 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
             SelectOutputDevice(outputDeviceName);
             _sampleAggregator = new SampleAggregator(_fftDataSize);
 
+            IsPlaying = false;
+            CanStop = false;
+            CanPlay = true;
+            CanPause = false;
+
             //waveformGenerateWorker.DoWork += waveformGenerateWorker_DoWork;
             //waveformGenerateWorker.RunWorkerCompleted += waveformGenerateWorker_RunWorkerCompleted;
             //waveformGenerateWorker.WorkerSupportsCancellation = true;
@@ -235,16 +240,23 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
 
         if (CanPlay)
         {
-            _audioFile = new AudioFileReader(_pathToMusic);
-            if (_equalizer != null)
-            {
-                _equalizer = new Equalizer(_audioFile, _bands);
 
-                OutputDevice.Init(_equalizer);
-            }
-            else
+            AudioFileReader newAudioFile = new(_pathToMusic);
+
+            if (_audioFile == null || newAudioFile.FileName != _audioFile.FileName)
             {
-                OutputDevice.Init(_audioFile);
+                _audioFile = newAudioFile;
+                
+                if (_equalizer != null)
+                {
+                    _equalizer = new Equalizer(_audioFile, _bands);
+
+                    OutputDevice.Init(_equalizer);
+                }
+                else
+                {
+                    OutputDevice.Init(_audioFile);
+                }
             }
 
             IsPlaying = true;
@@ -257,7 +269,6 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
 
             OutputDevice.Play();
         }
-
     }
 
     public bool IsPlaying

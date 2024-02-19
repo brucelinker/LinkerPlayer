@@ -175,6 +175,7 @@ public partial class MainWindow
         PlayerEngine.PathToMusic = SelectedTrack.Path;
 
         PlayerEngine.StopAndPlayFromPosition(0.0);
+        //PlayerEngine.Play();
         SeekBarTimer.Start();
 
         PlayerControls.CurrentSongName.Text = SelectedTrack.Title;
