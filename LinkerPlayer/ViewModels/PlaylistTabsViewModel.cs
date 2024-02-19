@@ -93,7 +93,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedPlaylistTab.Name!);
             if (SelectedPlaylist == null) return;
 
-            SelectedTrack = MusicLibrary.MainLibrary.First(x => x!.Id == SelectedPlaylist.SelectedSong);
+            SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedSong);
+            if(SelectedTrack == null) return;
 
             if (!SelectedPlaylistTab!.Tracks.Any()) return;
             SelectedPlaylistTab!.SelectedIndex = SelectedPlaylistTab.Tracks.ToList().FindIndex(x => x.Id == SelectedTrack!.Id);

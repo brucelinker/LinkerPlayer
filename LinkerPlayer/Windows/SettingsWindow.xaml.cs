@@ -47,7 +47,7 @@ public partial class SettingsWindow
         }
         else
         {
-            MainOutputDevicesList.SelectedItem = OutputDevice.GetOutputDeviceNameById(mainWindow!.AudioStreamControl.MainMusic!.GetOutputDeviceId());
+            MainOutputDevicesList.SelectedItem = OutputDevice.GetOutputDeviceNameById(mainWindow!.PlayerEngine.GetOutputDeviceId());
         }
 
         //if (AdditionalOutputDevicesList.Items.Contains(Properties.Settings.Default.AdditionalOutputDevice))
@@ -103,10 +103,11 @@ public partial class SettingsWindow
     {
         MainWindow? mainWindow = (Owner as MainWindow);
 
-        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || MainOutputDevicesList.SelectedItem.ToString() != OutputDevice.GetOutputDeviceNameById(mainWindow!.AudioStreamControl.MainMusic!.GetOutputDeviceId()))
+        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || 
+            MainOutputDevicesList.SelectedItem.ToString() != OutputDevice.GetOutputDeviceNameById(mainWindow!.PlayerEngine.GetOutputDeviceId()))
         {
             Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
-            mainWindow!.AudioStreamControl.MainMusic!.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
+            mainWindow!.PlayerEngine.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
         }
 
         //if (AdditionalOutputDevicesList.SelectedItem != null)

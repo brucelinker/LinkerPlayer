@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using RestoreWindowPlace;
 using Serilog;
 using System.Windows;
+using LinkerPlayer.Audio;
 using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer;
@@ -28,6 +29,7 @@ public partial class App
             .ConfigureServices((_, services) =>
             {
                 services.AddSingleton<MainWindow>();
+                services.AddSingleton<PlayerEngine>();
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
             })

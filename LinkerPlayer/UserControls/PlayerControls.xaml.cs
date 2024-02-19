@@ -14,6 +14,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using MaterialDesignThemes.Wpf;
 
 namespace LinkerPlayer.UserControls;
 
@@ -31,17 +32,17 @@ public partial class PlayerControls
 
         ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
 
-        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (r, m) =>
+        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
             OnSelectedTrackChanged(m.Value);
         });
 
-        WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (r, m) =>
+        WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (_, m) =>
         {
             OnDataGridPlay(m.Value);
         });
 
-        WeakReferenceMessenger.Default.Register<MuteMessage>(this, (r, m) =>
+        WeakReferenceMessenger.Default.Register<MuteMessage>(this, (_, m) =>
         {
             OnMuteChanged(m.Value);
         });
@@ -55,7 +56,7 @@ public partial class PlayerControls
         SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 1 };
 
         // animate SeekBar opacity from 0 to SeekBar.Opacity
-        DoubleAnimation seekBarOpacityAnimation = new DoubleAnimation
+        DoubleAnimation seekBarOpacityAnimation = new()
         {
             From = SeekBar.Opacity,
             To = 1,
@@ -63,7 +64,7 @@ public partial class PlayerControls
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        Storyboard storyboardSeekBarOpacity = new Storyboard();
+        Storyboard storyboardSeekBarOpacity = new();
 
         Storyboard.SetTarget(seekBarOpacityAnimation, SeekBar);
         Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(OpacityProperty));
@@ -75,7 +76,7 @@ public partial class PlayerControls
         UniGrid.RenderTransformOrigin = new Point(0.5, 0.5);
         UniGrid.RenderTransform = new ScaleTransform() { ScaleY = 1 };
 
-        DoubleAnimation uniGridScaleAnimation = new DoubleAnimation
+        DoubleAnimation uniGridScaleAnimation = new()
         {
             From = 1,
             To = 0,
@@ -83,7 +84,7 @@ public partial class PlayerControls
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        Storyboard storyboardUniGridScale = new Storyboard();
+        Storyboard storyboardUniGridScale = new();
 
         Storyboard.SetTarget(uniGridScaleAnimation, UniGrid);
         Storyboard.SetTargetProperty(uniGridScaleAnimation,
@@ -98,7 +99,7 @@ public partial class PlayerControls
         SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 1 };
 
         // animate SeekBar opacity from 1 to 0
-        DoubleAnimation seekBarOpacityAnimation = new DoubleAnimation
+        DoubleAnimation seekBarOpacityAnimation = new()
         {
             From = SeekBar.Opacity,
             To = 0,
@@ -106,7 +107,7 @@ public partial class PlayerControls
             EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
         };
 
-        Storyboard storyboardSeekBarOpacity = new Storyboard();
+        Storyboard storyboardSeekBarOpacity = new();
 
         Storyboard.SetTarget(seekBarOpacityAnimation, SeekBar);
         Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(OpacityProperty));
@@ -116,7 +117,7 @@ public partial class PlayerControls
         // animate UniGrid scaleY from 0 to 1
         UniGrid.RenderTransformOrigin = new Point(0.5, 0.5);
         UniGrid.RenderTransform = new ScaleTransform() { ScaleY = 1 };
-        DoubleAnimation uniGridScaleAnimation = new DoubleAnimation
+        DoubleAnimation uniGridScaleAnimation = new()
         {
             From = 0,
             To = 1,
@@ -131,7 +132,7 @@ public partial class PlayerControls
             SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 2 };
         };
 
-        Storyboard storyboardUniGridScale = new Storyboard();
+        Storyboard storyboardUniGridScale = new();
 
         Storyboard.SetTarget(uniGridScaleAnimation, UniGrid);
         Storyboard.SetTargetProperty(uniGridScaleAnimation,
@@ -152,7 +153,7 @@ public partial class PlayerControls
             ShowSeekBarHideBorders();
         }
 
-        List<float> peaks = new List<float>();
+        List<float> peaks = new();
 
         await Render(path, peaks);
 
@@ -203,7 +204,7 @@ public partial class PlayerControls
         {
             Rendering = true;
 
-            using Mp3FileReader mp3 = new Mp3FileReader(path);
+            using Mp3FileReader mp3 = new(path);
             int peakCount = 300;
 
             int bytesPerSample = (mp3.WaveFormat.BitsPerSample / 8) * mp3.WaveFormat.Channels;
@@ -281,7 +282,7 @@ public partial class PlayerControls
 
         int k = (int)UniGrid.ActualWidth / 6;
 
-        List<int> numbers = new List<int>();
+        List<int> numbers = new();
         for (int i = 0; i < n; i++)
         {
             numbers.Add(i);
@@ -314,24 +315,24 @@ public partial class PlayerControls
         }
     }
 
-    //private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    //{
-    //    PackIcon? icon = MuteButton.Content as PackIcon;
-    //    double val = VolumeSlider.Value;
+    private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        PackIcon? icon = MuteButton.Content as PackIcon;
+        double val = VolumeSlider.Value;
 
-    //    if (val == 0)
-    //    {
-    //        if (icon != null) icon.Kind = PackIconKind.VolumeMute;
-    //    }
-    //    else if (val < 50)
-    //    {
-    //        if (icon != null) icon.Kind = PackIconKind.VolumeMedium;
-    //    }
-    //    else if (val >= 50)
-    //    {
-    //        if (icon != null) icon.Kind = PackIconKind.VolumeHigh;
-    //    }
-    //}
+        if (val == 0)
+        {
+            if (icon != null) icon.Kind = PackIconKind.VolumeMute;
+        }
+        else if (val < 50)
+        {
+            if (icon != null) icon.Kind = PackIconKind.VolumeMedium;
+        }
+        else if (val >= 50)
+        {
+            if (icon != null) icon.Kind = PackIconKind.VolumeHigh;
+        }
+    }
 
     double _mainVolumeSliderBeforeMuteValue;
 
@@ -351,7 +352,7 @@ public partial class PlayerControls
 
     private void AnimateVolumeSliderValue(Slider slider, double newVal)
     {
-        DoubleAnimation doubleAnimation = new DoubleAnimation
+        DoubleAnimation doubleAnimation = new()
         {
             From = slider.Value,
             To = newVal,
@@ -364,7 +365,7 @@ public partial class PlayerControls
 
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
-        EqualizerWindow equalizerWindow = new EqualizerWindow
+        EqualizerWindow equalizerWindow = new()
         {
             Owner = Window.GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -374,16 +375,9 @@ public partial class PlayerControls
 
         MainWindow win = (MainWindow)Window.GetWindow(this)!;
 
-        if (win.AudioStreamControl.MainMusic!.IsEqualizerWorking)
-        {
-            equalizerWindow.StartStopText.Content = "Stop";
-        }
-        else
-        {
-            equalizerWindow.StartStopText.Content = "Start";
-        }
+        equalizerWindow.StartStopText.Content = win.PlayerEngine.IsEqualizerInitialized ? "Stop" : "Start";
 
-        equalizerWindow.LoadSelectedBand(win.SelectedBandsSettings);
+        equalizerWindow.LoadSelectedBand(win.SelectedEqualizerProfile);
 
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {

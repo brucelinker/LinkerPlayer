@@ -1,6 +1,5 @@
 ﻿using LinkerPlayer.Core;
 using LinkerPlayer.Models;
-using MahApps.Metro.Controls;
 using Serilog;
 using System;
 using System.ComponentModel;
@@ -33,79 +32,79 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         OnEqSwitched(null, EventArgs.Empty);
     }
 
-    public float Maximum => _mainWindow!.AudioStreamControl.MainMusic!.MaximumGain;
+    public float Maximum => _mainWindow!.PlayerEngine.MaximumGain;
 
-    public float Minimum => _mainWindow!.AudioStreamControl.MainMusic!.MinimumGain;
+    public float Minimum => _mainWindow!.PlayerEngine.MinimumGain;
 
     private float GetBand(int index)
     {
-        return _mainWindow!.AudioStreamControl.MainMusic!.GetBandGain(index);
+        return _mainWindow!.PlayerEngine.GetBandGain(index);
     }
 
     private void SetBand(int index, float value)
     {
-        _mainWindow!.AudioStreamControl.SetBandGain(index, value);
+        _mainWindow!.PlayerEngine.SetBandGain(index, value);
     }
 
-    public float Band0
-    {
-        get => GetBand(0);
-        set { SetBand(0, value); OnPropertyChanged(); }
-    }
+    //public float Band0
+    //{
+    //    get => GetBand(0);
+    //    set { SetBand(0, value); OnPropertyChanged(); }
+    //}
 
-    public float Band1
-    {
-        get => GetBand(1);
-        set { SetBand(1, value); OnPropertyChanged(); }
-    }
+    //public float Band1
+    //{
+    //    get => GetBand(1);
+    //    set { SetBand(1, value); OnPropertyChanged(); }
+    //}
 
-    public float Band2
-    {
-        get => GetBand(2);
-        set { SetBand(2, value); OnPropertyChanged(); }
-    }
+    //public float Band2
+    //{
+    //    get => GetBand(2);
+    //    set { SetBand(2, value); OnPropertyChanged(); }
+    //}
 
-    public float Band3
-    {
-        get => GetBand(3);
-        set { SetBand(3, value); OnPropertyChanged(); }
-    }
+    //public float Band3
+    //{
+    //    get => GetBand(3);
+    //    set { SetBand(3, value); OnPropertyChanged(); }
+    //}
 
-    public float Band4
-    {
-        get => GetBand(4);
-        set { SetBand(4, value); OnPropertyChanged(); }
-    }
+    //public float Band4
+    //{
+    //    get => GetBand(4);
+    //    set { SetBand(4, value); OnPropertyChanged(); }
+    //}
 
-    public float Band5
-    {
-        get => GetBand(5);
-        set { SetBand(5, value); OnPropertyChanged(); }
-    }
+    //public float Band5
+    //{
+    //    get => GetBand(5);
+    //    set { SetBand(5, value); OnPropertyChanged(); }
+    //}
 
-    public float Band6
-    {
-        get => GetBand(6);
-        set { SetBand(6, value); OnPropertyChanged(); }
-    }
+    //public float Band6
+    //{
+    //    get => GetBand(6);
+    //    set { SetBand(6, value); OnPropertyChanged(); }
+    //}
 
-    public float Band7
-    {
-        get => GetBand(7);
-        set { SetBand(7, value); OnPropertyChanged(); }
-    }
+    //public float Band7
+    //{
+    //    get => GetBand(7);
+    //    set { SetBand(7, value); OnPropertyChanged(); }
+    //}
 
-    public float Band8
-    {
-        get => GetBand(8);
-        set { SetBand(8, value); OnPropertyChanged(); }
-    }
+    //public float Band8
+    //{
+    //    get => GetBand(8);
+    //    set { SetBand(8, value); OnPropertyChanged(); }
+    //}
 
-    public float Band9
-    {
-        get => GetBand(9);
-        set { SetBand(9, value); OnPropertyChanged(); }
-    }
+    //public float Band9
+    //{
+    //    get => GetBand(9);
+    //    set { SetBand(9, value); OnPropertyChanged(); }
+    //}
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
@@ -117,13 +116,13 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             MainWindow? win = Owner as MainWindow;
 
-            if (win!.AudioStreamControl.PathToMusic != null)
+            if (win!.PlayerEngine.PathToMusic != null)
             {
-                win!.AudioStreamControl.InitializeEqualizer();
+                win.PlayerEngine.InitializeEqualizer();
 
-                if (win.AudioStreamControl.MainMusic!.IsPlaying)
+                if (win.PlayerEngine.IsPlaying)
                 {
-                    win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+                    win.PlayerEngine.StopAndPlayFromPosition(win.PlayerEngine.CurrentTrackPosition);
                 }
 
                 SliderSetEnabledState(true);
@@ -138,11 +137,11 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             MainWindow? win = Owner as MainWindow;
 
-            win!.AudioStreamControl.StopEqualizer();
+            win!.PlayerEngine.StopEqualizer();
 
-            if (win.AudioStreamControl.MainMusic!.IsPlaying)
+            if (win.PlayerEngine.IsPlaying)
             {
-                win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+                win.PlayerEngine.StopAndPlayFromPosition(win.PlayerEngine.CurrentTrackPosition);
             }
 
             SliderSetEnabledState(false);
@@ -170,7 +169,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
 
-            bandsSettings!.EqualizerBands = _mainWindow!.AudioStreamControl.MainMusic!.GetBandsList();
+            bandsSettings!.EqualizerBands = _mainWindow!.PlayerEngine.GetBandsList();
 
             EqualizerSettings.SaveToJson();
         }
@@ -191,7 +190,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
             UpdateProfiles();
 
-            _mainWindow!.SelectedBandsSettings = null!;
+            _mainWindow!.SelectedEqualizerProfile = null!;
 
             Log.Information("Delete profile");
 
@@ -226,11 +225,11 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
 
-            if (bandsSettings != null)
+            if (bandsSettings is { EqualizerBands: not null } && bandsSettings.EqualizerBands.Any())
             {
-                _mainWindow.AudioStreamControl.SetBandsList(bandsSettings.EqualizerBands);
+                _mainWindow.PlayerEngine.SetBandsList(bandsSettings.EqualizerBands);
 
-                _mainWindow.SelectedBandsSettings = bandsSettings;
+                _mainWindow.SelectedEqualizerProfile = bandsSettings;
 
                 for (int i = 0; i < bandsSettings.EqualizerBands!.Count; i++)
                 {
@@ -279,10 +278,10 @@ public partial class EqualizerWindow : INotifyPropertyChanged
             {
                 if (EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
                 {
-                    BandsSettings bandsSettings = new BandsSettings
+                    BandsSettings bandsSettings = new()
                     {
                         Name = popupTextBoxText,
-                        EqualizerBands = _mainWindow!.AudioStreamControl.MainMusic!.GetBandsList()
+                        EqualizerBands = _mainWindow!.PlayerEngine.GetBandsList()
                     };
 
                     EqualizerSettings.BandsSettings!.Add(bandsSettings);
@@ -291,7 +290,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
                     EqualizerSettings.SaveToJson();
 
-                    _mainWindow.SelectedBandsSettings = bandsSettings;
+                    _mainWindow.SelectedEqualizerProfile = bandsSettings;
 
                     UpdateProfiles(bandsSettings.Name);
                 }
@@ -320,7 +319,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
                     EqualizerSettings.SaveToJson();
 
-                    _mainWindow!.SelectedBandsSettings = bandsSettings;
+                    _mainWindow!.SelectedEqualizerProfile = bandsSettings;
 
                     Log.Information("Profile has been selected");
 
@@ -364,7 +363,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
         Slider slider = (Slider)EqGrid.FindName($"Slider{index}")!;
 
-        DoubleAnimation doubleAnimation = new DoubleAnimation
+        DoubleAnimation doubleAnimation = new()
         {
             From = slider.Value,
             To = to,
@@ -392,7 +391,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
         for (int i = 0; i < 10; i++)
         {
-            Slider slider = new Slider
+            Slider slider = new()
             {
                 Name = $"Slider{i}",
                 Maximum = Maximum,
@@ -403,7 +402,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
                 TickPlacement = TickPlacement.BottomRight
             };
 
-            Binding binding = new Binding
+            Binding binding = new()
             {
                 Path = new PropertyPath($"Band{i}"),
                 Mode = BindingMode.TwoWay
@@ -413,7 +412,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
             slider.HorizontalAlignment = HorizontalAlignment.Center;
 
-            ColumnDefinition colDef = new ColumnDefinition();
+            ColumnDefinition colDef = new();
             EqGrid.ColumnDefinitions.Add(colDef);
 
             EqGrid.Children.Add(slider);
@@ -456,13 +455,13 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
         if (EqSwitch.IsOn)
         {
-            if (win!.AudioStreamControl.PathToMusic != null)
+            if (win.PlayerEngine.PathToMusic != null)
             {
-                win!.AudioStreamControl.InitializeEqualizer();
+                win.PlayerEngine.InitializeEqualizer();
 
-                if (win.AudioStreamControl.MainMusic!.IsPlaying)
+                if (win.PlayerEngine.IsPlaying)
                 {
-                    win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+                    win.PlayerEngine.StopAndPlayFromPosition(win.PlayerEngine.CurrentTrackPosition);
                 }
 
                 SliderSetEnabledState(true);
@@ -475,11 +474,11 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         }
         else
         {
-            win!.AudioStreamControl.StopEqualizer();
+            win.PlayerEngine.StopEqualizer();
 
-            if (win.AudioStreamControl.MainMusic!.IsPlaying)
+            if (win.PlayerEngine.IsPlaying)
             {
-                win.AudioStreamControl.StopAndPlayFromPosition(win.AudioStreamControl.CurrentTrackPosition);
+                win.PlayerEngine.StopAndPlayFromPosition(win.PlayerEngine.CurrentTrackPosition);
             }
 
             SliderSetEnabledState(false);

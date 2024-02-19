@@ -245,6 +245,7 @@
           Margin="6,0,10,0"
           VerticalAlignment="Center"
           Maximum="100"
+          ValueChanged="VolumeSlider_ValueChanged"
           Style="{StaticResource CustomHorizontalSlider}" />
 
       </Grid>

@@ -5,6 +5,8 @@
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+  xmlns:spectrumAnalyzer="clr-namespace:LinkerPlayer.SpectrumAnalyzer"
   d:DesignHeight="450"
   d:DesignWidth="300"
   mc:Ignorable="d">
@@ -21,10 +23,8 @@
     VerticalAlignment="Stretch">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="5" />
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
-      <!--<RowDefinition Height="Auto" />-->
     </Grid.RowDefinitions>
 
     <!--  AlbumCover  -->
@@ -69,13 +69,8 @@
       </Grid>
     </Grid>
 
-    <!--<GridSplitter
-      Grid.Row="1"
-      HorizontalAlignment="Stretch"
-      Background="Transparent"/>-->
-
     <Grid
-      Grid.Row="2"
+      Grid.Row="1"
       Margin="0,0,0,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Center">
@@ -151,7 +146,7 @@
       <TextBlock
         Name="TrackGenre"
         Grid.Row="4"
-        Margin="15,0,0,0"
+        Margin="15,0,0,8"
         Padding="1"
         VerticalAlignment="Center"
         d:Text="Genre"
@@ -160,6 +155,19 @@
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
 
+    </Grid>
+    <Grid Grid.Row="2" VerticalAlignment="Bottom" >
+      <Border BorderBrush="red" BorderThickness="1">
+      <spectrumAnalyzer:SpectrumAnalyzer x:Name="spectrumAnalyzer"
+                                         Height="160"
+                                         HorizontalAlignment="Stretch"
+                                         VerticalAlignment="Bottom"
+                                         AveragePeaks="False"
+                                         MinimumFrequency="20"
+                                         MaximumFrequency="20000"
+                                         PeakFallDelay="10"
+                                         BarHeightScaling="Decibel" />
+      </Border>
     </Grid>
   </Grid>
 
