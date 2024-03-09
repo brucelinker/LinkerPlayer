@@ -4,8 +4,43 @@ using System.Collections.Generic;
 
 namespace LinkerPlayer.Audio;
 
-public class OutputDevice
+public static class OutputDevice
 {
+    public static void InitializeOutputDevice()
+    {
+        if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
+        {
+            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(0);
+        }
+        else if (!GetOutputDevicesList().Contains(Properties.Settings.Default.MainOutputDevice))
+        {
+            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(0);
+        }
+
+        if (string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
+        {
+            foreach (string outputDevice in GetOutputDevicesList())
+            {
+                if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase))
+                {
+                    Properties.Settings.Default.AdditionalOutputDevice = outputDevice;
+                }
+            }
+        }
+        else if (!GetOutputDevicesList().Contains(Properties.Settings.Default.AdditionalOutputDevice))
+        {
+            Properties.Settings.Default.AdditionalOutputDevice = "";
+
+            foreach (string outputDevice in GetOutputDevicesList())
+            {
+                if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase))
+                {
+                    Properties.Settings.Default.AdditionalOutputDevice = outputDevice;
+                }
+            }
+        }
+    }
+
     public static int GetOutputDeviceId(string nameDevice)
     {
         if (String.IsNullOrWhiteSpace(nameDevice))

@@ -1,52 +1,52 @@
-﻿using LinkerPlayer.SpectrumAnalyzer;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Messages;
+using LinkerPlayer.SpectrumAnalyzer;
 using NAudio.Extras;
 using NAudio.Wave;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
-using Serilog;
 using System.Windows.Threading;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.Audio;
 
-public class PlayerEngine : ISpectrumPlayer, IDisposable
+public static class AudioEngine
 {
-    private static PlayerEngine? _instance;
-    private readonly DispatcherTimer _positionTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle);
+    private static readonly DispatcherTimer _positionTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle);
     //private readonly BackgroundWorker _waveformGenerateWorker = new BackgroundWorker();
-    private AudioFileReader? _audioFile;
-    private string? _pathToMusic;
+    private static AudioFileReader? _audioFile;
+    private static string? _pathToMusic;
     //private TagLib.File _fileTag;
 
-    private Equalizer? _equalizer;
-    private EqualizerBand[]? _bands;
-    private readonly SampleAggregator? _sampleAggregator;
-    private readonly int _fftDataSize = (int)FFTDataSize.FFT2048;
-    private bool _canPlay;
-    private bool _canPause;
-    private bool _canStop;
-    private bool _isPlaying;
+    private static Equalizer? _equalizer;
+    private static EqualizerBand[]? _bands;
+    private static readonly SampleAggregator? _sampleAggregator;
+    private static readonly int _fftDataSize = (int)FFTDataSize.FFT2048;
+    private static bool _canPlay;
+    private static bool _canPause;
+    private static bool _canStop;
+    private static bool _isPlaying;
     //private float[]? _waveformData;
-    protected WaveOutEvent? OutputDevice;
-    public event EventHandler<EventArgs>? StoppedEvent;
+    private static WaveOutEvent? OutputDevice;
+    public static event EventHandler<EventArgs>? StoppedEvent;
     //private TimeSpan _repeatStart;
     //private TimeSpan _repeatStop;
     //private bool _inRepeatSet;
-    private bool _inChannelSet;
-    private bool _inChannelTimerUpdate;
-    private double _channelLength;
-    private double _channelPosition;
-    
+    private static bool _inChannelSet;
+    private static bool _inChannelTimerUpdate;
+    private static double _channelLength;
+    private static double _channelPosition;
+    private static string _mainOutputDevice;
     //private const int waveformCompressedPointCount = 2000;
     //private const int repeatThreshold = 200;
 
-    public PlayerEngine(string outputDeviceName)
+    static AudioEngine()
     {
-        _instance = this;
+        _mainOutputDevice = Properties.Settings.Default.MainOutputDevice;
 
-        if (string.IsNullOrWhiteSpace(outputDeviceName))
+        if (string.IsNullOrWhiteSpace(_mainOutputDevice))
         {
             Log.Error("Device name can`t be null");
         }
@@ -55,8 +55,22 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
             _positionTimer.Interval = TimeSpan.FromMilliseconds(50);
             _positionTimer.Tick += positionTimer_Tick!;
 
-            SelectOutputDevice(outputDeviceName);
+            SelectOutputDevice(_mainOutputDevice);
             _sampleAggregator = new SampleAggregator(_fftDataSize);
+
+            _musicVolume = (float) Properties.Settings.Default.VolumeSliderValue;
+
+            if (Properties.Settings.Default.EqualizerOnStartEnabled)
+            {
+                if (!String.IsNullOrEmpty(Properties.Settings.Default.EqualizerProfileName))
+                {
+                    //SelectedEqualizerProfile = new BandsSettings() { Name = Properties.Settings.Default.EqualizerProfileName ?? "Flat" };
+
+                    InitializeEqualizer();
+                }
+            }
+
+            //StoppedEvent += Playback_StoppedEvent;
 
             IsPlaying = false;
             CanStop = false;
@@ -69,7 +83,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public float OutputDeviceVolume
+    public static float OutputDeviceVolume
     {
         get => OutputDevice?.Volume ?? 0f;
         set
@@ -92,8 +106,8 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    private float _musicVolume;
-    public float MusicVolume
+    private static float _musicVolume;
+    public static float MusicVolume
     {
         get
         {
@@ -135,10 +149,10 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
     //}
 
     //public bool IsPlaying => OutputDevice is { PlaybackState: PlaybackState.Playing };
-    public bool IsPaused => OutputDevice is { PlaybackState: PlaybackState.Paused };
-    //public bool IsStopped => OutputDevice is { PlaybackState: PlaybackState.Stopped };
+    public static bool IsPaused => OutputDevice is { PlaybackState: PlaybackState.Paused };
+    public static bool IsStopped => OutputDevice is { PlaybackState: PlaybackState.Stopped };
 
-    public void SelectOutputDevice(string deviceName)
+    public static void SelectOutputDevice(string deviceName)
     {
         if (string.IsNullOrWhiteSpace(deviceName))
         {
@@ -150,10 +164,24 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
             DeviceNumber = Audio.OutputDevice.GetOutputDeviceId(deviceName)
         };
 
-        OutputDevice.PlaybackStopped += PlaybackStopped;
+        OutputDevice.PlaybackStopped += Playback_StoppedEvent;
     }
 
-    public virtual void PlaybackStopped(object? sender, EventArgs e)
+    //public void Audio_StoppedEvent(object? sender, EventArgs e)
+    //{
+    //    if ((_audioEngine.CurrentTrackPosition + 10.0) >= _audioEngine.CurrentTrackLength)
+    //    {
+    //        SeekBarTimer.Stop();
+    //        NextTrack();
+    //    }
+    //    else if (sender == null)
+    //    {
+    //        _audioEngine.Pause();
+    //        SeekBarTimer.Stop();
+    //    }
+    //}
+
+    public static void Playback_StoppedEvent(object? sender, StoppedEventArgs stoppedEventArgs)
     {
         if (StoppedEvent != null)
         {
@@ -171,14 +199,21 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
                 }
             }
 
-            StoppedEvent(sender, e);
+            StoppedEvent(sender, stoppedEventArgs);
+            WeakReferenceMessenger.Default.Send(new PlaybackStoppedMessage(true));
+            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
         }
     }
 
-    public bool CanPlay
+    public static PlaybackState GetPlaybackState()
+    {
+        return OutputDevice!.PlaybackState;
+    }
+
+    public static bool CanPlay
     {
         get { return _canPlay; }
-        protected set
+        private set
         {
             bool oldValue = _canPlay;
             _canPlay = value;
@@ -187,10 +222,10 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public bool CanPause
+    public static bool CanPause
     {
         get { return _canPause; }
-        protected set
+        private set
         {
             bool oldValue = _canPause;
             _canPause = value;
@@ -199,10 +234,10 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public bool CanStop
+    public static bool CanStop
     {
         get { return _canStop; }
-        protected set
+        private set
         {
             bool oldValue = _canStop;
             _canStop = value;
@@ -211,11 +246,12 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public void Stop()
+    public static void Stop()
     {
         if (OutputDevice != null)
         {
             OutputDevice.Stop();
+            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
         }
         IsPlaying = false;
         CanStop = false;
@@ -223,18 +259,19 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         CanPause = false;
     }
 
-    public void Pause()
+    public static void Pause()
     {
         if (IsPlaying && CanPause)
         {
             OutputDevice!.Pause();
+            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Paused));
             IsPlaying = false;
             CanPlay = true;
             CanPause = false;
         }
     }
 
-    public void Play()
+    public static void Play()
     {
         if (_pathToMusic == null || OutputDevice == null) return;
 
@@ -268,13 +305,25 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
             Log.Information($"Playing to {outputDeviceName}.");
 
             OutputDevice.Play();
+            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
         }
     }
 
-    public bool IsPlaying
+    public static void ResumePlay()
+    {
+        OutputDevice!.Play();
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
+
+        IsPlaying = true;
+        CanPause = true;
+        CanPlay = false;
+        CanStop = true;
+    }
+
+    public static bool IsPlaying
     {
         get { return _isPlaying; }
-        protected set
+        private set
         {
             bool oldValue = _isPlaying;
             _isPlaying = value;
@@ -284,7 +333,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public void StopAndPlayFromPosition(double startingPosition)
+    public static void StopAndPlayFromPosition(double startingPosition)
     {
         if (_pathToMusic == null || OutputDevice == null) return;
 
@@ -308,6 +357,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         MusicVolume = oldVol;
 
         OutputDevice.Play();
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
 
         IsPlaying = true;
         CanPause = true;
@@ -315,11 +365,12 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         CanStop = true;
     }
 
-    public void StopAndResetPosition()
+    public static void StopAndResetPosition()
     {
         if (_pathToMusic != null)
         {
             Stop();
+            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
 
             _audioFile = new AudioFileReader(_pathToMusic);
             _audioFile.CurrentTime = TimeSpan.FromSeconds(0);
@@ -327,16 +378,18 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
     }
 
 
-    private void Dispose()
+    private static void Dispose()
     {
         if (_audioFile != null)
         {
             _audioFile?.Dispose();
             _audioFile = null;
         }
+
+        CloseStream();
     }
 
-    public void CloseStream()
+    public static void CloseStream()
     {
         Stop();
         StopEqualizer();
@@ -344,7 +397,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         OutputDevice?.Dispose();
     }
 
-    public string? PathToMusic
+    public static string? PathToMusic
     {
         get => _pathToMusic;
         set
@@ -363,7 +416,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public double CurrentTrackLength
+    public static double CurrentTrackLength
     {
         get
         {
@@ -378,7 +431,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public double CurrentTrackPosition
+    public static double CurrentTrackPosition
     {
         get
         {
@@ -400,16 +453,16 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public void Seek(double offset)
+    public static void Seek(double offset)
     {
         CurrentTrackPosition += offset;
     }
 
     #region Equalizer
 
-    private bool _isEqualizerInitialized;
+    private static bool _isEqualizerInitialized;
 
-    public bool IsEqualizerInitialized
+    public static bool IsEqualizerInitialized
     {
         get => _isEqualizerInitialized;
         set
@@ -421,10 +474,10 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
     }
 
 
-    public float MinimumGain => -12;
-    public float MaximumGain => 12;
+    public static float MinimumGain => -12;
+    public static float MaximumGain => 12;
 
-    public void InitializeEqualizer()
+    public static void InitializeEqualizer()
     {
         if (_audioFile != null)
         {
@@ -446,13 +499,13 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public void StopEqualizer()
+    public static void StopEqualizer()
     {
         _bands = null;
         _equalizer = null;
     }
 
-    public float GetBandGain(int index)
+    public static float GetBandGain(int index)
     {
         if (_bands != null && index is >= 0 and <= 9)
         {
@@ -462,7 +515,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         return 0;
     }
 
-    public void SetBandGain(int index, float value)
+    public static void SetBandGain(int index, float value)
     {
         if (_bands == null || index is < 0 or > 9) return;
         if (!(Math.Abs(_bands[index].Gain - value) > 0)) return;
@@ -471,7 +524,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         _equalizer?.Update();
     }
 
-    public List<EqualizerBand> GetBandsList()
+    public static List<EqualizerBand> GetBandsList()
     {
         List<EqualizerBand> equalizerBands = new();
 
@@ -489,7 +542,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         return equalizerBands;
     }
 
-    public void SetBandsList(List<EqualizerBand> equalizerBandsToAdd)
+    public static void SetBandsList(List<EqualizerBand> equalizerBandsToAdd)
     {
         for (int i = 0; i < equalizerBandsToAdd.Count; i++)
         {
@@ -499,7 +552,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
 
     #endregion Equalizer
 
-    public void ReselectOutputDevice(string deviceName)
+    public static void ReselectOutputDevice(string deviceName)
     {
         if (IsPlaying)
         {
@@ -526,13 +579,13 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public bool GetFFTData(float[] fftDataBuffer)
+    public static bool GetFFTData(float[] fftDataBuffer)
     {
         _sampleAggregator!.GetFFTResults(fftDataBuffer);
         return IsPlaying;
     }
 
-    public int GetFFTFrequencyIndex(int frequency)
+    public static int GetFFTFrequencyIndex(int frequency)
     {
         double maxFrequency;
         if (_audioFile != null)
@@ -543,17 +596,17 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         return (int)((frequency / maxFrequency) * (_fftDataSize / 2.0));
     }
 
-    public int GetOutputDeviceId()
+    public static int GetOutputDeviceId()
     {
         if (OutputDevice != null) return OutputDevice.DeviceNumber;
 
         return -1;
     }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-    private void NotifyPropertyChanged(String info)
+    public static event PropertyChangedEventHandler? PropertyChanged;
+    private static void NotifyPropertyChanged(String info)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(info));
+        PropertyChanged?.Invoke(null, new PropertyChangedEventArgs(info));
     }
 
     //public TimeSpan SelectionBegin
@@ -605,10 +658,10 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
     //    }
     //}
 
-    public double ChannelLength
+    public static double ChannelLength
     {
         get => _channelLength;
-        protected set
+        private set
         {
             double oldValue = _channelLength;
             _channelLength = value;
@@ -618,7 +671,7 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    public double ChannelPosition
+    public static double ChannelPosition
     {
         get => _channelPosition;
         set
@@ -642,15 +695,10 @@ public class PlayerEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    void positionTimer_Tick(object sender, EventArgs e)
+    static void positionTimer_Tick(object sender, EventArgs e)
     {
         _inChannelTimerUpdate = true;
         ChannelPosition = (_audioFile!.Position / (double)_audioFile.Length) * _audioFile.TotalTime.TotalSeconds;
         _inChannelTimerUpdate = false;
-    }
-
-    void IDisposable.Dispose()
-    {
-        CloseStream();
     }
 }

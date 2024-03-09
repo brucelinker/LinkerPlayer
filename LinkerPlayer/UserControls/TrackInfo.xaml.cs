@@ -1,4 +1,6 @@
-﻿using LinkerPlayer.Core;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Serilog;
 using System;
@@ -12,13 +14,30 @@ public partial class TrackInfo
     public MediaFile SelectedMediaFile = new();
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
 
+    private static int _count;
+
     public TrackInfo()
     {
+        Log.Information($"TRACKINFO - {++_count}");
+
         this.DataContext = this;
         InitializeComponent();
+
+        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
+        {
+            if (m.Value == null) return;
+
+            OnSelectedTrackChanged(m.Value);
+        });
     }
 
     private static BitmapImage? _defaultAlbumImage;
+
+    static TrackInfo()
+    {
+        _count = 0;
+    }
+
     public static BitmapImage DefaultAlbumImage
     {
         get
@@ -30,17 +49,18 @@ public partial class TrackInfo
         }
     }
 
+    private void OnSelectedTrackChanged(MediaFile mediaFile)
+    {
+        SetSelectedMediaFile(mediaFile);
+    }
+
     public static void ReloadDefaultAlbumImage()
     {
-        Log.Information("TrackInfo - ReloadDefaultAlbumImage");
-
         _defaultAlbumImage = new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
     }
 
     public void SetSelectedMediaFile(MediaFile mediaFile)
     {
-        Log.Information("TrackInfo - SetSelectedMediaFile");
-
         SelectedMediaFile = mediaFile;
 
         DisplayTrackImage(mediaFile);
@@ -55,8 +75,6 @@ public partial class TrackInfo
 
     private void DisplayTrackImage(IMediaFile mediaFile)
     {
-        Log.Information("TrackInfo - DisplayTrackImage");
-
         if (mediaFile.AlbumCover != null)
         {
             TrackImage.Source = mediaFile.AlbumCover;

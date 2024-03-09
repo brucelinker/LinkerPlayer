@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using NAudio.Wave;
 
 namespace LinkerPlayer.Core;
 
@@ -312,7 +313,7 @@ public class MusicLibrary
     {
         foreach(MediaFile? file in MainLibrary)
         {
-            file!.State = PlayerState.Stopped;
+            file!.State = PlaybackState.Stopped;
         }
     }
 }

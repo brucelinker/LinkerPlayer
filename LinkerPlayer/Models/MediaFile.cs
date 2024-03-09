@@ -7,8 +7,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media.Imaging;
+using NAudio.CoreAudioApi;
 using TagLib;
 using File = TagLib.File;
+using NAudio.Wave;
 
 namespace LinkerPlayer.Models;
 
@@ -32,9 +34,10 @@ public interface IMediaFile
     string Comment { get; }
     int Bitrate { get; }
     int SampleRate { get; } 
+    int Channels { get; } 
     BitmapImage? AlbumCover { get; }
     int PlayListIndex { get; set; }
-    PlayerState State { get; set; }
+    PlaybackState State { get; set; }
 }
 
 public class MediaFile : ObservableObject, IMediaFile
@@ -82,6 +85,8 @@ public class MediaFile : ObservableObject, IMediaFile
     [JsonProperty(Required = Required.AllowNull)]
     public int SampleRate { get; set; }
     [JsonProperty(Required = Required.AllowNull)]
+    public int Channels { get; set; }
+    [JsonProperty(Required = Required.AllowNull)]
     public uint DiscCount { get; set; }
     [JsonProperty(Required = Required.AllowNull)]
     public uint Disc { get; set; }
@@ -96,8 +101,8 @@ public class MediaFile : ObservableObject, IMediaFile
     [JsonIgnore]
     public BitmapImage? AlbumCover { get; set; }
 
-    PlayerState _state = PlayerState.Stopped;
-    public PlayerState State
+    PlaybackState _state = PlaybackState.Stopped;
+    public PlaybackState State
     {
         get => _state;
         set
@@ -186,6 +191,7 @@ public class MediaFile : ObservableObject, IMediaFile
                 Duration = file.Properties.Duration;
                 Bitrate = file.Properties.AudioBitrate;
                 SampleRate = file.Properties.AudioSampleRate;
+                Channels = file.Properties.AudioChannels;
             }
         }
         catch (Exception e)
@@ -240,6 +246,7 @@ public class MediaFile : ObservableObject, IMediaFile
             Duration = this.Duration,
             Bitrate = this.Bitrate,
             SampleRate = this.SampleRate,
+            Channels = this.Channels,
             Copyright = this.Copyright,
             AlbumCover = this.AlbumCover,
             PlayListIndex = this.PlayListIndex

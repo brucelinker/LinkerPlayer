@@ -1,12 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Windows;
+using NAudio.Wave;
 using Serilog;
 using System.IO;
-using System.Windows;
+using LinkerPlayer.Properties;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -14,7 +15,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 {
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
-    private PlayerState _state;
+    private PlaybackState _state;
 
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
@@ -26,16 +27,29 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PlayPauseCommand))]
-    private MediaFile? _selectedMediaFile;
+    private MediaFile? _selectedTrack;
 
-    private static MainWindow? _mainWindow;
+    private static MediaFile? ActiveTrack;
+
+    //private static MainWindow? _mainWindow;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
+    private PlaybackState _prevPlaybackState = PlaybackState.Stopped;
+    private static int _count;
 
     public PlayerControlsViewModel()
     {
-        _mainWindow = (MainWindow?)Application.Current.MainWindow;
+        Log.Information($"PLAYERCONTROLSVIEWMODEL - {++_count}");
+        //_mainWindow = (MainWindow?)Application.Current.MainWindow;
 
-        State = PlayerState.Stopped;
+        WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+        {
+            OnPlaybackStateChanged(m.Value);
+        });
+
+        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
+        {
+            OnAudioStopped(m.Value);
+        });
     }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
@@ -46,49 +60,72 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     public void PlayPauseTrack()
     {
-        SelectedMediaFile = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
+        SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
 
-        if (State != PlayerState.Playing)
+        if (State != PlaybackState.Playing)
         {
-            PlayerState prevState = State;
-            State = PlayerState.Playing;
-
-            if (prevState == PlayerState.Paused)
+            if (SelectedTrack.State == PlaybackState.Paused)
             {
-                _mainWindow!.ResumeTrack(SelectedMediaFile);
+                ResumeTrack();
             }
             else
             {
-                _mainWindow!.PlayTrack(SelectedMediaFile);
+                PlayTrack();
             }
         }
         else
         {
-            State = PlayerState.Paused;
-        }
+            AudioEngine.Pause();
+            State = PlaybackState.Paused;
 
-        WeakReferenceMessenger.Default.Send(new PlayerControlsStateMessage(State));
+            MediaFile? runningTrack = _playlistTabsViewModel.GetActiveTrack();
+
+            if (runningTrack != null)
+            {
+                runningTrack.State = PlaybackState.Paused;
+            }
+
+        }
     }
     
-
     public void PlayTrack()
     {
-        MediaFile? runningTrack = _playlistTabsViewModel.GetActiveTrack();
+        MediaFile? activeTrack = _playlistTabsViewModel.GetActiveTrack();
 
-        if (runningTrack != null)
+        if (activeTrack != null)
         {
-            runningTrack.State = PlayerState.Stopped;
+            activeTrack.State = PlaybackState.Stopped;
         }
 
-        SelectedMediaFile = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
+        SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
 
         StopTrack();
 
-        State = PlayerState.Playing;
-        _mainWindow!.PlayTrack(SelectedMediaFile);
+        AudioEngine.PathToMusic = SelectedTrack.Path;
+        AudioEngine.StopAndPlayFromPosition(0.0);
 
-        WeakReferenceMessenger.Default.Send(new PlayerControlsStateMessage(State));
+        activeTrack = SelectedTrack;
+        activeTrack.State = PlaybackState.Playing;
+        State = PlaybackState.Playing;
+
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
+        WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(activeTrack));
     }
+
+    public void ResumeTrack()
+    {
+        AudioEngine.ResumePlay();
+        State = PlaybackState.Playing;
+
+        MediaFile? activeTrack = _playlistTabsViewModel.GetActiveTrack();
+        if (activeTrack != null)
+        {
+            activeTrack.State = PlaybackState.Playing;
+        }
+
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
+    }
+
 
     [RelayCommand]
     private void Stop()
@@ -98,8 +135,16 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     public void StopTrack()
     {
-        State = PlayerState.Stopped;
-        WeakReferenceMessenger.Default.Send(new PlayerControlsStateMessage(State));
+        AudioEngine.Stop();
+        State = PlaybackState.Stopped;
+
+        MediaFile? activeTrack = _playlistTabsViewModel.GetActiveTrack();
+        if (activeTrack != null)
+        {
+            activeTrack.State = PlaybackState.Stopped;
+        }
+
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
     }
 
     [RelayCommand]
@@ -118,7 +163,7 @@ public partial class PlayerControlsViewModel : ObservableRecipient
             return;
         }
 
-        _mainWindow!.PlayTrack(prevMediaFile);
+        PlayTrack();
     }
 
     [RelayCommand]
@@ -137,7 +182,26 @@ public partial class PlayerControlsViewModel : ObservableRecipient
             return;
         }
 
-        _mainWindow!.PlayTrack(nextMediaFile);
+        AudioEngine.PathToMusic = nextMediaFile.Path;
+        PlayTrack();
+    }
+
+    private void OnPlaybackStateChanged(PlaybackState playbackState)
+    {
+        _prevPlaybackState = State;
+        State = playbackState;
+    }
+
+    public void OnAudioStopped(bool audioStopped)
+    {
+        if ((AudioEngine.CurrentTrackPosition + 10.0) >= AudioEngine.CurrentTrackLength)
+        {
+            NextTrack();
+        }
+        else if (audioStopped)
+        {
+            AudioEngine.Stop();
+        }
     }
 
     [RelayCommand]
@@ -148,8 +212,11 @@ public partial class PlayerControlsViewModel : ObservableRecipient
 
     private void SetShuffleMode(bool shuffleMode)
     {
-        ShuffleMode = shuffleMode;
-        _playlistTabsViewModel.ShuffleTracks(shuffleMode);
+        //ShuffleMode = shuffleMode;
+        Settings.Default.ShuffleMode = shuffleMode;
+        Settings.Default.Save();
+
+        WeakReferenceMessenger.Default.Send(new ShuffleModeMessage(shuffleMode));
     }
 
     [RelayCommand]
@@ -162,5 +229,10 @@ public partial class PlayerControlsViewModel : ObservableRecipient
     private bool CanPlayPause()
     {
         return true;
+    }
+
+    public double CurrentSeekbarPosition()
+    {
+        return (AudioEngine.CurrentTrackPosition * 100) / AudioEngine.CurrentTrackLength;
     }
 }

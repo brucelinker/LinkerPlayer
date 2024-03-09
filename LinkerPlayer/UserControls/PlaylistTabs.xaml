@@ -7,6 +7,7 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
+  xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   d:DesignHeight="80"
   d:DesignWidth="800"
@@ -190,7 +191,7 @@
                       VerticalAlignment="Center"
                       Foreground="{StaticResource TrackListItemForegroundBrush}"
                       Kind="PlaySolid"
-                      Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static models:PlayerState.Playing}}" />
+                      Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}" />
 
                     <iconPacks:PackIconMaterial
                       x:Name="PauseImage"
@@ -201,7 +202,7 @@
                       VerticalAlignment="Center"
                       Foreground="{StaticResource TrackListItemForegroundBrush}"
                       Kind="Pause"
-                      Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static models:PlayerState.Paused}}" />
+                      Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static wave:PlaybackState.Paused}}" />
                   </Grid>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
