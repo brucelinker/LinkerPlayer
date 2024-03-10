@@ -251,7 +251,7 @@ public static class AudioEngine
         if (OutputDevice != null)
         {
             OutputDevice.Stop();
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
+            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
         }
         IsPlaying = false;
         CanStop = false;
@@ -264,7 +264,7 @@ public static class AudioEngine
         if (IsPlaying && CanPause)
         {
             OutputDevice!.Pause();
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Paused));
+            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Paused));
             IsPlaying = false;
             CanPlay = true;
             CanPause = false;
@@ -305,14 +305,14 @@ public static class AudioEngine
             Log.Information($"Playing to {outputDeviceName}.");
 
             OutputDevice.Play();
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
+            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
         }
     }
 
     public static void ResumePlay()
     {
         OutputDevice!.Play();
-        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
+        //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
 
         IsPlaying = true;
         CanPause = true;
@@ -339,7 +339,8 @@ public static class AudioEngine
 
         float oldVol = MusicVolume;
 
-        Stop();
+        //Stop();
+        OutputDevice.Stop();
 
         _audioFile = new AudioFileReader(_pathToMusic);
         _audioFile.CurrentTime = TimeSpan.FromSeconds(startingPosition);
@@ -357,7 +358,6 @@ public static class AudioEngine
         MusicVolume = oldVol;
 
         OutputDevice.Play();
-        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
 
         IsPlaying = true;
         CanPause = true;
@@ -370,7 +370,7 @@ public static class AudioEngine
         if (_pathToMusic != null)
         {
             Stop();
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
+            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
 
             _audioFile = new AudioFileReader(_pathToMusic);
             _audioFile.CurrentTime = TimeSpan.FromSeconds(0);
@@ -382,7 +382,7 @@ public static class AudioEngine
     {
         if (_audioFile != null)
         {
-            _audioFile?.Dispose();
+            _audioFile.Dispose();
             _audioFile = null;
         }
 

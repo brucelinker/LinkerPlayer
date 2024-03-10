@@ -5,7 +5,7 @@ using LinkerPlayer.Models;
 
 namespace LinkerPlayer.ViewModels;
 
-public class MainViewModel// : ObservableRecipient, IRecipient<PropertyChangedMessage<PlayerState>>
+public class MainViewModel : BaseViewModel
 {
     //public void Receive(PropertyChangedMessage<PlayerState> message)
     //{

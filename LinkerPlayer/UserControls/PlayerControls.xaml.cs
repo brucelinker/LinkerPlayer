@@ -10,12 +10,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
@@ -26,7 +24,6 @@ public partial class PlayerControls
 {
     private readonly PlayerControlsViewModel _playerControlsViewModel = new();
     public readonly DispatcherTimer SeekBarTimer = new();
-    public bool Rendering;
 
     public PlayerControls()
     {
@@ -49,6 +46,11 @@ public partial class PlayerControls
             OnSelectedTrackChanged(m.Value);
         });
 
+        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
+        {
+            OnActiveTrackChanged(m.Value);
+        });
+
         WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (_, m) =>
         {
             OnDataGridPlay(m.Value);
@@ -59,9 +61,9 @@ public partial class PlayerControls
             OnMuteChanged(m.Value);
         });
 
-        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
+        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, _) =>
         {
-            OnAudioStopped(m.Value);
+            OnAudioStopped();
         });
 
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
@@ -70,143 +72,25 @@ public partial class PlayerControls
         });
     }
 
-    public void ShowSeekBarHideBorders()
+    private void OnActiveTrackChanged(MediaFile? mediaFile)
     {
-        // reset SeekBar scaling to 1
-        SeekBar.RenderTransformOrigin = new Point(0.5, 0.5);
-        SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 1 };
+        if (mediaFile == null) return;
 
-        // animate SeekBar opacity from 0 to SeekBar.Opacity
-        DoubleAnimation seekBarOpacityAnimation = new()
-        {
-            From = SeekBar.Opacity,
-            To = 1,
-            Duration = TimeSpan.FromSeconds(1),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-        };
-
-        Storyboard storyboardSeekBarOpacity = new();
-
-        Storyboard.SetTarget(seekBarOpacityAnimation, SeekBar);
-        Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(OpacityProperty));
-        storyboardSeekBarOpacity.Children.Add(seekBarOpacityAnimation);
-
-        storyboardSeekBarOpacity.Begin();
-
-        // animate UniGrid scaleY from 1 to 0
-        UniGrid.RenderTransformOrigin = new Point(0.5, 0.5);
-        UniGrid.RenderTransform = new ScaleTransform() { ScaleY = 1 };
-
-        DoubleAnimation uniGridScaleAnimation = new()
-        {
-            From = 1,
-            To = 0,
-            Duration = TimeSpan.FromSeconds(0.3),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-        };
-
-        Storyboard storyboardUniGridScale = new();
-
-        Storyboard.SetTarget(uniGridScaleAnimation, UniGrid);
-        Storyboard.SetTargetProperty(uniGridScaleAnimation,
-            new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
-        storyboardUniGridScale.Children.Add(uniGridScaleAnimation);
-        storyboardUniGridScale.Begin();
-    }
-
-    public void HideSeekBarShowBorders()
-    {
-        SeekBar.RenderTransformOrigin = new Point(0.5, 0.5);
-        SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 1 };
-
-        // animate SeekBar opacity from 1 to 0
-        DoubleAnimation seekBarOpacityAnimation = new()
-        {
-            From = SeekBar.Opacity,
-            To = 0,
-            Duration = TimeSpan.FromSeconds(0.3),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-        };
-
-        Storyboard storyboardSeekBarOpacity = new();
-
-        Storyboard.SetTarget(seekBarOpacityAnimation, SeekBar);
-        Storyboard.SetTargetProperty(seekBarOpacityAnimation, new PropertyPath(OpacityProperty));
-        storyboardSeekBarOpacity.Children.Add(seekBarOpacityAnimation);
-        storyboardSeekBarOpacity.Begin();
-
-        // animate UniGrid scaleY from 0 to 1
-        UniGrid.RenderTransformOrigin = new Point(0.5, 0.5);
-        UniGrid.RenderTransform = new ScaleTransform() { ScaleY = 1 };
-        DoubleAnimation uniGridScaleAnimation = new()
-        {
-            From = 0,
-            To = 1,
-            Duration = TimeSpan.FromSeconds(0.3),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
-        };
-
-        uniGridScaleAnimation.Completed += (_, _) =>
-        {
-            // set SeekBar scaling to 2
-            SeekBar.RenderTransformOrigin = new Point(0.5, 0.5);
-            SeekBar.RenderTransform = new ScaleTransform() { ScaleY = 2 };
-        };
-
-        Storyboard storyboardUniGridScale = new();
-
-        Storyboard.SetTarget(uniGridScaleAnimation, UniGrid);
-        Storyboard.SetTargetProperty(uniGridScaleAnimation,
-            new PropertyPath("(UIElement.RenderTransform).(ScaleTransform.ScaleY)"));
-        storyboardUniGridScale.Children.Add(uniGridScaleAnimation);
-        storyboardUniGridScale.Begin();
-    }
-
-    public async void VisualizeAudio(string? path)
-    {
-        if (Rendering)
-        {
-            Rendering = false;
-            await Task.Delay(10);
-        }
-        else
-        {
-            ShowSeekBarHideBorders();
-        }
-
-        List<float> peaks = new();
-
-        await Render(path, peaks);
-
-        if (peaks.Count == 0)
-        {
-            return;
-        }
-
-        UniGrid.Children.Clear();
-
-        foreach (float peak in peaks)
-        {
-            UniGrid.Children.Add(new Border()
-            {
-                CornerRadius = new CornerRadius(2),
-                Height = peak,
-                Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#673ab7")),
-                Opacity = 0.4,
-                Margin = new Thickness(1)
-            });
-        }
-
-        UniGrid_SizeChanged(null, null);
-        SeekBar_ValueChanged(null, null);
-
-        HideSeekBarShowBorders();
+        SetTrackStatus(mediaFile);
     }
 
     private void OnSelectedTrackChanged(MediaFile? selectedTrack)
     {
         if(selectedTrack == null) return;
 
+        if (_playerControlsViewModel.ActiveTrack == null)
+        {
+            SetTrackStatus(selectedTrack);
+        }
+    }
+
+    private void SetTrackStatus(MediaFile selectedTrack)
+    {
         CurrentSongName.Text = selectedTrack.Title;
         TimeSpan ts = selectedTrack.Duration;
         TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
@@ -216,7 +100,6 @@ public partial class PlayerControls
         string channels = GetChannelsString(selectedTrack.Channels);
 
         StatusText.Text = $"{extension} | {selectedTrack.Bitrate} kbps | {selectedTrack.SampleRate} Hz | {channels}";
-        
     }
 
     private void OnPlaybackStateChanged(PlaybackState state)
@@ -236,11 +119,11 @@ public partial class PlayerControls
         }
     }
 
-    private string GetChannelsString(int Channels)
+    private string GetChannelsString(int channels)
     {
-        if (Channels == 1) return "Mono";
-        if (Channels == 2) return "stereo";
-        if (Channels > 2) return "multichannel";
+        if (channels == 1) return "Mono";
+        if (channels == 2) return "stereo";
+        if (channels > 2) return "multichannel";
 
         return "";
     }
@@ -253,79 +136,6 @@ public partial class PlayerControls
 
         PlayButton.Command.Execute(value);
         SeekBarTimer.Start();
-    }
-
-    private async Task Render(string? path, List<float> peaks)
-    {
-        await Task.Run(() =>
-        {
-            Rendering = true;
-
-            using Mp3FileReader mp3 = new(path);
-            int peakCount = 300;
-
-            int bytesPerSample = (mp3.WaveFormat.BitsPerSample / 8) * mp3.WaveFormat.Channels;
-            int samplesPerPeak = (int)(mp3.Length / (double)(peakCount * bytesPerSample));
-            int bytesPerPeak = bytesPerSample * samplesPerPeak;
-
-            byte[] buffer = new byte[bytesPerPeak];
-
-            for (int x = 0; x < peakCount; x++)
-            {
-                if (!Rendering)
-                {
-                    peaks.Clear();
-
-                    return;
-                }
-
-                int bytesRead = mp3.Read(buffer, 0, bytesPerPeak);
-                if (bytesRead == 0)
-                    break;
-
-                float sum = 0;
-
-                for (int n = 0; n < bytesRead; n += 2)
-                {
-                    if (!Rendering)
-                    {
-                        peaks.Clear();
-
-                        return;
-                    }
-
-                    sum += Math.Abs(BitConverter.ToInt16(buffer, n));
-                }
-
-                // ReSharper disable once PossibleLossOfFraction
-                float average = sum / (bytesRead / 2);
-
-                peaks.Add(average);
-            }
-
-            if (peaks.Count != 0)
-            {
-                float peaksMax = peaks.Max();
-                for (int i = 0; i < peaks.Count; i++)
-                {
-                    if (!Rendering)
-                    {
-                        peaks.Clear();
-
-                        return;
-                    }
-
-                    peaks[i] = (peaks[i] / peaksMax) * (int)(UniGrid.ActualHeight * 0.95); // peak height
-
-                    if (peaks[i] < 2)
-                    {
-                        peaks[i] = 2;
-                    }
-                }
-            }
-
-            Rendering = false;
-        });
     }
 
     private void UniGrid_SizeChanged(object? sender, SizeChangedEventArgs? e)
@@ -444,7 +254,7 @@ public partial class PlayerControls
         }
     }
 
-    private void OnAudioStopped(bool messageValue)
+    private void OnAudioStopped()
     {
         SeekBarTimer.Stop();
         SeekBar.Value = 0;
