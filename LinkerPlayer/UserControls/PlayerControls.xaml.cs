@@ -79,14 +79,10 @@ public partial class PlayerControls
         SetTrackStatus(mediaFile);
     }
 
-    private void OnSelectedTrackChanged(MediaFile? selectedTrack)
+    private void OnSelectedTrackChanged(MediaFile? mediaFile)
     {
-        if(selectedTrack == null) return;
 
-        if (_playerControlsViewModel.ActiveTrack == null)
-        {
-            SetTrackStatus(selectedTrack);
-        }
+        SetTrackStatus(mediaFile ?? new MediaFile());
     }
 
     private void SetTrackStatus(MediaFile selectedTrack)

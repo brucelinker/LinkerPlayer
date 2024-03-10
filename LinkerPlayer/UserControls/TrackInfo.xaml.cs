@@ -23,6 +23,11 @@ public partial class TrackInfo
         this.DataContext = this;
         InitializeComponent();
 
+        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
+        {
+            OnActiveTrackChanged(m.Value);
+        });
+
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
             if (m.Value == null) return;
@@ -47,6 +52,13 @@ public partial class TrackInfo
 
             return _defaultAlbumImage!;
         }
+    }
+
+    private void OnActiveTrackChanged(MediaFile? mediaFile)
+    {
+        if (mediaFile == null) return;
+
+        SetSelectedMediaFile(mediaFile);
     }
 
     private void OnSelectedTrackChanged(MediaFile mediaFile)

@@ -137,7 +137,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             MusicLibrary.Playlists[SelectedPlaylistIndex]!.SelectedSong = SelectedTrack!.Id;
         }
 
-        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack ?? SelectedTrack));
     }
 
     //public void OnPlaybackStateChanged(PlaybackState state)
@@ -343,9 +343,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         SelectedTrackIndex = SelectedPlaylistTab!.Tracks.ToList()
             .FindIndex(x => x.Id.Contains(track.Id));
 
-        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+        MediaFile musicFile = ActiveTrack ?? SelectedTrack;
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
 
-        return SelectedTrack;
+        return musicFile;
     }
 
     public MediaFile SelectFirstTrack()
