@@ -37,7 +37,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
     public float Minimum => AudioEngine.MinimumGain;
 
-    private float GetBand(int index)
+    private static float GetBand(int index)
     {
         return AudioEngine.GetBandGain(index);
     }

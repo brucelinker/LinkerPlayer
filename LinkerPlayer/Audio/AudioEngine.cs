@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
-using LinkerPlayer.SpectrumAnalyzer;
 using NAudio.Extras;
 using NAudio.Wave;
 using Serilog;
@@ -8,11 +7,12 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Threading;
 
 namespace LinkerPlayer.Audio;
 
-public static class AudioEngine
+public class AudioEngine : IDisposable
 {
     private static readonly DispatcherTimer _positionTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle);
     //private readonly BackgroundWorker _waveformGenerateWorker = new BackgroundWorker();
@@ -23,13 +23,14 @@ public static class AudioEngine
     private static Equalizer? _equalizer;
     private static EqualizerBand[]? _bands;
     private static readonly SampleAggregator? _sampleAggregator;
-    private static readonly int _fftDataSize = (int)FFTDataSize.FFT2048;
+    //private static readonly int _fftDataSize = (int)FFTDataSize.FFT2048;
     private static bool _canPlay;
     private static bool _canPause;
     private static bool _canStop;
     private static bool _isPlaying;
     //private float[]? _waveformData;
-    private static WaveOutEvent? OutputDevice;
+    //private static WaveOutEvent? _outputDevice;
+    private static IWavePlayer? _outputDevice;
     public static event EventHandler<EventArgs>? StoppedEvent;
     //private TimeSpan _repeatStart;
     //private TimeSpan _repeatStop;
@@ -41,6 +42,9 @@ public static class AudioEngine
     private static string _mainOutputDevice;
     //private const int waveformCompressedPointCount = 2000;
     //private const int repeatThreshold = 200;
+
+    public static event EventHandler<FftEventArgs> FftCalculated;
+    public static event EventHandler<MaxSampleEventArgs> MaximumCalculated;
 
     static AudioEngine()
     {
@@ -56,9 +60,9 @@ public static class AudioEngine
             _positionTimer.Tick += positionTimer_Tick!;
 
             SelectOutputDevice(_mainOutputDevice);
-            _sampleAggregator = new SampleAggregator(_fftDataSize);
+            //_sampleAggregator = new SampleAggregator(_fftDataSize);
 
-            _musicVolume = (float) Properties.Settings.Default.VolumeSliderValue;
+            _musicVolume = (float)Properties.Settings.Default.VolumeSliderValue;
 
             if (Properties.Settings.Default.EqualizerOnStartEnabled)
             {
@@ -85,23 +89,23 @@ public static class AudioEngine
 
     public static float OutputDeviceVolume
     {
-        get => OutputDevice?.Volume ?? 0f;
+        get => _outputDevice?.Volume ?? 0f;
         set
         {
             if (value is < 0f or > 1f)
             {
                 if (value < 0)
                 {
-                    if (OutputDevice != null) OutputDevice.Volume = 0f;
+                    if (_outputDevice != null) _outputDevice.Volume = 0f;
                 }
                 else
                 {
-                    if (OutputDevice != null) OutputDevice.Volume = 1f;
+                    if (_outputDevice != null) _outputDevice.Volume = 1f;
                 }
             }
             else
             {
-                if (OutputDevice != null) OutputDevice.Volume = value;
+                if (_outputDevice != null) _outputDevice.Volume = value;
             }
         }
     }
@@ -136,21 +140,8 @@ public static class AudioEngine
         }
     }
 
-    //public TagLib.File FileTag
-    //{
-    //    get { return _fileTag; }
-    //    set
-    //    {
-    //        TagLib.File oldValue = _fileTag;
-    //        _fileTag = value;
-    //        if (oldValue != _fileTag)
-    //            NotifyPropertyChanged("FileTag");
-    //    }
-    //}
-
-    //public bool IsPlaying => OutputDevice is { PlaybackState: PlaybackState.Playing };
-    public static bool IsPaused => OutputDevice is { PlaybackState: PlaybackState.Paused };
-    public static bool IsStopped => OutputDevice is { PlaybackState: PlaybackState.Stopped };
+    public static bool IsPaused => _outputDevice is { PlaybackState: PlaybackState.Paused };
+    public bool IsStopped => _outputDevice is { PlaybackState: PlaybackState.Stopped };
 
     public static void SelectOutputDevice(string deviceName)
     {
@@ -159,27 +150,20 @@ public static class AudioEngine
             throw new ArgumentNullException(nameof(deviceName), "OutputDevice cannot be null.");
         }
 
-        OutputDevice = new WaveOutEvent()
+        _outputDevice = new WaveOut
         {
-            DeviceNumber = Audio.OutputDevice.GetOutputDeviceId(deviceName)
+            DeviceNumber = OutputDevice.GetOutputDeviceId(deviceName),
+            DesiredLatency = 200
         };
 
-        OutputDevice.PlaybackStopped += Playback_StoppedEvent;
+        _outputDevice.PlaybackStopped += Playback_StoppedEvent;
     }
 
-    //public void Audio_StoppedEvent(object? sender, EventArgs e)
-    //{
-    //    if ((_audioEngine.CurrentTrackPosition + 10.0) >= _audioEngine.CurrentTrackLength)
-    //    {
-    //        SeekBarTimer.Stop();
-    //        NextTrack();
-    //    }
-    //    else if (sender == null)
-    //    {
-    //        _audioEngine.Pause();
-    //        SeekBarTimer.Stop();
-    //    }
-    //}
+    public static void ReselectOutputDevice(string deviceName)
+    {
+        _outputDevice?.Dispose();
+        SelectOutputDevice(deviceName);
+    }
 
     public static void Playback_StoppedEvent(object? sender, StoppedEventArgs stoppedEventArgs)
     {
@@ -205,14 +189,9 @@ public static class AudioEngine
         }
     }
 
-    public static PlaybackState GetPlaybackState()
-    {
-        return OutputDevice!.PlaybackState;
-    }
-
     public static bool CanPlay
     {
-        get { return _canPlay; }
+        get => _canPlay;
         private set
         {
             bool oldValue = _canPlay;
@@ -224,7 +203,7 @@ public static class AudioEngine
 
     public static bool CanPause
     {
-        get { return _canPause; }
+        get => _canPause;
         private set
         {
             bool oldValue = _canPause;
@@ -236,7 +215,7 @@ public static class AudioEngine
 
     public static bool CanStop
     {
-        get { return _canStop; }
+        get => _canStop;
         private set
         {
             bool oldValue = _canStop;
@@ -248,11 +227,16 @@ public static class AudioEngine
 
     public static void Stop()
     {
-        if (OutputDevice != null)
+        if (_outputDevice != null)
         {
-            OutputDevice.Stop();
-            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
+            _outputDevice.Stop();
+
+            if (_audioFile != null)
+            {
+                CloseFile();
+            }
         }
+
         IsPlaying = false;
         CanStop = false;
         CanPlay = true;
@@ -263,56 +247,95 @@ public static class AudioEngine
     {
         if (IsPlaying && CanPause)
         {
-            OutputDevice!.Pause();
-            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Paused));
+            _outputDevice!.Pause();
+
             IsPlaying = false;
             CanPlay = true;
             CanPause = false;
         }
     }
 
-    public static void Play()
+    public static void LoadAudioFile(string pathToMusic, double startPosition = 0.0)
     {
-        if (_pathToMusic == null || OutputDevice == null) return;
+        Stop();
+        CloseFile();
+        ReselectOutputDevice(OutputDevice.GetCurrentDeviceName());
+
+        try
+        {
+            _audioFile = new(pathToMusic);
+            _audioFile.Position = (long)startPosition;
+            SampleAggregator aggregator = new(_audioFile)
+            {
+                NotificationCount = _audioFile.WaveFormat.SampleRate / 100,
+                PerformFFT = true
+            };
+            aggregator.FftCalculated += (s, a) => FftCalculated?.Invoke(null, a);
+            aggregator.MaximumCalculated += (s, a) => MaximumCalculated?.Invoke(null, a);
+            _outputDevice.Init(aggregator);
+
+            if (_equalizer != null)
+            {
+                _equalizer = new Equalizer(aggregator, _bands);
+                _outputDevice.Init(_equalizer);
+            }
+            else
+            {
+                _outputDevice.Init(aggregator);
+            }
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show(e.Message, "Problem opening file");
+            CloseFile();
+        }
+    }
+
+    //private void CloseFile()
+    //{
+    //    fileStream?.Dispose();
+    //    fileStream = null;
+    //}
+
+    //private void OpenFile(string fileName)
+    //{
+    //    try
+    //    {
+    //        var inputStream = new AudioFileReader(fileName);
+    //        fileStream = inputStream;
+    //        var aggregator = new SampleAggregator(inputStream);
+    //        aggregator.NotificationCount = inputStream.WaveFormat.SampleRate / 100;
+    //        aggregator.PerformFFT = true;
+    //        aggregator.FftCalculated += (s, a) => FftCalculated?.Invoke(null, a);
+    //        aggregator.MaximumCalculated += (s, a) => MaximumCalculated?.Invoke(null, a);
+    //        playbackDevice.Init(aggregator);
+    //    }
+    //    catch (Exception e)
+    //    {
+    //        MessageBox.Show(e.Message, "Problem opening file");
+    //        CloseFile();
+    //    }
+    //}
+    public void Play()
+    {
+        if (_pathToMusic == null || _outputDevice == null) return;
 
         if (CanPlay)
         {
-
-            AudioFileReader newAudioFile = new(_pathToMusic);
-
-            if (_audioFile == null || newAudioFile.FileName != _audioFile.FileName)
-            {
-                _audioFile = newAudioFile;
-                
-                if (_equalizer != null)
-                {
-                    _equalizer = new Equalizer(_audioFile, _bands);
-
-                    OutputDevice.Init(_equalizer);
-                }
-                else
-                {
-                    OutputDevice.Init(_audioFile);
-                }
-            }
+            LoadAudioFile(_pathToMusic);
 
             IsPlaying = true;
             CanPause = true;
             CanPlay = false;
             CanStop = true;
 
-            string outputDeviceName = Audio.OutputDevice.GetOutputDeviceNameById(OutputDevice.DeviceNumber);
-            Log.Information($"Playing to {outputDeviceName}.");
-
-            OutputDevice.Play();
-            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
+            _outputDevice.Play();
         }
     }
 
     public static void ResumePlay()
     {
-        OutputDevice!.Play();
-        //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
+        _outputDevice!.Play();
 
         IsPlaying = true;
         CanPause = true;
@@ -322,7 +345,7 @@ public static class AudioEngine
 
     public static bool IsPlaying
     {
-        get { return _isPlaying; }
+        get => _isPlaying;
         private set
         {
             bool oldValue = _isPlaying;
@@ -335,29 +358,15 @@ public static class AudioEngine
 
     public static void StopAndPlayFromPosition(double startingPosition)
     {
-        if (_pathToMusic == null || OutputDevice == null) return;
+        if (_pathToMusic == null || _outputDevice == null) return;
 
         float oldVol = MusicVolume;
 
-        //Stop();
-        OutputDevice.Stop();
-
-        _audioFile = new AudioFileReader(_pathToMusic);
-        _audioFile.CurrentTime = TimeSpan.FromSeconds(startingPosition);
-
-        if (_equalizer != null)
-        {
-            _equalizer = new Equalizer(_audioFile, _bands);
-            OutputDevice.Init(_equalizer);
-        }
-        else
-        {
-            OutputDevice.Init(_audioFile);
-        }
+        LoadAudioFile(_pathToMusic, startingPosition);
 
         MusicVolume = oldVol;
 
-        OutputDevice.Play();
+        _outputDevice.Play();
 
         IsPlaying = true;
         CanPause = true;
@@ -365,36 +374,26 @@ public static class AudioEngine
         CanStop = true;
     }
 
-    public static void StopAndResetPosition()
+    public void Dispose()
     {
-        if (_pathToMusic != null)
-        {
-            Stop();
-            //WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
-
-            _audioFile = new AudioFileReader(_pathToMusic);
-            _audioFile.CurrentTime = TimeSpan.FromSeconds(0);
-        }
+        CloseDevice();
     }
 
-
-    private static void Dispose()
+    public static void CloseFile()
     {
         if (_audioFile != null)
         {
             _audioFile.Dispose();
             _audioFile = null;
         }
-
-        CloseStream();
     }
 
-    public static void CloseStream()
+    public void CloseDevice()
     {
         Stop();
         StopEqualizer();
-        Dispose();
-        OutputDevice?.Dispose();
+        CloseFile();
+        _outputDevice?.Dispose();
     }
 
     public static string? PathToMusic
@@ -451,11 +450,6 @@ public static class AudioEngine
                 _audioFile.CurrentTime = TimeSpan.FromSeconds(value);
             }
         }
-    }
-
-    public static void Seek(double offset)
-    {
-        CurrentTrackPosition += offset;
     }
 
     #region Equalizer
@@ -552,111 +546,11 @@ public static class AudioEngine
 
     #endregion Equalizer
 
-    public static void ReselectOutputDevice(string deviceName)
-    {
-        if (IsPlaying)
-        {
-            double tempPosition = CurrentTrackPosition;
-            float tempDeviceVolume = OutputDeviceVolume;
-            float tempMusicVolume = MusicVolume;
-
-            Stop();
-
-            OutputDevice?.Dispose();
-
-            SelectOutputDevice(deviceName);
-
-            StopAndPlayFromPosition(tempPosition);
-
-            OutputDeviceVolume = tempDeviceVolume;
-            MusicVolume = tempMusicVolume;
-        }
-        else
-        {
-            OutputDevice?.Dispose();
-
-            SelectOutputDevice(deviceName);
-        }
-    }
-
-    public static bool GetFFTData(float[] fftDataBuffer)
-    {
-        _sampleAggregator!.GetFFTResults(fftDataBuffer);
-        return IsPlaying;
-    }
-
-    public static int GetFFTFrequencyIndex(int frequency)
-    {
-        double maxFrequency;
-        if (_audioFile != null)
-            maxFrequency = _audioFile.WaveFormat.SampleRate / 2.0d;
-        else
-            maxFrequency = 22050; // Assume a default 44.1 kHz sample rate.
-
-        return (int)((frequency / maxFrequency) * (_fftDataSize / 2.0));
-    }
-
-    public static int GetOutputDeviceId()
-    {
-        if (OutputDevice != null) return OutputDevice.DeviceNumber;
-
-        return -1;
-    }
-
     public static event PropertyChangedEventHandler? PropertyChanged;
     private static void NotifyPropertyChanged(String info)
     {
         PropertyChanged?.Invoke(null, new PropertyChangedEventArgs(info));
     }
-
-    //public TimeSpan SelectionBegin
-    //{
-    //    get => _repeatStart;
-    //    set
-    //    {
-    //        if (_inRepeatSet) return;
-
-    //        _inRepeatSet = true;
-    //        TimeSpan oldValue = _repeatStart;
-    //        _repeatStart = value;
-
-    //        if (oldValue != _repeatStart)
-    //            NotifyPropertyChanged("SelectionBegin");
-
-    //        _inRepeatSet = false;
-    //    }
-    //}
-
-    //public TimeSpan SelectionEnd
-    //{
-    //    get => _repeatStop;
-    //    set
-    //    {
-    //        if (_inChannelSet) return;
-
-    //        _inRepeatSet = true;
-    //        TimeSpan oldValue = _repeatStop;
-    //        _repeatStop = value;
-
-    //        if (oldValue != _repeatStop)
-    //            NotifyPropertyChanged("SelectionEnd");
-
-    //        _inRepeatSet = false;
-    //    }
-    //}
-
-    //public float[]? WaveformData
-    //{
-    //    get => _waveformData;
-    //    protected set
-    //    {
-    //        float[]? oldValue = _waveformData;
-    //        _waveformData = value;
-
-    //        if (oldValue != _waveformData)
-    //            NotifyPropertyChanged("WaveformData");
-    //    }
-    //}
 
     public static double ChannelLength
     {

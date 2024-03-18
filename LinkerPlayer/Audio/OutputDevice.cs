@@ -10,11 +10,11 @@ public static class OutputDevice
     {
         if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
         {
-            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(0);
+            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(-1);
         }
         else if (!GetOutputDevicesList().Contains(Properties.Settings.Default.MainOutputDevice))
         {
-            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(0);
+            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(-1);
         }
 
         if (string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
@@ -39,6 +39,16 @@ public static class OutputDevice
                 }
             }
         }
+    }
+
+    public static string GetCurrentDeviceName()
+    {
+        return Properties.Settings.Default.MainOutputDevice;
+    }
+
+    public static int GetCurrentDeviceId()
+    {
+        return GetOutputDeviceId(Properties.Settings.Default.MainOutputDevice);
     }
 
     public static int GetOutputDeviceId(string nameDevice)

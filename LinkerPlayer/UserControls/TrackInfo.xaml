@@ -6,7 +6,6 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
-  xmlns:spectrumAnalyzer="clr-namespace:LinkerPlayer.SpectrumAnalyzer"
   d:DesignHeight="450"
   d:DesignWidth="300"
   mc:Ignorable="d">
@@ -32,9 +31,9 @@
       x:Name="CoverGrid"
       Grid.Row="0"
       Grid.Column="0"
-      VerticalAlignment="Stretch"
+      Margin="0,1,0,0"
       HorizontalAlignment="Stretch"
-      Margin="0,1,0,0">
+      VerticalAlignment="Stretch">
 
       <Grid
         x:Name="ImageGrid"
@@ -60,9 +59,9 @@
         </Image>
         <TextBlock
           x:Name="TrackImageText"
+          Height="auto"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Height="auto"
           FontSize="20"
           Text="[ No Selection ]" />
 
@@ -156,17 +155,13 @@
         TextTrimming="CharacterEllipsis" />
 
     </Grid>
-    <Grid Grid.Row="2" VerticalAlignment="Bottom" >
+    <Grid Grid.Row="2" VerticalAlignment="Stretch">
       <Border BorderBrush="red" BorderThickness="1">
-      <spectrumAnalyzer:SpectrumAnalyzer x:Name="spectrumAnalyzer"
-                                         Height="160"
-                                         HorizontalAlignment="Stretch"
-                                         VerticalAlignment="Bottom"
-                                         AveragePeaks="False"
-                                         MinimumFrequency="20"
-                                         MaximumFrequency="20000"
-                                         PeakFallDelay="10"
-                                         BarHeightScaling="Decibel" />
+        <userControls:SpectrumAnalyzer
+          x:Name="Spectrum"
+          Height="160"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
       </Border>
     </Grid>
   </Grid>

@@ -73,6 +73,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             {
                 _dataGrid.SelectedItem = SelectedTrack;
                 _dataGrid.SelectedIndex = SelectedTrackIndex;
+
+                _dataGrid.Items.Refresh();
                 _dataGrid.UpdateLayout();
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
@@ -103,10 +105,11 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if (_dataGrid is { Items.Count: > 0 })
             {
-                _dataGrid.Items.Refresh();
-                _dataGrid.UpdateLayout();
                 _dataGrid.SelectedIndex = SelectedTrackIndex;
                 _dataGrid.SelectedItem = SelectedTrack;
+
+                _dataGrid.Items.Refresh();
+                _dataGrid.UpdateLayout();
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
 
@@ -129,6 +132,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         if (_dataGrid is { SelectedItem: not null })
         {
+            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
+
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedPlaylistTab!.SelectedTrack = SelectedTrack;
@@ -358,6 +363,11 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         _dataGrid!.SelectedItem = SelectedTrack;
         _dataGrid.SelectedIndex = SelectedTrackIndex;
 
+        _dataGrid.Items.Refresh();
+        _dataGrid.UpdateLayout();
+        _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+
+
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
 
         return SelectedTrack;
@@ -412,8 +422,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             {
                 _dataGrid.SelectedIndex = newIndex;
                 _dataGrid.SelectedItem = SelectedTrack;
+
                 _dataGrid.Items.Refresh();
-                _dataGrid.ScrollIntoView(SelectedTrack);
+                _dataGrid.UpdateLayout();
+                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
         }
 
@@ -468,8 +480,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             {
                 _dataGrid.SelectedIndex = newIndex;
                 _dataGrid.SelectedItem = SelectedTrack;
+
                 _dataGrid.Items.Refresh();
-                _dataGrid.ScrollIntoView(SelectedTrack);
+                _dataGrid.UpdateLayout();
+                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
         }
 

@@ -123,8 +123,7 @@ public partial class MainWindow
                 SelectedEqualizerProfile != null! ? SelectedEqualizerProfile.Name : null;
         }
 
-        Properties.Settings.Default.MainOutputDevice =
-            OutputDevice.GetOutputDeviceNameById(AudioEngine.GetOutputDeviceId());
+        Properties.Settings.Default.MainOutputDevice = OutputDevice.GetCurrentDeviceName();
 
         Properties.Settings.Default.Save();
     }
