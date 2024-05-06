@@ -70,7 +70,7 @@
 
     <Grid
       Grid.Row="1"
-      Margin="0,0,0,0"
+      Margin="10,0,0,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Center">
       <Grid.RowDefinitions>
@@ -85,7 +85,7 @@
         Name="TrackName"
         Grid.Row="0"
         Grid.ColumnSpan="2"
-        Margin="15,8,0,2"
+        Margin="0,8,0,2"
         VerticalAlignment="Center"
         d:Text="Title"
         FontSize="{DynamicResource FontSizeBiggest}"
@@ -96,7 +96,7 @@
       <TextBlock
         Name="TrackArtist"
         Grid.Row="1"
-        Margin="15,0,0,0"
+        Margin="0,0,0,0"
         Padding="0"
         VerticalAlignment="Center"
         d:Text="Artist"
@@ -109,7 +109,7 @@
         Name="TrackAlbum"
         Grid.Row="2"
         Grid.ColumnSpan="2"
-        Margin="15,0,0,0"
+        Margin="0,0,0,0"
         Padding="1"
         VerticalAlignment="Center"
         d:Text="Album"
@@ -121,7 +121,7 @@
       <StackPanel Grid.Row="3" Orientation="Horizontal">
         <TextBlock
           Name="TrackYear"
-          Margin="15,0,0,0"
+          Margin="0,0,0,0"
           Padding="1"
           VerticalAlignment="Center"
           d:Text="Year"
@@ -132,7 +132,7 @@
 
         <TextBlock
           Name="TrackBitrate"
-          Margin="15,0,0,0"
+          Margin="0,0,0,0"
           Padding="1"
           VerticalAlignment="Center"
           d:Text="Year"
@@ -145,7 +145,7 @@
       <TextBlock
         Name="TrackGenre"
         Grid.Row="4"
-        Margin="15,0,0,8"
+        Margin="0,0,0,8"
         Padding="1"
         VerticalAlignment="Center"
         d:Text="Genre"
@@ -155,14 +155,12 @@
         TextTrimming="CharacterEllipsis" />
 
     </Grid>
-    <Grid Grid.Row="2" VerticalAlignment="Stretch">
-      <Border BorderBrush="red" BorderThickness="1">
-        <userControls:SpectrumAnalyzer
-          x:Name="Spectrum"
-          Height="160"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch" />
-      </Border>
+    <Grid Grid.Row="2" VerticalAlignment="Bottom"
+          Margin="8, 0, 0, 0">
+      <userControls:SpectrumAnalyzer
+          Width="Auto"
+          Magnitudes="{Binding EQFrequencyMagnitudes}"
+          MinimumDbLevel="{Binding EQMinimumDb}" />
     </Grid>
   </Grid>
 

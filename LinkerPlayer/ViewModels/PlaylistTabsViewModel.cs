@@ -617,6 +617,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         int newIndex = TabList[index].Tracks.ToList()
             .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex]!.Id));
 
+        Log.Information($"GetNextShuffledIndex: {_shuffledIndex}");
+
         return newIndex;
     }
 

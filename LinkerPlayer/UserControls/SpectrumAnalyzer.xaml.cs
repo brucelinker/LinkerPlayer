@@ -1,9 +1,10 @@
-﻿using NAudio.Dsp;
-using System;
+﻿using System;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using LinkerPlayer.Audio;
-using NAudio.Extras;
+using System.Windows.Shapes;
+using System.Windows.Threading;
+using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.UserControls;
 
@@ -12,98 +13,176 @@ namespace LinkerPlayer.UserControls;
 /// </summary>
 public partial class SpectrumAnalyzer : UserControl
 {
-    private double xScale = 200;
-    private int bins = 512; // guess a 1024 size FFT, bins is half FFT size
+    private FrequencyBar[] frequencyBars;
+    private readonly SpectrumViewModel _spectrumViewModel = new();
 
     public SpectrumAnalyzer()
     {
         InitializeComponent();
-        CalculateXScale();
-        SizeChanged += SpectrumAnalyzer_SizeChanged;
-
-
-        AudioEngine.MaximumCalculated += audioEngine_MaximumCalculated;
-        AudioEngine.FftCalculated += audioEngine_FftCalculated;
+        DataContext = _spectrumViewModel;
+        Prepare();
     }
 
-    private void audioEngine_FftCalculated(object? sender, FftEventArgs e)
+    public static readonly DependencyProperty MinimumDbLevelProperty =
+        DependencyProperty.Register("MinimumDbLevel", typeof(double), typeof(SpectrumAnalyzer),
+            new PropertyMetadata(-60d, new PropertyChangedCallback(MinimumDbLevelUpdated)));
+
+    public double MinimumDbLevel
     {
-        Update(e.Result);
+        get => (double)GetValue(MinimumDbLevelProperty);
+        set => SetValue(MinimumDbLevelProperty, value);
     }
 
-    private void audioEngine_MaximumCalculated(object? sender, MaxSampleEventArgs e)
+    private static void MinimumDbLevelUpdated(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        
+        (d as SpectrumAnalyzer).UpdateDbDisplay((double)e.NewValue);
     }
 
-    void SpectrumAnalyzer_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void UpdateDbDisplay(double value)
     {
-        CalculateXScale();
+        Debug.WriteLine($"Value of dB: {value}");
+        LowestDbLabel.Content = value.ToString() + "dB";
     }
 
-    private void CalculateXScale()
+    public static readonly DependencyProperty MagnitudesProperty =
+        DependencyProperty.Register("Magnitudes", typeof(double[]), typeof(SpectrumAnalyzer),
+            new PropertyMetadata(new PropertyChangedCallback(MagnitudesUpdated)));
+
+    public double[] Magnitudes
     {
-        xScale = ActualWidth / (bins/BinsPerPoint);
+        get => (double[])GetValue(MagnitudesProperty);
+        set => SetValue(MagnitudesProperty, value);
     }
 
-    private const int BinsPerPoint = 2; // reduce the number of points we plot for a less jagged line?
-    private int _updateCount;
-
-    public void Update(Complex[] fftResults)
+    private static void MagnitudesUpdated(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        // no need to repaint too many frames per second
-        if (_updateCount++ % 2 == 0)
+        (d as SpectrumAnalyzer).UpdateMagnitudes((double[])e.NewValue);
+    }
+
+    private void UpdateMagnitudes(double[] Mags)
+    {
+        for (var i = 0; i < Mags.Length; i++)
         {
-            return;
+            var intensityDB = Mags[i];
+
+            if (intensityDB < MinimumDbLevel) intensityDB = MinimumDbLevel;
+
+            // percent with -60 = 1
+            double percent = intensityDB / MinimumDbLevel;
+
+            // invert the percent using height of the bar element
+            var barHeight = spec0.ActualHeight - (percent * spec0.ActualHeight);
+            //var barHeight = _maximumFreqBarHeight - (percent * _maximumFreqBarHeight);
+
+            // set height of control
+            frequencyBars[i].Height = barHeight > 2 ? barHeight : 2;
+
+            //Debug.WriteLine($"Intensity: {intensityDB}, Percent: {percent}");
+        }
+    }
+
+    private void Prepare()
+    {
+        frequencyBars = new FrequencyBar[]
+        {
+            new FrequencyBar(spec1, peak1),
+            new FrequencyBar(spec2, peak2),
+            new FrequencyBar(spec3, peak3),
+            new FrequencyBar(spec4, peak4),
+            new FrequencyBar(spec5, peak5),
+            new FrequencyBar(spec6, peak6),
+            new FrequencyBar(spec7, peak7),
+            new FrequencyBar(spec8, peak8),
+            new FrequencyBar(spec9, peak9),
+            new FrequencyBar(spec10, peak10),
+            new FrequencyBar(spec11, peak11),
+            new FrequencyBar(spec12, peak12),
+            new FrequencyBar(spec13, peak13),
+            new FrequencyBar(spec14, peak14),
+            new FrequencyBar(spec15, peak15),
+            new FrequencyBar(spec16, peak16),
+            new FrequencyBar(spec17, peak17),
+            new FrequencyBar(spec18, peak18),
+            new FrequencyBar(spec19, peak19)
+        };
+    }
+
+
+    class FrequencyBar
+    {
+        private bool peakFalling = false;
+        private double lastPeakPosition = 0;
+        private DispatcherTimer peakTimer;
+        private DispatcherTimer fallTimer;
+
+        public FrequencyBar(Rectangle bar, Rectangle peak)
+        {
+            this.Bar = bar;
+            this.Peak = peak;
+            this.Bar.Height = 2;
+            this.Peak.Height = 2;
+
+            peakTimer = new DispatcherTimer();
+            peakTimer.Interval = TimeSpan.FromMilliseconds(1000);
+            peakTimer.Tick += Peak_Tick;
+
+            fallTimer = new DispatcherTimer();
+            fallTimer.Interval = TimeSpan.FromMilliseconds(100);
+            fallTimer.Tick += Fall_Tick;
         }
 
-        if (fftResults.Length / 2 != bins)
+        private void Fall_Tick(object sender, EventArgs e)
         {
-            bins = fftResults.Length / 2;
-            CalculateXScale();
-        }
-            
-        for (int n = 0; n < fftResults.Length / 2; n+= BinsPerPoint)
-        {
-            // averaging out bins
-            double yPos = 0;
-            for (int b = 0; b < BinsPerPoint; b++)
+            if (Peak.Margin.Bottom > lastPeakPosition - 20)
             {
-                yPos += GetYPosLog(fftResults[n+b]);
+                var margin = Peak.Margin;
+                margin.Bottom -= 2;
+                Peak.Margin = margin;
+                Peak.Opacity -= .2;
             }
-            AddResult(n / BinsPerPoint, yPos / BinsPerPoint);
+            else
+            {
+                fallTimer.Stop();
+                peakFalling = false;
+                var margin = Peak.Margin;
+                margin.Bottom = 0;
+                Peak.Margin = margin;
+            }
         }
-    }
 
-    private double GetYPosLog(Complex c)
-    {
-        // not entirely sure whether the multiplier should be 10 or 20 in this case.
-        // going with 10 from here http://stackoverflow.com/a/10636698/7532
-        double intensityDB = 10 * Math.Log10(Math.Sqrt(c.X * c.X + c.Y * c.Y));
-        double minDB = -90;
-        if (intensityDB < minDB) intensityDB = minDB;
-        double percent = intensityDB / minDB;
-        // we want 0dB to be at the top (i.e. yPos = 0)
-        double yPos = percent * ActualHeight;
-        return yPos;
-    }
-
-    private void AddResult(int index, double power)
-    {
-        Point p = new Point(CalculateXPos(index), power);
-        if (index >= polyline1.Points.Count)
+        private void Peak_Tick(object sender, EventArgs e)
         {
-            polyline1.Points.Add(p);
+            peakTimer.Stop();
+            if (!peakFalling)
+            {
+                peakFalling = true;
+                lastPeakPosition = Peak.Margin.Bottom;
+                fallTimer.Start();
+            }
         }
-        else
-        {
-            polyline1.Points[index] = p;
-        }
-    }
 
-    private double CalculateXPos(int bin)
-    {
-        if (bin == 0) return 0;
-        return bin * xScale; // Math.Log10(bin) * xScale;
+        public double Height
+        {
+            get => Bar.Height;
+            set
+            {
+                Bar.Height = value;
+                if (Bar.Height - 2 >= Peak.Margin.Bottom)
+                {
+                    peakTimer.Stop();
+                    fallTimer.Stop();
+                    peakFalling = false;
+
+                    var thickness = Peak.Margin;
+                    thickness.Bottom = Bar.Height - 2;
+                    Peak.Margin = thickness;
+                    Peak.Opacity = 1;
+
+                    peakTimer.Start();
+                }
+            }
+        }
+        public Rectangle Bar { get; set; }
+        public Rectangle Peak { get; set; }
     }
 }

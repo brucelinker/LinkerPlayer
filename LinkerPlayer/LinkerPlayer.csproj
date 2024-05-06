@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="UserControls\SpectrumAnalyzerNAudio.xaml.cs" />
     <Compile Remove="Windows\DownloadsWindow.xaml.cs" />
   </ItemGroup>
 
@@ -56,6 +57,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Page Remove="UserControls\SpectrumAnalyzerNAudio.xaml" />
     <Page Remove="Windows\DownloadsWindow.xaml" />
   </ItemGroup>
 
@@ -64,11 +66,11 @@
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="1.1.0" />
     <PackageReference Include="MahApps.Metro" Version="2.4.10" />
     <PackageReference Include="MahApps.Metro.IconPacks" Version="4.11.0" />
-    <PackageReference Include="MaterialDesignThemes" Version="4.9.0" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.1" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Extras" Version="2.2.1" />
     <PackageReference Include="NAudio.WinForms" Version="2.2.1" />

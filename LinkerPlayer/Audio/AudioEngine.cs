@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace LinkerPlayer.Audio;
@@ -22,7 +23,18 @@ public class AudioEngine : IDisposable
 
     private static Equalizer? _equalizer;
     private static EqualizerBand[]? _bands;
-    private static readonly SampleAggregator? _sampleAggregator;
+    private static SampleAggregator? _aggregator;
+    private static double[] frequencies;
+    private int[] frequencyBins;
+
+    static int xPos = 2;
+    static int yScale = 50;
+
+    static List<Point> topPoints = new List<Point>();
+    static List<Point> bottomPoints = new List<Point>();
+    private static double[] _volume = { 0, 0 };
+
+
     //private static readonly int _fftDataSize = (int)FFTDataSize.FFT2048;
     private static bool _canPlay;
     private static bool _canPause;
@@ -75,6 +87,11 @@ public class AudioEngine : IDisposable
             }
 
             //StoppedEvent += Playback_StoppedEvent;
+            //PrepareSpectrumAnalyzer();
+
+            //MinEQGain = -MAX_EQ_GAIN;
+            //MaxEQGain = MAX_EQ_GAIN;
+            //EQMinimumDb = MIN_DB_VALUE;
 
             IsPlaying = false;
             CanStop = false;
@@ -87,6 +104,28 @@ public class AudioEngine : IDisposable
         }
     }
 
+    //public void Prepare(AudioEngine Model)
+    //{
+    //    //_model = Model;
+    //    //_model.PropertyChanged += _engine_PropertyChanged;
+
+    //    PrepareSpectrumAnalyzer();
+
+    //    //timer = new DispatcherTimer();
+    //    //timer.Interval = TimeSpan.FromMilliseconds(500);
+    //    //timer.Tick += Timer_Tick;
+
+    //    //_isLocationChanging = false;
+    //    //PopulateDevicesCombo();
+    //    //SetupWasapi(); method called when combo is created
+
+    //    //EnableControls(false);
+    //    //PlayButton.IsEnabled = false;
+
+    //    MinEQGain = -MAX_EQ_GAIN;
+    //    MaxEQGain = MAX_EQ_GAIN;
+    //    EQMinimumDb = MIN_DB_VALUE;
+    //}
     public static float OutputDeviceVolume
     {
         get => _outputDevice?.Volume ?? 0f;
@@ -107,6 +146,42 @@ public class AudioEngine : IDisposable
             {
                 if (_outputDevice != null) _outputDevice.Volume = value;
             }
+        }
+    }
+
+    public static PointCollection WaveformPoints
+    {
+        get
+        {
+            PointCollection points = new PointCollection();
+
+            points.Add(new Point(0, yScale));
+
+            foreach (var p in topPoints)
+            {
+                points.Add(p);
+            }
+
+            points.Add(new Point(xPos, yScale));
+            bottomPoints.Reverse();
+
+            foreach (var p in bottomPoints)
+            {
+                points.Add(p);
+            }
+            points.Add(new Point(0, yScale));
+
+            return points;
+        }
+    }
+
+    public static double[] SoundLevel
+    {
+        get => _volume;
+        set
+        {
+            _volume = value;
+            WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("SoundLevel"));
         }
     }
 
@@ -137,6 +212,39 @@ public class AudioEngine : IDisposable
             {
                 _audioFile.Volume = _musicVolume;
             }
+        }
+    }
+
+    private static double _minEQ = 0;
+    public static double MinEQGain
+    {
+        get => _minEQ;
+        set
+        {
+            _minEQ = value;
+            OnPropertyChanged("MinEQGain");
+        }
+    }
+
+    private static double _maxEQ = 0;
+    public static double MaxEQGain
+    {
+        get => _maxEQ;
+        set
+        {
+            _maxEQ = value;
+            OnPropertyChanged("MaxEQGain");
+        }
+    }
+
+    private static double _eqMinimumDb;
+    public static double EQMinimumDb
+    {
+        get => _eqMinimumDb;
+        set
+        {
+            _eqMinimumDb = value;
+            OnPropertyChanged("EQMinimumDb");
         }
     }
 
@@ -197,7 +305,7 @@ public class AudioEngine : IDisposable
             bool oldValue = _canPlay;
             _canPlay = value;
             if (oldValue != _canPlay)
-                NotifyPropertyChanged("CanPlay");
+                OnPropertyChanged("CanPlay");
         }
     }
 
@@ -209,7 +317,7 @@ public class AudioEngine : IDisposable
             bool oldValue = _canPause;
             _canPause = value;
             if (oldValue != _canPause)
-                NotifyPropertyChanged("CanPause");
+                OnPropertyChanged("CanPause");
         }
     }
 
@@ -221,7 +329,7 @@ public class AudioEngine : IDisposable
             bool oldValue = _canStop;
             _canStop = value;
             if (oldValue != _canStop)
-                NotifyPropertyChanged("CanStop");
+                OnPropertyChanged("CanStop");
         }
     }
 
@@ -257,32 +365,48 @@ public class AudioEngine : IDisposable
 
     public static void LoadAudioFile(string pathToMusic, double startPosition = 0.0)
     {
-        Stop();
-        CloseFile();
-        ReselectOutputDevice(OutputDevice.GetCurrentDeviceName());
-
         try
         {
+            Log.Information($"Loading Track: {pathToMusic}");
+
+            if(_audioFile != null && pathToMusic.Equals(_audioFile.FileName))
+            {
+                _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);
+                ResumePlay();
+
+                return;
+            }
+
+            Stop();
+            CloseFile();
+            ReselectOutputDevice(OutputDevice.GetCurrentDeviceName());
+
             _audioFile = new(pathToMusic);
-            _audioFile.Position = (long)startPosition;
-            SampleAggregator aggregator = new(_audioFile)
+            _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);
+            _aggregator = new(_audioFile)
             {
                 NotificationCount = _audioFile.WaveFormat.SampleRate / 100,
                 PerformFFT = true
             };
-            aggregator.FftCalculated += (s, a) => FftCalculated?.Invoke(null, a);
-            aggregator.MaximumCalculated += (s, a) => MaximumCalculated?.Invoke(null, a);
-            _outputDevice.Init(aggregator);
+
+            _aggregator.FftCalculated += (s, a) => OnFftCalculated(a);
+            _aggregator.MaximumCalculated += (s, a) => OnMaximumCalculated(a);
+
+            _outputDevice.Init(_aggregator);
 
             if (_equalizer != null)
             {
-                _equalizer = new Equalizer(aggregator, _bands);
+                _equalizer = new Equalizer(_aggregator, _bands);
                 _outputDevice.Init(_equalizer);
             }
             else
             {
-                _outputDevice.Init(aggregator);
+                _outputDevice.Init(_aggregator);
             }
+
+            Log.Information($"Sending TrackLoaded message: {pathToMusic}");
+
+            WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("TrackLoaded"));
         }
         catch (Exception e)
         {
@@ -291,31 +415,6 @@ public class AudioEngine : IDisposable
         }
     }
 
-    //private void CloseFile()
-    //{
-    //    fileStream?.Dispose();
-    //    fileStream = null;
-    //}
-
-    //private void OpenFile(string fileName)
-    //{
-    //    try
-    //    {
-    //        var inputStream = new AudioFileReader(fileName);
-    //        fileStream = inputStream;
-    //        var aggregator = new SampleAggregator(inputStream);
-    //        aggregator.NotificationCount = inputStream.WaveFormat.SampleRate / 100;
-    //        aggregator.PerformFFT = true;
-    //        aggregator.FftCalculated += (s, a) => FftCalculated?.Invoke(null, a);
-    //        aggregator.MaximumCalculated += (s, a) => MaximumCalculated?.Invoke(null, a);
-    //        playbackDevice.Init(aggregator);
-    //    }
-    //    catch (Exception e)
-    //    {
-    //        MessageBox.Show(e.Message, "Problem opening file");
-    //        CloseFile();
-    //    }
-    //}
     public void Play()
     {
         if (_pathToMusic == null || _outputDevice == null) return;
@@ -351,7 +450,7 @@ public class AudioEngine : IDisposable
             bool oldValue = _isPlaying;
             _isPlaying = value;
             if (oldValue != _isPlaying)
-                NotifyPropertyChanged("IsPlaying");
+                OnPropertyChanged("IsPlaying");
             _positionTimer.IsEnabled = value;
         }
     }
@@ -546,10 +645,17 @@ public class AudioEngine : IDisposable
 
     #endregion Equalizer
 
-    public static event PropertyChangedEventHandler? PropertyChanged;
-    private static void NotifyPropertyChanged(String info)
+    public static int FrequencyBinIndex(double frequency)
     {
-        PropertyChanged?.Invoke(null, new PropertyChangedEventArgs(info));
+        var bin = (int)Math.Floor(frequency * _aggregator.FFTLength / _audioFile.WaveFormat.SampleRate);
+        return bin;
+    }
+
+    static void positionTimer_Tick(object sender, EventArgs e)
+    {
+        _inChannelTimerUpdate = true;
+        ChannelPosition = (_audioFile!.Position / (double)_audioFile.Length) * _audioFile.TotalTime.TotalSeconds;
+        _inChannelTimerUpdate = false;
     }
 
     public static double ChannelLength
@@ -561,7 +667,7 @@ public class AudioEngine : IDisposable
             _channelLength = value;
 
             if (Math.Abs(oldValue - _channelLength) > 0)
-                NotifyPropertyChanged("ChannelLength");
+                OnPropertyChanged("ChannelLength");
         }
     }
 
@@ -582,17 +688,73 @@ public class AudioEngine : IDisposable
                 _channelPosition = position;
 
                 if (Math.Abs(oldValue - _channelPosition) > 0)
-                    NotifyPropertyChanged("ChannelPosition");
+                    OnPropertyChanged("ChannelPosition");
 
                 _inChannelSet = false;
             }
         }
     }
 
-    static void positionTimer_Tick(object sender, EventArgs e)
+    private static double[] _fftResult = { };
+    public static double[] FFTUpdate
     {
-        _inChannelTimerUpdate = true;
-        ChannelPosition = (_audioFile!.Position / (double)_audioFile.Length) * _audioFile.TotalTime.TotalSeconds;
-        _inChannelTimerUpdate = false;
+        get => _fftResult;
+        set
+        {
+            _fftResult = value;
+            WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("FFTUpdate"));
+        }
+    }
+
+    //private bool _markersDrawn = true;
+    //private void CreateWaveformMarkers()
+    //{
+    //    if (!_markersDrawn)
+    //    {
+    //        double seconds = _model.Duration;
+    //        double points = Math.Floor(seconds / 10);
+    //        double marginLeft = _waveformWidth / points;
+
+    //        var markers = new List<Marker>();
+
+    //        // note we skip 00:00
+    //        for (var i = 1; i <= points; i++)
+    //        {
+    //            double time = i * 10;
+    //            var mins = Math.Floor(time / 60);
+    //            var secs = time - (mins * 60);
+    //            var display = $"{mins:00}:{secs:00}";
+    //            var marker = new Marker(display, marginLeft);
+    //            markers.Add(marker);
+    //        }
+
+    //        _markersDrawn = true;
+    //        WaveformMarkers = markers;
+    //    }
+    //}
+
+    private static void OnFftCalculated(FftEventArgs e)
+    {
+        var complexNumbers = e.Result;
+        double[] fftResult = new double[complexNumbers.Length];
+
+        for (int i = 0; i < complexNumbers.Length / 2; i++)
+        {
+            fftResult[i] = Math.Sqrt(complexNumbers[i].X * complexNumbers[i].X + complexNumbers[i].Y * complexNumbers[i].Y);
+        }
+
+        FFTUpdate = fftResult;
+    }
+
+    private static void OnMaximumCalculated(MaxSampleEventArgs e)
+    {
+        //double dbValue = 20 * Math.Log10((double)e.MaxSample);
+        //MaxFrequency = e.MaxSample;
+    }
+
+    public static event PropertyChangedEventHandler? PropertyChanged;
+    private static void OnPropertyChanged(String info)
+    {
+        PropertyChanged?.Invoke(null, new PropertyChangedEventArgs(info));
     }
 }

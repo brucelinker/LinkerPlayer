@@ -7,8 +7,8 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
-  xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+  xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
   d:DesignHeight="80"
   d:DesignWidth="800"
   mc:Ignorable="d">

@@ -2,7 +2,7 @@
 
 namespace LinkerPlayer.Audio;
 
-class SpectrumVisualization : IVisualization
+class SpectrumVisualization //: IVisualization
 {
     private readonly SpectrumAnalyzer _spectrumAnalyzer = new();
 
@@ -15,8 +15,8 @@ class SpectrumVisualization : IVisualization
         // nothing to do
     }
 
-    public void OnFftCalculated(NAudio.Dsp.Complex[] result)
-    {
-        _spectrumAnalyzer.Update(result);
-    }
+    //public void OnFftCalculated(NAudio.Dsp.Complex[] result)
+    //{
+    //    _spectrumAnalyzer.Update(result);
+    //}
 }

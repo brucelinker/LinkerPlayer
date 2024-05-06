@@ -1,13 +1,13 @@
 ﻿<UserControl
   x:Class="LinkerPlayer.UserControls.PlayerControls"
-    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:converters="clr-namespace:LinkerPlayer.Converters"
-    xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
-    d:DesignHeight="80"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
+  d:DesignHeight="80"
   d:DesignWidth="1000"
   mc:Ignorable="d">
 
@@ -299,9 +299,15 @@
 
       <Grid VerticalAlignment="Bottom">
 
-        <StatusBar Margin="8, 0, 0, 0" Background="Transparent" Foreground="{DynamicResource ControlForegroundBrush}">
+        <StatusBar
+          Margin="8,0,0,0"
+          Background="Transparent"
+          Foreground="{DynamicResource ControlForegroundBrush}">
           <StatusBarItem>
-            <TextBlock Name="StatusText" FontSize="13" FontWeight="Light" />
+            <TextBlock
+              Name="StatusText"
+              FontSize="13"
+              FontWeight="Light" />
           </StatusBarItem>
         </StatusBar>
 
