@@ -18,12 +18,15 @@ namespace LinkerPlayer.Windows;
 public partial class EqualizerWindow : INotifyPropertyChanged
 {
     private MainWindow? _mainWindow;
+    public readonly AudioEngine audioEngine;
 
     public EqualizerWindow()
     {
         InitializeComponent();
         WinMax.DoSourceInitialized(this);
         DataContext = this;
+
+        audioEngine = AudioEngine.Instance;
 
         EqualizerSettings.LoadFromJson();
         UpdateProfiles();
@@ -33,18 +36,18 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         OnEqSwitched(null, EventArgs.Empty);
     }
 
-    public float Maximum => AudioEngine.MaximumGain;
+    public float Maximum => audioEngine.MaximumGain;
 
-    public float Minimum => AudioEngine.MinimumGain;
+    public float Minimum => audioEngine.MinimumGain;
 
-    private static float GetBand(int index)
+    private float GetBand(int index)
     {
-        return AudioEngine.GetBandGain(index);
+        return audioEngine.GetBandGain(index);
     }
 
     private void SetBand(int index, float value)
     {
-        AudioEngine.SetBandGain(index, value);
+        audioEngine.SetBandGain(index, value);
     }
 
     //public float Band0
@@ -117,13 +120,13 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             MainWindow? win = Owner as MainWindow;
 
-            if (AudioEngine.PathToMusic != null)
+            if (audioEngine.PathToMusic != null)
             {
-                AudioEngine.InitializeEqualizer();
+                audioEngine.InitializeEqualizer();
 
-                if (AudioEngine.IsPlaying)
+                if (audioEngine.IsPlaying)
                 {
-                    AudioEngine.StopAndPlayFromPosition(AudioEngine.CurrentTrackPosition);
+                    audioEngine.StopAndPlayFromPosition(audioEngine.CurrentTrackPosition);
                 }
 
                 SliderSetEnabledState(true);
@@ -138,11 +141,11 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             MainWindow? win = Owner as MainWindow;
 
-            AudioEngine.StopEqualizer();
+            audioEngine.StopEqualizer();
 
-            if (AudioEngine.IsPlaying)
+            if (audioEngine.IsPlaying)
             {
-                AudioEngine.StopAndPlayFromPosition(AudioEngine.CurrentTrackPosition);
+                audioEngine.StopAndPlayFromPosition(audioEngine.CurrentTrackPosition);
             }
 
             SliderSetEnabledState(false);
@@ -170,7 +173,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
 
-            bandsSettings!.EqualizerBands = AudioEngine.GetBandsList();
+            bandsSettings!.EqualizerBands = audioEngine.GetBandsList();
 
             EqualizerSettings.SaveToJson();
         }
@@ -228,7 +231,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
             if (bandsSettings is { EqualizerBands: not null } && bandsSettings.EqualizerBands.Any())
             {
-                AudioEngine.SetBandsList(bandsSettings.EqualizerBands);
+                audioEngine.SetBandsList(bandsSettings.EqualizerBands);
 
                 _mainWindow.SelectedEqualizerProfile = bandsSettings;
 
@@ -282,7 +285,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
                     BandsSettings bandsSettings = new()
                     {
                         Name = popupTextBoxText,
-                        EqualizerBands = AudioEngine.GetBandsList()
+                        EqualizerBands = audioEngine.GetBandsList()
                     };
 
                     EqualizerSettings.BandsSettings!.Add(bandsSettings);
@@ -456,13 +459,13 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
         if (EqSwitch.IsOn)
         {
-            if (AudioEngine.PathToMusic != null)
+            if (audioEngine.PathToMusic != null)
             {
-                AudioEngine.InitializeEqualizer();
+                audioEngine.InitializeEqualizer();
 
-                if (AudioEngine.IsPlaying)
+                if (audioEngine.IsPlaying)
                 {
-                    AudioEngine.StopAndPlayFromPosition(AudioEngine.CurrentTrackPosition);
+                    audioEngine.StopAndPlayFromPosition(audioEngine.CurrentTrackPosition);
                 }
 
                 SliderSetEnabledState(true);
@@ -475,11 +478,11 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         }
         else
         {
-            AudioEngine.StopEqualizer();
+            audioEngine.StopEqualizer();
 
-            if (AudioEngine.IsPlaying)
+            if (audioEngine.IsPlaying)
             {
-                AudioEngine.StopAndPlayFromPosition(AudioEngine.CurrentTrackPosition);
+                audioEngine.StopAndPlayFromPosition(audioEngine.CurrentTrackPosition);
             }
 
             SliderSetEnabledState(false);

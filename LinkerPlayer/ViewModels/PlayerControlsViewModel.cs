@@ -28,19 +28,26 @@ public partial class PlayerControlsViewModel : BaseViewModel
     private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
     private static int _count;
 
+    public readonly AudioEngine audioEngine;
+
     public PlayerControlsViewModel()
     {
-        Log.Information($"PLAYERCONTROLSVIEWMODEL - {++_count}");
+        audioEngine = AudioEngine.Instance;
 
-        WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+        if (_count == 0)
         {
-            OnPlaybackStateChanged(m.Value);
-        });
+            WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+            {
+                OnPlaybackStateChanged(m.Value);
+            });
 
-        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
-        {
-            OnAudioStopped(m.Value);
-        });
+            WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
+            {
+                OnAudioStopped(m.Value);
+            });
+        }
+
+        Log.Information($"PLAYERCONTROLSVIEWMODEL - {_count++}");
     }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
@@ -66,7 +73,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
         }
         else
         {
-            AudioEngine.Pause();
+            audioEngine.Pause();
             State = PlaybackState.Paused;
 
             if (ActiveTrack != null)
@@ -82,16 +89,16 @@ public partial class PlayerControlsViewModel : BaseViewModel
         if (ActiveTrack != null)
         {
             ActiveTrack!.State = PlaybackState.Stopped;
-            AudioEngine.PathToMusic = ActiveTrack?.Path;
-            AudioEngine.StopAndPlayFromPosition(0.0);
+            audioEngine.PathToMusic = ActiveTrack?.Path;
+            audioEngine.StopAndPlayFromPosition(0.0);
             ActiveTrack!.State = PlaybackState.Playing;
             State = PlaybackState.Playing;
         }
 
         else if (SelectedTrack != null)
         {
-            AudioEngine.PathToMusic = SelectedTrack.Path;
-            AudioEngine.StopAndPlayFromPosition(0.0);
+            audioEngine.PathToMusic = SelectedTrack.Path;
+            audioEngine.StopAndPlayFromPosition(0.0);
 
             if (ActiveTrack == null || ActivePlaylistIndex == SelectedPlaylistIndex)
             {
@@ -109,7 +116,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void ResumeTrack()
     {
-        AudioEngine.ResumePlay();
+        audioEngine.ResumePlay();
         State = PlaybackState.Playing;
 
         if (ActiveTrack != null)
@@ -129,7 +136,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void StopTrack()
     {
-        AudioEngine.Stop();
+        audioEngine.Stop();
         State = PlaybackState.Stopped;
 
         //MediaFile? activeTrack = _playlistTabsViewModel.GetActiveTrack();
@@ -188,15 +195,17 @@ public partial class PlayerControlsViewModel : BaseViewModel
         State = playbackState;
     }
 
-    public void OnAudioStopped(bool audioStopped)
+    public void OnAudioStopped(bool songEnded)
     {
-        if ((AudioEngine.CurrentTrackPosition + 10.0) >= AudioEngine.CurrentTrackLength)
+        //if ((audioEngine.CurrentTrackPosition + 10.0) >= audioEngine.CurrentTrackLength)
+        //if ((audioEngine.CurrentTrackPosition + 0.3) >= audioEngine.CurrentTrackLength)
+        if (songEnded)
         {
             NextTrack();
         }
-        else if (audioStopped)
+        else
         {
-            AudioEngine.Stop();
+            audioEngine.Stop();
         }
     }
 
@@ -229,6 +238,6 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public double CurrentSeekbarPosition()
     {
-        return (AudioEngine.CurrentTrackPosition * 100) / AudioEngine.CurrentTrackLength;
+        return (audioEngine.CurrentTrackPosition * 100) / audioEngine.CurrentTrackLength;
     }
 }

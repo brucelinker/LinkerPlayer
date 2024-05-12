@@ -22,12 +22,16 @@ namespace LinkerPlayer.UserControls;
 [ObservableObject]
 public partial class PlayerControls
 {
+    
     private readonly PlayerControlsViewModel _playerControlsViewModel = new();
     public readonly DispatcherTimer SeekBarTimer = new();
+    public readonly AudioEngine audioEngine;
 
     public PlayerControls()
     {
         InitializeComponent();
+
+        audioEngine = AudioEngine.Instance;
 
         DataContext = _playerControlsViewModel;
 
@@ -61,10 +65,10 @@ public partial class PlayerControls
             OnMuteChanged(m.Value);
         });
 
-        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, _) =>
-        {
-            OnAudioStopped();
-        });
+        //WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, _) =>
+        //{
+        //    OnAudioStopped();
+        //});
 
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
         {
@@ -164,13 +168,13 @@ public partial class PlayerControls
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        double posInSeekBar = (SeekBar.Value * AudioEngine.CurrentTrackLength) / 100;
+        double posInSeekBar = (SeekBar.Value * audioEngine.CurrentTrackLength) / 100;
 
-        if (AudioEngine.PathToMusic != null &&
-            Math.Abs(AudioEngine.CurrentTrackPosition - posInSeekBar) > 0 &&
-            !AudioEngine.IsPaused)
+        if (audioEngine.PathToMusic != null &&
+            Math.Abs(audioEngine.CurrentTrackPosition - posInSeekBar) > 0 &&
+            !audioEngine.IsPaused)
         {
-            AudioEngine.StopAndPlayFromPosition(posInSeekBar);
+            audioEngine.StopAndPlayFromPosition(posInSeekBar);
 
             //_playerControlsViewModel.State = PlaybackState.Playing;
             SeekBarTimer.Start();
@@ -179,7 +183,7 @@ public partial class PlayerControls
 
     private void VolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        AudioEngine.MusicVolume = (float)VolumeSlider.Value / 100;
+        audioEngine.MusicVolume = (float)VolumeSlider.Value / 100;
     }
 
     private void timer_Tick(object sender, EventArgs e)
@@ -194,7 +198,7 @@ public partial class PlayerControls
     {
         if (_playerControlsViewModel.SelectedTrack == null) return;
 
-        double posInSeekBar = (SeekBar.Value * AudioEngine.CurrentTrackLength) / 100;
+        double posInSeekBar = (SeekBar.Value * audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
     }
@@ -250,11 +254,22 @@ public partial class PlayerControls
         }
     }
 
-    private void OnAudioStopped()
-    {
-        SeekBarTimer.Stop();
-        SeekBar.Value = 0;
-    }
+    //private void OnAudioStopped()
+    //{
+    //    if ((audioEngine.CurrentTrackPosition + 0.3) >= audioEngine.CurrentTrackLength)
+    //    {
+    //        SeekBarTimer.Stop();
+
+    //        _playerControlsViewModel.NextTrack();
+    //    }
+    //    else
+    //    {
+    //        audioEngine.Pause();
+
+    //        SeekBarTimer.Stop();
+    //    }
+
+    //}
 
     private void AnimateVolumeSliderValue(Slider slider, double newVal)
     {
@@ -281,7 +296,7 @@ public partial class PlayerControls
 
         MainWindow win = (MainWindow)Window.GetWindow(this)!;
 
-        equalizerWindow.StartStopText.Content = AudioEngine.IsEqualizerInitialized ? "Stop" : "Start";
+        equalizerWindow.StartStopText.Content = audioEngine.IsEqualizerInitialized ? "Stop" : "Start";
 
         equalizerWindow.LoadSelectedBand(win.SelectedEqualizerProfile);
 

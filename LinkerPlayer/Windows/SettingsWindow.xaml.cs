@@ -19,12 +19,14 @@ namespace LinkerPlayer.Windows;
 public partial class SettingsWindow
 {
     private readonly ThemeManager _themeManager = new();
+    public readonly AudioEngine audioEngine;
 
     public SettingsWindow()
     {
         InitializeComponent();
 
         DataContext = this;
+        audioEngine = AudioEngine.Instance;
 
         WinMax.DoSourceInitialized(this);
 
@@ -107,7 +109,7 @@ public partial class SettingsWindow
             MainOutputDevicesList.SelectedItem.ToString() != OutputDevice.GetCurrentDeviceName())
         {
             Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
-            AudioEngine.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
+            audioEngine.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
         }
 
         //if (AdditionalOutputDevicesList.SelectedItem != null)

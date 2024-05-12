@@ -1,19 +1,18 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
-using LinkerPlayer.Models;
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace LinkerPlayer.ViewModels;
 
-[ObservableObject]
-public partial class SpectrumViewModel
+public partial class SpectrumViewModel : ObservableObject
 {
-    AudioEngine _model;
+    public readonly AudioEngine audioEngine;
 
     private DispatcherTimer timer;
 
@@ -27,6 +26,8 @@ public partial class SpectrumViewModel
 
     public SpectrumViewModel()
     {
+        audioEngine = AudioEngine.Instance;
+
         Prepare();
         //Prepare(new AudioEngine());
 
@@ -63,12 +64,7 @@ public partial class SpectrumViewModel
     //{
     //    _model.UnloadPlayer();
     //}
-
-    public AudioEngine Engine
-    {
-        get => _model;
-    }
-
+    
     //public event PropertyChangedEventHandler PropertyChanged;
 
     //private void OnPropertyChanged(string propertyName)
@@ -155,7 +151,7 @@ public partial class SpectrumViewModel
         set
         {
             _volume = value;
-            AudioEngine.MusicVolume = (float)value;
+            audioEngine.MusicVolume = (float)value;
             OnPropertyChanged("Volume");
         }
     }
@@ -527,7 +523,7 @@ public partial class SpectrumViewModel
                 }
             case "SoundLevel":
                 {
-                    var vol = AudioEngine.SoundLevel;
+                    var vol = audioEngine.SoundLevel;
                     //Debug.WriteLine($"SoundLevel: {vol[0]} :: {vol[1]}");
                     SoundChannelLeft = vol[0];
                     SoundChannelRight = vol[1];
@@ -535,7 +531,7 @@ public partial class SpectrumViewModel
                 }
             case "FFTUpdate":
                 {
-                    DisplaySpectrum(AudioEngine.FFTUpdate);
+                    DisplaySpectrum(audioEngine.FFTUpdate);
                     break;
                 }
             case "MaxFrequency":
@@ -559,14 +555,14 @@ public partial class SpectrumViewModel
         }
         else if (e.PropertyName == "SoundLevel")
         {
-            var vol = AudioEngine.SoundLevel;
+            var vol = audioEngine.SoundLevel;
             //Debug.WriteLine($"SoundLevel: {vol[0]} :: {vol[1]}");
             SoundChannelLeft = vol[0];
             SoundChannelRight = vol[1];
         }
         else if (e.PropertyName == "FFTUpdate")
         {
-            DisplaySpectrum(AudioEngine.FFTUpdate);
+            DisplaySpectrum(audioEngine.FFTUpdate);
         }
         else if (e.PropertyName == "MaxFrequency")
         {
@@ -581,11 +577,14 @@ public partial class SpectrumViewModel
         // currently we display 19 frequencies from 25 to 20k
         for (var i = 0; i < frequencyBins.Length; i++)
         {
-            // decibles for the freqency bin
+            // decibels for the frequency bin
             intensities[i] = 10 * Math.Log10(fftArray[frequencyBins[i]]);
         }
 
         EQFrequencyMagnitudes = intensities;
+
+        audioEngine.OnAudioActivity(EQFrequencyMagnitudes);
+
     }
 
     //private void PlayButton_Click(object sender, RoutedEventArgs e)
@@ -685,7 +684,7 @@ public partial class SpectrumViewModel
         frequencyBins = new int[frequencies.Length];
         for (var i = 0; i < frequencies.Length; i++)
         {
-            frequencyBins[i] = AudioEngine.FrequencyBinIndex(frequencies[i]);
+            frequencyBins[i] = audioEngine.FrequencyBinIndex(frequencies[i]);
         }
     }
 
