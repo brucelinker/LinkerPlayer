@@ -531,7 +531,7 @@ public partial class SpectrumViewModel : ObservableObject
                 }
             case "FFTUpdate":
                 {
-                    DisplaySpectrum(audioEngine.FFTUpdate);
+                    DisplaySpectrum(audioEngine.FftUpdate);
                     break;
                 }
             case "MaxFrequency":
@@ -562,7 +562,7 @@ public partial class SpectrumViewModel : ObservableObject
         }
         else if (e.PropertyName == "FFTUpdate")
         {
-            DisplaySpectrum(audioEngine.FFTUpdate);
+            DisplaySpectrum(audioEngine.FftUpdate);
         }
         else if (e.PropertyName == "MaxFrequency")
         {

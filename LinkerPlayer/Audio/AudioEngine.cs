@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using NAudio.Extras;
 using NAudio.Wave;
@@ -9,9 +10,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
-using System.Windows.Media;
 using System.Windows.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace LinkerPlayer.Audio;
 
@@ -33,26 +32,20 @@ public class AudioEngine : ObservableObject, IDisposable
     private bool _canStop;
     private bool _isPlaying;
     private IWavePlayer? _outputDevice;
-    private bool _inChannelSet;
-    private bool _inChannelTimerUpdate;
-    private double _channelLength;
-    private double _channelPosition;
-    private readonly string _mainOutputDevice;
 
     private AudioEngine()
     {
-        _mainOutputDevice = Properties.Settings.Default.MainOutputDevice;
+        string mainOutputDevice = Properties.Settings.Default.MainOutputDevice;
 
-        if (string.IsNullOrWhiteSpace(_mainOutputDevice))
+        if (string.IsNullOrWhiteSpace(mainOutputDevice))
         {
             Log.Error("Device name can`t be null");
         }
         else
         {
             _positionTimer.Interval = TimeSpan.FromMilliseconds(50);
-            _positionTimer.Tick += positionTimer_Tick!;
 
-            SelectOutputDevice(_mainOutputDevice);
+            SelectOutputDevice(mainOutputDevice);
 
             _musicVolume = (float)Properties.Settings.Default.VolumeSliderValue;
 
@@ -186,8 +179,7 @@ public class AudioEngine : ObservableObject, IDisposable
                 Log.Error(ex.Message);
                 if (ex.Message == "NoDriver calling waveOutGetVolume")
                 {
-                    sender = null;
-                    SelectOutputDevice(Audio.OutputDevice.GetOutputDeviceNameById(0));
+                    SelectOutputDevice(OutputDevice.GetOutputDeviceNameById(0));
                 }
             }
 
@@ -288,8 +280,7 @@ public class AudioEngine : ObservableObject, IDisposable
                 PerformFFT = true
             };
 
-            _aggregator.FftCalculated += (s, a) => OnFftCalculated(a);
-            _aggregator.MaximumCalculated += (s, a) => OnMaximumCalculated(a);
+            _aggregator.FftCalculated += (_, a) => OnFftCalculated(a);
 
             _outputDevice.Init(_aggregator);
 
@@ -401,13 +392,10 @@ public class AudioEngine : ObservableObject, IDisposable
             {
                 string fileDoesNotExist = "File does not exist";
 
-                // Log.Warning(fileDoesNotExist);
                 throw new FileNotFoundException(fileDoesNotExist);
             }
-            else
-            {
-                _pathToMusic = value;
-            }
+
+            _pathToMusic = value;
         }
     }
 
@@ -434,7 +422,7 @@ public class AudioEngine : ObservableObject, IDisposable
         get => _isEqualizerInitialized;
         set
         {
-            if (value == _isEqualizerInitialized) { return; }
+            if (value == IsEqualizerInitialized) { return; }
 
             _isEqualizerInitialized = value;
         }
@@ -520,56 +508,18 @@ public class AudioEngine : ObservableObject, IDisposable
 
     public int FrequencyBinIndex(double frequency)
     {
-        var bin = (int)Math.Floor(frequency * _aggregator.FFTLength / _audioFile.WaveFormat.SampleRate);
+        if (_aggregator == null || _audioFile == null)
+        {
+            return -1;
+        }
+
+        int bin = (int)Math.Floor(frequency * _aggregator.FFTLength / _audioFile.WaveFormat.SampleRate);
         return bin;
     }
 
-    void positionTimer_Tick(object sender, EventArgs e)
-    {
-        _inChannelTimerUpdate = true;
-        ChannelPosition = (_audioFile!.Position / (double)_audioFile.Length) * _audioFile.TotalTime.TotalSeconds;
-        _inChannelTimerUpdate = false;
-    }
 
-    public double ChannelLength
-    {
-        get => _channelLength;
-        private set
-        {
-            double oldValue = _channelLength;
-            _channelLength = value;
-
-            if (Math.Abs(oldValue - _channelLength) > 0)
-                OnPropertyChanged("ChannelLength");
-        }
-    }
-
-    public double ChannelPosition
-    {
-        get => _channelPosition;
-        set
-        {
-            if (!_inChannelSet)
-            {
-                _inChannelSet = true; // Avoid recursion
-                double oldValue = _channelPosition;
-                double position = Math.Max(0, Math.Min(value, ChannelLength));
-
-                if (!_inChannelTimerUpdate && _audioFile != null)
-                    _audioFile.Position = (long)((position / _audioFile.TotalTime.TotalSeconds) * _audioFile.Length);
-
-                _channelPosition = position;
-
-                if (Math.Abs(oldValue - _channelPosition) > 0)
-                    OnPropertyChanged("ChannelPosition");
-
-                _inChannelSet = false;
-            }
-        }
-    }
-
-    private double[] _fftResult = { };
-    public double[] FFTUpdate
+    private double[] _fftResult = { 0.0, 0.0 };
+    public double[] FftUpdate
     {
         get => _fftResult;
         set
@@ -589,18 +539,6 @@ public class AudioEngine : ObservableObject, IDisposable
             fftResult[i] = Math.Sqrt(complexNumbers[i].X * complexNumbers[i].X + complexNumbers[i].Y * complexNumbers[i].Y);
         }
 
-        FFTUpdate = fftResult;
-    }
-
-    private void OnMaximumCalculated(MaxSampleEventArgs e)
-    {
-        //double dbValue = 20 * Math.Log10((double)e.MaxSample);
-        //MaxFrequency = e.MaxSample;
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged(String info)
-    {
-        PropertyChanged?.Invoke(null, new PropertyChangedEventArgs(info));
+        FftUpdate = fftResult;
     }
 }
