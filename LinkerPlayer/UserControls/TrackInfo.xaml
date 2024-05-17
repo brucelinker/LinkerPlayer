@@ -159,7 +159,7 @@
           Margin="8, 0, 0, 0">
       <userControls:SpectrumAnalyzer
           Width="Auto"
-          Magnitudes="{Binding EQFrequencyMagnitudes}"
+          Magnitudes="{Binding EqFrequencyMagnitudes}"
           MinimumDbLevel="{Binding EQMinimumDb}" />
     </Grid>
   </Grid>
