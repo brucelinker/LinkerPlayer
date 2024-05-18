@@ -7,37 +7,34 @@ namespace LinkerPlayer.Audio;
 
 public class SampleAggregator : ISampleProvider
 {
-    // volume
-    public event EventHandler<MaxSampleEventArgs> MaximumCalculated;
-    private float maxValue;
-    private float minValue;
+    private float _maxValue;
+    private float _minValue;
     public int NotificationCount { get; set; }
-    int count;
+    int _count;
 
     // FFT
-    public event EventHandler<FftEventArgs> FftCalculated;
-    public bool PerformFFT { get; set; }
-    private readonly Complex[] fftBuffer;
-    private readonly FftEventArgs fftArgs;
-    private int fftPos;
-    private readonly int fftLength;
-    private int m;
-    private readonly ISampleProvider source;
+    public event EventHandler<FftEventArgs>? FftCalculated;
+    public bool PerformFft { get; set; }
+    private readonly Complex[] _fftBuffer;
+    private readonly FftEventArgs _fftArgs;
+    private int _fftPos;
+    private readonly int _fftCalc;
+    private readonly ISampleProvider _source;
 
-    private readonly int channels;
+    private readonly int _channels;
 
     public SampleAggregator(ISampleProvider source, int fftLength = 1024)
     {
-        channels = source.WaveFormat.Channels;
+        _channels = source.WaveFormat.Channels;
         if (!IsPowerOfTwo(fftLength))
         {
             throw new ArgumentException("FFT Length must be a power of two");
         }
-        this.m = (int)Math.Log(fftLength, 2.0);
-        this.fftLength = fftLength;
-        this.fftBuffer = new Complex[fftLength];
-        this.fftArgs = new FftEventArgs(fftBuffer);
-        this.source = source;
+        this._fftCalc = (int)Math.Log(fftLength, 2.0);
+        this.FftLength = fftLength;
+        this._fftBuffer = new Complex[fftLength];
+        this._fftArgs = new FftEventArgs(_fftBuffer);
+        this._source = source;
     }
 
     bool IsPowerOfTwo(int x)
@@ -46,51 +43,47 @@ public class SampleAggregator : ISampleProvider
     }
 
 
-    public int FFTLength
-    {
-        get => fftLength;
-    }
+    public int FftLength { get; }
 
 
     public void Reset()
     {
-        count = 0;
-        maxValue = minValue = 0;
+        _count = 0;
+        _maxValue = _minValue = 0;
     }
 
     private void Add(float value)
     {
-        if (PerformFFT && FftCalculated != null)
+        if (PerformFft && FftCalculated != null)
         {
-            fftBuffer[fftPos].X = (float)(value * FastFourierTransform.HammingWindow(fftPos, fftLength));
-            fftBuffer[fftPos].Y = 0;
-            fftPos++;
-            if (fftPos >= fftBuffer.Length)
+            _fftBuffer[_fftPos].X = (float)(value * FastFourierTransform.HammingWindow(_fftPos, FftLength));
+            _fftBuffer[_fftPos].Y = 0;
+            _fftPos++;
+            if (_fftPos >= _fftBuffer.Length)
             {
-                fftPos = 0;
+                _fftPos = 0;
                 // 1024 = 2^10
-                FastFourierTransform.FFT(true, m, fftBuffer);
-                FftCalculated(this, fftArgs);
+                FastFourierTransform.FFT(true, _fftCalc, _fftBuffer);
+                FftCalculated(this, _fftArgs);
             }
         }
 
-        maxValue = Math.Max(maxValue, value);
-        minValue = Math.Min(minValue, value);
-        count++;
-        if (count >= NotificationCount && NotificationCount > 0)
+        _maxValue = Math.Max(_maxValue, value);
+        _minValue = Math.Min(_minValue, value);
+        _count++;
+        if (_count >= NotificationCount && NotificationCount > 0)
         {
-            MaximumCalculated?.Invoke(this, new MaxSampleEventArgs(minValue, maxValue));
             Reset();
         }
     }
 
-    public WaveFormat WaveFormat { get { return source.WaveFormat; } }
+    public WaveFormat WaveFormat { get { return _source.WaveFormat; } }
 
     public int Read(float[] buffer, int offset, int count)
     {
-        var samplesRead = source.Read(buffer, offset, count);
+        var samplesRead = _source.Read(buffer, offset, count);
 
-        for (int n = 0; n < samplesRead; n += channels)
+        for (int n = 0; n < samplesRead; n += _channels)
         {
             Add(buffer[n + offset]);
         }

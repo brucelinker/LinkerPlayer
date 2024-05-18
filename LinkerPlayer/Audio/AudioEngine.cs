@@ -129,7 +129,6 @@ public class AudioEngine : ObservableObject, IDisposable
     }
     
     public bool IsPaused => _outputDevice is { PlaybackState: PlaybackState.Paused };
-    public bool IsStopped => _outputDevice is { PlaybackState: PlaybackState.Stopped };
 
     public void SelectOutputDevice(string deviceName)
     {
@@ -197,7 +196,7 @@ public class AudioEngine : ObservableObject, IDisposable
             bool oldValue = _canPlay;
             _canPlay = value;
             if (oldValue != _canPlay)
-                OnPropertyChanged("CanPlay");
+                OnPropertyChanged();
         }
     }
 
@@ -209,7 +208,7 @@ public class AudioEngine : ObservableObject, IDisposable
             bool oldValue = _canPause;
             _canPause = value;
             if (oldValue != _canPause)
-                OnPropertyChanged("CanPause");
+                OnPropertyChanged();
         }
     }
 
@@ -221,7 +220,7 @@ public class AudioEngine : ObservableObject, IDisposable
             bool oldValue = _canStop;
             _canStop = value;
             if (oldValue != _canStop)
-                OnPropertyChanged("CanStop");
+                OnPropertyChanged();
         }
     }
 
@@ -276,7 +275,7 @@ public class AudioEngine : ObservableObject, IDisposable
             _aggregator = new(_audioFile)
             {
                 NotificationCount = _audioFile.WaveFormat.SampleRate / 100,
-                PerformFFT = true
+                PerformFft = true
             };
 
             _aggregator.FftCalculated += (_, a) => OnFftCalculated(a);
@@ -337,7 +336,7 @@ public class AudioEngine : ObservableObject, IDisposable
             bool oldValue = _isPlaying;
             _isPlaying = value;
             if (oldValue != _isPlaying)
-                OnPropertyChanged("IsPlaying");
+                OnPropertyChanged();
             _positionTimer.IsEnabled = value;
         }
     }
@@ -512,7 +511,7 @@ public class AudioEngine : ObservableObject, IDisposable
             return -1;
         }
 
-        int bin = (int)Math.Floor(frequency * _aggregator.FFTLength / _audioFile.WaveFormat.SampleRate);
+        int bin = (int)Math.Floor(frequency * _aggregator.FftLength / _audioFile.WaveFormat.SampleRate);
         return bin;
     }
 

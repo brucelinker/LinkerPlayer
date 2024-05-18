@@ -1,19 +1,19 @@
-﻿using System;
+﻿using LinkerPlayer.ViewModels;
+using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.UserControls;
 
 /// <summary>
 /// Interaction logic for SpectrumAnalyzer.xaml
 /// </summary>
-public partial class SpectrumAnalyzer : UserControl
+public partial class SpectrumAnalyzer
 {
-    private FrequencyBar[] frequencyBars;
+    private FrequencyBar[] _frequencyBars = {};
     private readonly SpectrumViewModel _spectrumViewModel = new();
 
     public SpectrumAnalyzer()
@@ -24,8 +24,8 @@ public partial class SpectrumAnalyzer : UserControl
     }
 
     public static readonly DependencyProperty MinimumDbLevelProperty =
-        DependencyProperty.Register("MinimumDbLevel", typeof(double), typeof(SpectrumAnalyzer),
-            new PropertyMetadata(-60d, new PropertyChangedCallback(MinimumDbLevelUpdated)));
+        DependencyProperty.Register(nameof(MinimumDbLevel), typeof(double), typeof(SpectrumAnalyzer),
+            new PropertyMetadata(-60d, MinimumDbLevelUpdated));
 
     public double MinimumDbLevel
     {
@@ -35,18 +35,18 @@ public partial class SpectrumAnalyzer : UserControl
 
     private static void MinimumDbLevelUpdated(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        (d as SpectrumAnalyzer).UpdateDbDisplay((double)e.NewValue);
+        (d as SpectrumAnalyzer)?.UpdateDbDisplay((double)e.NewValue);
     }
 
     private void UpdateDbDisplay(double value)
     {
         Debug.WriteLine($"Value of dB: {value}");
-        LowestDbLabel.Content = value.ToString() + "dB";
+        LowestDbLabel.Content = value.ToString(CultureInfo.InvariantCulture) + "dB";
     }
 
     public static readonly DependencyProperty MagnitudesProperty =
-        DependencyProperty.Register("Magnitudes", typeof(double[]), typeof(SpectrumAnalyzer),
-            new PropertyMetadata(new PropertyChangedCallback(MagnitudesUpdated)));
+        DependencyProperty.Register(nameof(Magnitudes), typeof(double[]), typeof(SpectrumAnalyzer),
+            new PropertyMetadata(MagnitudesUpdated));
 
     public double[] Magnitudes
     {
@@ -56,26 +56,26 @@ public partial class SpectrumAnalyzer : UserControl
 
     private static void MagnitudesUpdated(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        (d as SpectrumAnalyzer).UpdateMagnitudes((double[])e.NewValue);
+        (d as SpectrumAnalyzer)?.UpdateMagnitudes((double[])e.NewValue);
     }
 
-    private void UpdateMagnitudes(double[] Mags)
+    private void UpdateMagnitudes(double[] mags)
     {
-        for (var i = 0; i < Mags.Length; i++)
+        for (int i = 0; i < mags.Length; i++)
         {
-            var intensityDB = Mags[i];
+            double intensityDb = mags[i];
 
-            if (intensityDB < MinimumDbLevel) intensityDB = MinimumDbLevel;
+            if (intensityDb < MinimumDbLevel) intensityDb = MinimumDbLevel;
 
             // percent with -60 = 1
-            double percent = intensityDB / MinimumDbLevel;
+            double percent = intensityDb / MinimumDbLevel;
 
             // invert the percent using height of the bar element
-            var barHeight = spec0.ActualHeight - (percent * spec0.ActualHeight);
+            double barHeight = Spec0.ActualHeight - (percent * Spec0.ActualHeight);
             //var barHeight = _maximumFreqBarHeight - (percent * _maximumFreqBarHeight);
 
             // set height of control
-            frequencyBars[i].Height = barHeight > 2 ? barHeight : 2;
+            _frequencyBars[i].Height = barHeight > 2 ? barHeight : 2;
 
             //Debug.WriteLine($"Intensity: {intensityDB}, Percent: {percent}");
         }
@@ -83,37 +83,37 @@ public partial class SpectrumAnalyzer : UserControl
 
     private void Prepare()
     {
-        frequencyBars = new FrequencyBar[]
+        _frequencyBars = new[]
         {
-            new FrequencyBar(spec1, peak1),
-            new FrequencyBar(spec2, peak2),
-            new FrequencyBar(spec3, peak3),
-            new FrequencyBar(spec4, peak4),
-            new FrequencyBar(spec5, peak5),
-            new FrequencyBar(spec6, peak6),
-            new FrequencyBar(spec7, peak7),
-            new FrequencyBar(spec8, peak8),
-            new FrequencyBar(spec9, peak9),
-            new FrequencyBar(spec10, peak10),
-            new FrequencyBar(spec11, peak11),
-            new FrequencyBar(spec12, peak12),
-            new FrequencyBar(spec13, peak13),
-            new FrequencyBar(spec14, peak14),
-            new FrequencyBar(spec15, peak15),
-            new FrequencyBar(spec16, peak16),
-            new FrequencyBar(spec17, peak17),
-            new FrequencyBar(spec18, peak18),
-            new FrequencyBar(spec19, peak19)
+            new FrequencyBar(Spec1, Peak1),
+            new FrequencyBar(Spec2, Peak2),
+            new FrequencyBar(Spec3, Peak3),
+            new FrequencyBar(Spec4, Peak4),
+            new FrequencyBar(Spec5, Peak5),
+            new FrequencyBar(Spec6, Peak6),
+            new FrequencyBar(Spec7, Peak7),
+            new FrequencyBar(Spec8, Peak8),
+            new FrequencyBar(Spec9, Peak9),
+            new FrequencyBar(Spec10, Peak10),
+            new FrequencyBar(Spec11, Peak11),
+            new FrequencyBar(Spec12, Peak12),
+            new FrequencyBar(Spec13, Peak13),
+            new FrequencyBar(Spec14, Peak14),
+            new FrequencyBar(Spec15, Peak15),
+            new FrequencyBar(Spec16, Peak16),
+            new FrequencyBar(Spec17, Peak17),
+            new FrequencyBar(Spec18, Peak18),
+            new FrequencyBar(Spec19, Peak19)
         };
     }
 
 
     class FrequencyBar
     {
-        private bool peakFalling = false;
-        private double lastPeakPosition = 0;
-        private DispatcherTimer peakTimer;
-        private DispatcherTimer fallTimer;
+        private bool _peakFalling;
+        private double _lastPeakPosition;
+        private readonly DispatcherTimer _peakTimer;
+        private readonly DispatcherTimer _fallTimer;
 
         public FrequencyBar(Rectangle bar, Rectangle peak)
         {
@@ -122,18 +122,22 @@ public partial class SpectrumAnalyzer : UserControl
             this.Bar.Height = 2;
             this.Peak.Height = 2;
 
-            peakTimer = new DispatcherTimer();
-            peakTimer.Interval = TimeSpan.FromMilliseconds(1000);
-            peakTimer.Tick += Peak_Tick;
+            _peakTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(1000)
+            };
+            _peakTimer.Tick += Peak_Tick;
 
-            fallTimer = new DispatcherTimer();
-            fallTimer.Interval = TimeSpan.FromMilliseconds(100);
-            fallTimer.Tick += Fall_Tick;
+            _fallTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _fallTimer.Tick += Fall_Tick;
         }
 
-        private void Fall_Tick(object sender, EventArgs e)
+        private void Fall_Tick(object? sender, EventArgs e)
         {
-            if (Peak.Margin.Bottom > lastPeakPosition - 20)
+            if (Peak.Margin.Bottom > _lastPeakPosition - 20)
             {
                 var margin = Peak.Margin;
                 margin.Bottom -= 2;
@@ -142,47 +146,47 @@ public partial class SpectrumAnalyzer : UserControl
             }
             else
             {
-                fallTimer.Stop();
-                peakFalling = false;
+                _fallTimer.Stop();
+                _peakFalling = false;
                 var margin = Peak.Margin;
                 margin.Bottom = 0;
                 Peak.Margin = margin;
             }
         }
 
-        private void Peak_Tick(object sender, EventArgs e)
+        private void Peak_Tick(object? sender, EventArgs e)
         {
-            peakTimer.Stop();
-            if (!peakFalling)
+            _peakTimer.Stop();
+            if (!_peakFalling)
             {
-                peakFalling = true;
-                lastPeakPosition = Peak.Margin.Bottom;
-                fallTimer.Start();
+                _peakFalling = true;
+                _lastPeakPosition = Peak.Margin.Bottom;
+                _fallTimer.Start();
             }
         }
 
         public double Height
         {
-            get => Bar.Height;
             set
             {
                 Bar.Height = value;
                 if (Bar.Height - 2 >= Peak.Margin.Bottom)
                 {
-                    peakTimer.Stop();
-                    fallTimer.Stop();
-                    peakFalling = false;
+                    _peakTimer.Stop();
+                    _fallTimer.Stop();
+                    _peakFalling = false;
 
                     var thickness = Peak.Margin;
                     thickness.Bottom = Bar.Height - 2;
                     Peak.Margin = thickness;
                     Peak.Opacity = 1;
 
-                    peakTimer.Start();
+                    _peakTimer.Start();
                 }
             }
         }
-        public Rectangle Bar { get; set; }
-        public Rectangle Peak { get; set; }
+
+        private Rectangle Bar { get; }
+        private Rectangle Peak { get; }
     }
 }

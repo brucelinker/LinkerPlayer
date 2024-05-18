@@ -14,7 +14,7 @@
   <Grid Margin="0">
     <Rectangle Margin="0" Style="{StaticResource ViewRect}" />
     <Rectangle
-      x:Name="spec0"
+      x:Name="Spec0"
       Width="10"
       Margin="0,12,0,18"
       HorizontalAlignment="Left"
@@ -90,18 +90,18 @@
     </Grid>
     <WrapPanel Margin="0">
       <WrapPanel.Resources>
-        <Style x:Key="bar" TargetType="{x:Type Rectangle}">
+        <Style x:Key="Bar" TargetType="{x:Type Rectangle}">
           <Setter Property="Fill" Value="{StaticResource FrequencyBar}" />
           <Setter Property="Width" Value="9.6" />
         </Style>
-        <Style x:Key="peak" TargetType="{x:Type Rectangle}">
+        <Style x:Key="Peak" TargetType="{x:Type Rectangle}">
           <Setter Property="Fill" Value="{StaticResource ControlForegroundBrush}" />
           <Setter Property="Width" Value="9.6" />
         </Style>
         <Style TargetType="{x:Type Grid}">
           <Setter Property="VerticalAlignment" Value="Bottom" />
           <Setter Property="Width" Value="9.2" />
-          <Setter Property="Height" Value="{Binding ElementName=spec0, Path=ActualHeight}" />
+          <Setter Property="Height" Value="{Binding ElementName=Spec0, Path=ActualHeight}" />
           <Setter Property="Margin" Value="8,12,0,0" />
         </Style>
         <Style TargetType="{x:Type Label}">
@@ -111,26 +111,26 @@
         </Style>
       </WrapPanel.Resources>
       <Rectangle
-        x:Name="leftBuffer"
+        x:Name="LeftBuffer"
         Width="10"
         Margin="16,12,0,18"
         HorizontalAlignment="Left"
         Visibility="Hidden" />
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec1"
+          x:Name="Spec1"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak1"
+          x:Name="Peak1"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -142,35 +142,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec2"
+          x:Name="Spec2"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak2"
+          x:Name="Peak2"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec3"
+          x:Name="Spec3"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak3"
+          x:Name="Peak3"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -182,35 +182,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec4"
+          x:Name="Spec4"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak4"
+          x:Name="Peak4"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec5"
+          x:Name="Spec5"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak5"
+          x:Name="Peak5"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -222,35 +222,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec6"
+          x:Name="Spec6"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak6"
+          x:Name="Peak6"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec7"
+          x:Name="Spec7"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak7"
+          x:Name="Peak7"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -262,35 +262,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec8"
+          x:Name="Spec8"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak8"
+          x:Name="Peak8"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec9"
+          x:Name="Spec9"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak9"
+          x:Name="Peak9"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -302,35 +302,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec10"
+          x:Name="Spec10"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak10"
+          x:Name="Peak10"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec11"
+          x:Name="Spec11"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak11"
+          x:Name="Peak11"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -342,35 +342,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec12"
+          x:Name="Spec12"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak12"
+          x:Name="Peak12"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec13"
+          x:Name="Spec13"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak13"
+          x:Name="Peak13"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -382,35 +382,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec14"
+          x:Name="Spec14"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak14"
+          x:Name="Peak14"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec15"
+          x:Name="Spec15"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak15"
+          x:Name="Peak15"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -422,35 +422,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec16"
+          x:Name="Spec16"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak16"
+          x:Name="Peak16"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec17"
+          x:Name="Spec17"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak17"
+          x:Name="Peak17"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"
@@ -462,35 +462,35 @@
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec18"
+          x:Name="Spec18"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak18"
+          x:Name="Peak18"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
       </Grid>
       <Grid HorizontalAlignment="Left">
         <Rectangle
-          x:Name="spec19"
+          x:Name="Spec19"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource bar}" />
+          Style="{DynamicResource Bar}" />
         <Rectangle
-          x:Name="peak19"
+          x:Name="Peak19"
           Height="2"
           HorizontalAlignment="Left"
           VerticalAlignment="Bottom"
           StrokeThickness="0"
-          Style="{DynamicResource peak}" />
+          Style="{DynamicResource Peak}" />
         <Label
           Margin="-9,0,-9,-17"
           HorizontalAlignment="Center"

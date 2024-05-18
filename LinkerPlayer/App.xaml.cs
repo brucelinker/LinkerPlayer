@@ -1,11 +1,10 @@
-﻿using LinkerPlayer.Windows;
+﻿using LinkerPlayer.ViewModels;
+using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RestoreWindowPlace;
 using Serilog;
 using System.Windows;
-using LinkerPlayer.Audio;
-using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer;
 
@@ -19,7 +18,7 @@ public partial class App
         this.WindowPlace = new WindowPlace("placement.config");
 
         AppHost = Host.CreateDefaultBuilder()
-            .UseSerilog((host, configuration) =>
+            .UseSerilog((_, configuration) =>
             {
                 configuration
                     .WriteTo.Debug()
