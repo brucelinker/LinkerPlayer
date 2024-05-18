@@ -13,7 +13,7 @@ namespace LinkerPlayer.UserControls;
 /// </summary>
 public partial class SpectrumAnalyzer
 {
-    private FrequencyBar[] _frequencyBars = {};
+    private FrequencyBar[] _frequencyBars = Array.Empty<FrequencyBar>();
     private readonly SpectrumViewModel _spectrumViewModel = new();
 
     public SpectrumAnalyzer()
@@ -108,7 +108,7 @@ public partial class SpectrumAnalyzer
     }
 
 
-    class FrequencyBar
+    private class FrequencyBar
     {
         private bool _peakFalling;
         private double _lastPeakPosition;
@@ -117,10 +117,10 @@ public partial class SpectrumAnalyzer
 
         public FrequencyBar(Rectangle bar, Rectangle peak)
         {
-            this.Bar = bar;
-            this.Peak = peak;
-            this.Bar.Height = 2;
-            this.Peak.Height = 2;
+            Bar = bar;
+            Peak = peak;
+            Bar.Height = 2;
+            Peak.Height = 2;
 
             _peakTimer = new DispatcherTimer
             {

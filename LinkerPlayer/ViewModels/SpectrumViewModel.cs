@@ -10,8 +10,8 @@ public class SpectrumViewModel : ObservableObject
 {
     public readonly AudioEngine audioEngine;
 
-    private double[]? _frequencies;
-    private int[]? _frequencyBins;
+    private double[] _frequencies = Array.Empty<double>();
+    private int[] _frequencyBins = Array.Empty<int>();
     private const double ConstMaxEqGain = 30;
     private const double ConstMinDbValue = -60;
 
@@ -90,7 +90,7 @@ public class SpectrumViewModel : ObservableObject
         }
     }
 
-    private double[] _eqFrequencyMagnitudes = {};
+    private double[] _eqFrequencyMagnitudes = Array.Empty<double>();
     public double[] EqFrequencyMagnitudes
     {
         get => _eqFrequencyMagnitudes;
@@ -139,33 +139,26 @@ public class SpectrumViewModel : ObservableObject
     
     private void DisplaySpectrum(double[] fftArray)
     {
-        if (_frequencyBins != null)
+        double[] intensities = new double[_frequencyBins.Length];
+
+        // currently we display 19 frequencies from 25 to 20k
+        for (var i = 0; i < _frequencyBins.Length; i++)
         {
-            double[] intensities = new double[_frequencyBins.Length];
-
-            // currently we display 19 frequencies from 25 to 20k
-            for (var i = 0; i < _frequencyBins.Length; i++)
-            {
-                // decibels for the frequency bin
-                intensities[i] = 10 * Math.Log10(fftArray[_frequencyBins[i]]);
-            }
-
-            EqFrequencyMagnitudes = intensities;
+            // decibels for the frequency bin
+            intensities[i] = 10 * Math.Log10(fftArray[_frequencyBins[i]]);
         }
 
-        audioEngine.OnAudioActivity(EqFrequencyMagnitudes);
+        EqFrequencyMagnitudes = intensities;
 
+        audioEngine.OnAudioActivity(EqFrequencyMagnitudes);
     }
  
     private void PrepareFrequencyBinIndexes()
     {
-        if (_frequencies != null)
+        _frequencyBins = new int[_frequencies.Length];
+        for (var i = 0; i < _frequencies.Length; i++)
         {
-            _frequencyBins = new int[_frequencies.Length];
-            for (var i = 0; i < _frequencies.Length; i++)
-            {
-                _frequencyBins[i] = audioEngine.FrequencyBinIndex(_frequencies[i]);
-            }
+            _frequencyBins[i] = audioEngine.FrequencyBinIndex(_frequencies[i]);
         }
     }
 

@@ -30,7 +30,7 @@ public class AudioEngine : ObservableObject, IDisposable
     private bool _canPause;
     private bool _canStop;
     private bool _isPlaying;
-    private IWavePlayer? _outputDevice;
+    private WaveOut? _outputDevice;
 
     private AudioEngine()
     {
