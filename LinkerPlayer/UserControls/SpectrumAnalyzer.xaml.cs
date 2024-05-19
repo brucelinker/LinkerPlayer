@@ -1,4 +1,5 @@
-﻿using LinkerPlayer.ViewModels;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.ViewModels;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -8,18 +9,18 @@ using System.Windows.Threading;
 
 namespace LinkerPlayer.UserControls;
 
-/// <summary>
-/// Interaction logic for SpectrumAnalyzer.xaml
-/// </summary>
 public partial class SpectrumAnalyzer
 {
     private FrequencyBar[] _frequencyBars = Array.Empty<FrequencyBar>();
     private readonly SpectrumViewModel _spectrumViewModel = new();
+    public readonly AudioEngine audioEngine;
 
     public SpectrumAnalyzer()
     {
         InitializeComponent();
         DataContext = _spectrumViewModel;
+        audioEngine = AudioEngine.Instance;
+
         Prepare();
     }
 
@@ -124,13 +125,13 @@ public partial class SpectrumAnalyzer
 
             _peakTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(1000)
+                Interval = TimeSpan.FromMilliseconds(100)
             };
             _peakTimer.Tick += Peak_Tick;
 
             _fallTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(100)
+                Interval = TimeSpan.FromMilliseconds(200)
             };
             _fallTimer.Tick += Fall_Tick;
         }
@@ -139,16 +140,18 @@ public partial class SpectrumAnalyzer
         {
             if (Peak.Margin.Bottom > _lastPeakPosition - 20)
             {
-                var margin = Peak.Margin;
+                Thickness margin = Peak.Margin;
                 margin.Bottom -= 2;
                 Peak.Margin = margin;
                 Peak.Opacity -= .2;
+                Peak.Opacity = 1;
             }
             else
             {
+                Bar.Height = 2;
                 _fallTimer.Stop();
                 _peakFalling = false;
-                var margin = Peak.Margin;
+                Thickness margin = Peak.Margin;
                 margin.Bottom = 0;
                 Peak.Margin = margin;
             }

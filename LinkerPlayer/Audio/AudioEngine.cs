@@ -129,6 +129,7 @@ public class AudioEngine : ObservableObject, IDisposable
     }
     
     public bool IsPaused => _outputDevice is { PlaybackState: PlaybackState.Paused };
+    public bool IsStopped => _outputDevice is { PlaybackState: PlaybackState.Stopped };
 
     public void SelectOutputDevice(string deviceName)
     {
@@ -157,7 +158,7 @@ public class AudioEngine : ObservableObject, IDisposable
         if (CurrentTrackPosition >= CurrentTrackLength - 5)
         {
             Log.Information($"OverallLoudness: {magnitudes.Max()}");
-            if (!magnitudes.Any() || (magnitudes.Max() < -40) || ((CurrentTrackPosition + 1.0) >= CurrentTrackLength))
+            if (magnitudes.Length == 0 || (magnitudes.Max() < -40) || ((CurrentTrackPosition + 1.0) >= CurrentTrackLength))
             {
                 PlaybackStopped(null, null!);
             }
@@ -270,7 +271,7 @@ public class AudioEngine : ObservableObject, IDisposable
             CloseFile();
             ReselectOutputDevice(OutputDevice.GetCurrentDeviceName());
 
-            _audioFile = new(pathToMusic);
+            _audioFile = new AudioFileReader(pathToMusic);
             _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);
             _aggregator = new(_audioFile)
             {
@@ -480,16 +481,17 @@ public class AudioEngine : ObservableObject, IDisposable
     {
         List<EqualizerBand> equalizerBands = new();
 
-        if (_bands != null)
-            foreach (EqualizerBand band in _bands)
+        if (_bands == null) return equalizerBands;
+
+        foreach (EqualizerBand band in _bands)
+        {
+            equalizerBands.Add(new EqualizerBand
             {
-                equalizerBands.Add(new EqualizerBand
-                {
-                    Bandwidth = band.Bandwidth,
-                    Frequency = band.Frequency,
-                    Gain = band.Gain
-                });
-            }
+                Bandwidth = band.Bandwidth,
+                Frequency = band.Frequency,
+                Gain = band.Gain
+            });
+        }
 
         return equalizerBands;
     }
@@ -514,7 +516,6 @@ public class AudioEngine : ObservableObject, IDisposable
         int bin = (int)Math.Floor(frequency * _aggregator.FftLength / _audioFile.WaveFormat.SampleRate);
         return bin;
     }
-
 
     private double[] _fftResult = { 0.0, 0.0 };
     public double[] FftUpdate
