@@ -10,6 +10,7 @@ using PlaylistsNET.Content;
 using PlaylistsNET.Models;
 using Serilog;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -34,6 +35,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     [ObservableProperty]
     private static bool _shuffleMode;
     public static ObservableCollection<PlaylistTab> TabList { get; set; } = new();
+
+    public static PlaylistTabsViewModel Instance { get; } = new();
 
     private static TabControl? _tabControl;
     private static DataGrid? _dataGrid;
@@ -145,30 +148,57 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack ?? SelectedTrack));
     }
 
+    private void OnDataGridSorted(bool messageValue)
+    {
+        SelectedPlaylistTab!.SelectedIndex =
+            SelectedPlaylistTab.Tracks.ToList().FindIndex(x => x.Id == SelectedTrack!.Id);
+        SelectedTrackIndex = (int)SelectedPlaylistTab!.SelectedIndex;
+
+        if (_dataGrid is { Items.Count: > 0 })
+        {
+            _dataGrid.Items.Refresh();
+            _dataGrid.UpdateLayout();
+            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+
+            SelectedTrackIndex = _dataGrid.SelectedIndex;
+            SelectedTrack = _dataGrid.SelectedItem as MediaFile;
+
+            ActiveTrackIndex = ActiveTrackIndex != null ? _dataGrid!.SelectedIndex : null;
+        }
+        
+        if (ShuffleList.Any())
+        {
+            ShuffleList.Clear();
+        }
+
+        _shuffleMode = Settings.Default.ShuffleMode;
+        ShuffleTracks(_shuffleMode);
+    }
+
     //public void OnPlaybackStateChanged(PlaybackState state)
-    //{
-    //    State = state;
-    //    if (SelectedTrack != null)
-    //    {
-    //        SelectedTrack.State = state;
+        //{
+        //    State = state;
+        //    if (SelectedTrack != null)
+        //    {
+        //        SelectedTrack.State = state;
 
-    //        if (ActivePlaylistIndex == null || ActivePlaylistIndex == SelectedPlaylistIndex)
-    //        {
-    //            if (state != PlaybackState.Stopped)
-    //            {
-    //                ActivePlaylistIndex = SelectedPlaylistIndex;
-    //                ActiveTrackIndex = SelectedTrackIndex;
-    //            }
-    //            else
-    //            {
-    //                ActivePlaylistIndex = null;
-    //                ActiveTrackIndex = null;
-    //            }
-    //        }
-    //    }
-    //}
+        //        if (ActivePlaylistIndex == null || ActivePlaylistIndex == SelectedPlaylistIndex)
+        //        {
+        //            if (state != PlaybackState.Stopped)
+        //            {
+        //                ActivePlaylistIndex = SelectedPlaylistIndex;
+        //                ActiveTrackIndex = SelectedTrackIndex;
+        //            }
+        //            else
+        //            {
+        //                ActivePlaylistIndex = null;
+        //                ActiveTrackIndex = null;
+        //            }
+        //        }
+        //    }
+        //}
 
-    public void OnDoubleClickDataGrid()
+        public void OnDoubleClickDataGrid()
     {
         if (ActiveTrackIndex != null)
         {
@@ -478,11 +508,12 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if (ActivePlaylistIndex == _tabControl!.SelectedIndex)
             {
+                _dataGrid.Items.Refresh();
+                _dataGrid.UpdateLayout();
+
                 _dataGrid.SelectedIndex = newIndex;
                 _dataGrid.SelectedItem = SelectedTrack;
 
-                _dataGrid.Items.Refresh();
-                _dataGrid.UpdateLayout();
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
         }
@@ -562,6 +593,12 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void ShuffleTracks(bool shuffleMode)
     {
+        if (_dataGrid != null)
+        {
+            ItemCollection dataGridItems = _dataGrid!.Items;
+            IEnumerable itemsSource = _dataGrid!.ItemsSource;
+        }
+
         _shuffleMode = shuffleMode;
 
         if (shuffleMode)
@@ -749,7 +786,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void ChangeSelectedPlaylistName(string newPlaylistName)
     {
-        TabList[SelectedTrackIndex].Name = newPlaylistName;
+        TabList[SelectedPlaylistIndex].Name = newPlaylistName;
         SelectedPlaylist!.Name = newPlaylistName;
         SelectedPlaylistTab!.Name = newPlaylistName;
     }

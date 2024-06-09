@@ -22,18 +22,17 @@ namespace LinkerPlayer.UserControls;
 [ObservableObject]
 public partial class PlayerControls
 {
-    
-    private readonly PlayerControlsViewModel _playerControlsViewModel = new();
+    public readonly PlayerControlsViewModel playerControlsViewModel;
     public readonly DispatcherTimer SeekBarTimer = new();
-    public readonly AudioEngine audioEngine;
+    public readonly AudioEngine? audioEngine;
 
     public PlayerControls()
     {
         InitializeComponent();
 
         audioEngine = AudioEngine.Instance;
-
-        DataContext = _playerControlsViewModel;
+        playerControlsViewModel = PlayerControlsViewModel.Instance;
+        DataContext = PlayerControlsViewModel.Instance;
 
         SeekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
         SeekBarTimer.Tick += timer_Tick!;
@@ -130,7 +129,7 @@ public partial class PlayerControls
 
     private void OnDataGridPlay(PlayerState value)
     {
-        _playerControlsViewModel.StopTrack();
+        playerControlsViewModel.StopTrack();
         SeekBarTimer.Stop();
         SeekBar.Value = 0;
 
@@ -190,13 +189,13 @@ public partial class PlayerControls
     {
         if (!(SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            SeekBar.Value = _playerControlsViewModel.CurrentSeekbarPosition();
+            SeekBar.Value = playerControlsViewModel.CurrentSeekbarPosition();
         }
     }
 
     private void SeekBar_ValueChanged(object? sender, RoutedPropertyChangedEventArgs<double>? e)
     {
-        if (_playerControlsViewModel.SelectedTrack == null) return;
+        if (playerControlsViewModel.SelectedTrack == null) return;
 
         double posInSeekBar = (SeekBar.Value * audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);

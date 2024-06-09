@@ -25,16 +25,22 @@ public partial class PlayerControlsViewModel : BaseViewModel
     [NotifyPropertyChangedRecipients]
     private bool _isMuted;
 
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
+    public static PlayerControlsViewModel Instance { get; } = new();
+
     private static int _count;
 
-    public readonly AudioEngine audioEngine;
+    public readonly AudioEngine? audioEngine;
+    public readonly PlaylistTabsViewModel playlistTabsViewModel;
+
 
     public PlayerControlsViewModel()
     {
         audioEngine = AudioEngine.Instance;
+        playlistTabsViewModel = PlaylistTabsViewModel.Instance;
 
-        if (_count == 0)
+        Log.Information($"PLAYERCONTROLSVIEWMODEL - {++_count}");
+
+        if (_count == 1)
         {
             WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
             {
@@ -46,8 +52,6 @@ public partial class PlayerControlsViewModel : BaseViewModel
                 OnAudioStopped(m.Value);
             });
         }
-
-        Log.Information($"PLAYERCONTROLSVIEWMODEL - {_count++}");
     }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
@@ -58,7 +62,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PlayPauseTrack()
     {
-        SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
+        SelectedTrack = playlistTabsViewModel.SelectedTrack ?? playlistTabsViewModel.SelectFirstTrack();
 
         if (State != PlaybackState.Playing)
         {
@@ -160,7 +164,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PreviousTrack()
     {
-        MediaFile prevMediaFile = _playlistTabsViewModel.PreviousMediaFile()!;
+        MediaFile prevMediaFile = playlistTabsViewModel.PreviousMediaFile()!;
 
         if (!File.Exists(prevMediaFile.Path))
         {
@@ -179,7 +183,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void NextTrack()
     {
-        MediaFile nextMediaFile = _playlistTabsViewModel.NextMediaFile()!;
+        MediaFile nextMediaFile = playlistTabsViewModel.NextMediaFile()!;
 
         if (!File.Exists(nextMediaFile.Path))
         {

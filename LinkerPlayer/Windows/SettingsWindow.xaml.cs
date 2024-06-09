@@ -19,7 +19,7 @@ namespace LinkerPlayer.Windows;
 public partial class SettingsWindow
 {
     private readonly ThemeManager _themeManager = new();
-    public readonly AudioEngine audioEngine;
+    public readonly AudioEngine? audioEngine;
 
     public SettingsWindow()
     {

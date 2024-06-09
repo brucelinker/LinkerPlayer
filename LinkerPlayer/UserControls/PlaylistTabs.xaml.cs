@@ -6,53 +6,61 @@ using LinkerPlayer.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+//using static MaterialDesignThemes.Wpf.Theme;
 
 namespace LinkerPlayer.UserControls;
 
 [ObservableObject]
 public partial class PlaylistTabs
 {
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel = new();
-    private readonly PlayerControlsViewModel _playerControlsViewModel = new();
+    public readonly PlaylistTabsViewModel playlistTabsViewModel;
+    public readonly PlayerControlsViewModel playerControlsViewModel;
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
+    //private DataGrid? _tracksTable;
 
     public PlaylistTabs()
     {
-        DataContext = _playlistTabsViewModel;
+        playlistTabsViewModel = PlaylistTabsViewModel.Instance;
+        playerControlsViewModel = PlayerControlsViewModel.Instance;
+
+        DataContext = playlistTabsViewModel;
 
         InitializeComponent();
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.OnDataGridLoaded(sender, e);
+        //_tracksTable = sender as DataGrid;
+        //_tracksTable.Sorted += new RoutedEventHandler(datagrid_Sorted);
+
+        playlistTabsViewModel.OnDataGridLoaded(sender, e);
     }
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _playlistTabsViewModel.OnTrackSelectionChanged(sender, e);
+        playlistTabsViewModel.OnTrackSelectionChanged(sender, e);
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        _playlistTabsViewModel.OnTabSelectionChanged(sender, e);
+        playlistTabsViewModel.OnTabSelectionChanged(sender, e);
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        _playlistTabsViewModel.OnDoubleClickDataGrid();
+        playlistTabsViewModel.OnDoubleClickDataGrid();
 
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlayerState.Playing));
     }
 
     private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.NewPlaylist();
+        playlistTabsViewModel.NewPlaylist();
     }
 
     private void MenuItem_LoadPlaylist(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.LoadPlaylist();
+        playlistTabsViewModel.LoadPlaylist();
     }
 
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
@@ -62,33 +70,33 @@ public partial class PlaylistTabs
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.RemovePlaylist(sender, e);
+        playlistTabsViewModel.RemovePlaylist(sender, e);
     }
 
     private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.AddFolder(sender, e);
+        playlistTabsViewModel.AddFolder(sender, e);
     }
 
     private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.AddFiles(sender, e);
+        playlistTabsViewModel.AddFiles(sender, e);
     }
 
     private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
     {
-        _playerControlsViewModel.PlayTrack();
+        playerControlsViewModel.PlayTrack();
     }
     
     private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.RemoveTrack(sender, e);
+        playlistTabsViewModel.RemoveTrack(sender, e);
 
     }
 
     private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.NewPlaylistFromFolder(sender, e);
+        playlistTabsViewModel.NewPlaylistFromFolder(sender, e);
     }
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -100,6 +108,6 @@ public partial class PlaylistTabs
     {
         _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
 
-        _playlistTabsViewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
+        playlistTabsViewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
     }
 }

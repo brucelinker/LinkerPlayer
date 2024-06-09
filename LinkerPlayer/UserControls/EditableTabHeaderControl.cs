@@ -18,11 +18,11 @@ public class EditableTabHeaderControl : ContentControl
     private DispatcherTimer? _timer;
     private delegate void FocusTextBox();
 
-    private PlaylistTabsViewModel _playlistTabsViewModel;
+    public readonly PlaylistTabsViewModel playlistTabsViewModel;
 
     public EditableTabHeaderControl()
     {
-        _playlistTabsViewModel = new PlaylistTabsViewModel();
+        playlistTabsViewModel = PlaylistTabsViewModel.Instance;
     }
 
     /// <summary>
@@ -107,7 +107,7 @@ public class EditableTabHeaderControl : ContentControl
         else if (e.Key == Key.Enter)
         {
             IsInEditMode = false;
-            _playlistTabsViewModel.ChangeSelectedPlaylistName(_textBox!.Text);
+            playlistTabsViewModel.ChangeSelectedPlaylistName(_textBox!.Text);
         }
     }
 

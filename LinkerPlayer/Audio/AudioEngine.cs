@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
+using NAudio.Dsp;
 using NAudio.Extras;
 using NAudio.Wave;
 using Serilog;
@@ -10,10 +11,11 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
+using static LinkerPlayer.Audio.SpectrumAnalyzer;
 
 namespace LinkerPlayer.Audio;
 
-public class AudioEngine : ObservableObject, IDisposable
+public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
     public static AudioEngine Instance { get; } = new();
 
@@ -21,15 +23,15 @@ public class AudioEngine : ObservableObject, IDisposable
 
     private readonly DispatcherTimer _positionTimer = new(DispatcherPriority.ApplicationIdle);
     private AudioFileReader? _audioFile;
+    private const int FftDataSize = (int)FFTDataSize.FFT2048;
     private string? _pathToMusic;
     private Equalizer? _equalizer;
     private EqualizerBand[]? _bands;
     private SampleAggregator? _aggregator;
-    private double[] _volume = { 0, 0 };
     private bool _canPlay;
     private bool _canPause;
     private bool _canStop;
-    private bool _isPlaying;
+    //private bool _isPlaying;
     private WaveOut? _outputDevice;
 
     private AudioEngine()
@@ -85,16 +87,6 @@ public class AudioEngine : ObservableObject, IDisposable
             {
                 if (_outputDevice != null) _outputDevice.Volume = value;
             }
-        }
-    }
-
-    public double[] SoundLevel
-    {
-        get => _volume;
-        set
-        {
-            _volume = value;
-            WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("SoundLevel"));
         }
     }
 
@@ -329,6 +321,7 @@ public class AudioEngine : ObservableObject, IDisposable
         CanStop = true;
     }
 
+    private bool _isPlaying;
     public bool IsPlaying
     {
         get => _isPlaying;
@@ -340,6 +333,45 @@ public class AudioEngine : ObservableObject, IDisposable
                 OnPropertyChanged();
             _positionTimer.IsEnabled = value;
         }
+    }
+
+    public float[] GetFftData()
+    {
+        return FftUpdate;
+    }
+
+    private void OnFftCalculated(FftEventArgs e)
+    {
+        Complex[] complexNumbers = e.Result;
+        float[] fftResult = new float[complexNumbers.Length];
+
+        //int m = (int)Math.Log(FftUpdate.Length, 2);
+        //FastFourierTransform.FFT(true, m, complexNumbers);
+
+        for (int i = 0; i < complexNumbers.Length / 2; i++)
+        {
+            fftResult[i] = (float)Math.Sqrt(complexNumbers[i].X * complexNumbers[i].X + complexNumbers[i].Y * complexNumbers[i].Y);
+        }
+
+        FftUpdate = fftResult;
+    }
+
+    public int GetFftFrequencyIndex(int frequency)
+    {
+        double maxFrequency;
+        if (_audioFile != null)
+            maxFrequency = _audioFile.WaveFormat.SampleRate / 2.0d;
+        else
+            maxFrequency = 22050; // Assume a default 44.1 kHz sample rate.
+        return (int)((frequency / maxFrequency) * (FftDataSize / 2.0d));
+    }
+
+    public static int FftFrequency2Index(int frequency, int length, int sampleRate)
+    {
+        int num = (int)Math.Round(length * (double)frequency / sampleRate);
+        if (num > length / 2 - 1)
+            num = length / 2 - 1;
+        return num;
     }
 
     public void StopAndPlayFromPosition(double startingPosition)
@@ -506,19 +538,8 @@ public class AudioEngine : ObservableObject, IDisposable
 
     #endregion Equalizer
 
-    public int FrequencyBinIndex(double frequency)
-    {
-        if (_aggregator == null || _audioFile == null)
-        {
-            return -1;
-        }
-
-        int bin = (int)Math.Floor(frequency * _aggregator.FftLength / _audioFile.WaveFormat.SampleRate);
-        return bin;
-    }
-
-    private double[] _fftResult = { 0.0, 0.0 };
-    public double[] FftUpdate
+    private float[] _fftResult = {};
+    public float[] FftUpdate
     {
         get => _fftResult;
         set
@@ -526,18 +547,5 @@ public class AudioEngine : ObservableObject, IDisposable
             _fftResult = value;
             WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("FFTUpdate"));
         }
-    }
-
-    private void OnFftCalculated(FftEventArgs e)
-    {
-        var complexNumbers = e.Result;
-        double[] fftResult = new double[complexNumbers.Length];
-
-        for (int i = 0; i < complexNumbers.Length / 2; i++)
-        {
-            fftResult[i] = Math.Sqrt(complexNumbers[i].X * complexNumbers[i].X + complexNumbers[i].Y * complexNumbers[i].Y);
-        }
-
-        FftUpdate = fftResult;
     }
 }

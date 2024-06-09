@@ -18,21 +18,22 @@ public class SampleAggregator : ISampleProvider
     private readonly Complex[] _fftBuffer;
     private readonly FftEventArgs _fftArgs;
     private int _fftPos;
+    public const int FftLength = 2048;
     private readonly int _fftCalc;
     private readonly ISampleProvider _source;
 
     private readonly int _channels;
 
-    public SampleAggregator(ISampleProvider source, int fftLength = 1024)
+    public SampleAggregator(ISampleProvider source) // fftLength = 1024
     {
         _channels = source.WaveFormat.Channels;
-        if (!IsPowerOfTwo(fftLength))
+        if (!IsPowerOfTwo(FftLength))
         {
             throw new ArgumentException("FFT Length must be a power of two");
         }
-        this._fftCalc = (int)Math.Log(fftLength, 2.0);
-        this.FftLength = fftLength;
-        this._fftBuffer = new Complex[fftLength];
+        this._fftCalc = (int)Math.Log(FftLength, 2.0);
+        //this.FftLength = fftLength;
+        this._fftBuffer = new Complex[FftLength];
         this._fftArgs = new FftEventArgs(_fftBuffer);
         this._source = source;
     }
@@ -43,7 +44,7 @@ public class SampleAggregator : ISampleProvider
     }
 
 
-    public int FftLength { get; }
+    //public int FftLength { get; }
 
 
     public void Reset()
@@ -77,11 +78,30 @@ public class SampleAggregator : ISampleProvider
         }
     }
 
+    /// <summary>
+    /// Performs an FFT calculation on the channel data upon request.
+    /// </summary>
+    /// <param name="fftBuffer">A buffer where the FFT data will be stored.</param>
+
+    int binaryExponentation = (int) Math.Log(FftLength, 2);
+
+    public void CalcFftResults(float[] fftBuffer)
+    {
+        Complex[] channelDataClone = new Complex[FftLength];
+        _fftBuffer.CopyTo(channelDataClone, 0);
+        FastFourierTransform.FFT(true, binaryExponentation, channelDataClone);
+        for (int i = 0; i < channelDataClone.Length / 2; i++)
+        {
+            // Calculate actual intensities for the FFT results.
+            fftBuffer[i] = (float)Math.Sqrt(channelDataClone[i].X * channelDataClone[i].X + channelDataClone[i].Y * channelDataClone[i].Y);
+        }
+    }
+
     public WaveFormat WaveFormat { get { return _source.WaveFormat; } }
 
     public int Read(float[] buffer, int offset, int count)
     {
-        var samplesRead = _source.Read(buffer, offset, count);
+        int samplesRead = _source.Read(buffer, offset, count);
 
         for (int n = 0; n < samplesRead; n += _channels)
         {

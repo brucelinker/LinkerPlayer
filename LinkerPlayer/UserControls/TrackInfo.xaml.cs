@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -13,6 +14,7 @@ public partial class TrackInfo
 {
     public MediaFile SelectedMediaFile = new();
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
+    public readonly AudioEngine? audioEngine;
 
     private static int _count;
 
@@ -22,6 +24,9 @@ public partial class TrackInfo
 
         this.DataContext = this;
         InitializeComponent();
+        audioEngine = AudioEngine.Instance;
+        Spectrum.RegisterSoundPlayer(audioEngine);
+
 
         WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         {

@@ -18,7 +18,7 @@ namespace LinkerPlayer.Windows;
 public partial class EqualizerWindow : INotifyPropertyChanged
 {
     private MainWindow? _mainWindow;
-    public readonly AudioEngine audioEngine;
+    public readonly AudioEngine? audioEngine;
 
     public EqualizerWindow()
     {

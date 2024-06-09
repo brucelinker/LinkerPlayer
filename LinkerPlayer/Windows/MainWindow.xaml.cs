@@ -25,16 +25,17 @@ public partial class MainWindow
     public ThemeColors SelectedTheme;
 
     public BandsSettings SelectedEqualizerProfile = null!;
-    private readonly PlayerControlsViewModel _playerControlsViewModel;
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel;
+    public readonly PlayerControlsViewModel playerControlsViewModel;
+    public readonly PlaylistTabsViewModel playlistTabsViewModel;
+
     private static int _count;
 
-    public MainWindow(PlayerControlsViewModel playerControlsViewModel, PlaylistTabsViewModel playlistTabsViewModel)
+    public MainWindow()
     {
         Log.Information($"MAINWINDOW - {++_count}");
 
-        _playerControlsViewModel = playerControlsViewModel;
-        _playlistTabsViewModel = playlistTabsViewModel;
+        playerControlsViewModel = PlayerControlsViewModel.Instance;
+        playlistTabsViewModel = PlaylistTabsViewModel.Instance;
 
         InitializeComponent();
 
@@ -46,7 +47,7 @@ public partial class MainWindow
         WinMax.DoSourceInitialized(this);
 
         OutputDevice.InitializeOutputDevice();
-        _playlistTabsViewModel.LoadPlaylistTabs();
+        playlistTabsViewModel.LoadPlaylistTabs();
         
         if (!string.IsNullOrEmpty(Properties.Settings.Default.SelectedTheme))
         {
@@ -75,7 +76,7 @@ public partial class MainWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        _playlistTabsViewModel.SetupSelectedPlaylist();
+        playlistTabsViewModel.SetupSelectedPlaylist();
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
     
@@ -112,7 +113,7 @@ public partial class MainWindow
 
         Properties.Settings.Default.VolumeSliderValue = PlayerControls.VolumeSlider.Value;
 
-        Properties.Settings.Default.LastSelectedPlaylistName = _playlistTabsViewModel.SelectedPlaylist!.Name;
+        Properties.Settings.Default.LastSelectedPlaylistName = playlistTabsViewModel.SelectedPlaylist!.Name;
         Properties.Settings.Default.LastSelectedSongId = SelectedTrack != null ? SelectedTrack.Id : "";
         //Properties.Settings.Default.ShuffleMode = _playerControlsViewModel.ShuffleMode;
         Properties.Settings.Default.LastSeekBarValue = PlayerControls.SeekBar.Value;
@@ -184,12 +185,12 @@ public partial class MainWindow
             }
             else if (enteredHotkey == Properties.Settings.Default["NextSongHotkey"].ToString())
             {
-                _playerControlsViewModel.NextTrack();
+                playerControlsViewModel.NextTrack();
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["PreviousSongHotkey"].ToString())
             {
-                _playerControlsViewModel.PreviousTrack();
+                playerControlsViewModel.PreviousTrack();
                 e.Handled = true;
             }
             else if (enteredHotkey == Properties.Settings.Default["IncreaseMainVolumeHotkey"].ToString())
