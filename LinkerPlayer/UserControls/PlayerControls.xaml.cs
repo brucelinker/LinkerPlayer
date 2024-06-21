@@ -24,7 +24,7 @@ public partial class PlayerControls
 {
     public readonly PlayerControlsViewModel playerControlsViewModel;
     public readonly DispatcherTimer SeekBarTimer = new();
-    public readonly AudioEngine? audioEngine;
+    public readonly AudioEngine audioEngine;
 
     public PlayerControls()
     {

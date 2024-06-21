@@ -29,7 +29,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     private static int _count;
 
-    public readonly AudioEngine? audioEngine;
+    public readonly AudioEngine audioEngine;
     public readonly PlaylistTabsViewModel playlistTabsViewModel;
 
 

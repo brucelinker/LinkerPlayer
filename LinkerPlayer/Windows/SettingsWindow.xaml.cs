@@ -1,16 +1,12 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
-using MaterialDesignThemes.Wpf;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using Button = System.Windows.Controls.Button;
 using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
@@ -19,7 +15,7 @@ namespace LinkerPlayer.Windows;
 public partial class SettingsWindow
 {
     private readonly ThemeManager _themeManager = new();
-    public readonly AudioEngine? audioEngine;
+    public readonly AudioEngine audioEngine;
 
     public SettingsWindow()
     {

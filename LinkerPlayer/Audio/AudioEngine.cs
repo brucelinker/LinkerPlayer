@@ -23,7 +23,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
     private readonly DispatcherTimer _positionTimer = new(DispatcherPriority.ApplicationIdle);
     private AudioFileReader? _audioFile;
-    private const int FftDataSize = (int)FFTDataSize.FFT2048;
+    private const int FftDataSize = (int)SpectrumAnalyzer.FftDataSize.Fft2048;
     private string? _pathToMusic;
     private Equalizer? _equalizer;
     private EqualizerBand[]? _bands;
