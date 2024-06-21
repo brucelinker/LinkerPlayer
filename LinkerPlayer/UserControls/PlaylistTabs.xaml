@@ -110,6 +110,7 @@
           SelectionChanged="TracksTable_OnSelectionChanged"
           SelectionMode="Single"
           SelectionUnit="FullRow"
+          Sorting="TracksTable_OnSorting"
           VirtualizingStackPanel.IsVirtualizing="True"
           VirtualizingStackPanel.VirtualizationMode="Standard">
 

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -109,5 +110,13 @@ public partial class PlaylistTabs
         _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
 
         playlistTabsViewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
+    }
+
+    private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
+    {
+        this.Dispatcher.BeginInvoke((Action)delegate
+        {
+            playlistTabsViewModel.OnDataGridSorted(sender, e);
+        }, null);
     }
 }

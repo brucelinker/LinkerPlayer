@@ -10,7 +10,6 @@ using PlaylistsNET.Content;
 using PlaylistsNET.Models;
 using Serilog;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -27,7 +26,7 @@ namespace LinkerPlayer.ViewModels;
 public partial class PlaylistTabsViewModel : BaseViewModel
 {
     [ObservableProperty]
-    private static PlaylistTab? _selectedPlaylistTab;
+    private static PlaylistTab? _selectedTab;
     [ObservableProperty]
     private static Playlist? _selectedPlaylist;
     [ObservableProperty]
@@ -42,7 +41,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     private static DataGrid? _dataGrid;
     private readonly MainWindow _mainWindow;
 
-    private static readonly List<MediaFile?> ShuffleList = new();
+    private static List<MediaFile> _tracksView = new();
+    private static readonly List<MediaFile> ShuffleList = new();
     private static int _shuffledIndex;
 
     private const string SupportedAudioFormats = "(*.mp3; *.flac)|*.mp3; *.flac";
@@ -80,6 +80,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
                 _dataGrid.Items.Refresh();
                 _dataGrid.UpdateLayout();
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+
+                _tracksView = dataGrid.Items.Cast<MediaFile>().ToList();
             }
         }
     }
@@ -91,25 +93,30 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             _tabControl = tabControl;
 
             if (tabControl.SelectedIndex < 0) return;
+
             SelectedPlaylistIndex = tabControl.SelectedIndex;
 
             if (tabControl.SelectedContent is not PlaylistTab playlistTab) return;
-            SelectedPlaylistTab = playlistTab;
+            SelectedTab = playlistTab;
 
-            SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedPlaylistTab.Name!);
+            SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedTab.Name!);
             if (SelectedPlaylist == null) return;
 
             SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedSong);
             if (SelectedTrack == null) return;
 
-            if (!SelectedPlaylistTab!.Tracks.Any()) return;
-            SelectedPlaylistTab!.SelectedIndex = SelectedPlaylistTab.Tracks.ToList().FindIndex(x => x.Id == SelectedTrack!.Id);
-            SelectedTrackIndex = (int)SelectedPlaylistTab!.SelectedIndex;
+            if (!SelectedTab!.Tracks.Any()) return;
 
             if (_dataGrid is { Items.Count: > 0 })
             {
-                _dataGrid.SelectedIndex = SelectedTrackIndex;
-                _dataGrid.SelectedItem = SelectedTrack;
+                _tracksView = _dataGrid.Items.Cast<MediaFile>().ToList();
+                SelectedTab!.SelectedIndex = _tracksView.FindIndex(x => x.Id == SelectedTrack!.Id);
+                SelectedTrackIndex = (int)SelectedTab!.SelectedIndex;
+                Log.Information($"OnTabSelectionChanged: SelectedTrackIndex: {SelectedTrackIndex}");
+                Log.Information($"OnTabSelectionChanged: SelectedTrack: {SelectedTrack!.FileName}");
+
+                //_dataGrid.SelectedIndex = SelectedTrackIndex;
+                //_dataGrid.SelectedItem = SelectedTrack;
 
                 _dataGrid.Items.Refresh();
                 _dataGrid.UpdateLayout();
@@ -139,8 +146,11 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             SelectedTrackIndex = _dataGrid.SelectedIndex;
-            SelectedPlaylistTab!.SelectedTrack = SelectedTrack;
-            SelectedPlaylistTab.SelectedIndex = SelectedTrackIndex;
+            SelectedTab!.SelectedTrack = SelectedTrack;
+            SelectedTab.SelectedIndex = SelectedTrackIndex;
+            Log.Information($"OnTrackSelectionChanged: SelectedTrackIndex: {SelectedTrackIndex}");
+            Log.Information($"OnTrackSelectionChanged: SelectedTrack: {SelectedTrack!.FileName}");
+
 
             MusicLibrary.Playlists[SelectedPlaylistIndex]!.SelectedSong = SelectedTrack!.Id;
         }
@@ -148,11 +158,11 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack ?? SelectedTrack));
     }
 
-    private void OnDataGridSorted(bool messageValue)
+    public void OnDataGridSorted(object sender, DataGridSortingEventArgs e)
     {
-        SelectedPlaylistTab!.SelectedIndex =
-            SelectedPlaylistTab.Tracks.ToList().FindIndex(x => x.Id == SelectedTrack!.Id);
-        SelectedTrackIndex = (int)SelectedPlaylistTab!.SelectedIndex;
+        SelectedTab!.SelectedIndex =
+            _tracksView.FindIndex(x => x.Id == SelectedTrack!.Id);
+        SelectedTrackIndex = (int)SelectedTab!.SelectedIndex;
 
         if (_dataGrid is { Items.Count: > 0 })
         {
@@ -163,7 +173,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
 
-            ActiveTrackIndex = ActiveTrackIndex != null ? _dataGrid!.SelectedIndex : null;
+            ActiveTrackIndex = ActiveTrackIndex != null ? _dataGrid.SelectedIndex : null;
         }
         
         if (ShuffleList.Any())
@@ -366,17 +376,16 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public MediaFile? SelectTrack(Playlist playlist, MediaFile track)
     {
-        if (SelectedPlaylistTab == null) return null;
+        if (SelectedTab == null) return null;
 
-        if (!playlist.Name!.Equals(SelectedPlaylistTab!.Name) && _tabControl != null)
+        if (!playlist.Name!.Equals(SelectedTab!.Name) && _tabControl != null)
         {
             _tabControl.SelectedIndex = TabList.ToList().FindIndex(x => x.Name == playlist.Name);
         }
 
         SelectedTrack = track;
 
-        SelectedTrackIndex = SelectedPlaylistTab!.Tracks.ToList()
-            .FindIndex(x => x.Id.Contains(track.Id));
+        SelectedTrackIndex = _tracksView.FindIndex(x => x.Id.Contains(track.Id));
 
         MediaFile musicFile = ActiveTrack ?? SelectedTrack;
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
@@ -387,7 +396,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     public MediaFile SelectFirstTrack()
     {
         SelectedTrackIndex = 0;
-        SelectedTrack = SelectedPlaylistTab!.Tracks[SelectedTrackIndex];
+        SelectedTrack = _tracksView[SelectedTrackIndex];
 
 
         _dataGrid!.SelectedItem = SelectedTrack;
@@ -414,8 +423,13 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             if (ActivePlaylistIndex != null)
             {
                 tabIndex = (int)ActivePlaylistIndex;
-                TabList[tabIndex].Tracks[(int)ActiveTrackIndex!].State = PlaybackState.Stopped;
-                oldIndex = (int)ActiveTrackIndex;
+
+                if (ActiveTrack != null)
+                {
+                    ActiveTrack.State = PlaybackState.Stopped;
+                }
+
+                oldIndex = ActiveTrackIndex ?? 0;
             }
             else
             {
@@ -431,18 +445,18 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             {
 
                 if (oldIndex == 0)
-                    newIndex = TabList[tabIndex].Tracks.Count - 1;
+                    newIndex = _tracksView.Count - 1;
                 else
                     newIndex = oldIndex - 1;
             }
 
             if (SelectedPlaylistIndex == ActivePlaylistIndex)
             {
-                SelectedTrack = TabList[tabIndex].Tracks[newIndex];
+                SelectedTrack = _tracksView[newIndex];
                 SelectedTrackIndex = newIndex;
             }
 
-            ActiveTrack = TabList[tabIndex].Tracks[newIndex];
+            ActiveTrack = _tracksView[newIndex];
             ActiveTrack.State = PlaybackState.Playing;
             ActiveTrackIndex = newIndex;
             ActivePlaylistIndex = tabIndex;
@@ -451,10 +465,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             if (ActivePlaylistIndex == _tabControl!.SelectedIndex)
             {
                 _dataGrid.SelectedIndex = newIndex;
-                _dataGrid.SelectedItem = SelectedTrack;
-
-                _dataGrid.Items.Refresh();
-                _dataGrid.UpdateLayout();
                 _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
             }
         }
@@ -473,8 +483,13 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             if (ActivePlaylistIndex != null)
             {
                 tabIndex = (int)ActivePlaylistIndex;
-                TabList[tabIndex].Tracks[(int)ActiveTrackIndex!].State = PlaybackState.Stopped;
-                oldIndex = (int)ActiveTrackIndex;
+
+                if (ActiveTrack != null)
+                {
+                    ActiveTrack.State = PlaybackState.Stopped;
+                }
+
+                oldIndex = ActiveTrackIndex ?? 0;
             }
             else
             {
@@ -488,7 +503,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             }
             else
             {
-                if (oldIndex == TabList[tabIndex].Tracks.Count - 1)
+                if (oldIndex == _tracksView.Count - 1)
                     newIndex = 0;
                 else
                     newIndex = oldIndex + 1;
@@ -496,11 +511,11 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if (SelectedPlaylistIndex == ActivePlaylistIndex)
             {
-                SelectedTrack = TabList[tabIndex].Tracks[newIndex];
+                SelectedTrack = _tracksView[newIndex];
                 SelectedTrackIndex = newIndex;
             }
 
-            ActiveTrack = TabList[tabIndex].Tracks[newIndex];
+            ActiveTrack = _tracksView[newIndex];
             ActiveTrack.State = PlaybackState.Playing;
             ActiveTrackIndex = newIndex;
             ActivePlaylistIndex = tabIndex;
@@ -508,13 +523,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if (ActivePlaylistIndex == _tabControl!.SelectedIndex)
             {
-                _dataGrid.Items.Refresh();
-                _dataGrid.UpdateLayout();
-
-                _dataGrid.SelectedIndex = newIndex;
-                _dataGrid.SelectedItem = SelectedTrack;
-
-                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+                _dataGrid.SelectedItem = ActiveTrack;
+                _dataGrid.ScrollIntoView(ActiveTrack);
             }
         }
 
@@ -593,22 +603,17 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void ShuffleTracks(bool shuffleMode)
     {
-        if (_dataGrid != null)
-        {
-            ItemCollection dataGridItems = _dataGrid!.Items;
-            IEnumerable itemsSource = _dataGrid!.ItemsSource;
-        }
-
         _shuffleMode = shuffleMode;
 
         if (shuffleMode)
         {
-            if (SelectedPlaylistTab == null || !SelectedPlaylistTab.Tracks.Any())
+            //if (SelectedTab == null || !SelectedTab.Tracks.Any())
+            if (!_tracksView.Any())
             {
                 return;
             }
 
-            List<MediaFile> tempList = SelectedPlaylistTab!.Tracks.ToList();
+            List<MediaFile> tempList = _tracksView.ToList();
 
             Random random = new();
 
@@ -624,11 +629,15 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if (ActiveTrack != null && ShuffleList.Any())
             {
-                _shuffledIndex = ShuffleList.FindIndex(x => x!.Id == ActiveTrack.Id);
+                _shuffledIndex = ShuffleList.FindIndex(x => x.Id == ActiveTrack.Id);
 
                 if (_shuffledIndex < 0)
                 {
                     _shuffledIndex = SelectedTrackIndex;
+                }
+                else
+                {
+                    SelectedTrackIndex = _shuffledIndex;
                 }
             }
             else
@@ -650,11 +659,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         else
             _shuffledIndex += 1;
 
-        int index = ActivePlaylistIndex ?? SelectedPlaylistIndex;
-        int newIndex = TabList[index].Tracks.ToList()
-            .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex]!.Id));
+        int newIndex = _tracksView.FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex].Id));
 
-        Log.Information($"GetNextShuffledIndex: {_shuffledIndex}");
+        Log.Information($"GetNextShuffledIndex: {newIndex}");
 
         return newIndex;
     }
@@ -666,9 +673,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         else
             _shuffledIndex -= 1;
 
-        int index = ActivePlaylistIndex ?? SelectedPlaylistIndex;
-        int newIndex = TabList[index].Tracks.ToList()
-            .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex]!.Id));
+        int newIndex = _tracksView.FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex].Id));
+
+        Log.Information($"GetPreviousShuffledIndex: {newIndex}");
 
         return newIndex;
     }
@@ -788,7 +795,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     {
         TabList[SelectedPlaylistIndex].Name = newPlaylistName;
         SelectedPlaylist!.Name = newPlaylistName;
-        SelectedPlaylistTab!.Name = newPlaylistName;
+        SelectedTab!.Name = newPlaylistName;
     }
 
     public MediaFile? GetActiveTrackByIndex(int index)
