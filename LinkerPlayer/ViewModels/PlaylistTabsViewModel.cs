@@ -5,6 +5,7 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Properties;
 using LinkerPlayer.Windows;
+using Microsoft.Win32;
 using NAudio.Wave;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
@@ -17,9 +18,6 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Forms;
-using Application = System.Windows.Application;
-using TabControl = System.Windows.Controls.TabControl;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -27,6 +25,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 {
     [ObservableProperty]
     private static PlaylistTab? _selectedTab;
+    [ObservableProperty]
+    private static PlaylistTab? _activeTab;
     [ObservableProperty]
     private static Playlist? _selectedPlaylist;
     [ObservableProperty]
@@ -55,10 +55,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         Log.Information($"PLAYLISTTABSVIEWMODEL - {++_count}");
         _mainWindow = (MainWindow?)Application.Current.MainWindow!;
 
-        //WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
-        //{
-        //    OnPlaybackStateChanged(m.Value);
-        //});
+        WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+        {
+            OnPlaybackStateChanged(m.Value);
+        });
 
         WeakReferenceMessenger.Default.Register<ShuffleModeMessage>(this, (_, m) =>
         {
@@ -74,65 +74,89 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if (dataGrid.Items.Count > 0)
             {
-                _dataGrid.SelectedItem = SelectedTrack;
-                _dataGrid.SelectedIndex = SelectedTrackIndex;
+                //_dataGrid.SelectedIndex = SelectedTrackIndex;
 
-                _dataGrid.Items.Refresh();
-                _dataGrid.UpdateLayout();
-                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+                //_dataGrid.Items.Refresh();
+                //_dataGrid.UpdateLayout();
+                //_dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
 
                 _tracksView = dataGrid.Items.Cast<MediaFile>().ToList();
+
+                _shuffleMode = Settings.Default.ShuffleMode;
+                ShuffleTracks(_shuffleMode);
+
+                _dataGrid.SelectedItem = SelectedTrack;
             }
         }
     }
 
     public void OnTabSelectionChanged(object sender, SelectionChangedEventArgs selectionChangedEventArgs)
     {
-        if (sender is TabControl tabControl)
+        /*
+         * While a track is playing, the current tab will be the ActiveTab. We want to be able to select
+         * a different tab to view the list and select a track, but it will not be queued up or play after
+         * the track in the ActiveTab has finish. The ActiveTab will simply play the next track in the list.
+         *
+         * You can play a song in a tab that is not the ActiveTab by double clicking the track. This will
+         * change the current tab to be the new ActiveTab.
+         */
+
+        if (_tabControl == null && sender is TabControl tabControl)
         {
             _tabControl = tabControl;
+        }
 
-            if (tabControl.SelectedIndex < 0) return;
+        // Need to use ActivePlaylist to know which tab to play from
+        // If ActivePlaylist is null, then we need to reinitialize _tracksView
+        if (_tabControl!.SelectedContent is not PlaylistTab playlistTab || SelectedTab == playlistTab) return;
 
-            SelectedPlaylistIndex = tabControl.SelectedIndex;
+        SelectedTab = playlistTab;
 
-            if (tabControl.SelectedContent is not PlaylistTab playlistTab) return;
-            SelectedTab = playlistTab;
+        if (_tabControl.SelectedIndex < 0 || (SelectedPlaylistIndex == _tabControl.SelectedIndex && _tracksView.Any())) return;
 
-            SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedTab.Name!);
-            if (SelectedPlaylist == null) return;
+        SelectedPlaylistIndex = _tabControl.SelectedIndex;
 
-            SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedSong);
-            if (SelectedTrack == null) return;
+        SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedTab.Name!);
+        if (SelectedPlaylist == null) return;
 
-            if (!SelectedTab!.Tracks.Any()) return;
+        SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedSong);
+        if (SelectedTrack == null) return;
 
-            if (_dataGrid is { Items.Count: > 0 })
+        if (_dataGrid != null)
+        {
+
+            if (ActivePlaylistIndex == null && _dataGrid.Items.Count > 0)
             {
                 _tracksView = _dataGrid.Items.Cast<MediaFile>().ToList();
                 SelectedTab!.SelectedIndex = _tracksView.FindIndex(x => x.Id == SelectedTrack!.Id);
                 SelectedTrackIndex = (int)SelectedTab!.SelectedIndex;
-                Log.Information($"OnTabSelectionChanged: SelectedTrackIndex: {SelectedTrackIndex}");
-                Log.Information($"OnTabSelectionChanged: SelectedTrack: {SelectedTrack!.FileName}");
 
-                //_dataGrid.SelectedIndex = SelectedTrackIndex;
-                //_dataGrid.SelectedItem = SelectedTrack;
-
-                _dataGrid.Items.Refresh();
-                _dataGrid.UpdateLayout();
-                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
-            }
-
-            if (ActiveTrackIndex == null)
-            {
-                if (ShuffleList.Any())
+                if (ActiveTrackIndex == null)
                 {
-                    ShuffleList.Clear();
-                }
+                    if (ShuffleList.Any())
+                    {
+                        ShuffleList.Clear();
+                    }
 
-                _shuffleMode = Settings.Default.ShuffleMode;
-                ShuffleTracks(_shuffleMode);
+                    _shuffleMode = Settings.Default.ShuffleMode;
+                    ShuffleTracks(_shuffleMode);
+                }
             }
+
+            if(ActiveTrack != null && ActivePlaylistIndex == SelectedPlaylistIndex)
+            {
+                _dataGrid.SelectedItem = (object)ActiveTrack;
+            }
+            else
+            {
+                _dataGrid.SelectedItem = (object)SelectedTrack;
+            }
+            _dataGrid.Items.Refresh();
+            _dataGrid.UpdateLayout();
+            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+
+            Log.Information($"OnTabSelectionChanged: DataGrid.SelectedIndex: {_dataGrid!.SelectedIndex}");
+            Log.Information($"OnTabSelectionChanged: DataGrid.SelectedItem: {(_dataGrid.SelectedItem! as MediaFile)!.FileName}");
         }
     }
 
@@ -142,17 +166,17 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         if (_dataGrid is { SelectedItem: not null })
         {
-            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
-
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTab!.SelectedTrack = SelectedTrack;
             SelectedTab.SelectedIndex = SelectedTrackIndex;
+
+            MusicLibrary.Playlists[SelectedPlaylistIndex]!.SelectedSong = SelectedTrack!.Id;
+
             Log.Information($"OnTrackSelectionChanged: SelectedTrackIndex: {SelectedTrackIndex}");
             Log.Information($"OnTrackSelectionChanged: SelectedTrack: {SelectedTrack!.FileName}");
 
-
-            MusicLibrary.Playlists[SelectedPlaylistIndex]!.SelectedSong = SelectedTrack!.Id;
+            _dataGrid.ScrollIntoView(SelectedTrack!);
         }
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack ?? SelectedTrack));
@@ -175,7 +199,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             ActiveTrackIndex = ActiveTrackIndex != null ? _dataGrid.SelectedIndex : null;
         }
-        
+
         if (ShuffleList.Any())
         {
             ShuffleList.Clear();
@@ -185,30 +209,30 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         ShuffleTracks(_shuffleMode);
     }
 
-    //public void OnPlaybackStateChanged(PlaybackState state)
-        //{
-        //    State = state;
-        //    if (SelectedTrack != null)
-        //    {
-        //        SelectedTrack.State = state;
+    public void OnPlaybackStateChanged(PlaybackState state)
+    {
+        State = state;
+        if (SelectedTrack != null)
+        {
+            SelectedTrack.State = state;
 
-        //        if (ActivePlaylistIndex == null || ActivePlaylistIndex == SelectedPlaylistIndex)
-        //        {
-        //            if (state != PlaybackState.Stopped)
-        //            {
-        //                ActivePlaylistIndex = SelectedPlaylistIndex;
-        //                ActiveTrackIndex = SelectedTrackIndex;
-        //            }
-        //            else
-        //            {
-        //                ActivePlaylistIndex = null;
-        //                ActiveTrackIndex = null;
-        //            }
-        //        }
-        //    }
-        //}
+            if (ActivePlaylistIndex == null || ActivePlaylistIndex == SelectedPlaylistIndex)
+            {
+                if (state != PlaybackState.Stopped)
+                {
+                    ActivePlaylistIndex = SelectedPlaylistIndex;
+                    ActiveTrackIndex = SelectedTrackIndex;
+                }
+                else
+                {
+                    ActivePlaylistIndex = null;
+                    ActiveTrackIndex = null;
+                }
+            }
+        }
+    }
 
-        public void OnDoubleClickDataGrid()
+    public void OnDoubleClickDataGrid()
     {
         if (ActiveTrackIndex != null)
         {
@@ -253,28 +277,30 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void LoadPlaylist()
     {
-        using OpenFileDialog openFileDialog = new();
-        openFileDialog.Filter = SupportedPlaylistFormats;
-        openFileDialog.Multiselect = false;
-        openFileDialog.Title = "Select file(s)";
+        OpenFileDialog openFileDialog = new()
+        {
+            Filter = SupportedPlaylistFormats,
+            Multiselect = false,
+            Title = "Select file(s)"
+        };
 
-        DialogResult fileDialogRes = openFileDialog.ShowDialog();
+        bool? result = openFileDialog.ShowDialog();
 
-        if (fileDialogRes != DialogResult.OK) return;
+        if (result ?? false) return;
 
         LoadPlaylistFile(openFileDialog.FileName);
     }
 
     public void AddFolder(object sender, RoutedEventArgs routedEventArgs)
     {
-        using FolderBrowserDialog folderDialog = new();
-        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
+        string str = Environment.SpecialFolder.CommonMusic.ToString();
+        OpenFolderDialog folderDialog = new();
 
-        DialogResult fileDialogResult = folderDialog.ShowDialog();
+        bool? result = folderDialog.ShowDialog();
 
-        if (fileDialogResult != DialogResult.OK) return;
+        if (result is null or false) return;
 
-        string selectedFolderPath = folderDialog.SelectedPath;
+        string selectedFolderPath = folderDialog.FolderName;
         DirectoryInfo dirInfo = new(selectedFolderPath);
         List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
 
@@ -294,14 +320,16 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     }
     public void NewPlaylistFromFolder(object sender, RoutedEventArgs routedEventArgs)
     {
-        using FolderBrowserDialog folderDialog = new();
-        folderDialog.RootFolder = Environment.SpecialFolder.MyMusic;
+        OpenFolderDialog folderDialog = new()
+        {
+            FolderName = Environment.SpecialFolder.MyMusic.ToString()
+        };
 
-        DialogResult fileDialogResult = folderDialog.ShowDialog();
+        bool? result = folderDialog.ShowDialog();
 
-        if (fileDialogResult != DialogResult.OK) return;
+        if (result ?? false) return;
 
-        string selectedFolderPath = folderDialog.SelectedPath;
+        string selectedFolderPath = folderDialog.FolderName;
         DirectoryInfo dirInfo = new(selectedFolderPath);
         List<FileInfo> files = dirInfo.GetFiles("*.mp3", SearchOption.AllDirectories).ToList();
 
@@ -334,18 +362,20 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void AddFiles(object sender, RoutedEventArgs routedEventArgs)
     {
-        using OpenFileDialog openFileDialog = new();
-        openFileDialog.Filter = SupportedExtensions;
-        openFileDialog.Multiselect = true;
-        openFileDialog.Title = "Select file(s)";
+        OpenFileDialog openFileDialog = new()
+        {
+            Filter = SupportedPlaylistFormats,
+            Multiselect = false,
+            Title = "Select file(s)"
+        };
 
-        DialogResult fileDialogRes = openFileDialog.ShowDialog();
+        bool? result = openFileDialog.ShowDialog();
 
-        if (fileDialogRes != DialogResult.OK) return;
+        if (result is null or false) return;
 
         foreach (string fileName in openFileDialog.FileNames)
         {
-            var extension = Path.GetExtension(fileName);
+            string extension = Path.GetExtension(fileName);
 
             if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
             {
@@ -405,7 +435,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         _dataGrid.Items.Refresh();
         _dataGrid.UpdateLayout();
         _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
-
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
 

@@ -62,7 +62,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PlayPauseTrack()
     {
-        SelectedTrack = playlistTabsViewModel.SelectedTrack ?? playlistTabsViewModel.SelectFirstTrack();
+//        SelectedTrack = playlistTabsViewModel.SelectedTrack ?? playlistTabsViewModel.SelectFirstTrack();
 
         if (State != PlaybackState.Playing)
         {
@@ -92,13 +92,11 @@ public partial class PlayerControlsViewModel : BaseViewModel
     {
         if (ActiveTrack != null)
         {
-            ActiveTrack!.State = PlaybackState.Stopped;
             audioEngine.PathToMusic = ActiveTrack?.Path;
             audioEngine.StopAndPlayFromPosition(0.0);
             ActiveTrack!.State = PlaybackState.Playing;
             State = PlaybackState.Playing;
         }
-
         else if (SelectedTrack != null)
         {
             audioEngine.PathToMusic = SelectedTrack.Path;
@@ -112,10 +110,10 @@ public partial class PlayerControlsViewModel : BaseViewModel
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
             }
-
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
-            WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(ActiveTrack));
         }
+
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
+        WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(ActiveTrack));
     }
 
     public void ResumeTrack()
@@ -143,13 +141,11 @@ public partial class PlayerControlsViewModel : BaseViewModel
         audioEngine.Stop();
         State = PlaybackState.Stopped;
 
-        //MediaFile? activeTrack = _playlistTabsViewModel.GetActiveTrack();
         if (ActiveTrack != null)
         {
             ActiveTrack.State = PlaybackState.Stopped;
             ActivePlaylistIndex = null;
             ActiveTrackIndex = null;
-            ActivePlaylist = null;
             ActiveTrack = null;
         }
 

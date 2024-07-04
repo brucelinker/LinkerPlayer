@@ -11,8 +11,8 @@ public partial class BaseViewModel : ObservableRecipient
     private static int _selectedTrackIndex;
     [ObservableProperty]
     private static MediaFile? _selectedTrack;
-    [ObservableProperty]
-    private static Playlist? _activePlaylist;
+    //[ObservableProperty]
+    //private static Playlist? _activePlaylist;
     [ObservableProperty]
     private static int? _activePlaylistIndex;
     [ObservableProperty]

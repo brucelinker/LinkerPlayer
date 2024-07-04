@@ -63,12 +63,12 @@ public partial class TrackInfo
     {
         if (mediaFile == null) return;
 
-        SetSelectedMediaFile(mediaFile);
+        SetActiveMediaFile(mediaFile);
     }
 
     private void OnSelectedTrackChanged(MediaFile mediaFile)
     {
-        SetSelectedMediaFile(mediaFile);
+        //SetActiveMediaFile(mediaFile);
     }
 
     public static void ReloadDefaultAlbumImage()
@@ -76,7 +76,7 @@ public partial class TrackInfo
         _defaultAlbumImage = new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
     }
 
-    public void SetSelectedMediaFile(MediaFile mediaFile)
+    public void SetActiveMediaFile(MediaFile mediaFile)
     {
         SelectedMediaFile = mediaFile;
 
