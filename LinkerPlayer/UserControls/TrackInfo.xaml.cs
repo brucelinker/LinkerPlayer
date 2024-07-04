@@ -33,12 +33,12 @@ public partial class TrackInfo
             OnActiveTrackChanged(m.Value);
         });
 
-        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
-        {
-            if (m.Value == null) return;
+        //WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
+        //{
+        //    if (m.Value == null) return;
 
-            OnSelectedTrackChanged(m.Value);
-        });
+        //    OnSelectedTrackChanged(m.Value);
+        //});
     }
 
     private static BitmapImage? _defaultAlbumImage;
@@ -66,10 +66,10 @@ public partial class TrackInfo
         SetActiveMediaFile(mediaFile);
     }
 
-    private void OnSelectedTrackChanged(MediaFile mediaFile)
-    {
-        //SetActiveMediaFile(mediaFile);
-    }
+    //private void OnSelectedTrackChanged(MediaFile mediaFile)
+    //{
+    //    //SetActiveMediaFile(mediaFile);
+    //}
 
     public static void ReloadDefaultAlbumImage()
     {

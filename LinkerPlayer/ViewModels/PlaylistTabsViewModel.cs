@@ -124,7 +124,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         if (_dataGrid != null)
         {
-
             if (ActivePlaylistIndex == null && _dataGrid.Items.Count > 0)
             {
                 _tracksView = _dataGrid.Items.Cast<MediaFile>().ToList();
@@ -145,17 +144,17 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             if(ActiveTrack != null && ActivePlaylistIndex == SelectedPlaylistIndex)
             {
-                _dataGrid.SelectedItem = (object)ActiveTrack;
+                _dataGrid.SelectedItem = ActiveTrack;
             }
             else
             {
-                _dataGrid.SelectedItem = (object)SelectedTrack;
+                _dataGrid.SelectedItem = SelectedTrack;
             }
             _dataGrid.Items.Refresh();
             _dataGrid.UpdateLayout();
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
 
-            Log.Information($"OnTabSelectionChanged: DataGrid.SelectedIndex: {_dataGrid!.SelectedIndex}");
+            Log.Information($"OnTabSelectionChanged: DataGrid.SelectedIndex: {_dataGrid.SelectedIndex}");
             Log.Information($"OnTabSelectionChanged: DataGrid.SelectedItem: {(_dataGrid.SelectedItem! as MediaFile)!.FileName}");
         }
     }
@@ -293,7 +292,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void AddFolder(object sender, RoutedEventArgs routedEventArgs)
     {
-        string str = Environment.SpecialFolder.CommonMusic.ToString();
         OpenFolderDialog folderDialog = new();
 
         bool? result = folderDialog.ShowDialog();
@@ -364,7 +362,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     {
         OpenFileDialog openFileDialog = new()
         {
-            Filter = SupportedPlaylistFormats,
+            Filter = SupportedExtensions,
             Multiselect = false,
             Title = "Select file(s)"
         };

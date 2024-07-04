@@ -11,7 +11,6 @@ using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
-using static LinkerPlayer.Audio.SpectrumAnalyzer;
 
 namespace LinkerPlayer.Audio;
 
