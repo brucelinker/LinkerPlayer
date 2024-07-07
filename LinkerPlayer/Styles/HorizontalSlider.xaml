@@ -9,10 +9,10 @@
       <Setter.Value>
         <ControlTemplate TargetType="RepeatButton">
           <Border
-            Height="3"
+            Height="18"
             Background="{DynamicResource ControlDisabledBrush}"
-            BorderBrush="{DynamicResource ControlDisabledBrush}"
-            BorderThickness="1"
+            BorderBrush="Transparent"
+            BorderThickness="0, 7 0, 7"
             CornerRadius="2" />
         </ControlTemplate>
       </Setter.Value>
@@ -26,10 +26,10 @@
       <Setter.Value>
         <ControlTemplate TargetType="RepeatButton">
           <Border
-            Height="6"
+            Height="18"
             Background="{DynamicResource ControlAccentDarkBrush}"
-            BorderBrush="{DynamicResource ControlAccentDarkBrush}"
-            BorderThickness="1"
+            BorderBrush="Transparent"
+            BorderThickness="0, 7 0, 7"
             CornerRadius="2"
             SnapsToDevicePixels="True" />
         </ControlTemplate>
@@ -46,12 +46,13 @@
           <!--  Add name to ellipse to use in  controltemplate triggers  -->
           <Ellipse
             x:Name="Ellipse"
-            Width="16"
-            Height="16"
-            Fill="{DynamicResource ControlAccentDarkBrush}" />
+            Width="18"
+            Height="18"
+            Fill="Transparent"
+            Stroke="{DynamicResource PlayerControlButtonBorderBrush}"/>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter TargetName="Ellipse" Property="Fill" Value="{DynamicResource ControlMouseOverBrush}" />
+              <Setter TargetName="Ellipse" Property="Stroke" Value="{DynamicResource ControlAccentLightBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

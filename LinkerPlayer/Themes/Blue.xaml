@@ -17,6 +17,8 @@
   <Color x:Key="ControlMouseOverColor">#00A7FF</Color>
   <Color x:Key="ControlPressedColor">#FF211AA9</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
+  <Color x:Key="ControlThumbFillColor">Transparent</Color>
+  <Color x:Key="ControlThumbBorderColor">White</Color>
 
   <Color x:Key="DefaultTextColor">White</Color>
 
