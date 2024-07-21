@@ -92,38 +92,87 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void OnTabSelectionChanged(object sender, SelectionChangedEventArgs selectionChangedEventArgs)
     {
-        /*
-         * While a track is playing, the current tab will be the ActiveTab. We want to be able to select
-         * a different tab to view the list and select a track, but it will not be queued up or play after
-         * the track in the ActiveTab has finish. The ActiveTab will simply play the next track in the list.
-         *
-         * You can play a song in a tab that is not the ActiveTab by double clicking the track. This will
-         * change the current tab to be the new ActiveTab.
-         */
-
         if (_tabControl == null && sender is TabControl tabControl)
         {
             _tabControl = tabControl;
         }
 
+        /*
+         * The ActiveTab is the tab that contains the ActiveTrack - or the track that is playing. We want to be able to select
+         * a different tab to view the list and select a track, but it will not be queued up or play after
+         * the track in the ActiveTab has finished. The ActiveTab will simply play the next track in the list.
+         *
+         * You can play a song in a tab that is not the ActiveTab by double-clicking the track. This will
+         * change the current tab to be the new ActiveTab.
+         */
+
+        /*
+         * SelectedTab = the currently selected tab
+         * ActiveTab = the tab where the currently ActiveTrack resides
+         * ActiveTrack = the track that is currently Playing or Paused
+         * NOTE: If there is no track playing or paused, the ActiveTab AND ActiveTrack should be null
+         *
+         * 1. If the ActiveTab equals the SelectedTab, then we need to:
+         *  - Select the track
+         *  - Scroll to view
+         *  - return
+         *
+         * 2. If ActiveTab is null (ActiveTrack should be null as well)
+         *  - Initialize _tracksView
+         *  - Select the SelectedTrack for that tab.
+         *
+         * 3. If ActiveTab is not null and SelectedTab does not equal the ActiveTab
+         *  - If SelectedTrackIndex is 0 or greater, then scroll to view
+         *  - If SelectedTrackIndex is -1, then return
+         *  - NOTE: If a track is double-clicked in a non-Active tab, then the SelectedTab becomes the
+         *    new ActiveTab and the SelectedTrack becomes the new ActiveTrack. Then the _viewTrack should
+         *    be initialized.
+         *
+         * NOTE: If there is an ActiveTab, should we passively disable the non-Active tabs? This would
+         * mean the user can look at the tabs, but cannot select or play from those tabs. Once the Stop
+         * button is clicked and no track is active, it "enables" all tabs.
+         *
+         */
+
+
         // Need to use ActivePlaylist to know which tab to play from
         // If ActivePlaylist is null, then we need to reinitialize _tracksView
-        if (_tabControl!.SelectedContent is not PlaylistTab playlistTab || SelectedTab == playlistTab) return;
 
+        if (_tabControl!.SelectedContent is not PlaylistTab playlistTab || SelectedTab == playlistTab) return;
         SelectedTab = playlistTab;
 
-        if (_tabControl.SelectedIndex < 0 || (SelectedPlaylistIndex == _tabControl.SelectedIndex && _tracksView.Any())) return;
+        if (_tabControl.SelectedIndex < 0) return;
+        //if (_tabControl.SelectedIndex < 0 || (SelectedPlaylistIndex == _tabControl.SelectedIndex && _tracksView.Any())) return;
 
         SelectedPlaylistIndex = _tabControl.SelectedIndex;
 
         SelectedPlaylist = MusicLibrary.GetPlaylistByName(SelectedTab.Name!);
         if (SelectedPlaylist == null) return;
 
-        SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedSong);
+        if (SelectedTab == ActiveTab && ActiveTrack != null)
+        {
+            SelectedTrack = ActiveTrack;
+        }
+        else
+        {
+            SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedSong);
+        }
+
         if (SelectedTrack == null) return;
+
 
         if (_dataGrid != null)
         {
+            //if (SelectedTab == ActiveTab)
+            //{
+            //    _dataGrid.Items.Refresh();
+            //    _dataGrid.UpdateLayout();
+            //    _dataGrid.SelectedIndex = SelectedTrackIndex;
+            //    _dataGrid.ScrollIntoView(SelectedTrackIndex);
+
+            //    return;
+            //}
+
             if (ActivePlaylistIndex == null && _dataGrid.Items.Count > 0)
             {
                 _tracksView = _dataGrid.Items.Cast<MediaFile>().ToList();
@@ -142,20 +191,28 @@ public partial class PlaylistTabsViewModel : BaseViewModel
                 }
             }
 
+            MediaFile item;
             if(ActiveTrack != null && ActivePlaylistIndex == SelectedPlaylistIndex)
             {
-                _dataGrid.SelectedItem = ActiveTrack;
+                item = ActiveTrack;
             }
             else
             {
-                _dataGrid.SelectedItem = SelectedTrack;
+                item = SelectedTrack;
             }
+
             _dataGrid.Items.Refresh();
             _dataGrid.UpdateLayout();
-            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+            List<MediaFile> mediaFiles = _dataGrid.Items.Cast<MediaFile>().ToList();
+            SelectedTrackIndex = mediaFiles.FindIndex(x => x.FileName == item!.FileName);
+            _dataGrid.SelectedIndex = SelectedTrackIndex;
 
-            Log.Information($"OnTabSelectionChanged: DataGrid.SelectedIndex: {_dataGrid.SelectedIndex}");
-            Log.Information($"OnTabSelectionChanged: DataGrid.SelectedItem: {(_dataGrid.SelectedItem! as MediaFile)!.FileName}");
+            // Assigning a value to _dataGrid.SelectedIndex automatically takes you to OnTrackSelectionChanged.
+            // OnTrackSelectionChanged will handle the ScrollToView.
+            // _dataGrid.ScrollIntoView(item); 
+
+            //Log.Information($"OnTabSelectionChanged: DataGrid.SelectedIndex: {_dataGrid.SelectedIndex}");
+            //Log.Information($"OnTabSelectionChanged: DataGrid.SelectedItem: {(_dataGrid.SelectedItem! as MediaFile)!.FileName}");
         }
     }
 
@@ -165,17 +222,19 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         if (_dataGrid is { SelectedItem: not null })
         {
+
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTab!.SelectedTrack = SelectedTrack;
             SelectedTab.SelectedIndex = SelectedTrackIndex;
 
+            // Make note of the current SelectedSong for this tab
             MusicLibrary.Playlists[SelectedPlaylistIndex]!.SelectedSong = SelectedTrack!.Id;
 
             Log.Information($"OnTrackSelectionChanged: SelectedTrackIndex: {SelectedTrackIndex}");
             Log.Information($"OnTrackSelectionChanged: SelectedTrack: {SelectedTrack!.FileName}");
 
-            _dataGrid.ScrollIntoView(SelectedTrack!);
+            _dataGrid.ScrollIntoView(SelectedTrack);
         }
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack ?? SelectedTrack));
@@ -211,6 +270,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     public void OnPlaybackStateChanged(PlaybackState state)
     {
         State = state;
+
+        if (ActiveTab != null && ActiveTab != SelectedTab) return;
+
         if (SelectedTrack != null)
         {
             SelectedTrack.State = state;
@@ -221,11 +283,13 @@ public partial class PlaylistTabsViewModel : BaseViewModel
                 {
                     ActivePlaylistIndex = SelectedPlaylistIndex;
                     ActiveTrackIndex = SelectedTrackIndex;
+                    ActiveTab = SelectedTab;
                 }
                 else
                 {
                     ActivePlaylistIndex = null;
                     ActiveTrackIndex = null;
+                    ActiveTab = null;
                 }
             }
         }
@@ -241,6 +305,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         if (ActivePlaylistIndex != SelectedPlaylistIndex)
         {
             ActivePlaylistIndex = SelectedPlaylistIndex;
+            ActiveTrackIndex = SelectedTrackIndex;
+            ActiveTab = SelectedTab;
         }
 
         ActiveTrackIndex = SelectedTrackIndex = _dataGrid!.SelectedIndex;
