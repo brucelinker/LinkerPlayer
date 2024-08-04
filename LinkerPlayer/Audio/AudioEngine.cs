@@ -49,14 +49,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
             _musicVolume = (float)Properties.Settings.Default.VolumeSliderValue;
 
-            if (Properties.Settings.Default.EqualizerOnStartEnabled)
-            {
-                if (!String.IsNullOrEmpty(Properties.Settings.Default.EqualizerProfileName))
-                {
-                    CreateEqBands();
-                    InitializeEqualizer();
-                }
-            }
+            CreateEqBands();
 
             this.PropertyChanged += OnPropertyChanged;
             StoppedEvent += PlaybackStopped;
@@ -266,7 +259,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     {
         try
         {
-            if (!EqSwitched && _audioFile != null && pathToMusic.Equals(_audioFile.FileName))
+            if (_audioFile != null && IsPaused)
             {
                 _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);
                 ResumePlay();
@@ -520,6 +513,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
     public void InitializeEqualizer()
     {
+
         if (_aggregator != null && _bands?.Length != 0)
         {
             _equalizer = new Equalizer(_aggregator, _bands);

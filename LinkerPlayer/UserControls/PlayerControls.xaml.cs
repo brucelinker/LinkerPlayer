@@ -85,6 +85,11 @@ public partial class PlayerControls
 
     private void OnSelectedTrackChanged(MediaFile? mediaFile)
     {
+        if (mediaFile != null)
+        {
+            audioEngine.PathToMusic = mediaFile.Path;
+            audioEngine.LoadAudioFile(mediaFile.Path);
+        }
 
         SetTrackStatus(mediaFile ?? new MediaFile());
     }
