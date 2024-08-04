@@ -7,7 +7,7 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
-  d:DesignHeight="80"
+  d:DesignHeight="105"
   d:DesignWidth="1000"
   mc:Ignorable="d">
 
@@ -68,6 +68,7 @@
             Content="{iconPacks:Material SkipPrevious,
                                          Width=13,
                                          Height=13}"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Previous Track" />
@@ -82,6 +83,7 @@
             VerticalAlignment="Center"
             Command="{Binding PlayPauseCommand}"
             Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}" />
 
@@ -98,6 +100,7 @@
             Content="{iconPacks:Material Stop,
                                          Width=12,
                                          Height=12}"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Stop" />
@@ -115,6 +118,7 @@
             Content="{iconPacks:Material SkipNext,
                                          Width=13,
                                          Height=13}"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Next File (j)" />
@@ -146,6 +150,7 @@
               VerticalAlignment="Center"
               FontSize="16"
               FontWeight="Light"
+              d:Foreground="White"
               Foreground="{DynamicResource PlayerForegroundBrush}"
               Text="Song not selected"
               TextTrimming="CharacterEllipsis" />
@@ -193,6 +198,7 @@
             VerticalAlignment="Center"
             FontSize="16"
             FontWeight="Light"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}">
             0:00
           </TextBlock>
@@ -205,6 +211,7 @@
             VerticalAlignment="Center"
             FontSize="16"
             FontWeight="Light"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}">
             0:00
           </TextBlock>
@@ -291,6 +298,7 @@
             Content="{iconPacks:Material Equalizer,
                                          Width=12,
                                          Height=12}"
+            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Equalizer" />
@@ -300,12 +308,14 @@
       <Grid VerticalAlignment="Bottom">
 
         <StatusBar
-          Margin="8,0,0,0"
+          Margin="8,0,0,5"
           Background="Transparent"
+          d:Foreground="White"
           Foreground="{DynamicResource ControlForegroundBrush}">
           <StatusBarItem>
             <TextBlock
               Name="StatusText"
+              d:Text="MP3 | 320kbps | 44100 Hz | stereo"
               FontSize="13"
               FontWeight="Light" />
           </StatusBarItem>

@@ -26,6 +26,8 @@ public partial class PlayerControls
     public readonly DispatcherTimer SeekBarTimer = new();
     public readonly AudioEngine audioEngine;
 
+    private EqualizerWindow _equalizerWindow;
+
     public PlayerControls()
     {
         InitializeComponent();
@@ -40,7 +42,6 @@ public partial class PlayerControls
         SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
         SeekBar.ValueChanged += SeekBar_ValueChanged;
         VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
-
 
         ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
 
@@ -285,25 +286,19 @@ public partial class PlayerControls
 
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
-        EqualizerWindow equalizerWindow = new()
+        if (_equalizerWindow is { IsVisible: true }) return;
+
+        _equalizerWindow = new()
         {
             Owner = Window.GetWindow(this),
             WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
 
-        equalizerWindow.Show();
+        _equalizerWindow.Show();
 
-        MainWindow win = (MainWindow)Window.GetWindow(this)!;
-
-        equalizerWindow.StartStopText.Content = audioEngine.IsEqualizerInitialized ? "Stop" : "Start";
-
-        equalizerWindow.LoadSelectedBand(win.SelectedEqualizerProfile);
-
-        if (Properties.Settings.Default.EqualizerOnStartEnabled)
-        {
-            equalizerWindow.ButtonsSetEnabledState(false);
-            equalizerWindow.SliderSetEnabledState(false);
-        }
+        //bool isEnabled = Properties.Settings.Default.EqualizerOnStartEnabled;
+        //_equalizerWindow.ButtonsSetEnabledState(isEnabled);
+        //_equalizerWindow.SliderSetEnabledState(isEnabled);
     }
 }
 

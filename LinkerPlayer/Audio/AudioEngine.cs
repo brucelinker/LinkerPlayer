@@ -7,6 +7,7 @@ using NAudio.Wave;
 using Serilog;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -17,7 +18,6 @@ namespace LinkerPlayer.Audio;
 public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
     public static AudioEngine Instance { get; } = new();
-
     public event EventHandler<StoppedEventArgs>? StoppedEvent;
 
     private readonly DispatcherTimer _positionTimer = new(DispatcherPriority.ApplicationIdle);
@@ -53,10 +53,12 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             {
                 if (!String.IsNullOrEmpty(Properties.Settings.Default.EqualizerProfileName))
                 {
+                    CreateEqBands();
                     InitializeEqualizer();
                 }
             }
 
+            this.PropertyChanged += OnPropertyChanged;
             StoppedEvent += PlaybackStopped;
 
             IsPlaying = false;
@@ -64,6 +66,12 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             CanPlay = true;
             CanPause = false;
         }
+
+        WeakReferenceMessenger.Default.Register<EqualizerIsOnMessage>(this, (_, m) =>
+        {
+            OnEqualizerIsOnMessage(m.Value);
+        });
+
     }
 
     public float OutputDeviceVolume
@@ -118,7 +126,10 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             }
         }
     }
-    
+
+    public bool EqIsOn { get; set; }
+    public bool EqSwitched { get; set; }
+
     public bool IsPaused => _outputDevice is { PlaybackState: PlaybackState.Paused };
     public bool IsStopped => _outputDevice is { PlaybackState: PlaybackState.Stopped };
 
@@ -246,11 +257,16 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         }
     }
 
+    public void UpdateEqualizer()
+    {
+        _equalizer?.Update();
+    }
+
     public void LoadAudioFile(string pathToMusic, double startPosition = 0.0)
     {
         try
         {
-            if (_audioFile != null && pathToMusic.Equals(_audioFile.FileName))
+            if (!EqSwitched && _audioFile != null && pathToMusic.Equals(_audioFile.FileName))
             {
                 _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);
                 ResumePlay();
@@ -272,10 +288,12 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
             _aggregator.FftCalculated += (_, a) => OnFftCalculated(a);
 
-            _outputDevice.Init(_aggregator);
+            //_outputDevice.Init(_aggregator);
+            EqSwitched = false;
 
-            if (_equalizer != null)
+            if (EqIsOn)
             {
+                InitializeEqualizer();
                 _equalizer = new Equalizer(_aggregator, _bands);
                 _outputDevice.Init(_equalizer);
             }
@@ -443,49 +461,74 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         }
     }
 
-    #region Equalizer
-
-    private bool _isEqualizerInitialized;
-
-    public bool IsEqualizerInitialized
+    private float[] _fftResult = [];
+    public float[] FftUpdate
     {
-        get => _isEqualizerInitialized;
+        get => _fftResult;
         set
         {
-            if (value == IsEqualizerInitialized) { return; }
-
-            _isEqualizerInitialized = value;
+            _fftResult = value;
+            WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("FFTUpdate"));
         }
     }
+
+    #region Equalizer
+
+    //private bool _isEqualizerInitialized;
+
+    //public bool IsEqualizerInitialized
+    //{
+    //    get => _isEqualizerInitialized;
+    //    set
+    //    {
+    //        if (value == IsEqualizerInitialized) { return; }
+
+    //        _isEqualizerInitialized = value;
+    //    }
+    //}
 
     public float MinimumGain => -12;
     public float MaximumGain => 12;
 
+    private void CreateEqBands()
+    {
+        _bands = new EqualizerBand[]
+        {
+            new() { Bandwidth = 0.8f, Frequency = 32f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 64f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 125f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 250f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 500f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 1000f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 2000f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 4000f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 8000f, Gain = 0 },
+            new() { Bandwidth = 0.8f, Frequency = 16000f, Gain = 0 }
+        };
+    }
+
+    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs propertyChangedEventArgs)
+    {
+        _equalizer?.Update();
+    }
+
+    private void OnEqualizerIsOnMessage(bool isOn)
+    {
+        EqIsOn = isOn;
+        EqSwitched = true;
+    }
+
     public void InitializeEqualizer()
     {
-        if (_audioFile != null)
+        if (_aggregator != null && _bands?.Length != 0)
         {
-            _bands = new[]
-            {
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 32f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 64f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 125f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 250f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 500f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 1000f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 2000f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 4000f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 8000f, Gain = 0 },
-                new EqualizerBand { Bandwidth = 0.8f, Frequency = 16000f, Gain = 0 },
-            };
-
-            _equalizer = new Equalizer(_audioFile, _bands);
+            _equalizer = new Equalizer(_aggregator, _bands);
         }
     }
 
     public void StopEqualizer()
     {
-        _bands = null;
+//        _bands = null;
         _equalizer = null;
     }
 
@@ -505,6 +548,8 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         if (!(Math.Abs(_bands[index].Gain - value) > 0)) return;
 
         _bands[index].Gain = value;
+
+        //Log.Information($"Band{index} - {value}");
         _equalizer?.Update();
     }
 
@@ -537,14 +582,4 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
     #endregion Equalizer
 
-    private float[] _fftResult = {};
-    public float[] FftUpdate
-    {
-        get => _fftResult;
-        set
-        {
-            _fftResult = value;
-            WeakReferenceMessenger.Default.Send(new EnginePropertyChangedMessage("FFTUpdate"));
-        }
-    }
 }

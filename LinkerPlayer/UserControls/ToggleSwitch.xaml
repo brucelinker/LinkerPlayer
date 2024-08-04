@@ -64,14 +64,20 @@
     Style="{DynamicResource ToggleSwitchButton}"
     Tag="Off">
     <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
       <Border
         x:Name="BorderTrack"
+        Grid.Column="0"
         Width="35"
         Height="15"
         Background="Gray"
         CornerRadius="5" />
       <Ellipse
         x:Name="EllipseToggle"
+        Grid.Column="0"
         Width="20"
         Height="20"
         HorizontalAlignment="Center"
@@ -86,6 +92,15 @@
           </TransformGroup>
         </Ellipse.RenderTransform>
       </Ellipse>
+      <Label
+        Name="ToggleLabel"
+        Grid.Column="1"
+        FontSize="14"
+        d:Foreground="White"
+        Content="Off"
+        Foreground="{DynamicResource TitleBarForegroundBrush}" />
     </Grid>
   </Button>
+  <!--<TextBlock Text="ON" TextWrapping="Wrap" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" Margin="0,0,3,0" />-->
+  <!--<TextBlock Text="OFF" TextWrapping="Wrap" FontWeight="Bold" FontSize="12" HorizontalAlignment="Left" Margin="2,0,0,0" />-->
 </UserControl>

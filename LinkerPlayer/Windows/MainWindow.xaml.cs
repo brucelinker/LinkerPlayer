@@ -24,7 +24,7 @@ public partial class MainWindow
     public MediaFile? SelectedTrack;
     public ThemeColors SelectedTheme;
 
-    public BandsSettings SelectedEqualizerProfile = null!;
+    //public BandsSettings SelectedEqualizerProfile = null!;
     public readonly PlayerControlsViewModel playerControlsViewModel;
     public readonly PlaylistTabsViewModel playlistTabsViewModel;
 
@@ -118,11 +118,11 @@ public partial class MainWindow
         //Properties.Settings.Default.ShuffleMode = _playerControlsViewModel.ShuffleMode;
         Properties.Settings.Default.LastSeekBarValue = PlayerControls.SeekBar.Value;
 
-        if (Properties.Settings.Default.EqualizerOnStartEnabled)
-        {
-            Properties.Settings.Default.EqualizerProfileName =
-                SelectedEqualizerProfile != null! ? SelectedEqualizerProfile.Name : null;
-        }
+        //if (Properties.Settings.Default.EqualizerOnStartEnabled)
+        //{
+        //    Properties.Settings.Default.EqualizerProfileName =
+        //        SelectedEqualizerProfile != null! ? SelectedEqualizerProfile.Name : null;
+        //}
 
         Properties.Settings.Default.MainOutputDevice = OutputDevice.GetCurrentDeviceName();
 

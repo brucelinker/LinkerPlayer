@@ -99,6 +99,7 @@ public partial class ToggleSwitch
                 var ca = new ColorAnimation(TrackBackgroundOnColor, TimeSpan.FromSeconds(.25));
                 BorderTrack.Background.BeginAnimation(SolidColorBrush.ColorProperty, ca);
                 var da = new DoubleAnimation(10, TimeSpan.FromSeconds(.25));
+                ToggleLabel.Content = "Equalizer is enabled";
                 TranslateTransform.BeginAnimation(TranslateTransform.XProperty, da);
             }
             else
@@ -108,11 +109,13 @@ public partial class ToggleSwitch
                 var ca = new ColorAnimation(TrackBackgroundOffColor, TimeSpan.FromSeconds(.25));
                 BorderTrack.Background.BeginAnimation(SolidColorBrush.ColorProperty, ca);
                 var da = new DoubleAnimation(-10, TimeSpan.FromSeconds(.25));
+                ToggleLabel.Content = "Equalizer is disabled";
                 TranslateTransform.BeginAnimation(TranslateTransform.XProperty, da);
             }
             Switched(this, EventArgs.Empty);
         }
     }
+
     private void buttonToggle_Click(object sender, RoutedEventArgs e)
     {
         IsOn = !IsOn;
