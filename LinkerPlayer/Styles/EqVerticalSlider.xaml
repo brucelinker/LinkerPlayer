@@ -24,14 +24,14 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
+              <Setter TargetName="increaseBorder" Property="Background" Value="{StaticResource ControlBorderLightBrush}" />
             </Trigger>
-            <Trigger Property="IsPressed" Value="true">
+            <!--<Trigger Property="IsPressed" Value="true">
               <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
-            </Trigger>
+            </Trigger>-->
             <Trigger Property="IsEnabled" Value="false">
               <!--<Setter TargetName="contentPresenter" Property="Opacity" Value="0.56" />-->
-              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlDisabledBrush}" />
+              <Setter TargetName="increaseBorder" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -62,14 +62,14 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
+              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlBorderLightBrush}" />
             </Trigger>
-            <Trigger Property="IsPressed" Value="true">
+            <!--<Trigger Property="IsPressed" Value="true">
               <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
-            </Trigger>
+            </Trigger>-->
             <Trigger Property="IsEnabled" Value="false">
               <!--<Setter TargetName="contentPresenter" Property="Opacity" Value="0.56" />-->
-              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlDisabledBrush}" />
+              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlDisabledBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -139,7 +139,7 @@
     <Style.Triggers>
       <Trigger Property="Orientation" Value="Vertical">
         <Setter Property="MinHeight" Value="104" />
-        <Setter Property="MinWidth" Value="21" />
+        <Setter Property="MinWidth" Value="12" />
         <Setter Property="Template" Value="{StaticResource Slider}" />
       </Trigger>
     </Style.Triggers>

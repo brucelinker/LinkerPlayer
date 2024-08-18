@@ -15,8 +15,8 @@
   <SolidColorBrush x:Key="ControlMouseOverBrush" Color="{DynamicResource ControlMouseOverColor}" />
   <SolidColorBrush x:Key="ControlPressedBrush" Color="{DynamicResource ControlPressedColor}" />
   <SolidColorBrush x:Key="ControlDisabledBrush" Color="{DynamicResource ControlDisabledColor}" />
-  <SolidColorBrush x:Key="ControlThumbFillBrush" Color= "{DynamicResource ControlThumbFillColor}" />
-  <SolidColorBrush x:Key="ControlThumbBorderBrush" Color= "{DynamicResource ControlThumbBorderColor}" />
+  <SolidColorBrush x:Key="ControlThumbFillBrush" Color="{DynamicResource ControlThumbFillColor}" />
+  <SolidColorBrush x:Key="ControlThumbBorderBrush" Color="{DynamicResource ControlThumbBorderColor}" />
 
   <SolidColorBrush x:Key="DefaultTextBrush" Color="{DynamicResource DefaultTextColor}" />
 

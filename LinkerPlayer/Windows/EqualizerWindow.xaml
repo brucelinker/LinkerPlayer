@@ -295,7 +295,7 @@
       </Grid>
 
       <!--  EQ Sliders - Initialized in Window_Loaded  -->
-      <Grid Name="EqGrid" Grid.Column="1" />
+      <Grid Name="EqGrid" Grid.Column="1" Margin="0, 10, 0, 10"/>
 
     </Grid>
 
@@ -324,43 +324,43 @@
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,0">
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="32" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band0Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band0Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band0Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="64" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band1Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band1Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band1Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="125" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band2Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band2Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band2Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="250" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band3Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band3Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band3Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="500" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band4Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band4Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band4Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="1K" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band5Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band5Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band5Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="2K" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band6Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band6Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band6Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="4K" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band7Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band7Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band7Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="8K" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band8Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band8Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band8Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
         <StackPanel Margin="0,0,0,0" Width="45">
           <TextBlock HorizontalAlignment="Center" d:Foreground="White" Text="16K" />
-          <TextBlock HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band9Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
+          <TextBlock Name="Band9Label" HorizontalAlignment="Center" d:Text="0.0"  Text="{Binding Band9Label}" d:Foreground="White" Foreground="{DynamicResource Brush_Accent}"/>
         </StackPanel>
       </StackPanel>
     </Grid>

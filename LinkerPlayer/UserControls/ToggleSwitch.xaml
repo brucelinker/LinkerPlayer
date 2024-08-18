@@ -81,7 +81,7 @@
         Width="20"
         Height="20"
         HorizontalAlignment="Center"
-        Fill="{DynamicResource ControlAccentDarkBrush}"
+        Fill="{DynamicResource ControlAccentLightBrush}"
         Stroke="White">
         <Ellipse.RenderTransform>
           <TransformGroup>
@@ -97,7 +97,7 @@
         Grid.Column="1"
         FontSize="14"
         d:Foreground="White"
-        Content="Off"
+        d:Content="Off"
         Foreground="{DynamicResource TitleBarForegroundBrush}" />
     </Grid>
   </Button>

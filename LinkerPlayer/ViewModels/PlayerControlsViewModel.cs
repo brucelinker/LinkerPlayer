@@ -195,10 +195,8 @@ public partial class PlayerControlsViewModel : BaseViewModel
         State = playbackState;
     }
 
-    public void OnAudioStopped(bool songEnded)
+    private void OnAudioStopped(bool songEnded)
     {
-        //if ((audioEngine.CurrentTrackPosition + 10.0) >= audioEngine.CurrentTrackLength)
-        //if ((audioEngine.CurrentTrackPosition + 0.3) >= audioEngine.CurrentTrackLength)
         if (songEnded)
         {
             NextTrack();
@@ -238,6 +236,15 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public double CurrentSeekbarPosition()
     {
+        MonitorNextTrack();
         return (audioEngine.CurrentTrackPosition * 100) / audioEngine.CurrentTrackLength;
+    }
+
+    private void MonitorNextTrack()
+    {
+        if (audioEngine.CurrentTrackPosition + 5.0 > audioEngine.CurrentTrackLength)
+        {
+            NextTrack();
+        }
     }
 }

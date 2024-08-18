@@ -11,8 +11,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
-using System.Windows.Input;
+using System.Windows.Forms;
 using System.Windows.Media.Animation;
+using Binding = System.Windows.Data.Binding;
+using Button = System.Windows.Controls.Button;
+using HorizontalAlignment = System.Windows.HorizontalAlignment;
+using Label = System.Windows.Controls.Label;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Orientation = System.Windows.Controls.Orientation;
 
 namespace LinkerPlayer.Windows;
 
@@ -34,7 +40,6 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         UpdateProfiles();
 
         EqSwitch.Switched += OnEqSwitched;
-        //EqSwitch.IsOn = true; // Properties.Settings.Default.EqualizerOnStartEnabled;
         //OnEqSwitched(null, EventArgs.Empty);
     }
 
@@ -408,6 +413,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         SetBand(index, to);
 
         Slider slider = (Slider)EqGrid.FindName($"Slider{index}")!;
+        TextBlock label = (TextBlock)EqGrid.FindName($"Band{index}Label")!;
 
         DoubleAnimation doubleAnimation = new()
         {
@@ -420,6 +426,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = GetBand(index);
+            label.Text = $"{slider.Value}";
         };
         doubleAnimation.EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut };
 
@@ -467,8 +474,10 @@ public partial class EqualizerWindow : INotifyPropertyChanged
             EqGrid.RegisterName(slider.Name, slider);
         }
 
-        SliderSetEnabledState(true);
-        ButtonsSetEnabledState(true);
+        EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
+
+        SliderSetEnabledState(EqSwitch.IsOn);
+        ButtonsSetEnabledState(EqSwitch.IsOn);
 
         Log.Information("Sliders was created");
     }

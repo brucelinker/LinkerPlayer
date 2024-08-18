@@ -12,7 +12,7 @@
             Height="18"
             Background="{DynamicResource ControlDisabledBrush}"
             BorderBrush="Transparent"
-            BorderThickness="0, 7 0, 7"
+            BorderThickness="0,7,0,7"
             CornerRadius="2" />
         </ControlTemplate>
       </Setter.Value>
@@ -29,7 +29,7 @@
             Height="18"
             Background="{DynamicResource ControlAccentDarkBrush}"
             BorderBrush="Transparent"
-            BorderThickness="0, 7 0, 7"
+            BorderThickness="0,7,0,7"
             CornerRadius="2"
             SnapsToDevicePixels="True" />
         </ControlTemplate>
@@ -49,7 +49,7 @@
             Width="18"
             Height="18"
             Fill="Transparent"
-            Stroke="{DynamicResource PlayerControlButtonBorderBrush}"/>
+            Stroke="{DynamicResource PlayerControlButtonBorderBrush}" />
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
               <Setter TargetName="Ellipse" Property="Stroke" Value="{DynamicResource ControlAccentLightBrush}" />

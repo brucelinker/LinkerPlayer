@@ -16,7 +16,7 @@ public partial class ToggleSwitch
     public EventHandler Switched;
 
     public static readonly DependencyProperty TrackBackgroundOnColorProperty = DependencyProperty.Register(
-        nameof(TrackBackgroundOnColor),typeof(Color),typeof(ToggleSwitch), new PropertyMetadata(Colors.LightGray));
+        nameof(TrackBackgroundOnColor), typeof(Color), typeof(ToggleSwitch), new PropertyMetadata(Colors.LightGray));
     public Color TrackBackgroundOnColor
     {
         get => (Color)GetValue(TrackBackgroundOnColorProperty);
@@ -84,13 +84,16 @@ public partial class ToggleSwitch
             {
                 return true;
             }
-            else
-            {
-                return false;
-            }
+            
+            return false;
         }
         set
         {
+            if (value == IsOn)
+            {
+                return;
+            }
+
             SetValue(IsOnProperty, value);
             if (value)
             {
