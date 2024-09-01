@@ -26,7 +26,7 @@ public partial class PlayerControls
     public readonly DispatcherTimer SeekBarTimer = new();
     public readonly AudioEngine audioEngine;
 
-    private EqualizerWindow _equalizerWindow;
+    private EqualizerWindow? _equalizerWindow;
 
     public PlayerControls()
     {

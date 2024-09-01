@@ -95,9 +95,9 @@
       <Label
         Name="ToggleLabel"
         Grid.Column="1"
-        FontSize="14"
-        d:Foreground="White"
         d:Content="Off"
+        d:Foreground="White"
+        FontSize="14"
         Foreground="{DynamicResource TitleBarForegroundBrush}" />
     </Grid>
   </Button>

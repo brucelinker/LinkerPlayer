@@ -5,8 +5,12 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -54,6 +58,12 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
     private void SetBand(int index, float value)
     {
+        TextBlock? label = (TextBlock?)EqGrid.FindName($"Band{index}Label");
+        if (label != null)
+        {
+            label.Text = FormatLabel(value);
+        }
+
         _audioEngine.SetBandGain(index, value);
     }
 
@@ -157,9 +167,65 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         }
     }
 
+    public string Band0Value
+    {
+        get { return this.FormatLabel(this.Band0); }
+    }
+
+    public string Band1Value
+    {
+        get { return this.FormatLabel(this.Band1); }
+    }
+
+    public string Band2Value
+    {
+        get { return this.FormatLabel(this.Band2); }
+    }
+
+    public string Band3Value
+    {
+        get { return this.FormatLabel(this.Band3); }
+    }
+
+    public string Band4Value
+    {
+        get { return this.FormatLabel(this.Band4); }
+    }
+
+    public string Band5Value
+    {
+        get { return this.FormatLabel(this.Band5); }
+    }
+
+    public string Band6Value
+    {
+        get { return this.FormatLabel(this.Band6); }
+    }
+
+    public string Band7Value
+    {
+        get { return this.FormatLabel(this.Band7); }
+    }
+
+    public string Band8Value
+    {
+        get { return this.FormatLabel(this.Band8); }
+    }
+
+    public string Band9Value
+    {
+        get { return this.FormatLabel(this.Band9); }
+    }
+
+
     private void OnPropertyChanged(object? sender, PropertyChangedEventArgs propertyChangedEventArgs)
     {
         _audioEngine?.UpdateEqualizer();
+    }
+
+    private string FormatLabel(float value)
+    {
+        return value > 0 ? value.ToString("+0.0") : value.ToString("0.0");
     }
 
     private void Window_StateChanged(object sender, EventArgs e)
@@ -426,7 +492,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = GetBand(index);
-            label.Text = $"{slider.Value}";
+            label.Text = FormatLabel((float)slider.Value); // $"{slider.Value}";
         };
         doubleAnimation.EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut };
 
