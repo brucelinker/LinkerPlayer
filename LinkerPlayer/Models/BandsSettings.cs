@@ -6,6 +6,7 @@ namespace LinkerPlayer.Models;
 
 public class BandsSettings
 {
-    public List<EqualizerBand>? EqualizerBands = new();
     public string Name = String.Empty;
+    public bool Locked = false;
+    public List<EqualizerBand>? EqualizerBands = new();
 }

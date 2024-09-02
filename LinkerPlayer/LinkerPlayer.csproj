@@ -54,6 +54,7 @@
     <None Remove="Images\speaker.png" />
     <None Remove="Images\tray32.ico" />
     <None Remove="Images\tray64.ico" />
+    <None Remove="Presets\DefaultPresets.json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -190,6 +191,9 @@
     </Resource>
     <Resource Include="Images\tray64.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Presets\DefaultPresets.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>
 

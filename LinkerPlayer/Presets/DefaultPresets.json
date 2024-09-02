@@ -1,0 +1,450 @@
+[
+  {
+    "Name": "Flat",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Acoustic",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": 1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Bass Booster",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 5.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": 1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Electronic",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": -1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 5.0,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Latin",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 3.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": -1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": -1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": -1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 3.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Piano",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 3.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": 3.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": 1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 3.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Pop",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": -1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": -1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 0.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": -1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": -1.5,
+        "Bandwidth": 0.8
+      }
+    ]
+  },
+  {
+    "Name": "Rock",
+    "Locked": true,
+    "EqualizerBands": [
+      {
+        "Frequency": 32.0,
+        "Gain": 5.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 64.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 125.0,
+        "Gain": 3.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 250.0,
+        "Gain": 1.5,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 500.0,
+        "Gain": -1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 1000.0,
+        "Gain": -1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 2000.0,
+        "Gain": 1.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 4000.0,
+        "Gain": 2.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 8000.0,
+        "Gain": 4.0,
+        "Bandwidth": 0.8
+      },
+      {
+        "Frequency": 16000.0,
+        "Gain": 4.5,
+        "Bandwidth": 0.8
+      }
+    ]
+  }
+]

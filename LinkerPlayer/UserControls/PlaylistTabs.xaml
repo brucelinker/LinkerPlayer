@@ -98,7 +98,7 @@
           CanUserDeleteRows="False"
           CanUserReorderColumns="True"
           EnableColumnVirtualization="True"
-          EnableRowVirtualization="True"
+          EnableRowVirtualization="False"
           GridLinesVisibility="None"
           IsReadOnly="True"
           ItemsSource="{Binding Tracks}"
