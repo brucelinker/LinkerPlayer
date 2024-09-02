@@ -130,12 +130,12 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     {
         if (string.IsNullOrWhiteSpace(deviceName))
         {
-            throw new ArgumentNullException(nameof(deviceName), "OutputDevice cannot be null.");
+            throw new ArgumentNullException(nameof(deviceName), "OutputDeviceManager cannot be null.");
         }
 
         _outputDevice = new WaveOut
         {
-            DeviceNumber = OutputDevice.GetOutputDeviceId(deviceName),
+            DeviceNumber = OutputDeviceManager.GetOutputDeviceId(deviceName),
             DesiredLatency = 200
         };
 
@@ -173,7 +173,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
                 Log.Error(ex.Message);
                 if (ex.Message == "NoDriver calling waveOutGetVolume")
                 {
-                    SelectOutputDevice(OutputDevice.GetOutputDeviceNameById(0));
+                    SelectOutputDevice(OutputDeviceManager.GetOutputDeviceNameById(0));
                 }
             }
 
@@ -269,7 +269,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
             Stop();
             CloseFile();
-            ReselectOutputDevice(OutputDevice.GetCurrentDeviceName());
+            ReselectOutputDevice(OutputDeviceManager.GetCurrentDeviceName());
 
             _audioFile = new AudioFileReader(pathToMusic);
             _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);

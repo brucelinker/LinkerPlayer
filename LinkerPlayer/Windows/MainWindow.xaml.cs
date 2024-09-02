@@ -46,7 +46,7 @@ public partial class MainWindow
         ((App)Application.Current).WindowPlace.Register(this);
         WinMax.DoSourceInitialized(this);
 
-        OutputDevice.InitializeOutputDevice();
+        OutputDeviceManager.InitializeOutputDevice();
         playlistTabsViewModel.LoadPlaylistTabs();
         
         if (!string.IsNullOrEmpty(Properties.Settings.Default.SelectedTheme))
@@ -124,7 +124,7 @@ public partial class MainWindow
         //        SelectedEqualizerProfile != null! ? SelectedEqualizerProfile.Name : null;
         //}
 
-        Properties.Settings.Default.MainOutputDevice = OutputDevice.GetCurrentDeviceName();
+        Properties.Settings.Default.MainOutputDevice = OutputDeviceManager.GetCurrentDeviceName();
 
         Properties.Settings.Default.Save();
     }

@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace LinkerPlayer.Audio;
 
-public static class OutputDevice
+public static class OutputDeviceManager
 {
     public static void InitializeOutputDevice()
     {

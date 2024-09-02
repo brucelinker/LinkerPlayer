@@ -33,7 +33,7 @@ public partial class SettingsWindow
     {
         MainWindow? mainWindow = (Owner as MainWindow);
 
-        foreach (string device in OutputDevice.GetOutputDevicesList())
+        foreach (string device in OutputDeviceManager.GetOutputDevicesList())
         {
             MainOutputDevicesList.Items.Add(device);
             //AdditionalOutputDevicesList.Items.Add(device);
@@ -45,7 +45,7 @@ public partial class SettingsWindow
         }
         else
         {
-            MainOutputDevicesList.SelectedItem = OutputDevice.GetCurrentDeviceName();
+            MainOutputDevicesList.SelectedItem = OutputDeviceManager.GetCurrentDeviceName();
         }
 
         //if (AdditionalOutputDevicesList.Items.Contains(Properties.Settings.Default.AdditionalOutputDevice))
@@ -102,7 +102,7 @@ public partial class SettingsWindow
         MainWindow? mainWindow = (Owner as MainWindow);
 
         if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || 
-            MainOutputDevicesList.SelectedItem.ToString() != OutputDevice.GetCurrentDeviceName())
+            MainOutputDevicesList.SelectedItem.ToString() != OutputDeviceManager.GetCurrentDeviceName())
         {
             Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
             audioEngine.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);

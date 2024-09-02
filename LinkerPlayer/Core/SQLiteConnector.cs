@@ -1,10 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Reflection;
+﻿using LinkerPlayer.Windows;
+using Serilog;
 using System;
 using System.Data.SQLite;
 using System.IO;
-using System.Linq;
-using Serilog;
 
 namespace LinkerPlayer.Core;
 
@@ -34,41 +32,58 @@ public class SQLiteConnector
 
     void Create()
     {
-        string sql = "CREATE TABLE Tracks (" +
-                             "Id TEXT," +
-                             "Path TEXT," +
-                             "FileName TEXT," +
-                             "Track TEXT," +
-                             "TrackCount INTEGER," +
-                             "Disc INTEGER," +
-                             "DiscCount INTEGER," +
-                             "Year INTEGER," +
-                             "Title TEXT," +
-                             "Album TEXT," +
-                             "Artists TEXT," +
-                             "Performers TEXT," +
-                             "Composers TEXT," +
-                             "Genres TEXT," +
-                             "Comment TEXT," +
-                             "Duration INTEGER," +
-                             "Bitrate INTEGER," +
-                             "SampleRate INTEGER," +
-                             "Channels INTEGER," +
-                             "Copyright TEXT," +
-                             "AlbumCover TEXT," +
-                             "PRIMARY KEY(Id));";
+        string sql = @"CREATE TABLE IF NOT EXISTS 'Tracks' (
+            'id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+            'Path' TEXT,
+            'FileName' TEXT,
+            'Track' TEXT,
+            'TrackCount' INTEGER,
+            'Disc' INTEGER,
+            'DiscCount' INTEGER,
+            'Year' INTEGER,
+            'Title' TEXT,
+            'Album' TEXT,
+            'Artists' TEXT,
+            'Performers' TEXT,
+            'Composers' TEXT,
+            'Genres' TEXT,
+            'Comment' TEXT,
+            'Duration' INTEGER,
+            'Bitrate' INTEGER,
+            'SampleRate' INTEGER,
+            'Channels' INTEGER,
+            'Copyright' TEXT,
+            'AlbumCover' TEXT
+            );";
         SQLiteCommand command = new(sql, _sqlConnection);
         command.ExecuteNonQuery();
 
-
         sql = @"CREATE TABLE IF NOT EXISTS `Playlists` (
-	'Id' 	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-	'Name'	TEXT NOT NULL,
-	'SelectedSong'	TEXT NOT NULL,
-	'SongId'	INTEGER NOT NULL
-);";
+	        'Id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+	        'Name' TEXT NOT NULL,
+	        'SongId' INTEGER NOT NULL
+        );";
         command = new SQLiteCommand(sql, _sqlConnection);
         command.ExecuteNonQuery();
+
+        sql = @"CREATE TABLE IF NOT EXISTS `Presets` (
+	        'Id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+	        'Name' TEXT NOT NULL,
+            'Locked' BOOLEAN NOT NULL
+	        'Band0' FLOAT(3,1) NOT NULL,
+	        'Band1' FLOAT(3,1) NOT NULL,
+	        'Band2' FLOAT(3,1) NOT NULL,
+	        'Band3' FLOAT(3,1) NOT NULL,
+	        'Band4' FLOAT(3,1) NOT NULL,
+	        'Band5' FLOAT(3,1) NOT NULL,
+	        'Band6' FLOAT(3,1) NOT NULL,
+	        'Band7' FLOAT(3,1) NOT NULL,
+	        'Band8' FLOAT(3,1) NOT NULL,
+	        'Band9' FLOAT(3,1) NOT NULL,
+        );";
+        command = new SQLiteCommand(sql, _sqlConnection);
+        command.ExecuteNonQuery();
+
     }
 
     //private const string SqlGetTrack = "SELECT COUNT(id) as count, id FROM RecentTracks WHERE path = '{0}'";
