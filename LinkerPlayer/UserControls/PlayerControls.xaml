@@ -64,11 +64,11 @@
             Margin="0,0,4,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
+            d:Foreground="White"
             Command="{Binding PrevCommand}"
             Content="{iconPacks:Material SkipPrevious,
                                          Width=13,
                                          Height=13}"
-            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Previous Track" />
@@ -81,9 +81,9 @@
             Margin="4,0,4,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
+            d:Foreground="White"
             Command="{Binding PlayPauseCommand}"
             Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
-            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}" />
 
@@ -96,11 +96,11 @@
             Margin="4,0,4,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
+            d:Foreground="White"
             Command="{Binding StopCommand}"
             Content="{iconPacks:Material Stop,
                                          Width=12,
                                          Height=12}"
-            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Stop" />
@@ -114,11 +114,11 @@
             Margin="4,0,4,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
+            d:Foreground="White"
             Command="{Binding NextCommand}"
             Content="{iconPacks:Material SkipNext,
                                          Width=13,
                                          Height=13}"
-            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Next File (j)" />
@@ -148,9 +148,9 @@
               Margin="0,10,0,0"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
+              d:Foreground="White"
               FontSize="16"
               FontWeight="Light"
-              d:Foreground="White"
               Foreground="{DynamicResource PlayerForegroundBrush}"
               Text="Song not selected"
               TextTrimming="CharacterEllipsis" />
@@ -196,9 +196,9 @@
             Padding="0,0,10,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
+            d:Foreground="White"
             FontSize="16"
             FontWeight="Light"
-            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}">
             0:00
           </TextBlock>
@@ -209,9 +209,9 @@
             Padding="10,0,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
+            d:Foreground="White"
             FontSize="16"
             FontWeight="Light"
-            d:Foreground="White"
             Foreground="{DynamicResource PlayerForegroundBrush}">
             0:00
           </TextBlock>
@@ -294,11 +294,11 @@
             Margin="0,0,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Click="OnEqualizerButton_Click"
-            Content="{iconPacks:Material Equalizer,
-                                         Width=12,
-                                         Height=12}"
             d:Foreground="White"
+            Click="OnEqualizerButton_Click"
+            Content="{iconPacks:Fontisto Equalizer,
+                                         Width=18,
+                                         Height=18}"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Equalizer" />
@@ -309,8 +309,8 @@
 
         <StatusBar
           Margin="8,0,0,5"
-          Background="Transparent"
           d:Foreground="White"
+          Background="Transparent"
           Foreground="{DynamicResource ControlForegroundBrush}">
           <StatusBarItem>
             <TextBlock

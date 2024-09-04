@@ -5,24 +5,14 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Serilog;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
-using System.Windows.Forms;
+using System.Windows.Input;
 using System.Windows.Media.Animation;
-using Binding = System.Windows.Data.Binding;
-using Button = System.Windows.Controls.Button;
-using HorizontalAlignment = System.Windows.HorizontalAlignment;
-using Label = System.Windows.Controls.Label;
-using MouseEventArgs = System.Windows.Input.MouseEventArgs;
-using Orientation = System.Windows.Controls.Orientation;
 
 namespace LinkerPlayer.Windows;
 
@@ -73,7 +63,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(0, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band0"));
+            OnPropertyChanged();
         }
     }
 
@@ -83,7 +73,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(1, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band1"));
+            OnPropertyChanged();
         }
     }
 
@@ -93,7 +83,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(2, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band2"));
+            OnPropertyChanged();
         }
     }
 
@@ -103,7 +93,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(3, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band3"));
+            OnPropertyChanged();
         }
     }
 
@@ -113,7 +103,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(4, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band4"));
+            OnPropertyChanged();
         }
     }
 
@@ -123,7 +113,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(5, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band5"));
+            OnPropertyChanged();
         }
     }
 
@@ -133,7 +123,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(6, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band6"));
+            OnPropertyChanged();
         }
     }
 
@@ -143,7 +133,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(7, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band7"));
+            OnPropertyChanged();
         }
     }
 
@@ -153,7 +143,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(8, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band8"));
+            OnPropertyChanged();
         }
     }
 
@@ -163,7 +153,7 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         set
         {
             SetBand(9, value); 
-            OnPropertyChanged(null, new PropertyChangedEventArgs("Band9"));
+            OnPropertyChanged();
         }
     }
 
@@ -218,9 +208,9 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     }
 
 
-    private void OnPropertyChanged(object? sender, PropertyChangedEventArgs propertyChangedEventArgs)
+    private void OnPropertyChanged()
     {
-        _audioEngine?.UpdateEqualizer();
+        _audioEngine.UpdateEqualizer();
     }
 
     private string FormatLabel(float value)
@@ -275,18 +265,27 @@ public partial class EqualizerWindow : INotifyPropertyChanged
     //    }
     //}
 
-    private void ResetButton_Click(object sender, RoutedEventArgs e)
+    private void NewButton_Click(object sender, RoutedEventArgs e)
     {
-        for (int i = 0; i < 10; i++)
-        {
-            AnimationChangingSliderValue(i, 0);
-        }
+        NewPopup.IsOpen = true;
+        NewPopupTextBox.Focus();
+
+        //if (!String.IsNullOrEmpty(Profiles.SelectedItem as String))
+        //{
+        //    BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
+
+        //    bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
+
+        //    EqualizerSettings.SaveToJson();
+        //}
     }
+
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        //if (StartStopText.Content.Equals("Stop"))
-        //{
+        //SavePopup.IsOpen = true;
+        //SavePopupTextBox.Focus();
+
         if (!String.IsNullOrEmpty(Profiles.SelectedItem as String))
         {
             BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String);
@@ -295,7 +294,6 @@ public partial class EqualizerWindow : INotifyPropertyChanged
 
             EqualizerSettings.SaveToJson();
         }
-        //}
     }
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
@@ -306,19 +304,27 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         {
             EqualizerSettings.BandsSettings!.Remove(EqualizerSettings.BandsSettings.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String)!);
 
-            Profiles.SelectedItem = -1;
+            Profiles.SelectedItem = 0;
 
             ResetButton_Click(null!, null!);
 
             UpdateProfiles();
 
-            //_mainWindow!.SelectedEqualizerProfile = null!;
+            SelectedEqualizerProfile = null!;
 
             Log.Information("Delete profile");
 
             EqualizerSettings.SaveToJson();
         }
         //}
+    }
+    
+    private void ResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            AnimationChangingSliderValue(i, 0);
+        }
     }
 
     //private void AddButton_Click(object sender, RoutedEventArgs e)
@@ -356,6 +362,8 @@ public partial class EqualizerWindow : INotifyPropertyChanged
                     AnimationChangingSliderValue(i, SelectedEqualizerProfile.EqualizerBands![i].Gain);
                 }
 
+                ButtonsSetEnabledState(true);
+
                 Log.Information("Profile has been selected");
             }
         }
@@ -387,39 +395,6 @@ public partial class EqualizerWindow : INotifyPropertyChanged
             Profiles.SelectedItem = bandsSettingsToLoad.Name;
         }
     }
-
-    //private void NamePopupTextBox_KeyDown(object sender, KeyEventArgs e)
-    //{
-    //    if (e.Key == Key.Enter)
-    //    {
-    //        string popupTextBoxText = NamePopupTextBox.Text.Trim();
-
-    //        if (!string.IsNullOrEmpty(popupTextBoxText))
-    //        {
-    //            if (EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
-    //            {
-    //                BandsSettings bandsSettings = new()
-    //                {
-    //                    Name = popupTextBoxText,
-    //                    EqualizerBands = audioEngine.GetBandsList()
-    //                };
-
-    //                EqualizerSettings.BandsSettings!.Add(bandsSettings);
-
-    //                Log.Information("New profile created");
-
-    //                EqualizerSettings.SaveToJson();
-
-    //                _mainWindow!.SelectedEqualizerProfile = bandsSettings;
-
-    //                UpdateProfiles(bandsSettings.Name);
-    //            }
-
-    //            NamePopupTextBox.Text = "";
-    //            NamePopup.IsOpen = false;
-    //        }
-    //    }
-    //}
 
     //private void RenamePopupTextBox_KeyDown(object sender, KeyEventArgs e)
     //{
@@ -462,15 +437,16 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         for (int i = 0; i < bandsSettings.EqualizerBands!.Count; i++)
         //for (int i = 0; i < 10; i++)
         {
-            Slider? slider = (Slider?)EqGrid.FindName($"Slider{i}")!;
+            Slider slider = (Slider)EqGrid.FindName($"Slider{i}")!;
             slider.IsEnabled = state;
         }
     }
 
     private void ButtonsSetEnabledState(bool state)
     {
-        SaveButton.IsEnabled = state;
-        DeleteButton.IsEnabled = state;
+        NewButton.IsEnabled = state;
+        SaveButton.IsEnabled = !SelectedEqualizerProfile.Locked && state;
+        DeleteButton.IsEnabled = !SelectedEqualizerProfile.Locked && state;
         ResetButton.IsEnabled = state;
     }
 
@@ -540,6 +516,9 @@ public partial class EqualizerWindow : INotifyPropertyChanged
             EqGrid.RegisterName(slider.Name, slider);
         }
 
+        Profiles.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
+        SelectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Profiles.SelectedItem as String)!;
+
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
         SliderSetEnabledState(EqSwitch.IsOn);
@@ -594,10 +573,10 @@ public partial class EqualizerWindow : INotifyPropertyChanged
                     _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);
                 }
 
+                Profiles_SelectionChanged(null!, null!);
+
                 SliderSetEnabledState(true);
                 ButtonsSetEnabledState(true);
-
-                Profiles_SelectionChanged(null!, null!);
             }
         }
         else
@@ -616,6 +595,39 @@ public partial class EqualizerWindow : INotifyPropertyChanged
         }
 
         Properties.Settings.Default.EqualizerOnStartEnabled = EqSwitch.IsOn;
+    }
+
+    private void NewPopupTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            string popupTextBoxText = NewPopupTextBox.Text.Trim();
+
+            if (!string.IsNullOrEmpty(popupTextBoxText))
+            {
+                if (EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
+                {
+                    BandsSettings bandsSettings = new()
+                    {
+                        Name = popupTextBoxText,
+                        EqualizerBands = _audioEngine.GetBandsList()
+                    };
+
+                    EqualizerSettings.BandsSettings!.Add(bandsSettings);
+
+                    Log.Information("New profile created");
+
+                    EqualizerSettings.SaveToJson();
+
+                    SelectedEqualizerProfile = bandsSettings;
+
+                    UpdateProfiles(bandsSettings.Name);
+                }
+
+                NewPopupTextBox.Text = "";
+                NewPopup.IsOpen = false;
+            }
+        }
     }
 }
 

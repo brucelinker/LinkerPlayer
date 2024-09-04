@@ -98,7 +98,7 @@
           CanUserDeleteRows="False"
           CanUserReorderColumns="True"
           EnableColumnVirtualization="True"
-          EnableRowVirtualization="False"
+          EnableRowVirtualization="True"
           GridLinesVisibility="None"
           IsReadOnly="True"
           ItemsSource="{Binding Tracks}"
@@ -112,7 +112,7 @@
           SelectionUnit="FullRow"
           Sorting="TracksTable_OnSorting"
           VirtualizingStackPanel.IsVirtualizing="True"
-          VirtualizingStackPanel.VirtualizationMode="Standard">
+          VirtualizingStackPanel.VirtualizationMode="Recycling">
 
           <DataGrid.ColumnHeaderStyle>
             <Style TargetType="DataGridColumnHeader">
