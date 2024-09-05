@@ -27,7 +27,7 @@
         <ControlTemplate TargetType="RepeatButton">
           <Border
             Height="18"
-            Background="{DynamicResource ControlAccentDarkBrush}"
+            Background="{DynamicResource ControlAccentLightBrush}"
             BorderBrush="Transparent"
             BorderThickness="0,7,0,7"
             CornerRadius="2"

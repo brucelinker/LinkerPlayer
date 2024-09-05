@@ -5,7 +5,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Serilog;
 using System;
-using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,7 +15,7 @@ using System.Windows.Media.Animation;
 
 namespace LinkerPlayer.Windows;
 
-public partial class EqualizerWindow : INotifyPropertyChanged
+public partial class EqualizerWindow
 {
     private MainWindow? _mainWindow;
     private readonly AudioEngine _audioEngine;
@@ -535,9 +534,6 @@ public partial class EqualizerWindow : INotifyPropertyChanged
                 SelectedEqualizerProfile != null! ? SelectedEqualizerProfile.Name : null;
         }
     }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
 
     // CloseBox and CloseButton
     private void CloseButton_Click(object sender, RoutedEventArgs e)
