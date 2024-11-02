@@ -480,9 +480,6 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     //    }
     //}
 
-    public float MinimumGain => -12;
-    public float MaximumGain => 12;
-
     private void CreateEqBands()
     {
         _bands = new EqualizerBand[]

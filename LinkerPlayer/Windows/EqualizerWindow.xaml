@@ -6,14 +6,19 @@
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+  xmlns:viewModels="clr-namespace:LinkerPlayer.ViewModels"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   Title="Equalizer"
   Width="570"
   Height="470"
   AllowsTransparency="True"
   Loaded="Window_Loaded"
-  StateChanged="Window_StateChanged"
   WindowStyle="None"
   mc:Ignorable="d">
+
+  <Window.DataContext>
+    <viewModels:EqualizerViewModel x:Name="ViewModel" />
+  </Window.DataContext>
 
   <Window.Resources>
     <ResourceDictionary>
@@ -22,6 +27,8 @@
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/EqVerticalSlider.xaml" />
       </ResourceDictionary.MergedDictionaries>
+
+      <converters:EqFloatToStringConverter x:Key="EqFloatToStringConverter" />
     </ResourceDictionary>
 
   </Window.Resources>
@@ -62,7 +69,9 @@
       </Style>
 
       <!--<Style TargetType="TextBlock">
-        --><!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />--><!--
+      -->
+      <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+      <!--
         <Setter Property="FontSize" Value="16" />
         <Setter Property="Foreground" Value="#FAFAFA" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -156,7 +165,7 @@
       </Grid.ColumnDefinitions>
 
       <ComboBox
-        Name="Profiles"
+        Name="Presets"
         Grid.Column="0"
         Width="200"
         Height="25"
@@ -182,10 +191,10 @@
           x:Name="NewPopup"
           Width="150"
           HorizontalOffset="0"
-          VerticalOffset="1"
           Placement="Bottom"
           PlacementTarget="{Binding ElementName=NewButton}"
-          StaysOpen="false">
+          StaysOpen="false"
+          VerticalOffset="1">
           <Border Padding="5" Background="{DynamicResource MainWindowGradientStartBrush}">
             <TextBox
               Name="NewPopupTextBox"
@@ -206,7 +215,7 @@
           FontWeight="Normal"
           Foreground="{DynamicResource ControlForegroundBrush}"
           Style="{StaticResource LinkerRectangleButton}"
-          ToolTip="Save new profile" />
+          ToolTip="Create new preset" />
 
         <Button
           Name="SaveButton"
@@ -220,7 +229,7 @@
           FontWeight="Normal"
           Foreground="{DynamicResource ControlForegroundBrush}"
           Style="{StaticResource LinkerRectangleButton}"
-          ToolTip="Save new profile" />
+          ToolTip="Save preset" />
 
         <Button
           Name="DeleteButton"
@@ -300,7 +309,7 @@
       </Grid>
     </Grid>
 
-    <Grid Grid.Row="3" Margin="25, 0, 0, 0">
+    <Grid Grid.Row="3" Margin="25,0,0,0">
       <Grid.Resources>
         <Style BasedOn="{StaticResource TextBlockFontStyle}" TargetType="TextBlock">
           <Setter Property="HorizontalAlignment" Value="Right" />
@@ -375,7 +384,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band0Value}" />
+            Text="{Binding Band0, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="46" Margin="0,0,0,0">
           <TextBlock
@@ -390,7 +399,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band1Value}" />
+            Text="{Binding Band1, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="48" Margin="0,0,0,0">
           <TextBlock
@@ -405,7 +414,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band2Value}" />
+            Text="{Binding Band2, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="43" Margin="0,0,0,0">
           <TextBlock
@@ -420,7 +429,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band3Value}" />
+            Text="{Binding Band3, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="48" Margin="0,0,0,0">
           <TextBlock
@@ -435,7 +444,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band4Value}" />
+            Text="{Binding Band4, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="42" Margin="0,0,0,0">
           <TextBlock
@@ -450,7 +459,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band5Value}" />
+            Text="{Binding Band5, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="49" Margin="0,0,0,0">
           <TextBlock
@@ -465,7 +474,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band6Value}" />
+            Text="{Binding Band6, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="42" Margin="0,0,0,0">
           <TextBlock
@@ -480,7 +489,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band7Value}" />
+            Text="{Binding  Band7, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="48" Margin="0,0,0,0">
           <TextBlock
@@ -495,7 +504,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band8Value}" />
+            Text="{Binding Band8, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
         <StackPanel Width="46" Margin="0,0,0,0">
           <TextBlock
@@ -510,7 +519,7 @@
             d:Foreground="White"
             d:Text="0.0"
             Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="{Binding Band9Value}" />
+            Text="{Binding Band9, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
         </StackPanel>
       </StackPanel>
     </Grid>
