@@ -65,9 +65,9 @@ public partial class EqualizerWindow
         NewPopup.IsOpen = true;
         NewPopupTextBox.Focus();
 
-        if (!String.IsNullOrEmpty(Presets.SelectedItem as String))
+        if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as String);
+            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
 
             bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
 
@@ -77,9 +77,9 @@ public partial class EqualizerWindow
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!String.IsNullOrEmpty(Presets.SelectedItem as String))
+        if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as String);
+            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
 
             bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
 
@@ -89,9 +89,9 @@ public partial class EqualizerWindow
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!String.IsNullOrEmpty(Presets.SelectedItem as String))
+        if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            EqualizerSettings.BandsSettings!.Remove(EqualizerSettings.BandsSettings.FirstOrDefault(n => n.Name == Presets.SelectedItem as String)!);
+            EqualizerSettings.BandsSettings!.Remove(EqualizerSettings.BandsSettings.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!);
 
             Presets.SelectedItem = 0;
 
@@ -122,11 +122,11 @@ public partial class EqualizerWindow
         UpdatePresets(FlatPreset);
     }
 
-    private void Profiles_SelectionChanged(object sender, RoutedEventArgs e)
+    private void Presets_SelectionChanged(object sender, RoutedEventArgs e)
     {
         if (EqSwitch.IsOn)
         {
-            _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as String)!;
+            _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
 
             if (_selectedEqualizerProfile is { EqualizerBands: not null } && _selectedEqualizerProfile.EqualizerBands.Any())
             {
@@ -251,7 +251,7 @@ public partial class EqualizerWindow
         }
 
         Presets.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
-        _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as String)!;
+        _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
 
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
@@ -304,7 +304,7 @@ public partial class EqualizerWindow
                     _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);
                 }
 
-                Profiles_SelectionChanged(null!, null!);
+                Presets_SelectionChanged(null!, null!);
 
                 SliderSetEnabledState(true);
                 ButtonsSetEnabledState(true);

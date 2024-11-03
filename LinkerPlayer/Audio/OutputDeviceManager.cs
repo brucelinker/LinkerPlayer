@@ -53,7 +53,7 @@ public static class OutputDeviceManager
 
     public static int GetOutputDeviceId(string nameDevice)
     {
-        if (String.IsNullOrWhiteSpace(nameDevice))
+        if (string.IsNullOrWhiteSpace(nameDevice))
         {
             throw new ArgumentNullException(nameof(nameDevice));
         }

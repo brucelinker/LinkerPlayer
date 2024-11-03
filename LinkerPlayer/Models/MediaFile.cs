@@ -180,7 +180,7 @@ public class MediaFile : ObservableObject, IMediaFile
             // Genres
             Genres = file.Tag.Genres.Length > 1 ? string.Join("/", Genres) : file.Tag.FirstGenre;
 
-            Track = file.Tag.Track == 0 ? String.Empty : $"{file.Tag.Track}";
+            Track = file.Tag.Track == 0 ? string.Empty : $"{file.Tag.Track}";
             TrackCount = file.Tag.TrackCount;
             Disc = file.Tag.Disc;
             DiscCount = file.Tag.DiscCount;

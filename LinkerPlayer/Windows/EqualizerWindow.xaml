@@ -176,10 +176,10 @@
         BorderBrush="{DynamicResource ControlBorderBrush}"
         Foreground="Black"
         IsTextSearchEnabled="false"
-        SelectionChanged="Profiles_SelectionChanged"
+        SelectionChanged="Presets_SelectionChanged"
         ToolTip="Profiles" />
 
-      <Grid x:Name="ControlButtons" Grid.Column="1">
+      <Grid Grid.Column="1">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />

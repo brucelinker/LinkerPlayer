@@ -129,7 +129,7 @@ public class SQLiteConnector
 
     //private int GetAlbum(string name, string year)
     //{
-    //    string sql = String.Format(SqlGetAlbum, name, year);
+    //    string sql = string.Format(SqlGetAlbum, name, year);
     //    SQLiteCommand command = new(sql, _sqlConnection);
 
     //    using SQLiteDataReader reader = command.ExecuteReader();
@@ -148,7 +148,7 @@ public class SQLiteConnector
 
     //public int GetAlbumTrackCount(int id)
     //{
-    //    string sql = String.Format(SqlGetAlbumTrackCount, id);
+    //    string sql = string.Format(SqlGetAlbumTrackCount, id);
     //    SQLiteCommand command = new(sql, _sqlConnection);
 
     //    using SQLiteDataReader reader = command.ExecuteReader();
@@ -160,7 +160,7 @@ public class SQLiteConnector
 
     //private int GetTrack(string path)
     //{
-    //    string sql = String.Format(SqlGetTrack, Sanitize(path));
+    //    string sql = string.Format(SqlGetTrack, Sanitize(path));
     //    SQLiteCommand command = new(sql, _sqlConnection);
 
     //    using SQLiteDataReader reader = command.ExecuteReader();
@@ -184,35 +184,35 @@ public class SQLiteConnector
 
     //private void InsertTrack(string path)
     //{
-    //    string sql = String.Format(SqlInsertTrack, Sanitize(path), GetDate());
+    //    string sql = string.Format(SqlInsertTrack, Sanitize(path), GetDate());
     //    SQLiteCommand command = new(sql, _sqlConnection);
     //    command.ExecuteNonQuery();
     //}
 
     //private void InsertAlbum(string name, string year)
     //{
-    //    string sql = String.Format(SqlInsertAlbum, name, year, GetDate());
+    //    string sql = string.Format(SqlInsertAlbum, name, year, GetDate());
     //    SQLiteCommand command = new(sql, _sqlConnection);
     //    command.ExecuteNonQuery();
     //}
 
     //private void UpdateTrack(int id)
     //{
-    //    string sql = String.Format(SqlUpdateTrack, id.ToString(), GetDate());
+    //    string sql = string.Format(SqlUpdateTrack, id.ToString(), GetDate());
     //    SQLiteCommand command = new(sql, _sqlConnection);
     //    command.ExecuteNonQuery();
     //}
 
     //private void UpdateAlbum(int id)
     //{
-    //    string sql = String.Format(SqlUpdateAlbum, id.ToString(), GetDate());
+    //    string sql = string.Format(SqlUpdateAlbum, id.ToString(), GetDate());
     //    SQLiteCommand command = new(sql, _sqlConnection);
     //    command.ExecuteNonQuery();
     //}
 
     //private bool GetAlbumTrack(int albumId, string track)
     //{
-    //    string sql = String.Format(SqlGetAlbumTrack, albumId, Sanitize(track));
+    //    string sql = string.Format(SqlGetAlbumTrack, albumId, Sanitize(track));
     //    SQLiteCommand command = new(sql, _sqlConnection);
 
     //    SQLiteDataReader reader = command.ExecuteReader();
@@ -227,7 +227,7 @@ public class SQLiteConnector
 
     //private void InsertAlbumTrack(int id, string track)
     //{
-    //    string sql = String.Format(SqlInsertAlbumTrack, id.ToString(), Sanitize(track));
+    //    string sql = string.Format(SqlInsertAlbumTrack, id.ToString(), Sanitize(track));
     //    SQLiteCommand command = new(sql, _sqlConnection);
     //    command.ExecuteNonQuery();
     //}
@@ -243,7 +243,7 @@ public class SQLiteConnector
 
     //public List<Tuple<string, int, DateTime>> GetRecentTracksDetails(int num)
     //{
-    //    string sql = String.Format(SqlGetRecentTracksDetail, num);
+    //    string sql = string.Format(SqlGetRecentTracksDetail, num);
     //    List<Tuple<string, int, DateTime>> tracks = new();
 
     //    SQLiteCommand command = new(sql, _sqlConnection);
@@ -271,7 +271,7 @@ public class SQLiteConnector
 
     //public List<string> GetRecentTracks(int num)
     //{
-    //    string sql = String.Format(SqlGetRecentTracks, num);
+    //    string sql = string.Format(SqlGetRecentTracks, num);
     //    List<string> tracks = new();
 
     //    SQLiteCommand command = new(sql, _sqlConnection);
@@ -292,7 +292,7 @@ public class SQLiteConnector
     //public List<Tuple<string, string, int>> GetRecentAlbums(int num)
     //{
 
-    //    string sql = String.Format(SqlGetRecentAlbums, num);
+    //    string sql = string.Format(SqlGetRecentAlbums, num);
     //    List<Tuple<string, string, int>> albums = new();
     //    SQLiteCommand command = new(sql, _sqlConnection);
 
@@ -315,7 +315,7 @@ public class SQLiteConnector
     //public string[] GetAlbumTracks(int id)
     //{
     //    List<string> t = new();
-    //    string sql = String.Format(SqlGetAlbumTracks, id);
+    //    string sql = string.Format(SqlGetAlbumTracks, id);
 
     //    SQLiteCommand command = new(sql, _sqlConnection);
 
