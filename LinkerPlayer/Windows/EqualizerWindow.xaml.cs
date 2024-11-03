@@ -3,16 +3,15 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.ViewModels;
 using Serilog;
 using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
-using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.Windows;
 
@@ -218,37 +217,37 @@ public partial class EqualizerWindow
 
         if (bandsSettings == null) { return; }
 
-        for (int i = 0; i < 10; i++)
-        {
-            Slider slider = new()
-            {
-                Name = $"Slider{i}",
-                Maximum = _equalizerViewModel.MaximumGain,
-                Minimum = _equalizerViewModel.MinimumGain,
-                Orientation = Orientation.Vertical,
-                Style = (Style)FindResource("EqVerticalSlider"),
-                TickFrequency = 1,
-                TickPlacement = TickPlacement.BottomRight
-            };
+        //for (int i = 0; i < 10; i++)
+        //{
+        //    Slider slider = new()
+        //    {
+        //        Name = $"Slider{i}",
+        //        Maximum = _equalizerViewModel.MaximumGain,
+        //        Minimum = _equalizerViewModel.MinimumGain,
+        //        Orientation = Orientation.Vertical,
+        //        Style = (Style)FindResource("EqVerticalSlider"),
+        //        TickFrequency = 1,
+        //        TickPlacement = TickPlacement.BottomRight
+        //    };
 
-            Binding binding = new()
-            {
-                Path = new PropertyPath($"Band{i}"),
-                Mode = BindingMode.TwoWay
-            };
+        //    Binding binding = new()
+        //    {
+        //        Path = new PropertyPath($"Band{i}"),
+        //        Mode = BindingMode.TwoWay
+        //    };
 
-            slider.SetBinding(RangeBase.ValueProperty, binding);
+        //    slider.SetBinding(RangeBase.ValueProperty, binding);
 
-            slider.HorizontalAlignment = HorizontalAlignment.Center;
+        //    slider.HorizontalAlignment = HorizontalAlignment.Center;
 
-            ColumnDefinition colDef = new();
-            EqGrid.ColumnDefinitions.Add(colDef);
+        //    ColumnDefinition colDef = new();
+        //    EqGrid.ColumnDefinitions.Add(colDef);
 
-            EqGrid.Children.Add(slider);
-            Grid.SetColumn(slider, i);
+        //    EqGrid.Children.Add(slider);
+        //    Grid.SetColumn(slider, i);
 
-            EqGrid.RegisterName(slider.Name, slider);
-        }
+        //    EqGrid.RegisterName(slider.Name, slider);
+        //}
 
         Presets.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
         _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
