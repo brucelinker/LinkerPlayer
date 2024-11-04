@@ -382,6 +382,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         MusicLibrary.SaveToJson();
     }
+
     public void NewPlaylistFromFolder(object sender, RoutedEventArgs routedEventArgs)
     {
         OpenFolderDialog folderDialog = new()

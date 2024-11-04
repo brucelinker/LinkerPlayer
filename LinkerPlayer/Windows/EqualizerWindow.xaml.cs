@@ -18,29 +18,23 @@ namespace LinkerPlayer.Windows;
 public partial class EqualizerWindow
 {
     private readonly AudioEngine _audioEngine;
-    private readonly EqualizerViewModel _equalizerViewModel;
-    private BandsSettings _selectedEqualizerProfile = null!;
+    private BandsSettings _selectedPreset = null!;
     private const string FlatPreset = "Flat";
+    private readonly EqualizerViewModel _equalizerViewModel = new();
 
     public EqualizerWindow()
     {
         InitializeComponent();
         WinMax.DoSourceInitialized(this);
-        _equalizerViewModel = new EqualizerViewModel();
         DataContext = _equalizerViewModel;
 
         _audioEngine = AudioEngine.Instance;
 
-        EqualizerSettings.LoadFromJson();
+        _equalizerViewModel.LoadFromJson();
         UpdatePresets();
 
         EqSwitch.Switched += OnEqSwitched;
         this.Closed += Window_Closed!;
-    }
-
-    private float GetBand(int index)
-    {
-        return _audioEngine.GetBandGain(index);
     }
 
     private void SetBand(int index, float value)
@@ -66,11 +60,11 @@ public partial class EqualizerWindow
 
         if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
+            BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
 
             bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
 
-            EqualizerSettings.SaveToJson();
+            _equalizerViewModel.SaveToJson();
         }
     }
 
@@ -78,11 +72,11 @@ public partial class EqualizerWindow
     {
         if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
+            BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
 
             bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
 
-            EqualizerSettings.SaveToJson();
+            _equalizerViewModel.SaveToJson();
         }
     }
 
@@ -90,7 +84,7 @@ public partial class EqualizerWindow
     {
         if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            EqualizerSettings.BandsSettings!.Remove(EqualizerSettings.BandsSettings.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!);
+            _equalizerViewModel.BandsSettings!.Remove(_equalizerViewModel.BandsSettings.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!);
 
             Presets.SelectedItem = 0;
 
@@ -98,14 +92,14 @@ public partial class EqualizerWindow
 
             UpdatePresets();
 
-            _selectedEqualizerProfile = null!;
+            _selectedPreset = null!;
 
             Log.Information("Delete preset");
 
-            EqualizerSettings.SaveToJson();
+            _equalizerViewModel.SaveToJson();
         }
     }
-    
+
     private void ResetSliders()
     {
         for (int i = 0; i < 10; i++)
@@ -125,15 +119,15 @@ public partial class EqualizerWindow
     {
         if (EqSwitch.IsOn)
         {
-            _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
+            _selectedPreset = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
 
-            if (_selectedEqualizerProfile is { EqualizerBands: not null } && _selectedEqualizerProfile.EqualizerBands.Any())
+            if (_selectedPreset is { EqualizerBands: not null } && _selectedPreset.EqualizerBands.Any())
             {
-                _audioEngine.SetBandsList(_selectedEqualizerProfile.EqualizerBands);
+                _audioEngine.SetBandsList(_selectedPreset.EqualizerBands);
 
-                for (int i = 0; i < _selectedEqualizerProfile.EqualizerBands!.Count; i++)
+                for (int i = 0; i < _selectedPreset.EqualizerBands!.Count; i++)
                 {
-                    AnimationChangingSliderValue(i, _selectedEqualizerProfile.EqualizerBands![i].Gain);
+                    AnimationChangingSliderValue(i, _selectedPreset.EqualizerBands![i].Gain);
                 }
 
                 ButtonsSetEnabledState(true);
@@ -147,7 +141,7 @@ public partial class EqualizerWindow
     {
         Presets.Items.Clear();
 
-        foreach (BandsSettings preset in EqualizerSettings.BandsSettings!)
+        foreach (BandsSettings preset in _equalizerViewModel.BandsSettings!)
         {
             Presets.Items.Add(preset.Name);
         }
@@ -164,7 +158,7 @@ public partial class EqualizerWindow
 
     private void SliderSetEnabledState(bool state)
     {
-        BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault();
+        BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault();
 
         if (bandsSettings == null) { return; }
 
@@ -179,8 +173,8 @@ public partial class EqualizerWindow
     private void ButtonsSetEnabledState(bool state)
     {
         NewButton.IsEnabled = state;
-        SaveButton.IsEnabled = !_selectedEqualizerProfile.Locked && state;
-        DeleteButton.IsEnabled = !_selectedEqualizerProfile.Locked && state;
+        SaveButton.IsEnabled = !_selectedPreset.Locked && state;
+        DeleteButton.IsEnabled = !_selectedPreset.Locked && state;
         ResetButton.IsEnabled = state;
     }
 
@@ -201,8 +195,8 @@ public partial class EqualizerWindow
         doubleAnimation.Completed += (_, _) =>
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
-            slider.Value = GetBand(index);
-            label.Text = FormatLabel((float)slider.Value); // $"{slider.Value}";
+            slider.Value = _audioEngine.GetBandGain(index);
+            label.Text = FormatLabel((float)slider.Value);
         };
         doubleAnimation.EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut };
 
@@ -211,46 +205,12 @@ public partial class EqualizerWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        //_mainWindow = (Owner as MainWindow)!;
-
-        BandsSettings? bandsSettings = EqualizerSettings.BandsSettings!.FirstOrDefault();
+        BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault();
 
         if (bandsSettings == null) { return; }
 
-        //for (int i = 0; i < 10; i++)
-        //{
-        //    Slider slider = new()
-        //    {
-        //        Name = $"Slider{i}",
-        //        Maximum = _equalizerViewModel.MaximumGain,
-        //        Minimum = _equalizerViewModel.MinimumGain,
-        //        Orientation = Orientation.Vertical,
-        //        Style = (Style)FindResource("EqVerticalSlider"),
-        //        TickFrequency = 1,
-        //        TickPlacement = TickPlacement.BottomRight
-        //    };
-
-        //    Binding binding = new()
-        //    {
-        //        Path = new PropertyPath($"Band{i}"),
-        //        Mode = BindingMode.TwoWay
-        //    };
-
-        //    slider.SetBinding(RangeBase.ValueProperty, binding);
-
-        //    slider.HorizontalAlignment = HorizontalAlignment.Center;
-
-        //    ColumnDefinition colDef = new();
-        //    EqGrid.ColumnDefinitions.Add(colDef);
-
-        //    EqGrid.Children.Add(slider);
-        //    Grid.SetColumn(slider, i);
-
-        //    EqGrid.RegisterName(slider.Name, slider);
-        //}
-
         Presets.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
-        _selectedEqualizerProfile = EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
+        _selectedPreset = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
 
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
@@ -265,7 +225,7 @@ public partial class EqualizerWindow
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
             Properties.Settings.Default.EqualizerProfileName =
-                _selectedEqualizerProfile != null! ? _selectedEqualizerProfile.Name : null;
+                _selectedPreset != null! ? _selectedPreset.Name : null;
         }
     }
 
@@ -335,7 +295,7 @@ public partial class EqualizerWindow
 
             if (!string.IsNullOrEmpty(popupTextBoxText))
             {
-                if (EqualizerSettings.BandsSettings!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
+                if (_equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
                 {
                     BandsSettings bandsSettings = new()
                     {
@@ -343,13 +303,13 @@ public partial class EqualizerWindow
                         EqualizerBands = _audioEngine.GetBandsList()
                     };
 
-                    EqualizerSettings.BandsSettings!.Add(bandsSettings);
+                    _equalizerViewModel.BandsSettings!.Add(bandsSettings);
 
                     Log.Information("New preset created");
 
-                    EqualizerSettings.SaveToJson();
+                    _equalizerViewModel.SaveToJson();
 
-                    _selectedEqualizerProfile = bandsSettings;
+                    _selectedPreset = bandsSettings;
 
                     UpdatePresets(bandsSettings.Name);
                 }
@@ -357,6 +317,12 @@ public partial class EqualizerWindow
                 NewPopupTextBox.Text = "";
                 NewPopup.IsOpen = false;
             }
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            NewPopupTextBox.Text = "";
+            NewPopup.IsOpen = false;
         }
     }
 }

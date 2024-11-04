@@ -9,7 +9,7 @@
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   xmlns:viewModels="clr-namespace:LinkerPlayer.ViewModels"
   Title="Equalizer"
-  Width="530"
+  Width="500"
   Height="420"
   AllowsTransparency="True"
   Loaded="Window_Loaded"
@@ -151,12 +151,13 @@
       <userControls:ToggleSwitch
         x:Name="EqSwitch"
         Grid.Column="0"
-        Margin="20,0,0,0"
+        Margin="25,0,0,0"
         IsOn="true" />
     </Grid>
     <!--  {Binding IsOn}" />  -->
 
-    <Grid Grid.Row="2">
+    <Grid Grid.Row="2"
+          Margin="25,0,20,0">
       <Grid.ColumnDefinitions>
         <!--<ColumnDefinition Width="*" />-->
         <ColumnDefinition Width="Auto" />
@@ -168,7 +169,7 @@
         Grid.Column="0"
         Width="160"
         Height="25"
-        Margin="20,0,0,0"
+        Margin="0,0,0,0"
         HorizontalAlignment="Left"
         materialDesign:HintAssist.Hint="Default"
         Background="Transparent"
@@ -206,10 +207,10 @@
           Name="NewButton"
           Grid.Column="0"
           Height="25"
-          Margin="10,0,5,0"
+          Margin="8,0,5,0"
           d:Foreground="White"
           Click="NewButton_Click"
-          Content="New..."
+          Content="New"
           FontSize="14"
           FontWeight="Normal"
           Foreground="{DynamicResource ControlForegroundBrush}"
@@ -220,10 +221,10 @@
           Name="SaveButton"
           Grid.Column="1"
           Height="25"
-          Margin="10,0,5,0"
+          Margin="5,0,5,0"
           d:Foreground="White"
           Click="SaveButton_Click"
-          Content="Save..."
+          Content="Save"
           FontSize="14"
           FontWeight="Normal"
           Foreground="{DynamicResource ControlForegroundBrush}"
@@ -237,19 +238,18 @@
           Margin="5,0,5,0"
           d:Foreground="White"
           Click="DeleteButton_Click"
-          Content="Delete..."
+          Content="Delete"
           FontSize="14"
           FontWeight="Normal"
           Foreground="{DynamicResource ControlForegroundBrush}"
           Style="{StaticResource LinkerRectangleButton}"
           ToolTip="Delete profile" />
 
-
         <Button
           Name="ResetButton"
           Grid.Column="3"
           Height="25"
-          Margin="5,0,10,0"
+          Margin="5,0,0,0"
           d:Foreground="White"
           Click="ResetButton_Click"
           Content="Reset"
@@ -258,57 +258,10 @@
           Foreground="{DynamicResource ControlForegroundBrush}"
           Style="{StaticResource LinkerRectangleButton}"
           ToolTip="Reset bands to zero" />
-
-        <!--<Popup
-          x:Name="RenamePopup"
-          Width="150"
-          HorizontalOffset="0"
-          Placement="Bottom"
-          PlacementTarget="{Binding ElementName=RenameButton}"
-          StaysOpen="False"
-          VerticalOffset="15">
-          <Border Padding="15" Background="#393946">
-            <TextBox
-              Name="ReNamePopupTextBox"
-              FontFamily="/Fonts/#Montserrat"
-              FontSize="14"
-              FontWeight="DemiBold"
-              Foreground="#BDBDBD"
-              KeyDown="RenamePopupTextBox_KeyDown" />
-          </Border>
-        </Popup>-->
-
-        <!--<Button
-          Name="RenameButton"
-          Grid.Column="2"
-          Click="RenameButton_Click"
-          ToolTip="Change">
-          <materialDesign:PackIcon Foreground="White" Kind="PencilOutline" />
-        </Button>-->
-
-        <!--<Popup
-          x:Name="NamePopup"
-          Width="150"
-          HorizontalOffset="0"
-          Placement="Bottom"
-          PlacementTarget="{Binding ElementName=NameButton}"
-          StaysOpen="False"
-          VerticalOffset="15">
-          <Border Padding="15" Background="#393946">
-            <TextBox
-              Name="NamePopupTextBox"
-              FontFamily="/Fonts/#Montserrat"
-              FontSize="14"
-              FontWeight="DemiBold"
-              Foreground="#BDBDBD"
-              KeyDown="NamePopupTextBox_KeyDown" />
-          </Border>
-        </Popup>-->
-
       </Grid>
     </Grid>
 
-    <Grid Grid.Row="3" Margin="22,0,0,0">
+    <Grid Grid.Row="3" Margin="20,0,0,0">
       <Grid.Resources>
         <Style BasedOn="{StaticResource TextBlockFontStyle}" TargetType="TextBlock">
           <Setter Property="HorizontalAlignment" Value="Right" />
@@ -316,63 +269,58 @@
       </Grid.Resources>
 
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="32" />
+        <ColumnDefinition Width="54" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="38" />
       </Grid.ColumnDefinitions>
 
-      <Grid Margin="0,16,0,6">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="20" />
-          <RowDefinition Height="*" MinHeight="10" />
-          <RowDefinition Height="20" />
-          <RowDefinition Height="40" />
-        </Grid.RowDefinitions>
+      <Border BorderBrush="Transparent" BorderThickness="1" >
 
-        <TextBlock
+        <Grid Margin="0,16,0,6">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="20" />
+            <RowDefinition Height="*" MinHeight="10" />
+            <RowDefinition Height="20" />
+            <RowDefinition Height="40" />
+          </Grid.RowDefinitions>
+
+          <TextBlock
           Grid.Row="0"
           VerticalAlignment="Top"
           d:Foreground="white"
           Foreground="{DynamicResource ControlForegroundBrush}"
-          Text="12 dB" />
-        <TextBlock
+          Text="12 dB"/>
+          <TextBlock
           Grid.Row="1"
           VerticalAlignment="Center"
           d:Foreground="white"
           Foreground="{DynamicResource ControlForegroundBrush}"
           Text="0 dB" />
-        <TextBlock
+          <TextBlock
           Grid.Row="2"
           VerticalAlignment="Bottom"
           d:Foreground="white"
           Foreground="{DynamicResource ControlForegroundBrush}"
           Text="-12 dB" />
 
-      </Grid>
+        </Grid>
+      </Border>
 
       <!--  EQ Sliders - Initialized in Window_Loaded  -->
       <Grid
         Name="EqGrid"
         Grid.Column="1"
-        Margin="0,20,0,10"
+        Margin="0,19,0,10"
         HorizontalAlignment="Stretch">
 
-        <!--</Grid>
-
-    <Grid Grid.Row="4" Margin="53,0,0,0">
-      <Grid.Resources>
-        <Style BasedOn="{StaticResource TextBlockFontStyle}" TargetType="TextBlock">
-          <Setter Property="HorizontalAlignment" Value="Center" />
-          <Setter Property="VerticalAlignment" Value="Bottom" />
-        </Style>
-      </Grid.Resources>-->
-
         <StackPanel
-          Margin="26,0,0,0"
+          Margin="0,0,0,0"
           HorizontalAlignment="Stretch"
           Orientation="Horizontal">
-          <StackPanel Width="38" Margin="0,0,0,0">
-            <Slider
+          <Border BorderBrush="Transparent" BorderThickness="1" >
+
+            <StackPanel Width="38" Margin="0,0,0,0">
+              <Slider
               x:Name="Slider0"
               Height="200"
               HorizontalAlignment="Center"
@@ -383,20 +331,21 @@
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
               TickPlacement="BottomRight" />
-            <TextBlock
+              <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
               d:Foreground="White"
               Foreground="{DynamicResource ControlForegroundBrush}"
               Text="32" />
-            <TextBlock
+              <TextBlock
               Name="Band0Label"
               HorizontalAlignment="Center"
               d:Foreground="White"
               d:Text="0.0"
               Foreground="{DynamicResource ControlForegroundBrush}"
               Text="{Binding Band0, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
-          </StackPanel>
+            </StackPanel>
+          </Border>
           <StackPanel Width="38" Margin="0,0,0,0">
             <Slider
               x:Name="Slider1"
@@ -640,17 +589,12 @@
       Height="40"
       VerticalAlignment="Bottom"
       Background="{DynamicResource MainWindowGradientStartBrush}">
-      <!--<Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="120" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>-->
 
       <Button
         Name="CloseButton"
         Height="25"
         MinWidth="80"
-        Margin="0,0,10,0"
+        Margin="0,0,20,0"
         HorizontalAlignment="Right"
         VerticalAlignment="Center"
         d:Foreground="White"
@@ -660,24 +604,6 @@
         FontWeight="Normal"
         Foreground="{DynamicResource ControlForegroundBrush}"
         Style="{StaticResource LinkerRectangleButton}" />
-
-      <!--<Button
-        Name="StartStopButton"
-        Style="{DynamicResource TransparentButton}"
-        Grid.Column="1"
-        Width="100"
-        Height="30"
-        HorizontalAlignment="Center"
-        Background="Transparent"
-        Click="StartStopButton_Click">
-        <TextBlock
-          Name="StartStopText"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Center"
-          FontFamily="/Fonts/#Montserrat"
-          Foreground="{DynamicResource ControlAccentDarkBrush}"
-          Text="Start" />
-      </Button>-->
 
     </Grid>
   </Grid>
