@@ -11,7 +11,7 @@ using NAudio.Wave;
 
 namespace LinkerPlayer.Core;
 
-public class MusicLibrary
+public abstract class MusicLibrary
 {
     private static readonly string JsonFilePath;
     public static List<MediaFile?> MainLibrary = new();

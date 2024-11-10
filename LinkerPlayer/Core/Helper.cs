@@ -9,6 +9,7 @@ namespace LinkerPlayer.Core;
 
 internal class Helper
 {
+    // Helper.FindVisualChildren<Grid>(this).FirstOrDefault()!.Focus();
     public static IEnumerable<T> FindVisualChildren<T>(DependencyObject? depObj) where T : DependencyObject
     {
         if (depObj != null)

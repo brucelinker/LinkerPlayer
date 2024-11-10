@@ -11,7 +11,7 @@ public class ThemeManager
 {
     public static ThemeColors ActiveSkin = ThemeColors.Dark;
 
-    public static void ClearStyles()
+    private void ClearStyles()
     {
         if (MainWindow.Instance == null) return;
 
@@ -114,7 +114,7 @@ public class ThemeManager
         AddDict(langDict);
     }
 
-    public static void ApplyTheme(string uri)
+    private void ApplyTheme(string uri)
     {
         ClearStyles();
 
@@ -124,7 +124,7 @@ public class ThemeManager
         AddDict(langDict);
     }
 
-    public static void ApplyTheme(MainWindow main, ThemeColors skin, FontSize size)
+    private void ApplyTheme(MainWindow main, ThemeColors skin, FontSize size)
     {
         ClearStyles();
         AddTheme(skin);
@@ -145,7 +145,7 @@ public class ThemeManager
         //Application.Current.Resources.MergedDictionaries[0].Values.ToString();
     }
 
-    public static void ApplyThemeByName(MainWindow main, string theme, string fileName = "")
+    public void ApplyThemeByName(MainWindow main, string theme, string fileName = "")
     {
         FontSize currentSize = (FontSize)Settings.Default.FontSize;
         switch (theme)
@@ -154,17 +154,12 @@ public class ThemeManager
             case "Blue": ApplyTheme(main, ThemeColors.Blue, currentSize); break;
             case "Gray": ApplyTheme(main, ThemeColors.Gray, currentSize); break;
             case "Dark": ApplyTheme(main, ThemeColors.Dark, currentSize); break;
-            case "Custom": ApplySkinFromFile(main, fileName); break;
             case "URI": ApplyTheme(fileName); break;
             default: ApplyTheme(main, ThemeColors.Light, currentSize); break;
         }
     }
 
-    public static void ApplySkinFromFile(MainWindow main, string skinFile)
-    {
-    }
-
-    public static ThemeColors StringToThemeColor(string theme)
+    public ThemeColors StringToThemeColor(string theme)
     {
         switch (theme)
         {
@@ -176,7 +171,7 @@ public class ThemeManager
         }
     }
 
-    public static int StringToThemeColorIndex(string theme)
+    public int StringToThemeColorIndex(string theme)
     {
         switch (theme)
         {
@@ -188,7 +183,7 @@ public class ThemeManager
         }
     }
 
-    public static string IndexToThemeColorString(int theme)
+    public string IndexToThemeColorString(int theme)
     {
         switch (theme)
         {
@@ -200,12 +195,12 @@ public class ThemeManager
         }
     }
 
-    public static void ApplyFontSize(MainWindow main, FontSize size)
+    public void ApplyFontSize(MainWindow main, FontSize size)
     {
         ApplyTheme(main, (ThemeColors)Enum.Parse(typeof(ThemeColors), Settings.Default.SelectedTheme), size);
     }
 
-    public static void ApplyPadding(MainWindow main, PaddingType type)
+    public void ApplyPadding(MainWindow main, PaddingType type)
     {
         string dictStr = @"Styles\Padding\Padding" + type.ToString() + ".xaml";
         Uri paddingUri = new Uri(dictStr, UriKind.Relative);

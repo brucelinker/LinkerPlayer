@@ -22,9 +22,9 @@ namespace LinkerPlayer.UserControls;
 [ObservableObject]
 public partial class PlayerControls
 {
-    public readonly PlayerControlsViewModel playerControlsViewModel;
-    public readonly DispatcherTimer SeekBarTimer = new();
-    public readonly AudioEngine audioEngine;
+    private readonly PlayerControlsViewModel _playerControlsViewModel;
+    private readonly DispatcherTimer _seekBarTimer = new();
+    private readonly AudioEngine _audioEngine;
 
     private EqualizerWindow? _equalizerWindow;
 
@@ -32,17 +32,18 @@ public partial class PlayerControls
     {
         InitializeComponent();
 
-        audioEngine = AudioEngine.Instance;
-        playerControlsViewModel = PlayerControlsViewModel.Instance;
+        _audioEngine = AudioEngine.Instance;
+        _playerControlsViewModel = PlayerControlsViewModel.Instance;
         DataContext = PlayerControlsViewModel.Instance;
 
-        SeekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
-        SeekBarTimer.Tick += timer_Tick!;
+        _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
+        _seekBarTimer.Tick += timer_Tick!;
 
         SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
         SeekBar.ValueChanged += SeekBar_ValueChanged;
-        VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
+        Dispatcher.ShutdownStarted += PlayerControls_ShutdownStarted!;
 
+        VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
         ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
@@ -65,11 +66,6 @@ public partial class PlayerControls
             OnMuteChanged(m.Value);
         });
 
-        //WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, _) =>
-        //{
-        //    OnAudioStopped();
-        //});
-
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
         {
             OnPlaybackStateChanged(m.Value);
@@ -87,8 +83,8 @@ public partial class PlayerControls
     {
         if (mediaFile != null)
         {
-            audioEngine.PathToMusic = mediaFile.Path;
-            audioEngine.LoadAudioFile(mediaFile.Path);
+            _audioEngine.PathToMusic = mediaFile.Path;
+            _audioEngine.LoadAudioFile(mediaFile.Path);
         }
 
         SetTrackStatus(mediaFile ?? new MediaFile());
@@ -112,13 +108,13 @@ public partial class PlayerControls
         switch (state)
         {
             case PlaybackState.Playing:
-                SeekBarTimer.Start();
+                _seekBarTimer.Start();
                 break;
             case PlaybackState.Paused:
-                SeekBarTimer.Stop();
+                _seekBarTimer.Stop();
                 break;
             case PlaybackState.Stopped:
-                SeekBarTimer.Stop();
+                _seekBarTimer.Stop();
                 SeekBar.Value = 0;
                 break;
         }
@@ -135,12 +131,12 @@ public partial class PlayerControls
 
     private void OnDataGridPlay(PlayerState value)
     {
-        playerControlsViewModel.StopTrack();
-        SeekBarTimer.Stop();
+        _playerControlsViewModel.StopTrack();
+        _seekBarTimer.Stop();
         SeekBar.Value = 0;
 
         PlayButton.Command.Execute(value);
-        SeekBarTimer.Start();
+        _seekBarTimer.Start();
     }
 
     private void UniGrid_SizeChanged(object? sender, SizeChangedEventArgs? e)
@@ -173,37 +169,37 @@ public partial class PlayerControls
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        double posInSeekBar = (SeekBar.Value * audioEngine.CurrentTrackLength) / 100;
+        double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
 
-        if (audioEngine.PathToMusic != null &&
-            Math.Abs(audioEngine.CurrentTrackPosition - posInSeekBar) > 0 &&
-            !audioEngine.IsPaused)
+        if (_audioEngine.PathToMusic != null &&
+            Math.Abs(_audioEngine.CurrentTrackPosition - posInSeekBar) > 0 &&
+            !_audioEngine.IsPaused)
         {
-            audioEngine.StopAndPlayFromPosition(posInSeekBar);
+            _audioEngine.StopAndPlayFromPosition(posInSeekBar);
 
             //_playerControlsViewModel.State = PlaybackState.Playing;
-            SeekBarTimer.Start();
+            _seekBarTimer.Start();
         }
     }
 
     private void VolumeSlider_ValueChanged(object sender, EventArgs e)
     {
-        audioEngine.MusicVolume = (float)VolumeSlider.Value / 100;
+        _audioEngine.MusicVolume = (float)VolumeSlider.Value / 100;
     }
 
     private void timer_Tick(object sender, EventArgs e)
     {
         if (!(SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            SeekBar.Value = playerControlsViewModel.CurrentSeekbarPosition();
+            SeekBar.Value = _playerControlsViewModel.CurrentSeekbarPosition();
         }
     }
 
     private void SeekBar_ValueChanged(object? sender, RoutedPropertyChangedEventArgs<double>? e)
     {
-        if (playerControlsViewModel.SelectedTrack == null) return;
+        if (_playerControlsViewModel.SelectedTrack == null) return;
 
-        double posInSeekBar = (SeekBar.Value * audioEngine.CurrentTrackLength) / 100;
+        double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
     }
@@ -300,10 +296,12 @@ public partial class PlayerControls
         };
 
         _equalizerWindow.Show();
+    }
 
-        //bool isEnabled = Properties.Settings.Default.EqualizerOnStartEnabled;
-        //_equalizerWindow.ButtonsSetEnabledState(isEnabled);
-        //_equalizerWindow.SliderSetEnabledState(isEnabled);
+    private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
+    {
+        Properties.Settings.Default.VolumeSliderValue = VolumeSlider.Value;
+        Properties.Settings.Default.LastSeekBarValue = SeekBar.Value;
     }
 }
 

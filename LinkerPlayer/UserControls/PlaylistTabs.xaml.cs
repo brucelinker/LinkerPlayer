@@ -7,7 +7,6 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-//using static MaterialDesignThemes.Wpf.Theme;
 
 namespace LinkerPlayer.UserControls;
 
@@ -17,7 +16,6 @@ public partial class PlaylistTabs
     public readonly PlaylistTabsViewModel playlistTabsViewModel;
     public readonly PlayerControlsViewModel playerControlsViewModel;
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
-    //private DataGrid? _tracksTable;
 
     public PlaylistTabs()
     {
@@ -27,13 +25,12 @@ public partial class PlaylistTabs
         DataContext = playlistTabsViewModel;
 
         InitializeComponent();
+
+        playlistTabsViewModel.LoadPlaylistTabs();
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        //_tracksTable = sender as DataGrid;
-        //_tracksTable.Sorted += new RoutedEventHandler(datagrid_Sorted);
-
         playlistTabsViewModel.OnDataGridLoaded(sender, e);
     }
 
