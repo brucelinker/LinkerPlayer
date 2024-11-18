@@ -26,7 +26,7 @@ public partial class PlayerControls
     private readonly DispatcherTimer _seekBarTimer = new();
     private readonly AudioEngine _audioEngine;
 
-    private EqualizerWindow? _equalizerWindow;
+    private readonly EqualizerWindow _equalizerWindow;
 
     public PlayerControls()
     {
@@ -45,6 +45,13 @@ public partial class PlayerControls
 
         VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
         ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
+
+        _equalizerWindow = new()
+        {
+            Owner = Window.GetWindow(this),
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Visibility = Visibility.Hidden
+        };
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
@@ -204,41 +211,6 @@ public partial class PlayerControls
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
     }
 
-    //private void SeekBar_ValueChanged(object? sender, RoutedPropertyChangedEventArgs<double>? e)
-    //{
-    //    double val = SeekBar.Value;
-    //    UIElementCollection borders = UniGrid.Children;
-
-    //    int before = (int)(borders.Count * val / 100);
-
-    //    for (int i = 0; i < borders.Count; i++)
-    //    {
-    //        if (i < before)
-    //            ((borders[i] as Border)!).Opacity = 1;
-    //        else
-    //            ((borders[i] as Border)!).Opacity = 0.4;
-    //    }
-    //}
-
-    //private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    //{
-    //    PackIcon? icon = MuteButton.Content as PackIcon;
-    //    double val = VolumeSlider.Value;
-
-    //    if (val == 0)
-    //    {
-    //        if (icon != null) icon.Kind = PackIconKind.VolumeMute;
-    //    }
-    //    else if (val < 50)
-    //    {
-    //        if (icon != null) icon.Kind = PackIconKind.VolumeMedium;
-    //    }
-    //    else if (val >= 50)
-    //    {
-    //        if (icon != null) icon.Kind = PackIconKind.VolumeHigh;
-    //    }
-    //}
-
     double _mainVolumeSliderBeforeMuteValue;
 
     private void OnMuteChanged(bool isMuted)
@@ -254,23 +226,6 @@ public partial class PlayerControls
             AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
         }
     }
-
-    //private void OnAudioStopped()
-    //{
-    //    if ((audioEngine.CurrentTrackPosition + 0.3) >= audioEngine.CurrentTrackLength)
-    //    {
-    //        SeekBarTimer.Stop();
-
-    //        _playerControlsViewModel.NextTrack();
-    //    }
-    //    else
-    //    {
-    //        audioEngine.Pause();
-
-    //        SeekBarTimer.Stop();
-    //    }
-
-    //}
 
     private void AnimateVolumeSliderValue(Slider slider, double newVal)
     {
@@ -288,12 +243,6 @@ public partial class PlayerControls
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
         if (_equalizerWindow is { IsVisible: true }) return;
-
-        _equalizerWindow = new()
-        {
-            Owner = Window.GetWindow(this),
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
 
         _equalizerWindow.Show();
     }

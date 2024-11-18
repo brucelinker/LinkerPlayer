@@ -35,6 +35,11 @@ public partial class EqualizerWindow
 
         EqSwitch.Switched += OnEqSwitched;
         this.Closed += Window_Closed!;
+
+        WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
+        {
+            OnMainWindowClosing();
+        });
     }
 
     private void SetBand(int index, float value)
@@ -163,7 +168,6 @@ public partial class EqualizerWindow
         if (bandsSettings == null) { return; }
 
         for (int i = 0; i < bandsSettings.EqualizerBands!.Count; i++)
-        //for (int i = 0; i < 10; i++)
         {
             Slider slider = (Slider)EqGrid.FindName($"Slider{i}")!;
             slider.IsEnabled = state;
@@ -229,11 +233,19 @@ public partial class EqualizerWindow
         }
     }
 
+    private void OnMainWindowClosing()
+    {
+        Window? win = GetWindow(this);
+
+        win?.Close();
+    }
+
     // CloseBox and CloseButton
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Window? win = GetWindow(this);
-        if (win != null) win.Close();
+
+        win?.Hide();
     }
 
     // CloseBox button
@@ -271,8 +283,6 @@ public partial class EqualizerWindow
         }
         else
         {
-            //_audioEngine.StopEqualizer();
-
             if (_audioEngine.IsPlaying)
             {
                 _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);

@@ -156,8 +156,7 @@
     </Grid>
     <!--  {Binding IsOn}" />  -->
 
-    <Grid Grid.Row="2"
-          Margin="25,0,20,0">
+    <Grid Grid.Row="2" Margin="25,0,20,0">
       <Grid.ColumnDefinitions>
         <!--<ColumnDefinition Width="*" />-->
         <ColumnDefinition Width="Auto" />
@@ -274,7 +273,7 @@
         <ColumnDefinition Width="38" />
       </Grid.ColumnDefinitions>
 
-      <Border BorderBrush="Transparent" BorderThickness="1" >
+      <Border BorderBrush="Transparent" BorderThickness="1">
 
         <Grid Margin="0,16,0,6">
           <Grid.RowDefinitions>
@@ -285,23 +284,23 @@
           </Grid.RowDefinitions>
 
           <TextBlock
-          Grid.Row="0"
-          VerticalAlignment="Top"
-          d:Foreground="white"
-          Foreground="{DynamicResource ControlForegroundBrush}"
-          Text="12 dB"/>
+            Grid.Row="0"
+            VerticalAlignment="Top"
+            d:Foreground="white"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Text="12 dB" />
           <TextBlock
-          Grid.Row="1"
-          VerticalAlignment="Center"
-          d:Foreground="white"
-          Foreground="{DynamicResource ControlForegroundBrush}"
-          Text="0 dB" />
+            Grid.Row="1"
+            VerticalAlignment="Center"
+            d:Foreground="white"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Text="0 dB" />
           <TextBlock
-          Grid.Row="2"
-          VerticalAlignment="Bottom"
-          d:Foreground="white"
-          Foreground="{DynamicResource ControlForegroundBrush}"
-          Text="-12 dB" />
+            Grid.Row="2"
+            VerticalAlignment="Bottom"
+            d:Foreground="white"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Text="-12 dB" />
 
         </Grid>
       </Border>
@@ -317,33 +316,33 @@
           Margin="0,0,0,0"
           HorizontalAlignment="Stretch"
           Orientation="Horizontal">
-          <Border BorderBrush="Transparent" BorderThickness="1" >
+          <Border BorderBrush="Transparent" BorderThickness="1">
 
             <StackPanel Width="38" Margin="0,0,0,0">
               <Slider
-              x:Name="Slider0"
-              Height="200"
-              HorizontalAlignment="Center"
-              Value="{Binding Band0, Mode=TwoWay}"
-              Maximum="12"
-              Minimum="-12"
-              Orientation="Vertical"
-              Style="{StaticResource EqVerticalSlider}"
-              TickFrequency="1"
-              TickPlacement="BottomRight" />
+                x:Name="Slider0"
+                Height="200"
+                HorizontalAlignment="Center"
+                Maximum="12"
+                Minimum="-12"
+                Orientation="Vertical"
+                Style="{StaticResource EqVerticalSlider}"
+                TickFrequency="1"
+                TickPlacement="BottomRight"
+                Value="{Binding Band0, Mode=TwoWay}" />
               <TextBlock
-              Margin="0,5,0,3"
-              HorizontalAlignment="Center"
-              d:Foreground="White"
-              Foreground="{DynamicResource ControlForegroundBrush}"
-              Text="32" />
+                Margin="0,5,0,3"
+                HorizontalAlignment="Center"
+                d:Foreground="White"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="32" />
               <TextBlock
-              Name="Band0Label"
-              HorizontalAlignment="Center"
-              d:Foreground="White"
-              d:Text="0.0"
-              Foreground="{DynamicResource ControlForegroundBrush}"
-              Text="{Binding Band0, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
+                Name="Band0Label"
+                HorizontalAlignment="Center"
+                d:Foreground="White"
+                d:Text="0.0"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="{Binding Band0, Mode=TwoWay, Converter={StaticResource EqFloatToStringConverter}}" />
             </StackPanel>
           </Border>
           <StackPanel Width="38" Margin="0,0,0,0">
@@ -351,13 +350,13 @@
               x:Name="Slider1"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band1, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band1, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -377,13 +376,13 @@
               x:Name="Slider2"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band2, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band2, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -403,13 +402,13 @@
               x:Name="Slider3"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band3, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band3, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -429,13 +428,13 @@
               x:Name="Slider4"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band4, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band4, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -455,13 +454,13 @@
               x:Name="Slider5"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band5, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band5, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -481,13 +480,13 @@
               x:Name="Slider6"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band6, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band6, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -507,13 +506,13 @@
               x:Name="Slider7"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band7, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band7, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -533,13 +532,13 @@
               x:Name="Slider8"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band8, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band8, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
@@ -559,13 +558,13 @@
               x:Name="Slider9"
               Height="200"
               HorizontalAlignment="Center"
-              Value="{Binding Band9, Mode=TwoWay}"
               Maximum="12"
               Minimum="-12"
               Orientation="Vertical"
               Style="{StaticResource EqVerticalSlider}"
               TickFrequency="1"
-              TickPlacement="BottomRight" />
+              TickPlacement="BottomRight"
+              Value="{Binding Band9, Mode=TwoWay}" />
             <TextBlock
               Margin="0,5,0,3"
               HorizontalAlignment="Center"
