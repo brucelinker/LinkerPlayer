@@ -29,7 +29,7 @@ public partial class MainWindow
         InitializeComponent();
 
         // Remember window placement
-        ((App)Application.Current).WindowPlace.Register(this);
+        ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
         WinMax.DoSourceInitialized(this);
     }
 

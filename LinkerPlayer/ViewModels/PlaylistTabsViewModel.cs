@@ -380,7 +380,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         bool? result = folderDialog.ShowDialog();
 
-        if (result ?? false) return;
+        if (result is null or false) return;
 
         string selectedFolderPath = folderDialog.FolderName;
         DirectoryInfo dirInfo = new(selectedFolderPath);

@@ -46,12 +46,16 @@ public partial class PlayerControls
         VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
         ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
 
-        _equalizerWindow = new()
-        {
-            Owner = Window.GetWindow(this),
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Visibility = Visibility.Hidden
-        };
+        _equalizerWindow = new();
+        _equalizerWindow.Hide();
+        //{
+        //    Owner = Window.GetWindow(this),
+        //    WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        //    Visibility = Visibility.Hidden
+        //};
+
+        // Remember window placement
+        ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
