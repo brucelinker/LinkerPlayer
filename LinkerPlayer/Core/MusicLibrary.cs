@@ -18,6 +18,8 @@ public abstract class MusicLibrary
     public static List<Playlist?> Playlists = new();
     public static SQLiteConnector connector;
 
+    private static string[] _supportedAudioExtensions = [".mp3", ".flac", ".wav"];
+
     static MusicLibrary()
     {
         JsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -78,7 +80,8 @@ public abstract class MusicLibrary
 
     public static bool AddSong(MediaFile mediaFile)
     {
-        if (!string.IsNullOrEmpty(mediaFile.Path) && Path.GetExtension(mediaFile.Path).Equals(".mp3", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(mediaFile.Path) && 
+            _supportedAudioExtensions.Any(s => s.Contains(Path.GetExtension(mediaFile.Path))));
         {
             mediaFile.UpdateFromFileMetadata();
             MainLibrary.Add(mediaFile.Clone());
@@ -152,11 +155,10 @@ public abstract class MusicLibrary
                 playlist.SongIds!.ToList().RemoveAll(x => x == songId);
                 MainLibrary.RemoveAll(x => x!.Id == songId);
             }
-
-            Playlists.RemoveAll(p => p!.Name == playlistName);
-
-            SaveToJson();
         }
+
+        Playlists.RemoveAll(p => p!.Name == playlistName);
+        SaveToJson();
 
         Log.Information($"Playlist \'{playlistName}\' removed");
     }

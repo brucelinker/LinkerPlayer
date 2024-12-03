@@ -41,10 +41,10 @@ public partial class MainWindow
     
     private void Window_Closing(object sender, EventArgs e)
     {
-        _mainViewModel.OnWindowClosing();
         WeakReferenceMessenger.Default.Send(new MainWindowClosingMessage(true));
+        _mainViewModel.OnWindowClosing();
     }
-    
+
     private void Window_StateChanged(object sender, EventArgs e)
     {
         if (WindowState == WindowState.Maximized)

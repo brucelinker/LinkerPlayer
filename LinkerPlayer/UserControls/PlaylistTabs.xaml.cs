@@ -68,17 +68,17 @@ public partial class PlaylistTabs
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
     {
-        playlistTabsViewModel.RemovePlaylist(sender, e);
+        playlistTabsViewModel.RemovePlaylist(sender);
     }
 
     private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
     {
-        playlistTabsViewModel.AddFolder(sender, e);
+        playlistTabsViewModel.AddFolder();
     }
 
     private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
     {
-        playlistTabsViewModel.AddFiles(sender, e);
+        playlistTabsViewModel.AddFiles();
     }
 
     private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
@@ -88,13 +88,13 @@ public partial class PlaylistTabs
     
     private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
     {
-        playlistTabsViewModel.RemoveTrack(sender, e);
+        playlistTabsViewModel.RemoveTrack();
 
     }
 
     private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
     {
-        playlistTabsViewModel.NewPlaylistFromFolder(sender, e);
+        playlistTabsViewModel.NewPlaylistFromFolder();
     }
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -113,7 +113,7 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            playlistTabsViewModel.OnDataGridSorted(sender, e);
+            playlistTabsViewModel.OnDataGridSorted(sender);
         }, null);
     }
 }
