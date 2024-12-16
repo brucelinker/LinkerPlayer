@@ -81,7 +81,7 @@ public abstract class MusicLibrary
     public static bool AddSong(MediaFile mediaFile)
     {
         if (!string.IsNullOrEmpty(mediaFile.Path) && 
-            _supportedAudioExtensions.Any(s => s.Contains(Path.GetExtension(mediaFile.Path))));
+            _supportedAudioExtensions.Any(s => s.Contains(Path.GetExtension(mediaFile.Path))))
         {
             mediaFile.UpdateFromFileMetadata();
             MainLibrary.Add(mediaFile.Clone());

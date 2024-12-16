@@ -15,54 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="UserControls\SpectrumAnalyzerNAudio.xaml.cs" />
-    <Compile Remove="Windows\DownloadsWindow.xaml.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Fonts\Montserrat.ttf" />
-    <None Remove="Images\app.png" />
-    <None Remove="Images\app32.ico" />
-    <None Remove="Images\app64.ico" />
-    <None Remove="Images\cdgraphic.png" />
-    <None Remove="Images\cd_graphic.png" />
-    <None Remove="Images\close.png" />
-    <None Remove="Images\loadfile.png" />
-    <None Remove="Images\loadfolder.png" />
-    <None Remove="Images\download.png" />
-    <None Remove="Images\equalizer.png" />
-    <None Remove="Images\expand.png" />
-    <None Remove="Images\loop.png" />
-    <None Remove="Images\loop1.png" />
-    <None Remove="Images\maximize.png" />
-    <None Remove="Images\mic.png" />
-    <None Remove="Images\minimize.png" />
-    <None Remove="Images\next.png" />
-    <None Remove="Images\noloop.png" />
-    <None Remove="Images\no_album_cover_dark.jpg" />
-    <None Remove="Images\no_album_cover_light.jpg" />
-    <None Remove="Images\pause.png" />
-    <None Remove="Images\play.png" />
-    <None Remove="Images\plus.png" />
-    <None Remove="Images\prev.png" />
-    <None Remove="Images\Reel.png" />
-    <None Remove="Images\reload.png" />
-    <None Remove="Images\restore.png" />
-    <None Remove="Images\save.png" />
-    <None Remove="Images\settings.png" />
-    <None Remove="Images\shuffle.png" />
-    <None Remove="Images\speaker.png" />
-    <None Remove="Images\tray32.ico" />
-    <None Remove="Images\tray64.ico" />
-    <None Remove="Presets\DefaultPresets.json" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Page Remove="UserControls\SpectrumAnalyzerNAudio.xaml" />
-    <Page Remove="Windows\DownloadsWindow.xaml" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
     <PackageReference Include="MahApps.Metro" Version="2.4.10" />
