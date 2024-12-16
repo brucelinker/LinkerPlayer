@@ -1,7 +1,7 @@
 ﻿using LinkerPlayer.Windows;
 using Serilog;
 using System;
-using System.Data.SQLite;
+//using System.Data.SQLite;
 using System.IO;
 
 namespace LinkerPlayer.Core;
@@ -9,82 +9,82 @@ namespace LinkerPlayer.Core;
 // ReSharper disable once InconsistentNaming
 public class SQLiteConnector
 {
-    private SQLiteConnection? _sqlConnection;
+    //private SQLiteConnection? _sqlConnection;
 
-    public void Init()
-    {
-        string DatabaseFile = 
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinkerPlayer", "LinkerPlayer.db");
+    //public void Init()
+    //{
+    //    string DatabaseFile = 
+    //        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinkerPlayer", "LinkerPlayer.db");
 
 
-        if (!File.Exists(DatabaseFile))
-        {
-            SQLiteConnection.CreateFile(DatabaseFile);
-        }
+    //    if (!File.Exists(DatabaseFile))
+    //    {
+    //        SQLiteConnection.CreateFile(DatabaseFile);
+    //    }
 
-        _sqlConnection = new SQLiteConnection("Data Source='" + DatabaseFile + "'; Version=3;");
-        _sqlConnection.Open();
+    //    _sqlConnection = new SQLiteConnection("Data Source='" + DatabaseFile + "'; Version=3;");
+    //    _sqlConnection.Open();
 
-        Create();
+    //    Create();
 
-        GetTables();
-    }
+    //    GetTables();
+    //}
 
-    void Create()
-    {
-        string sql = @"CREATE TABLE IF NOT EXISTS 'Tracks' (
-            'id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            'Path' TEXT,
-            'FileName' TEXT,
-            'Track' TEXT,
-            'TrackCount' INTEGER,
-            'Disc' INTEGER,
-            'DiscCount' INTEGER,
-            'Year' INTEGER,
-            'Title' TEXT,
-            'Album' TEXT,
-            'Artists' TEXT,
-            'Performers' TEXT,
-            'Composers' TEXT,
-            'Genres' TEXT,
-            'Comment' TEXT,
-            'Duration' INTEGER,
-            'Bitrate' INTEGER,
-            'SampleRate' INTEGER,
-            'Channels' INTEGER,
-            'Copyright' TEXT,
-            'AlbumCover' TEXT
-            );";
-        SQLiteCommand command = new(sql, _sqlConnection);
-        command.ExecuteNonQuery();
+    //void Create()
+    //{
+    //    string sql = @"CREATE TABLE IF NOT EXISTS 'Tracks' (
+    //        'id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+    //        'Path' TEXT,
+    //        'FileName' TEXT,
+    //        'Track' TEXT,
+    //        'TrackCount' INTEGER,
+    //        'Disc' INTEGER,
+    //        'DiscCount' INTEGER,
+    //        'Year' INTEGER,
+    //        'Title' TEXT,
+    //        'Album' TEXT,
+    //        'Artists' TEXT,
+    //        'Performers' TEXT,
+    //        'Composers' TEXT,
+    //        'Genres' TEXT,
+    //        'Comment' TEXT,
+    //        'Duration' INTEGER,
+    //        'Bitrate' INTEGER,
+    //        'SampleRate' INTEGER,
+    //        'Channels' INTEGER,
+    //        'Copyright' TEXT,
+    //        'AlbumCover' TEXT
+    //        );";
+    //    SQLiteCommand command = new(sql, _sqlConnection);
+    //    command.ExecuteNonQuery();
 
-        sql = @"CREATE TABLE IF NOT EXISTS `Playlists` (
-	        'Id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-	        'Name' TEXT NOT NULL,
-	        'SongId' INTEGER NOT NULL
-        );";
-        command = new SQLiteCommand(sql, _sqlConnection);
-        command.ExecuteNonQuery();
+    //    sql = @"CREATE TABLE IF NOT EXISTS `Playlists` (
+	   //     'Id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+	   //     'Name' TEXT NOT NULL,
+	   //     'SongId' INTEGER NOT NULL
+    //    );";
+    //    command = new SQLiteCommand(sql, _sqlConnection);
+    //    command.ExecuteNonQuery();
 
-        sql = @"CREATE TABLE IF NOT EXISTS `Presets` (
-	        'Id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-	        'Name' TEXT NOT NULL,
-            'Locked' BOOLEAN NOT NULL
-	        'Band0' FLOAT(3,1) NOT NULL,
-	        'Band1' FLOAT(3,1) NOT NULL,
-	        'Band2' FLOAT(3,1) NOT NULL,
-	        'Band3' FLOAT(3,1) NOT NULL,
-	        'Band4' FLOAT(3,1) NOT NULL,
-	        'Band5' FLOAT(3,1) NOT NULL,
-	        'Band6' FLOAT(3,1) NOT NULL,
-	        'Band7' FLOAT(3,1) NOT NULL,
-	        'Band8' FLOAT(3,1) NOT NULL,
-	        'Band9' FLOAT(3,1) NOT NULL,
-        );";
-        command = new SQLiteCommand(sql, _sqlConnection);
-        command.ExecuteNonQuery();
+    //    sql = @"CREATE TABLE IF NOT EXISTS `Presets` (
+	   //     'Id' INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+	   //     'Name' TEXT NOT NULL,
+    //        'Locked' BOOLEAN NOT NULL
+	   //     'Band0' FLOAT(3,1) NOT NULL,
+	   //     'Band1' FLOAT(3,1) NOT NULL,
+	   //     'Band2' FLOAT(3,1) NOT NULL,
+	   //     'Band3' FLOAT(3,1) NOT NULL,
+	   //     'Band4' FLOAT(3,1) NOT NULL,
+	   //     'Band5' FLOAT(3,1) NOT NULL,
+	   //     'Band6' FLOAT(3,1) NOT NULL,
+	   //     'Band7' FLOAT(3,1) NOT NULL,
+	   //     'Band8' FLOAT(3,1) NOT NULL,
+	   //     'Band9' FLOAT(3,1) NOT NULL,
+    //    );";
+    //    command = new SQLiteCommand(sql, _sqlConnection);
+    //    command.ExecuteNonQuery();
 
-    }
+    //}
 
     //private const string SqlGetTrack = "SELECT COUNT(id) as count, id FROM RecentTracks WHERE path = '{0}'";
     //private const string SqlInsertTrack = "INSERT INTO RecentTracks (path, playcount, playdate) VALUES ('{0}',1,'{1}')";
@@ -98,7 +98,7 @@ public class SQLiteConnector
     //private const string SqlGetAlbumTrack = "SELECT id FROM AlbumTracks WHERE albumId = '{0}' AND path = '{1}' LIMIT 1";
     //private const string SqlGetAlbumTrackCount = "SELECT COUNT(id) as count FROM AlbumTracks WHERE Albumid = '{0}'";
 
-    private const string SqlGetTables = "SELECT name FROM sqlite_master WHERE type = 'table'";
+    //private const string SqlGetTables = "SELECT name FROM sqlite_master WHERE type = 'table'";
 
     //private const string SqlGetRecentAlbums = "SELECT * FROM (SELECT id, name, year, playcount FROM  RecentAlbums WHERE name <> '' ORDER BY playdate DESC LIMIT 400) ORDER BY playcount DESC LIMIT {0}";
     //private const string SqlGetRecentTracks = "SELECT * FROM (SELECT path, playcount from RecentTracks ORDER BY playdate DESC LIMIT 10000) ORDER BY playcount DESC LIMIT {0}";
@@ -114,18 +114,18 @@ public class SQLiteConnector
 
     //private static string Desanitize(string str) => str.Replace("{!x%99}", "'");
 
-    private void GetTables()
-    {
-        string sql = string.Format(SqlGetTables);
-        SQLiteCommand command = new(sql, _sqlConnection);
+    //private void GetTables()
+    //{
+    //    string sql = string.Format(SqlGetTables);
+    //    SQLiteCommand command = new(sql, _sqlConnection);
 
-        using SQLiteDataReader reader = command.ExecuteReader();
-        while (reader.Read())
-        {
-            string str = reader.ToString() ?? string.Empty;
-            Log.Information(str);
-        }
-    }
+    //    using SQLiteDataReader reader = command.ExecuteReader();
+    //    while (reader.Read())
+    //    {
+    //        string str = reader.ToString() ?? string.Empty;
+    //        Log.Information(str);
+    //    }
+    //}
 
     //private int GetAlbum(string name, string year)
     //{

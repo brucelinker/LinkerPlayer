@@ -22,25 +22,25 @@
     <PackageReference Include="MaterialDesignThemes" Version="5.1.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <!--<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />-->
+    <!--<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />-->
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Extras" Version="2.2.1" />
     <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
-    <PackageReference Include="NAudio.WinForms" Version="2.2.1" />
+    <!--<PackageReference Include="NAudio.WinForms" Version="2.2.1" />-->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="PlaylistsNET" Version="1.4.1" />
     <PackageReference Include="RestoreWindowPlace" Version="2.1.0" />
     <PackageReference Include="Serilog" Version="4.1.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
-    <PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
+    <!--<PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />-->
+    <!--<PackageReference Include="Serilog.Extensions.Logging.File" Version="3.0.0" />-->
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
-    <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
-    <PackageReference Include="System.Drawing.Common" Version="8.0.1" />
+    <!--<PackageReference Include="System.Data.SqlClient" Version="4.9.0" />-->
+    <!--<PackageReference Include="System.Data.SQLite" Version="1.0.119" />-->
+    <!--<PackageReference Include="System.Drawing.Common" Version="8.0.1" />-->
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
   </ItemGroup>
 
