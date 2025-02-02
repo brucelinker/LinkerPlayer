@@ -16,7 +16,6 @@ public abstract class MusicLibrary
     private static readonly string JsonFilePath;
     public static List<MediaFile?> MainLibrary = new();
     public static List<Playlist?> Playlists = new();
-    public static SQLiteConnector connector;
 
     private static string[] _supportedAudioExtensions = [".mp3", ".flac", ".wav"];
 
@@ -26,8 +25,6 @@ public abstract class MusicLibrary
             "LinkerPlayer", "music_library.json");
 
         LoadFromJson();
-
-        connector = new SQLiteConnector();
     }
 
     private static void LoadFromJson()

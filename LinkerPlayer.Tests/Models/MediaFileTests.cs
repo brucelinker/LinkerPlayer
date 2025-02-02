@@ -1,5 +1,5 @@
-﻿using FluentAssertions;
-using LinkerPlayer.Models;
+﻿using LinkerPlayer.Models;
+using Shouldly;
 
 namespace LinkerPlayer.Tests.Models;
 
@@ -14,7 +14,7 @@ public class MediaFileTests
 
         mediaFile.UpdateFromFileMetadata(false);
 
-        mediaFile.Performers.Should().Be("Grand Funk");
-        mediaFile.Artists.Should().Be("Grand Funk");
+        mediaFile.Performers.ShouldBe("Grand Funk");
+        mediaFile.Artists.ShouldBe("Grand Funk");
     }
 }
