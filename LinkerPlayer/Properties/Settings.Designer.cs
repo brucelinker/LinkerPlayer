@@ -12,7 +12,7 @@ namespace LinkerPlayer.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.8.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.12.0.0")]
     internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
         
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
@@ -62,12 +62,12 @@ namespace LinkerPlayer.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string LastSelectedSongId {
+        public string LastSelectedTrackId {
             get {
-                return ((string)(this["LastSelectedSongId"]));
+                return ((string)(this["LastSelectedTrackId"]));
             }
             set {
-                this["LastSelectedSongId"] = value;
+                this["LastSelectedTrackId"] = value;
             }
         }
         
@@ -206,24 +206,24 @@ namespace LinkerPlayer.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string NextSongHotkey {
+        public string NextTrackHotkey {
             get {
-                return ((string)(this["NextSongHotkey"]));
+                return ((string)(this["NextTrackHotkey"]));
             }
             set {
-                this["NextSongHotkey"] = value;
+                this["NextTrackHotkey"] = value;
             }
         }
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string PreviousSongHotkey {
+        public string PreviousTrackHotkey {
             get {
-                return ((string)(this["PreviousSongHotkey"]));
+                return ((string)(this["PreviousTrackHotkey"]));
             }
             set {
-                this["PreviousSongHotkey"] = value;
+                this["PreviousTrackHotkey"] = value;
             }
         }
         

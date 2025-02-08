@@ -5,12 +5,12 @@ namespace LinkerPlayer.Tests.Models;
 
 public class MediaFileTests
 {
-    private string fileName = "D:\\Music\\Patriotic\\Grand Funk\\Grand Funk - We're an American Band.mp3";
+    private readonly string _fileName = "D:\\Music\\Patriotic\\Grand Funk\\Grand Funk - We're an American Band.mp3";
 
     [Fact]
     public void GivenArtistIsNull_ShouldUsePerformersValue()
     {
-        MediaFile mediaFile = new MediaFile(fileName);
+        MediaFile mediaFile = new(_fileName);
 
         mediaFile.UpdateFromFileMetadata(false);
 

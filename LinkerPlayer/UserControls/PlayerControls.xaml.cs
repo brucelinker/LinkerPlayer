@@ -103,7 +103,7 @@ public partial class PlayerControls
 
     private void SetTrackStatus(MediaFile selectedTrack)
     {
-        CurrentSongName.Text = selectedTrack.Title;
+        CurrentTrackName.Text = selectedTrack.Title;
         TimeSpan ts = selectedTrack.Duration;
         TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
         CurrentTime.Text = "0:00";

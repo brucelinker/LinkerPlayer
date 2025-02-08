@@ -195,9 +195,9 @@ public partial class PlayerControlsViewModel : BaseViewModel
         State = playbackState;
     }
 
-    private void OnAudioStopped(bool songEnded)
+    private void OnAudioStopped(bool trackEnded)
     {
-        if (songEnded)
+        if (trackEnded)
         {
             NextTrack();
         }

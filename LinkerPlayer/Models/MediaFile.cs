@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Core;
+using NAudio.Wave;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -7,10 +8,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows.Media.Imaging;
-using NAudio.CoreAudioApi;
 using TagLib;
 using File = TagLib.File;
-using NAudio.Wave;
 
 namespace LinkerPlayer.Models;
 
@@ -36,7 +35,6 @@ public interface IMediaFile
     int SampleRate { get; } 
     int Channels { get; } 
     BitmapImage? AlbumCover { get; }
-    int PlayListIndex { get; set; }
     PlaybackState State { get; set; }
 }
 
@@ -110,19 +108,6 @@ public class MediaFile : ObservableObject, IMediaFile
             if (_state == value) return;
 
             _state = value;
-            OnPropertyChanged();
-        }
-    }
-
-    int _playListIndex;
-    public int PlayListIndex
-    {
-        get => _playListIndex;
-        set
-        {
-            if (_playListIndex == value) return;
-
-            _playListIndex = value;
             OnPropertyChanged();
         }
     }
@@ -248,8 +233,7 @@ public class MediaFile : ObservableObject, IMediaFile
             SampleRate = this.SampleRate,
             Channels = this.Channels,
             Copyright = this.Copyright,
-            AlbumCover = this.AlbumCover,
-            PlayListIndex = this.PlayListIndex
+            AlbumCover = this.AlbumCover
         };
     }
 }
