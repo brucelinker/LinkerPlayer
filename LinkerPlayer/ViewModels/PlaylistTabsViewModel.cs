@@ -232,9 +232,12 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     public void OnDataGridSorted(object _)
     {
+        if(_dataGrid is null) return;
+
         SelectedTab!.SelectedIndex =
             _tracksView.FindIndex(x => x.Id == SelectedTrack!.Id);
         SelectedTrackIndex = (int)SelectedTab!.SelectedIndex;
+        _dataGrid.SelectedItem = SelectedTrack;
 
         if (_dataGrid is { Items.Count: > 0 })
         {

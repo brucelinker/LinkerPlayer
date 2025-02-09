@@ -23,6 +23,7 @@
 
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
+      <converters:IndexConverter x:Key="IndexConverter" />
 
       <Style x:Key="EditableTabHeaderControl" TargetType="{x:Type userControls:EditableTabHeaderControl}">
         <Setter Property="Template">
@@ -99,8 +100,8 @@
           CanUserAddRows="False"
           CanUserDeleteRows="False"
           CanUserReorderColumns="True"
-          EnableColumnVirtualization="True"
-          EnableRowVirtualization="True"
+          EnableRowVirtualization="False"
+          EnableColumnVirtualization="False"
           GridLinesVisibility="None"
           IsReadOnly="True"
           ItemsSource="{Binding Tracks, IsAsync=True}"
@@ -180,6 +181,20 @@
           </DataGrid.RowStyle>
 
           <DataGrid.Columns>
+            <DataGridTextColumn Header="No." IsReadOnly="True">
+              <DataGridTextColumn.Binding>
+                <MultiBinding Converter="{StaticResource IndexConverter}">
+                  <Binding RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=DataGrid}" />
+                  <Binding />
+                </MultiBinding>
+              </DataGridTextColumn.Binding>
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextAlignment" Value="Center"/>
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+
             <DataGridTemplateColumn
               Width="Auto"
               MinWidth="{DynamicResource TrackTableImageSize}"
@@ -231,7 +246,7 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="20*"
+              Width="Auto"
               Header="Title"
               SortMemberPath="Title">
               <DataGridTemplateColumn.CellTemplate>
@@ -279,7 +294,7 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="20*"
+              Width="Auto"
               Header="Artist"
               SortMemberPath="Artists">
               <DataGridTemplateColumn.CellTemplate>
@@ -295,7 +310,7 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="20*"
+              Width="Auto"
               Header="Album"
               SortMemberPath="Album">
               <DataGridTemplateColumn.CellTemplate>
@@ -327,6 +342,7 @@
             </DataGridTemplateColumn>
 
           </DataGrid.Columns>
+
           <DataGrid.ContextMenu>
             <ContextMenu>
               <MenuItem Click="MenuItem_PlayTrack" Header="Play" />

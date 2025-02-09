@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 
 namespace LinkerPlayer.Core;
 
-internal class Helper
+internal static class Helper
 {
     // Helper.FindVisualChildren<Grid>(this).FirstOrDefault()!.Focus();
     public static IEnumerable<T> FindVisualChildren<T>(DependencyObject? depObj) where T : DependencyObject
@@ -24,6 +25,31 @@ internal class Helper
                 foreach (T childOfChild in FindVisualChildren<T>(child))
                     yield return childOfChild;
             }
+        }
+    }
+
+    public static int GetIndex(this DataGridRow row)
+    {
+        DataGrid? dataGrid = FindVisualParent<DataGrid>(row);
+
+        if (dataGrid != null)
+        {
+            return dataGrid.ItemContainerGenerator.IndexFromContainer(row);
+        }
+
+        return -1; // Error case, no DataGrid found
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject child) where T : DependencyObject
+    {
+        while (true)
+        {
+            DependencyObject? parentObject = VisualTreeHelper.GetParent(child);
+
+            if (parentObject == null) return null;
+            if (parentObject is T parent) return parent;
+
+            child = parentObject;
         }
     }
 
