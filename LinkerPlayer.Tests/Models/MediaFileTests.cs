@@ -15,6 +15,6 @@ public class MediaFileTests
         mediaFile.UpdateFromFileMetadata(false);
 
         mediaFile.Performers.ShouldBe("Grand Funk");
-        mediaFile.Artists.ShouldBe("Grand Funk");
+        mediaFile.Artist.ShouldBe("Grand Funk");
     }
 }

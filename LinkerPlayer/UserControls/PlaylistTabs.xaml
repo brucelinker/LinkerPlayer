@@ -84,7 +84,7 @@
 
       <DataTemplate x:Key="ContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <DataGrid
-          Name="TracksTable"
+          Name="PlaylistDataGrid"
           Width="Auto"
           Height="Auto"
           MaxWidth="3840"
@@ -100,8 +100,8 @@
           CanUserAddRows="False"
           CanUserDeleteRows="False"
           CanUserReorderColumns="True"
-          EnableRowVirtualization="False"
           EnableColumnVirtualization="False"
+          EnableRowVirtualization="True"
           GridLinesVisibility="None"
           IsReadOnly="True"
           ItemsSource="{Binding Tracks, IsAsync=True}"
@@ -109,8 +109,7 @@
           RowHeaderWidth="0"
           RowHeight="20"
           ScrollViewer.CanContentScroll="True"
-          ScrollViewer.HorizontalScrollBarVisibility="Auto"
-          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          ScrollViewer.IsDeferredScrollingEnabled="True"
           SelectionChanged="TracksTable_OnSelectionChanged"
           SelectionMode="Single"
           SelectionUnit="FullRow"
@@ -181,7 +180,7 @@
           </DataGrid.RowStyle>
 
           <DataGrid.Columns>
-            <DataGridTextColumn Header="No." IsReadOnly="True">
+            <DataGridTextColumn Header="#" Width="40" IsReadOnly="True">
               <DataGridTextColumn.Binding>
                 <MultiBinding Converter="{StaticResource IndexConverter}">
                   <Binding RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=DataGrid}" />
@@ -190,13 +189,13 @@
               </DataGridTextColumn.Binding>
               <DataGridTextColumn.ElementStyle>
                 <Style TargetType="TextBlock">
-                  <Setter Property="TextAlignment" Value="Center"/>
+                  <Setter Property="TextAlignment" Value="Right" />
                 </Style>
               </DataGridTextColumn.ElementStyle>
             </DataGridTextColumn>
 
             <DataGridTemplateColumn
-              Width="Auto"
+              Width="20"
               MinWidth="{DynamicResource TrackTableImageSize}"
               Header="">
 
@@ -230,7 +229,7 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="Auto"
+              Width="51"
               Header="Track"
               SortMemberPath="Track">
               <DataGridTemplateColumn.CellTemplate>
@@ -246,7 +245,7 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="Auto"
+              Width="300"
               Header="Title"
               SortMemberPath="Title">
               <DataGridTemplateColumn.CellTemplate>
@@ -294,23 +293,23 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="Auto"
+              Width="200"
               Header="Artist"
-              SortMemberPath="Artists">
+              SortMemberPath="Artist">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <TextBlock
                     Margin="5,0,5,0"
                     d:DataContext="{d:DesignData IMediaFile}"
                     FontSize="{DynamicResource FontSizeNormal}"
-                    Text="{Binding Artists}"
+                    Text="{Binding Artist}"
                     ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="Auto"
+              Width="300"
               Header="Album"
               SortMemberPath="Album">
               <DataGridTemplateColumn.CellTemplate>
@@ -326,14 +325,14 @@
             </DataGridTemplateColumn>
 
             <DataGridTemplateColumn
-              Width="Auto"
-              MinWidth="68"
-              Header="Length"
+              Width="72"
+              Header="Duration"
               SortMemberPath="Duration">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <TextBlock
                     Margin="5,0,5,0"
+                    HorizontalAlignment="right"
                     d:DataContext="{d:DesignData MediaFile}"
                     FontSize="{DynamicResource FontSizeNormal}"
                     Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
@@ -356,6 +355,7 @@
 
   <Grid>
     <TabControl
+      Name="Tabs123"
       Grid.Row="0"
       Margin="0,0,5,0"
       ContentTemplate="{StaticResource ContentTemplate}"

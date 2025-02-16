@@ -83,7 +83,7 @@ public partial class TrackInfo
         DisplayTrackImage(mediaFile);
 
         TrackName.Text = mediaFile.Title;
-        TrackArtist.Text = $"Artist:  {mediaFile.Artists}";
+        TrackArtist.Text = $"Artist:  {mediaFile.Artist}";
         TrackAlbum.Text = string.IsNullOrWhiteSpace(mediaFile.Album) ? "Album:  <undefined>" : $"Album:  {mediaFile.Album}";
         TrackYear.Text = mediaFile.Year == 0 ? "Year:  <undefined>" : $"Year:  {mediaFile.Year}";
         TrackBitrate.Text = $"Bitrate:  {mediaFile.Bitrate} kbps";

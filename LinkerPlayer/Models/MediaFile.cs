@@ -24,7 +24,7 @@ public interface IMediaFile
     uint DiscCount { get; }
     uint Year { get; }
     string Title { get; }
-    string Artists { get; }
+    string Artist { get; }
     string Album { get; }
     string Performers { get; }
     string Composers { get; }
@@ -67,7 +67,7 @@ public class MediaFile : ObservableObject, IMediaFile
     [JsonProperty(Required = Required.AllowNull)]
     public string Title { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
-    public string Artists { get; set; } = string.Empty;
+    public string Artist { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
     public string Album { get; set; } = string.Empty;
     [JsonProperty(Required = Required.AllowNull)]
@@ -137,17 +137,17 @@ public class MediaFile : ObservableObject, IMediaFile
                 Album = UnknownString;
             }
 
-            // Artists
+            // Artist
             List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Artists = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist;
+            Artist = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist;
 
             // Performers
             List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
             Performers = performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer;
 
-            if (string.IsNullOrWhiteSpace(Artists))
+            if (string.IsNullOrWhiteSpace(Artist))
             {
-                Artists = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
+                Artist = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
             }
 
             AlbumCover = CoverManager.GetImageFromPictureTag(Path);
@@ -193,7 +193,7 @@ public class MediaFile : ObservableObject, IMediaFile
 
     public override string ToString()
     {
-        return $"{Track} {Artists} - {Title} {Duration:m\\:ss}";
+        return $"{Track} {Artist} - {Title} {Duration:m\\:ss}";
     }
 
     //protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -223,7 +223,7 @@ public class MediaFile : ObservableObject, IMediaFile
             Year = this.Year,
             Title = this.Title,
             Album = this.Album,
-            Artists = this.Artists,
+            Artist = this.Artist,
             Performers = this.Performers,
             Composers = this.Composers,
             Genres = this.Genres,

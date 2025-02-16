@@ -12,38 +12,18 @@ public class EditableTabHeaderControl : ContentControl
     /// <summary>
     /// Dependency property to bind EditMode with XAML Trigger
     /// </summary>
-    private static readonly DependencyProperty IsInEditModeProperty = DependencyProperty.Register("IsInEditMode", typeof(bool), typeof(EditableTabHeaderControl));
+    private static readonly DependencyProperty IsInEditModeProperty = 
+        DependencyProperty.Register(nameof(IsInEditMode), typeof(bool), typeof(EditableTabHeaderControl));
     private TextBox? _textBox;
     private string? _oldText;
     private DispatcherTimer? _timer;
     private delegate void FocusTextBox();
 
-    public readonly PlaylistTabsViewModel playlistTabsViewModel;
+    public readonly PlaylistTabsViewModel PlaylistTabsViewModel;
 
     public EditableTabHeaderControl()
     {
-        playlistTabsViewModel = PlaylistTabsViewModel.Instance;
-    }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether this instance is in edit mode.
-    /// </summary>
-    public bool IsInEditMode
-    {
-        get
-        {
-            return (bool)GetValue(IsInEditModeProperty);
-        }
-        set
-        {
-            if (string.IsNullOrEmpty(_textBox!.Text))
-            {
-                _textBox.Text = _oldText;
-            }
-
-            _oldText = _textBox.Text;
-            SetValue(IsInEditModeProperty, value);
-        }
+        PlaylistTabsViewModel = PlaylistTabsViewModel.Instance;
     }
 
     /// <summary>
@@ -62,6 +42,24 @@ public class EditableTabHeaderControl : ContentControl
             LostFocus += TextBoxLostFocus;
             _textBox.KeyDown += TextBoxKeyDown;
             MouseDoubleClick += EditableTabHeaderControlMouseDoubleClick;
+        }
+    }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this instance is in edit mode.
+    /// </summary>
+    public bool IsInEditMode
+    {
+        get => (bool)GetValue(IsInEditModeProperty);
+        set
+        {
+            if (string.IsNullOrEmpty(_textBox!.Text))
+            {
+                if (_oldText != null) _textBox.Text = _oldText;
+            }
+
+            _oldText = _textBox.Text;
+            SetValue(IsInEditModeProperty, value);
         }
     }
 
@@ -101,13 +99,13 @@ public class EditableTabHeaderControl : ContentControl
     {
         if (e.Key == Key.Escape)
         {
-            _textBox!.Text = _oldText;
+            if (_oldText != null) _textBox!.Text = _oldText;
             IsInEditMode = false;
         }
         else if (e.Key == Key.Enter)
         {
             IsInEditMode = false;
-            playlistTabsViewModel.ChangeSelectedPlaylistName(_textBox!.Text);
+            PlaylistTabsViewModel.ChangeSelectedPlaylistName(_textBox!.Text);
         }
     }
 
