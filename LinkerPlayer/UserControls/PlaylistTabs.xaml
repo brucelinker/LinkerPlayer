@@ -159,8 +159,8 @@
               <Setter Property="VerticalAlignment" Value="Center" />
               <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
               <EventSetter Event="MouseDoubleClick" Handler="PlaylistRow_MouseDoubleClick" />
+              
               <Style.Triggers>
-
                 <Trigger Property="ItemsControl.AlternationIndex" Value="1">
                   <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
                 </Trigger>
@@ -171,16 +171,16 @@
                   <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
                   <Setter Property="FontWeight" Value="Bold" />
                 </Trigger>
-                <Trigger Property="IsVisible" Value="False">
-                  <Setter Property="Visibility" Value="Collapsed" />
-                </Trigger>
-
               </Style.Triggers>
+
             </Style>
           </DataGrid.RowStyle>
 
           <DataGrid.Columns>
-            <DataGridTextColumn Header="#" Width="40" IsReadOnly="True">
+            <DataGridTextColumn
+              Width="40"
+              Header="#"
+              IsReadOnly="True">
               <DataGridTextColumn.Binding>
                 <MultiBinding Converter="{StaticResource IndexConverter}">
                   <Binding RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=DataGrid}" />
@@ -361,6 +361,7 @@
       ContentTemplate="{StaticResource ContentTemplate}"
       ItemContainerStyle="{StaticResource ItemContainerStyle}"
       ItemsSource="{Binding TabList}"
+      SelectedIndex="{Binding SelectedTabIndex}"
       SelectionChanged="TabControl_SelectionChanged">
       <TabControl.ContextMenu>
         <ContextMenu>
