@@ -26,8 +26,6 @@ public partial class MainWindow
         Log.Information("App started");
         Log.Information($"MAINWINDOW - {++_count}");
 
-        InitializeComponent();
-
         // Remember window placement
         ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
         WinMax.DoSourceInitialized(this);

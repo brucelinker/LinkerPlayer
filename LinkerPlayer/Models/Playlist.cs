@@ -5,7 +5,7 @@ namespace LinkerPlayer.Models;
 
 public partial class Playlist : ObservableObject
 {
-    [ObservableProperty] private string? _name = "New Playlist";
-    [ObservableProperty] private string _selectedTrack = "";
-    public ObservableCollection<string>? TrackIds { get; set; } = new();
+    [ObservableProperty] private string _name = "New Playlist";
+    [ObservableProperty] private string _selectedTrack = string.Empty;
+    public ObservableCollection<string> TrackIds { get; set; } = new();
 }

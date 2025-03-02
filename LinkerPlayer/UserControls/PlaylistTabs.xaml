@@ -159,7 +159,7 @@
               <Setter Property="VerticalAlignment" Value="Center" />
               <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
               <EventSetter Event="MouseDoubleClick" Handler="PlaylistRow_MouseDoubleClick" />
-              
+
               <Style.Triggers>
                 <Trigger Property="ItemsControl.AlternationIndex" Value="1">
                   <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
