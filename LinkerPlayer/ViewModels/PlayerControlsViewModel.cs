@@ -102,10 +102,10 @@ public partial class PlayerControlsViewModel : BaseViewModel
             audioEngine.PathToMusic = SelectedTrack.Path;
             audioEngine.StopAndPlayFromPosition(0.0);
 
-            if (ActiveTrack == null || ActivePlaylistIndex == SelectedPlaylistIndex)
+            if (ActiveTrack == null)
             {
-                ActivePlaylistIndex = SelectedPlaylistIndex;
-                ActiveTrackIndex = SelectedTrackIndex;
+                //ActivePlaylistIndex = SelectedPlaylistIndex;
+                //ActiveTrackIndex = SelectedTrackIndex;
                 ActiveTrack = SelectedTrack;
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
@@ -144,8 +144,8 @@ public partial class PlayerControlsViewModel : BaseViewModel
         if (ActiveTrack != null)
         {
             ActiveTrack.State = PlaybackState.Stopped;
-            ActivePlaylistIndex = null;
-            ActiveTrackIndex = null;
+            //ActivePlaylistIndex = null;
+            //ActiveTrackIndex = null;
             ActiveTrack = null;
         }
 
@@ -160,9 +160,9 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PreviousTrack()
     {
-        MediaFile prevMediaFile = playlistTabsViewModel.PreviousMediaFile()!;
+        MediaFile? prevMediaFile = playlistTabsViewModel.PreviousMediaFile()!;
 
-        if (!File.Exists(prevMediaFile.Path))
+        if (prevMediaFile == null || !File.Exists(prevMediaFile.Path))
         {
             Log.Error("MediaFile not found.");
             return;
@@ -179,9 +179,9 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void NextTrack()
     {
-        MediaFile nextMediaFile = playlistTabsViewModel.NextMediaFile()!;
+        MediaFile? nextMediaFile = playlistTabsViewModel.NextMediaFile()!;
 
-        if (!File.Exists(nextMediaFile.Path))
+        if (nextMediaFile == null || !File.Exists(nextMediaFile.Path))
         {
             Log.Error("MediaFile not found.");
             return;

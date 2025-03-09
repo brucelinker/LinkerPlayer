@@ -5,6 +5,7 @@ using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -49,10 +50,23 @@ public partial class PlaylistTabs
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        if (e.Source is TabControl && (e.AddedItems.Count > 0 || e.RemovedItems.Count > 0))
         {
-            PlaylistTabsViewModel.OnTabSelectionChanged(sender, e);
-        }, null);
+            // Verify that the items are TabItems (or your tab content type)
+            bool isTabChange = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
+
+            if (isTabChange)
+            {
+                this.Dispatcher.BeginInvoke(
+                    (Action)delegate { PlaylistTabsViewModel.OnTabSelectionChanged(sender, e); }, null);
+                Console.WriteLine("Tab selection changed.");
+            }
+        }
+        else
+        {
+            // Ignore events from child controls like DataGrid
+            Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
+        }
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)

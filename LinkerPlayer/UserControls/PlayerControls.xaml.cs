@@ -43,6 +43,7 @@ public partial class PlayerControls
         SeekBar.ValueChanged += SeekBar_ValueChanged;
         Dispatcher.ShutdownStarted += PlayerControls_ShutdownStarted!;
 
+
         VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
         ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
 
@@ -57,10 +58,10 @@ public partial class PlayerControls
         // Remember window placement
         ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
-        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
-        {
-            OnSelectedTrackChanged(m.Value);
-        });
+        //WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
+        //{
+        //    OnSelectedTrackChanged(m.Value);
+        //});
 
         WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         {
@@ -196,6 +197,8 @@ public partial class PlayerControls
     private void VolumeSlider_ValueChanged(object sender, EventArgs e)
     {
         _audioEngine.MusicVolume = (float)VolumeSlider.Value / 100;
+
+        Properties.Settings.Default.VolumeSliderValue = VolumeSlider.Value;
     }
 
     private void timer_Tick(object sender, EventArgs e)
