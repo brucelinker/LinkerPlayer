@@ -29,7 +29,9 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     private SampleAggregator? _aggregator;
     private bool _canPlay;
     private bool _canPause;
+
     private bool _canStop;
+
     //private bool _isPlaying;
     private WaveOut? _outputDevice;
 
@@ -60,10 +62,8 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             CanPause = false;
         }
 
-        WeakReferenceMessenger.Default.Register<EqualizerIsOnMessage>(this, (_, m) =>
-        {
-            OnEqualizerIsOnMessage(m.Value);
-        });
+        WeakReferenceMessenger.Default.Register<EqualizerIsOnMessage>(this,
+            (_, m) => { OnEqualizerIsOnMessage(m.Value); });
 
     }
 
@@ -91,6 +91,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     }
 
     private float _musicVolume;
+
     public float MusicVolume
     {
         get
@@ -153,7 +154,8 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         if (CurrentTrackPosition >= CurrentTrackLength - 5)
         {
             Log.Information($"OverallLoudness: {magnitudes.Max()}");
-            if (magnitudes.Length == 0 || (magnitudes.Max() < -40) || ((CurrentTrackPosition + 1.0) >= CurrentTrackLength))
+            if (magnitudes.Length == 0 || (magnitudes.Max() < -40) ||
+                ((CurrentTrackPosition + 1.0) >= CurrentTrackLength))
             {
                 PlaybackStopped(null, null!);
             }
@@ -303,6 +305,16 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             CloseFile();
         }
     }
+
+    public void SeekAudioFile(double startPosition = 0.0)
+    {
+        if (_audioFile != null)
+        {
+            _audioFile.CurrentTime = TimeSpan.FromSeconds(startPosition);
+            ResumePlay();
+        }
+    }
+
 
     public void Play()
     {
@@ -519,7 +531,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
     public void StopEqualizer()
     {
-//        _bands = null;
+        //        _bands = null;
         _equalizer = null;
     }
 

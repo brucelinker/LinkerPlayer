@@ -107,8 +107,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         }
 
         SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedTrack);
+        MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
 
-        Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : SelectedTab.Tracks[0].Id;
+        //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : SelectedTab.Tracks[0].Id;
 
         Log.Information("OnTabSelectionChanged");
     }
@@ -136,7 +137,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             SelectedTab!.SelectedTrack = SelectedTrack;
             SelectedTab.SelectedIndex = SelectedTrackIndex;
 
-            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
+//            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
 
             if (MusicLibrary.Playlists.Count > 0)
             {
@@ -189,7 +190,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
 
-            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : SelectFirstTrack().Id;
+
+            MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
+
+            //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : SelectFirstTrack().Id;
         }
 
         if (ShuffleList.Any())
@@ -216,7 +220,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         SelectedTrack = (MediaFile)_dataGrid!.SelectedItem;
         SelectedTrack.State = PlaybackState.Playing;
 
-        Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
+        MusicLibrary.MainLibrary.Find(x => x!.Id == ActiveTrack!.Id)!.State = PlaybackState.Playing;
+        MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
+
+        //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
     }
 
     public void NewPlaylist()
@@ -398,7 +405,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         SelectedTrackIndex = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()
             .FindIndex(x => x.Id.Contains(track.Id));
 
-        Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
+        MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
+
+        //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
 
         MediaFile musicFile = (ActiveTrack ?? SelectedTrack)!;
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
@@ -409,7 +418,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         SelectedTrackIndex = 0;
         SelectedTrack = TabList[SelectedTabIndex].Tracks[SelectedTrackIndex];
 
-        Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
+        MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
+
+        //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
 
         _dataGrid!.SelectedItem = SelectedTrack;
         _dataGrid.SelectedIndex = SelectedTrackIndex;
@@ -461,8 +472,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             SelectedTrackIndex = newIndex;
 
             ActiveTrack = SelectedTrack;
+            MusicLibrary.MainLibrary.Find(x => x!.Id == ActiveTrack.Id)!.State = PlaybackState.Playing;
+            MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack != null ? SelectedTrack.Id : SelectFirstTrack().Id;
 
-            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
+            //            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
 
             _dataGrid.SelectedIndex = newIndex;
             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
@@ -513,7 +526,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
             ActiveTrack = SelectedTrack;
 
-            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
+            MusicLibrary.MainLibrary.Find(x => x!.Id == ActiveTrack.Id)!.State = PlaybackState.Playing;
+            MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack != null ? SelectedTrack.Id : SelectFirstTrack().Id;
+
+            //            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
 
             _dataGrid.SelectedItem = ActiveTrack;
             _dataGrid.ScrollIntoView(ActiveTrack);
@@ -796,6 +812,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             }
 
             tracks.RemoveAt(indexToRemove);
+
+            _dataGrid.Items.Refresh();
+            _dataGrid.UpdateLayout();
         }
     }
 

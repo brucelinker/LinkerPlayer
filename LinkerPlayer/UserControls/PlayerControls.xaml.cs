@@ -187,9 +187,8 @@ public partial class PlayerControls
             Math.Abs(_audioEngine.CurrentTrackPosition - posInSeekBar) > 0 &&
             !_audioEngine.IsPaused)
         {
-            _audioEngine.StopAndPlayFromPosition(posInSeekBar);
+            _audioEngine.SeekAudioFile(posInSeekBar);
 
-            //_playerControlsViewModel.State = PlaybackState.Playing;
             _seekBarTimer.Start();
         }
     }

@@ -40,6 +40,8 @@ public abstract class MusicLibrary
                 MainLibrary = ((JArray)data["tracks"]).ToObject<List<MediaFile>>()!;
                 Playlists = ((JArray)data["playlists"]).ToObject<List<Playlist>>()!;
 
+                ClearPlayState();
+
                 RemoveDuplicatesFromMainLibrary();
 
                 if (Playlists == null || !Playlists.Any())
@@ -66,6 +68,8 @@ public abstract class MusicLibrary
 
     public static void SaveToJson()
     {
+        ClearPlayState();
+
         Dictionary<string, object> data = new()
         {
             { "tracks", JArray.FromObject(MainLibrary) },
