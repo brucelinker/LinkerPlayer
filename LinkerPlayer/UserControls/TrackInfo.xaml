@@ -7,6 +7,7 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   d:DesignHeight="450"
   d:DesignWidth="300"
+  FontFamily="Segoe UI"
   mc:Ignorable="d">
 
   <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -85,7 +86,7 @@
         VerticalAlignment="Center"
         d:Text="Artist"
         FontSize="{DynamicResource FontSizeNormal}"
-        FontWeight="Light"
+        FontWeight="Normal"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
 
@@ -98,19 +99,19 @@
         VerticalAlignment="Center"
         d:Text="Album"
         FontSize="{DynamicResource FontSizeNormal}"
-        FontWeight="Light"
+        FontWeight="Normal"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
 
       <StackPanel Grid.Row="3" Orientation="Horizontal">
         <TextBlock
           Name="TrackYear"
-          Margin="0,0,0,0"
+          Margin="0,0,10,0"
           Padding="1"
           VerticalAlignment="Center"
           d:Text="Year"
           FontSize="{DynamicResource FontSizeNormal}"
-          FontWeight="Light"
+          FontWeight="Normal"
           Foreground="{DynamicResource DefaultTextBrush}"
           TextTrimming="CharacterEllipsis" />
 
@@ -121,7 +122,7 @@
           VerticalAlignment="Center"
           d:Text="Year"
           FontSize="{DynamicResource FontSizeNormal}"
-          FontWeight="Light"
+          FontWeight="Normal"
           Foreground="{DynamicResource DefaultTextBrush}"
           TextTrimming="CharacterEllipsis" />
       </StackPanel>
@@ -129,25 +130,25 @@
       <TextBlock
         Name="TrackGenre"
         Grid.Row="4"
-        Margin="0,0,0,8"
+        Margin="0,0,0,0"
         Padding="1"
         VerticalAlignment="Center"
         d:Text="Genre"
         FontSize="{DynamicResource FontSizeNormal}"
-        FontWeight="Light"
+        FontWeight="Normal"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
 
     </Grid>
     <Grid
       Grid.Row="2"
-      Margin="8,0,0,0"
+      Margin="10,0,8,0"
       VerticalAlignment="Bottom">
       <audio:SpectrumAnalyzer
         x:Name="Spectrum"
-        Height="180"
+        Height="240"
         HorizontalAlignment="Stretch"
-        VerticalAlignment="Bottom"
+        VerticalAlignment="Stretch"
         AveragePeaks="False"
         BarHeightScaling="Decibel"
         MaximumFrequency="20000"

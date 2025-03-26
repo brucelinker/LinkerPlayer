@@ -5,15 +5,14 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/materialdesign3.defaults.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/SolidColorBrushes.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/BrushResources.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Themes/Midnight.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/FontSizes/Small.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/HorizontalSlider.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CircularButton.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesignTheme.Slider.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Themes/Midnight.xaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

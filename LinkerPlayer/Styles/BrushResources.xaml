@@ -1,7 +1,8 @@
-﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+﻿
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--  SolidColor and Gradient  -->
-  <SolidColorBrush x:Key="BorderBrush" Color="#FF232528" />
+  <!--<SolidColorBrush x:Key="BorderBrush" Color="#FF232528" />
   <SolidColorBrush x:Key="PrimaryBrush" Color="#FF595959" />
   <SolidColorBrush x:Key="BlockFill" Color="#FF424242" />
   <SolidColorBrush x:Key="LightBlock" Color="#FF685F5F" />
@@ -37,10 +38,10 @@
 
   <Style x:Key="ViewRect" TargetType="Rectangle">
     <Setter Property="Stroke" Value="Transparent" />
-    <!--<Setter Property="Stroke" Value="#FF686868" />-->
+    <Setter Property="Stroke" Value="#FF686868" />
     <Setter Property="StrokeThickness" Value="1" />
     <Setter Property="Fill" Value="Transparent" />
-    <!--<Setter Property="Fill" Value="#FF404040" />-->
+    <Setter Property="Fill" Value="#FF404040" />
     <Setter Property="RadiusX" Value="3" />
     <Setter Property="RadiusY" Value="3" />
   </Style>
@@ -358,6 +359,6 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
-  </Style>
+  </Style>-->
 
 </ResourceDictionary>

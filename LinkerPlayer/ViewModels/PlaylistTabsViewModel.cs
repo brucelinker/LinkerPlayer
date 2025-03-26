@@ -285,12 +285,12 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         IEnumerable<FileInfo> files = dirInfo.GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => _supportedAudioExtensions.Any(ext => file.Extension.Equals(ext, StringComparison.OrdinalIgnoreCase))).ToList();
 
-        if (!files.Any())
-        {
-            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
-            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
-                false, true, TimeSpan.FromSeconds(3));
-        }
+        //if (!files.Any())
+        //{
+        //    _mainWindow.InfoSnackbar.MessageQueue?.Clear();
+        //    _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
+        //        false, true, TimeSpan.FromSeconds(3));
+        //}
 
         foreach (FileInfo? file in files)
         {
@@ -317,12 +317,12 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         List<FileInfo> files = dirInfo.GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => _supportedAudioExtensions.Any(ext => file.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase))).ToList();
 
-        if (!files.Any())
-        {
-            _mainWindow.InfoSnackbar.MessageQueue?.Clear();
-            _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
-                false, true, TimeSpan.FromSeconds(3));
-        }
+        //if (!files.Any())
+        //{
+        //    _mainWindow.InfoSnackbar.MessageQueue?.Clear();
+        //    _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
+        //        false, true, TimeSpan.FromSeconds(3));
+        //}
 
         string playlistName = dirInfo.Name;
 

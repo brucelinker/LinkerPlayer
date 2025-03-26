@@ -16,7 +16,7 @@
 
   <!--  Main Colors  -->
 
-  <LinearGradientBrush x:Key="GradientWindowBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+  <!--<LinearGradientBrush x:Key="GradientWindowBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
     <GradientStop Offset="0" Color="#FF3A3A3A" />
     <GradientStop Offset="1" Color="#FF000000" />
   </LinearGradientBrush>
@@ -57,7 +57,9 @@
   <SolidColorBrush x:Key="DisabledBorderBrush" Color="#AAA" />
   <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FF595959" />
 
+  -->
   <!--  EXPRESSION COMMON VALUES  -->
+  <!--
 
   <LinearGradientBrush x:Key="ShineBrush" StartPoint="0.5,0.042" EndPoint="0.5,0.971">
     <GradientStop Offset="0" Color="#59FFFFFF" />
@@ -4944,15 +4946,15 @@
       </Setter.Value>
     </Setter>
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-  </Style>
+  </Style>-->
 
   <!--  Region: SpectrumAnalyzer  -->
   <LinearGradientBrush x:Key="SpectrumBarBrush" StartPoint="0.5,0" EndPoint="0.5,1">
-    <GradientStop Offset="0" Color="#06799F" />
-    <GradientStop Offset="1" Color="#024E68" />
+    <GradientStop Offset="0" Color="{DynamicResource SpectrumStartColor}" />
+    <GradientStop Offset="1" Color="{DynamicResource SpectrumEndColor}" />
   </LinearGradientBrush>
 
-  <SolidColorBrush x:Key="SpectrumPeakBrush" Color="#61B4CF" />
+  <SolidColorBrush x:Key="SpectrumPeakBrush" Color="{DynamicResource SpectrumPeakColor}" />
 
   <Style TargetType="{x:Type audio:SpectrumAnalyzer}">
     <Setter Property="BarCount" Value="32" />

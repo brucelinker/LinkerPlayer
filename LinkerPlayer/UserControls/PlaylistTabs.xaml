@@ -11,51 +11,167 @@
   xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
   d:DesignHeight="80"
   d:DesignWidth="800"
+  FontFamily="Segoe UI"
   mc:Ignorable="d">
 
   <UserControl.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/FontSizes/FontSizesNormal.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Themes/dark.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
       <converters:IndexConverter x:Key="IndexConverter" />
 
+      <Style TargetType="TabControl">
+        <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
+        <!--  Dark background for the TabControl  -->
+        <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
+        <!--  Border color  -->
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Margin" Value="0" />
+      </Style>
+
+      <Style TargetType="TabItem">
+        <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
+        <!--  Prevent TabItem background from showing  -->
+        <Setter Property="BorderThickness" Value="1" />
+        <!--  Still good to keep this  -->
+        <Setter Property="Margin" Value="0" />
+        <!--  Remove any default spacing  -->
+      </Style>
+
       <Style x:Key="EditableTabHeaderControl" TargetType="{x:Type userControls:EditableTabHeaderControl}">
+        <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
+        <!--  Unselected tab background  -->
+        <Setter Property="Foreground" Value="{DynamicResource PlaylistTabForegroundBrush}" />
+        <!--  Text color  -->
+        <!--<Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}"/>-->
+        <Setter Property="BorderThickness" Value="0" />
+        <!--  No border for now  -->
+        <!--<Setter Property="Padding" Value="10,5"/>-->
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <!--  Fill width  -->
+        <Setter Property="VerticalAlignment" Value="Stretch" />
+        <!--  Fill height  -->
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+        <Setter Property="FontStyle" Value="Normal" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Template">
           <Setter.Value>
-
             <ControlTemplate TargetType="{x:Type userControls:EditableTabHeaderControl}">
-              <Grid>
-                <TextBox
-                  x:Name="PART_TabHeader"
-                  Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}"
-                  Visibility="Collapsed" />
-                <TextBlock x:Name="PART_TextBlock" Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}" />
-              </Grid>
+              <Border
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}">
+                <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                  <TextBox
+                    x:Name="PART_TabHeader"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Foreground="{TemplateBinding Foreground}"
+                    Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}"
+                    Visibility="Collapsed" />
+                  <TextBlock
+                    x:Name="PART_TextBlock"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    Foreground="{TemplateBinding Foreground}"
+                    Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Content, Mode=TwoWay}" />
+                </Grid>
+              </Border>
               <ControlTemplate.Triggers>
                 <Trigger Property="IsInEditMode" Value="True">
-                  <Trigger.Setters>
-                    <Setter TargetName="PART_TabHeader" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="PART_TextBlock" Property="Visibility" Value="Collapsed" />
-                  </Trigger.Setters>
+                  <Setter TargetName="PART_TabHeader" Property="Visibility" Value="Visible" />
+                  <Setter TargetName="PART_TextBlock" Property="Visibility" Value="Collapsed" />
                 </Trigger>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                  <Setter Property="Background" Value="{DynamicResource PlaylistTabSelectedBackgroundBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                </DataTrigger>
+                <!--<Trigger Property="IsMouseOver" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource PlaylistTabMouseOverForegroundBrush}"/>
+                  <Setter Property="Background" Value="{DynamicResource PlaylistTabMouseOverBackgroundBrush}"/>
+                </Trigger>-->
               </ControlTemplate.Triggers>
-
             </ControlTemplate>
           </Setter.Value>
         </Setter>
       </Style>
 
-      <Style x:Key="ItemContainerStyle" TargetType="TabItem">
+      <Style TargetType="{x:Type ContextMenu}">
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+        <Setter Property="Opacity" Value="1" />
+        <Setter Property="Padding" Value="10" />
+        <Setter Property="Margin" Value="10" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type ContextMenu}">
+              <Border
+                Background="{DynamicResource MenuBackgroundBrush}"
+                BorderBrush="{DynamicResource MenuDisabledBrush}"
+                BorderThickness="1"
+                CornerRadius="1"
+                Opacity="1">
+                <StackPanel
+                  Margin="0"
+                  ClipToBounds="True"
+                  IsItemsHost="True"
+                  Opacity="1"
+                  Orientation="Vertical" />
+              </Border>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
+      <Style x:Key="TabItemContainerStyle" TargetType="TabItem">
+        <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Margin" Value="0,0" />
+        <!--  Small margin between tabs  -->
+        <Setter Property="Padding" Value="0" />
+        <!--  Controlled by EditableTabHeaderControl  -->
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="TabItem">
+              <Border
+                x:Name="TabBorder"
+                Padding="12,3,12,3"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{DynamicResource PlaylistTabBorderBrush}"
+                BorderThickness="1, 1. 1, 0">
+                <!--  No visible border unless desired  -->
+                <!--  Padding around the header content  -->
+                <ContentPresenter
+                  x:Name="Content"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch"
+                  ContentSource="Header" />
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource PlaylistTabSelectedBackgroundBrush}" />
+                </Trigger>
+                <!--<Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource PlaylistTabSelectedBackgroundBrush}"/>
+                </Trigger>-->
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
         <Setter Property="HeaderTemplate">
           <Setter.Value>
             <DataTemplate>
               <userControls:EditableTabHeaderControl
+                Margin="0"
+                Padding="0"
                 MouseLeftButtonDown="TabHeader_MouseLeftButtonDown"
                 MouseRightButtonDown="TabHeader_MouseRightButtonDown"
                 Style="{StaticResource EditableTabHeaderControl}">
@@ -80,56 +196,167 @@
             </DataTemplate>
           </Setter.Value>
         </Setter>
+        <!--<Style.Triggers>
+          <Trigger Property="IsSelected" Value="True">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Margin" Value="0" />
+        -->
+        <!--  Force transparent when selected  -->
+        <!--
+          </Trigger>
+        </Style.Triggers>-->
       </Style>
 
-      <DataTemplate x:Key="ContentTemplate" DataType="{x:Type models:PlaylistTab}">
+      <Style TargetType="MenuItem">
+        <!--  Default colors  -->
+        <Setter Property="BorderBrush" Value="{DynamicResource MenuBackgroundBrush}" />
+        <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+
+        <!--  Custom ControlTemplate to respect triggers  -->
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="MenuItem">
+              <Border
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="1">
+                <ContentPresenter
+                  Margin="4"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Center"
+                  Content="{TemplateBinding Header}"
+                  TextBlock.Foreground="{TemplateBinding Foreground}" />
+              </Border>
+              <!--  Triggers will now work because the template doesn't override them  -->
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+
+        <!--  Triggers for different states  -->
+        <Style.Triggers>
+          <Trigger Property="IsHighlighted" Value="True">
+            <Setter Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
+          </Trigger>
+          <Trigger Property="IsMouseOver" Value="True">
+            <Setter Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
+          </Trigger>
+          <Trigger Property="IsEnabled" Value="False">
+            <Setter Property="Foreground" Value="{DynamicResource MenuDisabledBrush}" />
+          </Trigger>
+        </Style.Triggers>
+      </Style>
+
+      <DataTemplate x:Key="TabContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <DataGrid
           Name="PlaylistDataGrid"
           Width="Auto"
           Height="Auto"
           MaxWidth="3840"
           MaxHeight="2160"
-          Margin="1,0,0,0"
+          Margin="0,0,0,0"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           AlternationCount="2"
           AutoGenerateColumns="False"
           Background="Transparent"
           BorderBrush="#424242"
-          BorderThickness="1"
+          BorderThickness="0"
           CanUserAddRows="False"
           CanUserDeleteRows="False"
           CanUserReorderColumns="True"
           EnableColumnVirtualization="False"
           EnableRowVirtualization="True"
           GridLinesVisibility="None"
+          HorizontalScrollBarVisibility="Visible"
           IsReadOnly="True"
           ItemsSource="{Binding Tracks, IsAsync=True}"
           Loaded="DataGrid_Loaded"
           RowHeaderWidth="0"
           RowHeight="20"
           ScrollViewer.CanContentScroll="True"
-          ScrollViewer.IsDeferredScrollingEnabled="True"
+          ScrollViewer.IsDeferredScrollingEnabled="False"
           SelectionChanged="TracksTable_OnSelectionChanged"
           SelectionMode="Single"
           SelectionUnit="FullRow"
           Sorting="TracksTable_OnSorting"
+          VerticalScrollBarVisibility="Visible"
           VirtualizingStackPanel.IsVirtualizing="True"
           VirtualizingStackPanel.VirtualizationMode="Recycling">
-
+          <DataGrid.Resources>
+            <ResourceDictionary>
+              <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
+              </ResourceDictionary.MergedDictionaries>
+            </ResourceDictionary>
+          </DataGrid.Resources>
+          <DataGrid.Template>
+            <ControlTemplate TargetType="{x:Type DataGrid}">
+              <Border
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}">
+                <ScrollViewer x:Name="DG_ScrollViewer" Focusable="False">
+                  <ScrollViewer.Template>
+                    <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                          <RowDefinition Height="Auto" />
+                          <RowDefinition Height="*" />
+                          <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <DataGridColumnHeadersPresenter
+                          Grid.Row="0"
+                          Grid.Column="0"
+                          Grid.ColumnSpan="2" />
+                        <ScrollContentPresenter Grid.Row="1" Grid.Column="0" />
+                        <ScrollBar
+                          x:Name="PART_VerticalScrollBar"
+                          Grid.Row="1"
+                          Grid.Column="1"
+                          Maximum="{TemplateBinding ScrollableHeight}"
+                          Orientation="Vertical"
+                          Style="{StaticResource CustomScrollBarStyle}"
+                          ViewportSize="{TemplateBinding ViewportHeight}"
+                          Value="{TemplateBinding VerticalOffset}" />
+                        <ScrollBar
+                          x:Name="PART_HorizontalScrollBar"
+                          Grid.Row="2"
+                          Grid.Column="0"
+                          Maximum="{TemplateBinding ScrollableWidth}"
+                          Orientation="Horizontal"
+                          Style="{StaticResource CustomScrollBarStyle}"
+                          ViewportSize="{TemplateBinding ViewportWidth}"
+                          Value="{TemplateBinding HorizontalOffset}" />
+                      </Grid>
+                    </ControlTemplate>
+                  </ScrollViewer.Template>
+                  <ItemsPresenter />
+                </ScrollViewer>
+              </Border>
+            </ControlTemplate>
+          </DataGrid.Template>
           <DataGrid.ColumnHeaderStyle>
             <Style TargetType="DataGridColumnHeader">
               <Style.Setters>
                 <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
-                <Setter Property="Padding" Value="6" />
-                <Setter Property="FontSize" Value="{DynamicResource FontSizeBigger}" />
+                <Setter Property="Padding" Value="6,4,6,4" />
+                <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+                <Setter Property="FontStyle" Value="Normal" />
+                <Setter Property="FontWeight" Value="Normal" />
                 <Setter Property="BorderBrush" Value="{DynamicResource FirstLightBrush}" />
-                <Setter Property="BorderThickness" Value="0,0,0,0.5" />
+                <Setter Property="BorderThickness" Value="1" />
               </Style.Setters>
             </Style>
           </DataGrid.ColumnHeaderStyle>
-
           <DataGrid.CellStyle>
             <Style TargetType="DataGridCell">
               <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
@@ -143,23 +370,21 @@
                 <Trigger Property="IsSelected" Value="True">
                   <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
                   <Setter Property="Foreground" Value="{DynamicResource TrackListSelectedItemForegroundBrush}" />
-                  <Setter Property="FontWeight" Value="Bold" />
+                  <Setter Property="FontWeight" Value="Normal" />
                 </Trigger>
               </Style.Triggers>
             </Style>
           </DataGrid.CellStyle>
-
           <DataGrid.RowStyle>
             <Style TargetType="DataGridRow">
               <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
               <Setter Property="FontStyle" Value="Normal" />
-              <Setter Property="FontWeight" Value="Light" />
+              <Setter Property="FontWeight" Value="Normal" />
               <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
               <Setter Property="BorderThickness" Value="0" />
               <Setter Property="VerticalAlignment" Value="Center" />
               <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
               <EventSetter Event="MouseDoubleClick" Handler="PlaylistRow_MouseDoubleClick" />
-
               <Style.Triggers>
                 <Trigger Property="ItemsControl.AlternationIndex" Value="1">
                   <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
@@ -169,14 +394,13 @@
                 </Trigger>
                 <Trigger Property="IsSelected" Value="True">
                   <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
-                  <Setter Property="FontWeight" Value="Bold" />
+                  <Setter Property="FontWeight" Value="Normal" />
                 </Trigger>
               </Style.Triggers>
-
             </Style>
           </DataGrid.RowStyle>
-
           <DataGrid.Columns>
+            <!--  Your existing columns  -->
             <DataGridTextColumn
               Width="40"
               Header="#"
@@ -193,12 +417,10 @@
                 </Style>
               </DataGridTextColumn.ElementStyle>
             </DataGridTextColumn>
-
             <DataGridTemplateColumn
               Width="20"
               MinWidth="{DynamicResource TrackTableImageSize}"
               Header="">
-
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <Grid>
@@ -212,7 +434,6 @@
                       Foreground="{StaticResource TrackListItemForegroundBrush}"
                       Kind="PlaySolid"
                       Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}" />
-
                     <iconPacks:PackIconMaterial
                       x:Name="PauseImage"
                       Width="20"
@@ -227,7 +448,6 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-
             <DataGridTemplateColumn
               Width="51"
               Header="Track"
@@ -243,7 +463,6 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-
             <DataGridTemplateColumn
               Width="300"
               Header="Title"
@@ -253,45 +472,11 @@
                   <TextBlock
                     Margin="5,0,5,0"
                     d:DataContext="{d:DesignData IMediaFile}"
-                    FontSize="{DynamicResource FontSizeNormal}"
                     Text="{Binding Title, Mode=OneWay}"
-                    ToolTip="{Binding Title}">
-                    <!--<TextBlock.Style>
-                  <Style TargetType="TextBlock">
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding Flag}" Value="0">
-                        <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundColor}" />
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Flag}" Value="1">
-                        <Setter Property="Foreground" Value="Violet" />
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Flag}" Value="2">
-                        <Setter Property="Foreground" Value="Gray" />
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Flag}" Value="3">
-                        <Setter Property="Foreground" Value="Green" />
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Flag}" Value="4">
-                        <Setter Property="Foreground" Value="Blue" />
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Flag}" Value="5">
-                        <Setter Property="Foreground" Value="Red" />
-                      </DataTrigger>
-                      <DataTrigger Binding="{Binding Flag}" Value="6">
-                        <Setter Property="Foreground" Value="Orange" />
-                      </DataTrigger>
-                    </Style.Triggers>
-
-                    -->
-                    <!--  OK = 0, Tagged, Hidden, Easy, New, Failures, Unknown  -->
-                    <!--
-                  </Style>
-                </TextBlock.Style>-->
-                  </TextBlock>
+                    ToolTip="{Binding Title}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-
             <DataGridTemplateColumn
               Width="200"
               Header="Artist"
@@ -301,13 +486,11 @@
                   <TextBlock
                     Margin="5,0,5,0"
                     d:DataContext="{d:DesignData IMediaFile}"
-                    FontSize="{DynamicResource FontSizeNormal}"
                     Text="{Binding Artist}"
                     ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-
             <DataGridTemplateColumn
               Width="300"
               Header="Album"
@@ -317,13 +500,11 @@
                   <TextBlock
                     Margin="5,0,5,0"
                     d:DataContext="{d:DesignData IMediaFile}"
-                    FontSize="{DynamicResource FontSizeNormal}"
                     Text="{Binding Album}"
                     ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-
             <DataGridTemplateColumn
               Width="72"
               Header="Duration"
@@ -334,14 +515,11 @@
                     Margin="5,0,5,0"
                     HorizontalAlignment="right"
                     d:DataContext="{d:DesignData MediaFile}"
-                    FontSize="{DynamicResource FontSizeNormal}"
                     Text="{Binding Duration, Converter={StaticResource DurationConverter}}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
-
           </DataGrid.Columns>
-
           <DataGrid.ContextMenu>
             <ContextMenu>
               <MenuItem Click="MenuItem_PlayTrack" Header="Play" />
@@ -350,6 +528,7 @@
           </DataGrid.ContextMenu>
         </DataGrid>
       </DataTemplate>
+
     </ResourceDictionary>
   </UserControl.Resources>
 
@@ -357,9 +536,10 @@
     <TabControl
       Name="Tabs123"
       Grid.Row="0"
-      Margin="0,0,5,0"
-      ContentTemplate="{StaticResource ContentTemplate}"
-      ItemContainerStyle="{StaticResource ItemContainerStyle}"
+      Margin="0,0,0,0"
+      BorderThickness="0"
+      ContentTemplate="{StaticResource TabContentTemplate}"
+      ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       ItemsSource="{Binding TabList}"
       SelectedIndex="{Binding SelectedTabIndex}"
       SelectionChanged="TabControl_SelectionChanged">

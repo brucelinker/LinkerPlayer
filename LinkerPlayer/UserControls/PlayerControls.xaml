@@ -9,7 +9,8 @@
   xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
   d:DesignHeight="105"
   d:DesignWidth="1000"
-  mc:Ignorable="d">
+  mc:Ignorable="d"
+  UseLayoutRounding="True">
 
   <UserControl.Resources>
     <ResourceDictionary>
@@ -37,7 +38,7 @@
     </ResourceDictionary>
   </UserControl.Resources>
 
-  <Grid>
+  <Grid Margin="0,6,0,0">
     <Border Background="{DynamicResource PlayerBackgroundBrush}" />
     <StackPanel>
       <Grid Height="83">
@@ -48,7 +49,8 @@
           <ColumnDefinition Width="120" />
         </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="0" Margin="30,0,0,0">
+        <!--  Player Buttons  -->
+        <Grid Grid.Column="0" Margin="30,14,0,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
@@ -56,6 +58,7 @@
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
+          <!--  Prev Button  -->
           <Button
             Name="PrevButton"
             Grid.Column="0"
@@ -73,6 +76,7 @@
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Previous Track" />
 
+          <!--  Play Button  -->
           <Button
             x:Name="PlayButton"
             Grid.Column="1"
@@ -87,7 +91,7 @@
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}" />
 
-          <!--  stop  -->
+          <!--  Stop Button  -->
           <Button
             Name="StopButton"
             Grid.Column="2"
@@ -105,7 +109,7 @@
             Style="{StaticResource LinkerCircleButton}"
             ToolTip="Stop" />
 
-          <!--  next  -->
+          <!--  Next Button  -->
           <Button
             Name="NextButton"
             Grid.Column="3"
@@ -124,7 +128,8 @@
             ToolTip="Next File (j)" />
         </Grid>
 
-        <Grid Grid.Column="1" Margin="0,0,30,0">
+        <!--  Player Slider Group  -->
+        <Grid Grid.Column="1" Margin="0,1,30,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="65" />
             <ColumnDefinition />
@@ -138,14 +143,16 @@
           <Grid Grid.Column="1">
             <Grid.RowDefinitions>
               <RowDefinition Height="1*" />
+              <!--  Current Track  -->
               <RowDefinition Height="2*" />
+              <!--  Timers and Slider  -->
             </Grid.RowDefinitions>
 
-
+            <!--  Current Track Name  -->
             <TextBlock
               Name="CurrentTrackName"
               Grid.Row="0"
-              Margin="0,10,0,0"
+              Margin="0,8,0,0"
               HorizontalAlignment="Center"
               VerticalAlignment="Center"
               d:Foreground="White"
@@ -168,11 +175,12 @@
             <Border Grid.Column="2" BorderBrush="Yellow" BorderThickness="1" />
             <Border Grid.Column="3" BorderBrush="Yellow" BorderThickness="1" />-->
 
+              <!--  Player Slider  -->
               <Slider
                 x:Name="SeekBar"
                 Grid.Column="0"
                 Grid.ColumnSpan="4"
-                Margin="0,4,0,0"
+                Margin="0,8,0,0"
                 VerticalAlignment="Top"
                 Panel.ZIndex="1"
                 Maximum="100"
@@ -190,10 +198,11 @@
 
           </Grid>
 
+          <!--  Current Time  -->
           <TextBlock
             Name="CurrentTime"
             Grid.Column="0"
-            Padding="0,0,10,0"
+            Padding="0,8,10,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             d:Foreground="White"
@@ -203,10 +212,11 @@
             0:00
           </TextBlock>
 
+          <!--  Total Time  -->
           <TextBlock
             Name="TotalTime"
             Grid.Column="2"
-            Padding="10,0,0,0"
+            Padding="10,8,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             d:Foreground="White"
@@ -217,15 +227,17 @@
           </TextBlock>
         </Grid>
 
+        <!--  Volume Group  -->
         <Grid
           Name="VolumeSlidersGrid"
           Grid.Column="2"
-          Margin="0,0,30,0">
+          Margin="0,10,30,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="50" />
             <ColumnDefinition />
           </Grid.ColumnDefinitions>
 
+          <!--  Mute Button  -->
           <ToggleButton
             Name="MuteButton"
             Grid.Column="0"
@@ -247,6 +259,7 @@
             </ToggleButton.Style>
           </ToggleButton>
 
+          <!--  Volume Slider  -->
           <Slider
             x:Name="VolumeSlider"
             Grid.Column="1"
@@ -258,18 +271,20 @@
 
         </Grid>
 
+        <!--  Other Settings  -->
         <Grid Grid.Column="3" Margin="0,0,30,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition />
             <ColumnDefinition />
           </Grid.ColumnDefinitions>
 
+          <!--  Shuffle Mode Button  -->
           <ToggleButton
             Name="ShuffleModeButton"
             Grid.Column="0"
             Width="36"
             Height="36"
-            Margin="0,0,0,0"
+            Margin="0,10,0,0"
             Command="{Binding ShuffleCommand}"
             CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
             ToolTip="Shuffle (s)">
@@ -286,12 +301,13 @@
             </ToggleButton.Style>
           </ToggleButton>
 
+          <!--  Equalizer Button  -->
           <Button
             Name="EqualizerButton"
             Grid.Column="1"
             Width="36"
             Height="36"
-            Margin="0,0,0,0"
+            Margin="0,10,0,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             d:Foreground="White"
@@ -305,7 +321,7 @@
         </Grid>
       </Grid>
 
-      <Grid VerticalAlignment="Bottom">
+      <!--<Grid VerticalAlignment="Bottom">
 
         <StatusBar
           Margin="8,0,0,5"
@@ -321,7 +337,7 @@
           </StatusBarItem>
         </StatusBar>
 
-      </Grid>
+      </Grid>-->
     </StackPanel>
   </Grid>
 </UserControl>

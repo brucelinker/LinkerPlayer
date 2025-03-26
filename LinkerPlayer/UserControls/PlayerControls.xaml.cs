@@ -112,7 +112,7 @@ public partial class PlayerControls
         string extension = Path.GetExtension(selectedTrack.FileName).Substring(1).ToUpper();
         string channels = GetChannelsString(selectedTrack.Channels);
 
-        StatusText.Text = $"{extension} | {selectedTrack.Bitrate} kbps | {selectedTrack.SampleRate} Hz | {channels}";
+        //StatusText.Text = $"{extension} | {selectedTrack.Bitrate} kbps | {selectedTrack.SampleRate} Hz | {channels}";
     }
 
     private void OnPlaybackStateChanged(PlaybackState state)

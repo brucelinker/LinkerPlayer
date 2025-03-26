@@ -27,51 +27,51 @@
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
-<Style x:Key="CloseButton" TargetType="{x:Type Button}">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="45" Height="30">
-              <Border x:Name="border" Background="Black" />
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Grid>
+      <Style x:Key="CloseButton" TargetType="{x:Type Button}">
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type Button}">
+              <Grid Width="45" Height="30">
+                <Border x:Name="border" Background="Black" />
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Grid>
 
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="border" Property="Background">
-                  <Setter.Value>
-                    <SolidColorBrush Opacity="0.9" Color="Red" />
-                  </Setter.Value>
-                </Setter>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="border" Property="Background">
+                    <Setter.Value>
+                      <SolidColorBrush Opacity="0.9" Color="Red" />
+                    </Setter.Value>
+                  </Setter>
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
 
-    <Style TargetType="TextBlock">
-      <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
-      <Setter Property="FontSize" Value="16" />
-      <Setter Property="Foreground" Value="#FAFAFA" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
+      <Style TargetType="TextBlock">
+        <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="Foreground" Value="#FAFAFA" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+      </Style>
 
-    <Style TargetType="ComboBox">
-      <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
-      <Setter Property="FontSize" Value="16" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Height" Value="27" />
-    </Style>
+      <Style TargetType="ComboBox">
+        <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Height" Value="27" />
+      </Style>
 
-    <!--<Style TargetType="Grid">
+      <!--<Style TargetType="Grid">
       <Setter Property="Margin" Value="0,0,0,10" />
     </Style>-->
 
-    <Style TargetType="materialDesign:PackIcon">
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-    </Style>
+      <Style TargetType="materialDesign:PackIcon">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+      </Style>
 
     </ResourceDictionary>
   </Window.Resources>
@@ -129,7 +129,7 @@
       <StackPanel Margin="30,10,30,0">
 
         <!--  Main Output Device  -->
-        <Grid Margin="0, 0, 0, 18">
+        <Grid Margin="0,0,0,18">
 
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150" />
@@ -137,11 +137,10 @@
             <ColumnDefinition />
           </Grid.ColumnDefinitions>
 
-          <TextBlock 
-            Grid.Column="0" 
+          <TextBlock
+            Grid.Column="0"
             HorizontalAlignment="Right"
-            Text="Main Output Device:"
-            />
+            Text="Main Output Device:" />
 
           <ComboBox
             Name="MainOutputDevicesList"
@@ -157,9 +156,9 @@
             <ColumnDefinition Width="100" />
           </Grid.ColumnDefinitions>
 
-          <TextBlock 
-            Grid.Column="0" 
-            HorizontalAlignment="Right" 
+          <TextBlock
+            Grid.Column="0"
+            HorizontalAlignment="Right"
             Text="Color Theme:" />
 
           <ComboBox
@@ -172,7 +171,7 @@
             <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
             <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
             <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />
-            <ComboBoxItem Content="Black" Tag="{x:Static models:ThemeColors.Midnight}" />
+            <ComboBoxItem Content="Midnight" Tag="{x:Static models:ThemeColors.Midnight}" />
           </ComboBox>
         </Grid>
 
@@ -220,11 +219,14 @@
       IsActive="True"
       MessageQueue="{materialDesign:MessageQueue}" />
 
-    <Grid Grid.Row="2" VerticalAlignment="Bottom" Background="{DynamicResource MainWindowGradientStartBrush}">
+    <Grid
+      Grid.Row="2"
+      VerticalAlignment="Bottom"
+      Background="{DynamicResource MainWindowGradientStartBrush}">
       <Button
         Width="100"
         Height="30"
-        Margin="0,7,0,7"
+        Margin="0,7,0,17"
         HorizontalAlignment="Center"
         Click="Save_Click"
         Content="Save"

@@ -10,8 +10,10 @@
   xmlns:viewModels="clr-namespace:LinkerPlayer.ViewModels"
   Title="Equalizer"
   Width="500"
-  Height="420"
+  Height="430"
   AllowsTransparency="True"
+  BorderBrush="{DynamicResource MainWindowBorderBrush}"
+  BorderThickness="1"
   Loaded="Window_Loaded"
   WindowStyle="None"
   mc:Ignorable="d">
@@ -585,7 +587,7 @@
 
     <Grid
       Grid.Row="4"
-      Height="40"
+      Height="44"
       VerticalAlignment="Bottom"
       Background="{DynamicResource MainWindowGradientStartBrush}">
 
@@ -593,7 +595,7 @@
         Name="CloseButton"
         Height="25"
         MinWidth="80"
-        Margin="0,0,20,0"
+        Margin="0,0,20,10"
         HorizontalAlignment="Right"
         VerticalAlignment="Center"
         d:Foreground="White"

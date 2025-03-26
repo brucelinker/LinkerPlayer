@@ -6,7 +6,7 @@
   <Color x:Key="MainWindowGradientStartColor">#40586A</Color>
   <Color x:Key="MainWindowGradientEndColor">#668396</Color>
 
-  <Color x:Key="ChildWindowBackgroundColor">#475966</Color>
+  <Color x:Key="ChildWindowBackgroundColor">#40586A</Color>
 
   <Color x:Key="ControlAccentLightColor">#00A7FF</Color>
   <Color x:Key="ControlAccentDarkColor">#007AD9</Color>
@@ -19,7 +19,7 @@
   <Color x:Key="ControlDisabledColor">Gray</Color>
   <Color x:Key="ControlThumbFillColor">Transparent</Color>
   <Color x:Key="ControlThumbBorderColor">White</Color>
-
+  <!-- B0C4DE -->
   <Color x:Key="DefaultTextColor">White</Color>
 
   <Color x:Key="FirstDarkColor">SteelBlue</Color>
@@ -30,12 +30,13 @@
   <Color x:Key="StandardTextForegroundColor">SteelBlue</Color>
   <Color x:Key="InactiveSelectionColor">WhiteSmoke</Color>
 
-  <Color x:Key="PlaylistTabForegroundColor">Black</Color>
-  <Color x:Key="PlaylistTabBackgroundColor">Gray</Color>
-
-  <Color x:Key="PlaylistMouseOverItemForegroundColor">Black</Color>
-  <Color x:Key="PlaylistMouseOverItemBackgroundColor">White</Color>
-  <Color x:Key="PlaylistSelectedItemColor">#6B7B82</Color>
+  <Color x:Key="PlaylistTabForegroundColor">#E1E3E4</Color>
+  <Color x:Key="PlaylistTabBackgroundColor">#597080</Color>
+  <Color x:Key="PlaylistTabBorderColor">#B0C4DE</Color>
+  <Color x:Key="PlaylistTabMouseOverForegroundColor">Black</Color>
+  <Color x:Key="PlaylistTabMouseOverBackgroundColor">White</Color>
+  <Color x:Key="PlaylistTabSelectedForegroundColor">#334046</Color>
+  <Color x:Key="PlaylistTabSelectedBackgroundColor">#E1E3E4</Color>
 
   <Color x:Key="NewPlaylistButtonForegroundColor">SteelBlue</Color>
   <Color x:Key="NewPlaylistButtonBackgroundColor">Transparent</Color>
@@ -49,11 +50,11 @@
   <Color x:Key="TrackListItemForegroundColor">Black</Color>
   <Color x:Key="TrackListItemBackgroundAlt1Color">#E2E9EE</Color>
   <Color x:Key="TrackListItemBackgroundAlt2Color">#EEF1F5</Color>
-  <Color x:Key="TrackListSelectedItemItemForegroundColor">Black</Color>
-  <Color x:Key="TrackListSelectedItemItemBackgroundColor">SkyBlue</Color>
+  <Color x:Key="TrackListSelectedItemForegroundColor">Black</Color>
+  <Color x:Key="TrackListSelectedItemBackgroundColor">#B2D1DB</Color>
   <Color x:Key="TrackListMouseOverItemForegroundColor">Black</Color>
   <Color x:Key="TrackListMouseOverItemBackgroundColor">LightSteelBlue</Color>
-  <Color x:Key="TrackListSelectedItemColor">#6B7B82</Color>
+  <Color x:Key="TrackListSelectedItemColor">#5F7A8C</Color>
   <Color x:Key="TrackListTipBackgroundColor">LightSteelBlue</Color>
   <Color x:Key="TrackListTipForegroundColor">Black</Color>
 
@@ -68,19 +69,27 @@
   <Color x:Key="PlayerControlButtonPressedColor">#888888</Color>
   <Color x:Key="PlayerControlButtonMouseOverBorderColor">#888888</Color>
 
-  <Color x:Key="MenuTextForegroundColor">#999999</Color>
-  <Color x:Key="MenuDisabledTextColor">#999999</Color>
-  <Color x:Key="MenuColor">#FDFDFD</Color>
+  <Color x:Key="MenuForegroundColor">#334046</Color>
+  <Color x:Key="MenuBackgroundColor">#E1E3E4</Color>
+  <Color x:Key="MenuDisabledColor">Gray</Color>
   <Color x:Key="MenuTextColor">Gray</Color>
-  <Color x:Key="MenuHoverColor">LightSteelBlue</Color>
-  <Color x:Key="MenuSelectionColor">Black</Color>
-  <Color x:Key="MenuHighlightColor">Black</Color>
+  <Color x:Key="MenuMouseOverForegroundColor">#334046</Color>
+  <Color x:Key="MenuMouseOverBackgroundColor">LightSteelBlue</Color>
+  <Color x:Key="MenuSelectionBackgroundColor">LightSteelBlue</Color>
 
   <Color x:Key="ImageBackgroundColor">White</Color>
 
-  <Color x:Key="SpectrumBackgroundColor">#FFFFFF</Color>
-  <Color x:Key="SpectrumStartColor">SteelBlue</Color>
-  <Color x:Key="SpectrumEndColor">Yellow</Color>
+  <Color x:Key="ScrollBarTrackColor">#597080</Color>
+  <Color x:Key="ScrollBarThumbColor">LightSteelBlue</Color>
+  <Color x:Key="ScrollBarArrowForegroundColor">LightSteelBlue</Color>
+  <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>
+  <Color x:Key="ScrollBarRepeatButtonColor">Transparent</Color>
+
+  <Color x:Key="SpectrumStartColor">#06799F</Color>
+  <Color x:Key="SpectrumEndColor">#024E68</Color>
+  <Color x:Key="SpectrumPeakColor">#61B4CF</Color>
+
   <Color x:Key="SpectrumLineColor">LightSteelBlue</Color>
+  <Color x:Key="SpectrumBackgroundColor">#FFFFFF</Color>
 
 </ResourceDictionary>
