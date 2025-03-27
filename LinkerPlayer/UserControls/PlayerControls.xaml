@@ -9,8 +9,9 @@
   xmlns:wave="clr-namespace:NAudio.Wave;assembly=NAudio.Core"
   d:DesignHeight="105"
   d:DesignWidth="1000"
-  mc:Ignorable="d"
-  UseLayoutRounding="True">
+  Background="{DynamicResource PlayerBackgroundBrush}"
+  UseLayoutRounding="True"
+  mc:Ignorable="d">
 
   <UserControl.Resources>
     <ResourceDictionary>
@@ -38,10 +39,26 @@
     </ResourceDictionary>
   </UserControl.Resources>
 
-  <Grid Margin="0,6,0,0">
-    <Border Background="{DynamicResource PlayerBackgroundBrush}" />
-    <StackPanel>
-      <Grid Height="83">
+  <Grid>
+
+    <Grid.ColumnDefinitions>
+      <!--  Playback buttons (fixed width)  -->
+      <ColumnDefinition Width="Auto" />
+      <!--  CurrentTrackName, CurrentTime, Progress Slider, TotalTime (scales with window width)  -->
+      <ColumnDefinition Width="*" />
+      <!--  Volume Mute and Volume Slider (fixed width)  -->
+      <ColumnDefinition Width="Auto" />
+      <!--  Shuffle and Equalizer buttons (fixed width)  -->
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+
+    <StackPanel
+      Grid.Row="0"
+      Grid.Column="0"
+      Margin="25,0,25,0"
+      VerticalAlignment="Center"
+      Orientation="Horizontal">
+      <!--<Grid Height="83">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="265" />
           <ColumnDefinition />
@@ -49,145 +66,124 @@
           <ColumnDefinition Width="120" />
         </Grid.ColumnDefinitions>
 
-        <!--  Player Buttons  -->
+      -->
+      <!--  Player Buttons  -->
+      <!--
         <Grid Grid.Column="0" Margin="30,14,0,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
+          </Grid.ColumnDefinitions>-->
 
-          <!--  Prev Button  -->
-          <Button
-            Name="PrevButton"
-            Grid.Column="0"
-            Width="36"
-            Height="36"
-            Margin="0,0,4,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            Command="{Binding PrevCommand}"
-            Content="{iconPacks:Material SkipPrevious,
-                                         Width=13,
-                                         Height=13}"
-            Foreground="{DynamicResource PlayerForegroundBrush}"
-            Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Previous Track" />
+      <!--  Prev Button  -->
+      <Button
+        Name="PrevButton"
+        Width="36"
+        Height="36"
+        Margin="0,0,5,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        d:Foreground="White"
+        Command="{Binding PrevCommand}"
+        Content="{iconPacks:Material SkipPrevious,
+                                     Width=13,
+                                     Height=13}"
+        Foreground="{DynamicResource PlayerForegroundBrush}"
+        Style="{StaticResource LinkerCircleButton}"
+        ToolTip="Previous Track" />
 
-          <!--  Play Button  -->
-          <Button
-            x:Name="PlayButton"
-            Grid.Column="1"
-            Width="55"
-            Height="55"
-            Margin="4,0,4,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            Command="{Binding PlayPauseCommand}"
-            Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
-            Foreground="{DynamicResource PlayerForegroundBrush}"
-            Style="{StaticResource LinkerCircleButton}" />
+      <!--  Play Button  -->
+      <Button
+        x:Name="PlayButton"
+        Width="55"
+        Height="55"
+        Margin="5,0,5,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        d:Foreground="White"
+        Command="{Binding PlayPauseCommand}"
+        Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
+        Foreground="{DynamicResource PlayerForegroundBrush}"
+        Style="{StaticResource LinkerCircleButton}" />
 
-          <!--  Stop Button  -->
-          <Button
-            Name="StopButton"
-            Grid.Column="2"
-            Width="36"
-            Height="36"
-            Margin="4,0,4,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            Command="{Binding StopCommand}"
-            Content="{iconPacks:Material Stop,
-                                         Width=12,
-                                         Height=12}"
-            Foreground="{DynamicResource PlayerForegroundBrush}"
-            Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Stop" />
+      <!--  Stop Button  -->
+      <Button
+        Name="StopButton"
+        Width="36"
+        Height="36"
+        Margin="5,0,5,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        d:Foreground="White"
+        Command="{Binding StopCommand}"
+        Content="{iconPacks:Material Stop,
+                                     Width=12,
+                                     Height=12}"
+        Foreground="{DynamicResource PlayerForegroundBrush}"
+        Style="{StaticResource LinkerCircleButton}"
+        ToolTip="Stop" />
 
-          <!--  Next Button  -->
-          <Button
-            Name="NextButton"
-            Grid.Column="3"
-            Width="36"
-            Height="36"
-            Margin="4,0,4,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            Command="{Binding NextCommand}"
-            Content="{iconPacks:Material SkipNext,
-                                         Width=13,
-                                         Height=13}"
-            Foreground="{DynamicResource PlayerForegroundBrush}"
-            Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Next File (j)" />
-        </Grid>
+      <!--  Next Button  -->
+      <Button
+        Name="NextButton"
+        Width="36"
+        Height="36"
+        Margin="5,0,5,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        d:Foreground="White"
+        Command="{Binding NextCommand}"
+        Content="{iconPacks:Material SkipNext,
+                                     Width=13,
+                                     Height=13}"
+        Foreground="{DynamicResource PlayerForegroundBrush}"
+        Style="{StaticResource LinkerCircleButton}"
+        ToolTip="Next File (j)" />
+    </StackPanel>
 
-        <!--  Player Slider Group  -->
-        <Grid Grid.Column="1" Margin="0,1,30,0">
+    <!--  Player Slider Group  -->
+    <!--<Grid Grid.Column="1" Margin="0,1,30,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="65" />
             <ColumnDefinition />
             <ColumnDefinition Width="65" />
-          </Grid.ColumnDefinitions>
+          </Grid.ColumnDefinitions>-->
 
-          <!--<Border Grid.Column="0" BorderBrush="YellowGreen" BorderThickness="2" />
+    <!--<Border Grid.Column="0" BorderBrush="YellowGreen" BorderThickness="2" />
         <Border Grid.Column="1" BorderBrush="YellowGreen" BorderThickness="2" />
         <Border Grid.Column="2" BorderBrush="YellowGreen" BorderThickness="2" />-->
 
-          <Grid Grid.Column="1">
+    <!--<Grid Grid.Column="1">
             <Grid.RowDefinitions>
               <RowDefinition Height="1*" />
-              <!--  Current Track  -->
+    -->
+    <!--  Current Track  -->
+    <!--
               <RowDefinition Height="2*" />
-              <!--  Timers and Slider  -->
-            </Grid.RowDefinitions>
+    -->
+    <!--  Timers and Slider  -->
+    <!--
+            </Grid.RowDefinitions>-->
 
-            <!--  Current Track Name  -->
-            <TextBlock
-              Name="CurrentTrackName"
-              Grid.Row="0"
-              Margin="0,8,0,0"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              d:Foreground="White"
-              FontSize="16"
-              FontWeight="Light"
-              Foreground="{DynamicResource PlayerForegroundBrush}"
-              Text="Song not selected"
-              TextTrimming="CharacterEllipsis" />
+    <!--  Current Track Name  -->
 
-            <Grid Grid.Row="1">
+    <!--<Grid Grid.Row="1">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="30*" />
                 <ColumnDefinition Width="10*" />
                 <ColumnDefinition Width="9*" />
                 <ColumnDefinition Width="17*" />
-              </Grid.ColumnDefinitions>
+              </Grid.ColumnDefinitions>-->
 
-              <!--<Border Grid.Column="0" BorderBrush="Yellow" BorderThickness="1" />
+    <!--<Border Grid.Column="0" BorderBrush="Yellow" BorderThickness="1" />
             <Border Grid.Column="1" BorderBrush="Yellow" BorderThickness="1" />
             <Border Grid.Column="2" BorderBrush="Yellow" BorderThickness="1" />
             <Border Grid.Column="3" BorderBrush="Yellow" BorderThickness="1" />-->
 
-              <!--  Player Slider  -->
-              <Slider
-                x:Name="SeekBar"
-                Grid.Column="0"
-                Grid.ColumnSpan="4"
-                Margin="0,8,0,0"
-                VerticalAlignment="Top"
-                Panel.ZIndex="1"
-                Maximum="100"
-                Style="{StaticResource CustomHorizontalSlider}"
-                ValueChanged="SeekBar_ValueChanged" />
 
-              <UniformGrid
+    <!--<UniformGrid
                 Name="UniGrid"
                 Grid.Column="0"
                 Grid.ColumnSpan="4"
@@ -196,132 +192,176 @@
                 SizeChanged="UniGrid_SizeChanged" />
             </Grid>
 
-          </Grid>
+          </Grid>-->
 
-          <!--  Current Time  -->
-          <TextBlock
-            Name="CurrentTime"
-            Grid.Column="0"
-            Padding="0,8,10,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            FontSize="16"
-            FontWeight="Light"
-            Foreground="{DynamicResource PlayerForegroundBrush}">
-            0:00
-          </TextBlock>
+    <Grid Grid.Column="1">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <!--  CurrentTrackName  -->
+        <RowDefinition Height="*" />
+        <!--  CurrentTime, Progress Slider, TotalTime  -->
+      </Grid.RowDefinitions>
 
-          <!--  Total Time  -->
-          <TextBlock
-            Name="TotalTime"
-            Grid.Column="2"
-            Padding="10,8,0,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            FontSize="16"
-            FontWeight="Light"
-            Foreground="{DynamicResource PlayerForegroundBrush}">
-            0:00
-          </TextBlock>
-        </Grid>
+      <!--  Current Track Name (Row 0, spans all columns)  -->
+      <TextBlock
+        Name="CurrentTrackName"
+        Grid.Row="0"
+        Grid.Column="0"
+        Margin="5,10,5,5"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Top"
+        d:Foreground="White"
+        FontSize="16"
+        FontWeight="Light"
+        Foreground="{DynamicResource PlayerForegroundBrush}"
+        Text="Song not selected" />
 
-        <!--  Volume Group  -->
-        <Grid
-          Name="VolumeSlidersGrid"
+      <Grid Grid.Row="1" Margin="10,5,10,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <!--  CurrentTime  -->
+          <ColumnDefinition Width="*" />
+          <!--  Progress Slider  -->
+          <ColumnDefinition Width="Auto" />
+          <!--  TotalTime  -->
+        </Grid.ColumnDefinitions>
+
+        <!--  Current Time  -->
+        <TextBlock
+          Name="CurrentTime"
+          Grid.Column="0"
+          Padding="0,0,10,0"
+          d:Foreground="White"
+          FontSize="16"
+          FontWeight="Light"
+          Foreground="{DynamicResource PlayerForegroundBrush}"
+          Text="0:00" />
+
+        <!--  Player Slider  -->
+        <Slider
+          x:Name="SeekBar"
+          Grid.Column="1"
+          Margin="5,0,5,0"
+          Panel.ZIndex="1"
+          Maximum="100"
+          Style="{StaticResource CustomHorizontalSlider}"
+          ValueChanged="SeekBar_ValueChanged" />
+
+        <!--  Total Time  -->
+        <TextBlock
+          Name="TotalTime"
           Grid.Column="2"
-          Margin="0,10,30,0">
-          <Grid.ColumnDefinitions>
+          Padding="10,0,0,0"
+          d:Foreground="White"
+          FontSize="16"
+          FontWeight="Light"
+          Foreground="{DynamicResource PlayerForegroundBrush}">
+          0:00
+        </TextBlock>
+      </Grid>
+    </Grid>
+
+    <!--  Volume Group  -->
+    <StackPanel
+      Grid.Row="0"
+      Grid.Column="2"
+      Margin="25,5,5,5"
+      Orientation="Horizontal">
+      <!--<Grid.ColumnDefinitions>
             <ColumnDefinition Width="50" />
             <ColumnDefinition />
-          </Grid.ColumnDefinitions>
+          </Grid.ColumnDefinitions>-->
 
-          <!--  Mute Button  -->
-          <ToggleButton
-            Name="MuteButton"
-            Grid.Column="0"
-            Width="36"
-            Height="36"
-            Command="{Binding MuteCommand}"
-            CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
-            ToolTip="Mute (m)">
-            <ToggleButton.Style>
-              <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
-                <Setter Property="Content" Value="{iconPacks:Octicons Unmute, Width=15, Height=15}" />
-                <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
-                <Style.Triggers>
-                  <Trigger Property="IsChecked" Value="true">
-                    <Setter Property="Content" Value="{iconPacks:Octicons Mute, Width=15, Height=15}" />
-                  </Trigger>
-                </Style.Triggers>
-              </Style>
-            </ToggleButton.Style>
-          </ToggleButton>
+      <!--  Mute Button  -->
+      <ToggleButton
+        Name="MuteButton"
+        Width="36"
+        Height="36"
+        Margin="4,0,5,0"
+        Command="{Binding MuteCommand}"
+        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
+        ToolTip="Mute (m)">
+        <ToggleButton.Style>
+          <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
+            <Setter Property="Content" Value="{iconPacks:Octicons Unmute, Width=15, Height=15}" />
+            <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+            <Style.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Content" Value="{iconPacks:Octicons Mute, Width=15, Height=15}" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </ToggleButton.Style>
+      </ToggleButton>
 
-          <!--  Volume Slider  -->
-          <Slider
-            x:Name="VolumeSlider"
-            Grid.Column="1"
-            Margin="6,0,10,0"
-            VerticalAlignment="Center"
-            Maximum="100"
-            Style="{StaticResource CustomHorizontalSlider}"
-            ValueChanged="VolumeSlider_ValueChanged" />
+      <!--  Volume Slider  -->
+      <Slider
+        x:Name="VolumeSlider"
+        Margin="5,0,10,0"
+        VerticalAlignment="Center"
+        Maximum="100"
+        Style="{StaticResource CustomHorizontalSlider}"
+        ValueChanged="VolumeSlider_ValueChanged" />
 
-        </Grid>
+    </StackPanel>
 
-        <!--  Other Settings  -->
-        <Grid Grid.Column="3" Margin="0,0,30,0">
-          <Grid.ColumnDefinitions>
+    <!--  Other Settings  -->
+    <StackPanel
+      Grid.Row="0"
+      Grid.Column="3"
+      Margin="5"
+      Orientation="Horizontal">
+      <!--<Grid.ColumnDefinitions>
             <ColumnDefinition />
             <ColumnDefinition />
-          </Grid.ColumnDefinitions>
+          </Grid.ColumnDefinitions>-->
 
-          <!--  Shuffle Mode Button  -->
-          <ToggleButton
-            Name="ShuffleModeButton"
-            Grid.Column="0"
-            Width="36"
-            Height="36"
-            Margin="0,10,0,0"
-            Command="{Binding ShuffleCommand}"
-            CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
-            ToolTip="Shuffle (s)">
-            <ToggleButton.Style>
-              <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
-                <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
-                <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
-                <Style.Triggers>
-                  <Trigger Property="IsChecked" Value="true">
-                    <Setter Property="Content" Value="{iconPacks:Entypo Shuffle, Width=17, Height=17}" />
-                  </Trigger>
-                </Style.Triggers>
-              </Style>
-            </ToggleButton.Style>
-          </ToggleButton>
+      <!--  Shuffle Mode Button  -->
+      <ToggleButton
+        Name="ShuffleModeButton"
+        Grid.Column="0"
+        Width="36"
+        Height="36"
+        Margin="10,0,5,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Command="{Binding ShuffleCommand}"
+        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
+        ToolTip="Shuffle (s)">
+        <ToggleButton.Style>
+          <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">
+            <Setter Property="Content" Value="{iconPacks:Material ShuffleDisabled, Width=15, Height=15}" />
+            <Setter Property="Foreground" Value="{DynamicResource PlayerForegroundBrush}" />
+            <Style.Triggers>
+              <Trigger Property="IsChecked" Value="true">
+                <Setter Property="Content" Value="{iconPacks:Entypo Shuffle, Width=17, Height=17}" />
+              </Trigger>
+            </Style.Triggers>
+          </Style>
+        </ToggleButton.Style>
+      </ToggleButton>
 
-          <!--  Equalizer Button  -->
-          <Button
-            Name="EqualizerButton"
-            Grid.Column="1"
-            Width="36"
-            Height="36"
-            Margin="0,10,0,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
-            d:Foreground="White"
-            Click="OnEqualizerButton_Click"
-            Content="{iconPacks:Fontisto Equalizer,
-                                         Width=18,
-                                         Height=18}"
-            Foreground="{DynamicResource PlayerForegroundBrush}"
-            Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Equalizer" />
-        </Grid>
-      </Grid>
+      <!--  Equalizer Button  -->
+      <Button
+        Name="EqualizerButton"
+        Grid.Column="1"
+        Width="36"
+        Height="36"
+        Margin="5,0,25,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        d:Foreground="White"
+        Click="OnEqualizerButton_Click"
+        Content="{iconPacks:Fontisto Equalizer,
+                                     Width=18,
+                                     Height=18}"
+        Foreground="{DynamicResource PlayerForegroundBrush}"
+        Style="{StaticResource LinkerCircleButton}"
+        ToolTip="Equalizer" />
+    </StackPanel>
+  </Grid>
 
-      <!--<Grid VerticalAlignment="Bottom">
+  <!--<Grid VerticalAlignment="Bottom">
 
         <StatusBar
           Margin="8,0,0,5"
@@ -338,6 +378,5 @@
         </StatusBar>
 
       </Grid>-->
-    </StackPanel>
-  </Grid>
+  <!--</Grid>-->
 </UserControl>

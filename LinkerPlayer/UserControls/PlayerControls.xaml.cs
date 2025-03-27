@@ -151,33 +151,33 @@ public partial class PlayerControls
         _seekBarTimer.Start();
     }
 
-    private void UniGrid_SizeChanged(object? sender, SizeChangedEventArgs? e)
-    {
-        int n = UniGrid.Children.Count;
+    //private void UniGrid_SizeChanged(object? sender, SizeChangedEventArgs? e)
+    //{
+    //    int n = UniGrid.Children.Count;
 
-        if (n == 0)
-        {
-            return;
-        }
+    //    if (n == 0)
+    //    {
+    //        return;
+    //    }
 
-        int k = (int)UniGrid.ActualWidth / 6;
+    //    int k = (int)UniGrid.ActualWidth / 6;
 
-        List<int> numbers = new();
-        for (int i = 0; i < n; i++)
-        {
-            numbers.Add(i);
-        }
+    //    List<int> numbers = new();
+    //    for (int i = 0; i < n; i++)
+    //    {
+    //        numbers.Add(i);
+    //    }
 
-        List<int> reducedList = numbers.EvenlySpacedSubset(k);
+    //    List<int> reducedList = numbers.EvenlySpacedSubset(k);
 
-        for (int i = 0; i < UniGrid.Children.Count; i++)
-        {
-            if (UniGrid.Children[i] is Border border)
-            {
-                border.Visibility = reducedList.Contains(i) ? Visibility.Visible : Visibility.Collapsed;
-            }
-        }
-    }
+    //    for (int i = 0; i < UniGrid.Children.Count; i++)
+    //    {
+    //        if (UniGrid.Children[i] is Border border)
+    //        {
+    //            border.Visibility = reducedList.Contains(i) ? Visibility.Visible : Visibility.Collapsed;
+    //        }
+    //    }
+    //}
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
