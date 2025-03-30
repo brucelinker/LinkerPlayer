@@ -15,6 +15,8 @@ public partial class App
 
     public App()
     {
+        System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.Default;
+
         this.WindowPlace = new WindowPlace("placement.config");
 
         AppHost = Host.CreateDefaultBuilder()

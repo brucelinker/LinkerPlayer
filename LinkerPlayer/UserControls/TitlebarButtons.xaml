@@ -84,6 +84,7 @@
         MouseEnter="ButtonMouseEnter"
         MouseLeave="ButtonMouseLeave"
         Style="{DynamicResource MaximizeMinimizeButton}"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
         ToolTip="Settings">
         <Image
           Width="20"

@@ -17,12 +17,9 @@ public class ThemeManager
 
         Application.Current.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.TracksDataGrid.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.FunctionButtons.Resources.MergedDictionaries.Clear();
-        MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Clear();
-        MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Clear();
-        MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Clear();
+        //MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Clear();
+        //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Clear();
+        //MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Clear();
     }
 
     public static void AddDict(ResourceDictionary resDict)
@@ -33,12 +30,9 @@ public class ThemeManager
 
         Application.Current.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.TracksDataGrid.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.FunctionButtons.Resources.MergedDictionaries.Add(resDict);
-        MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.PlaylistList.Resources.MergedDictionaries.Add(resDict);
-        MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Add(resDict);
-        MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Add(resDict);
+        //MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Add(resDict);
+        //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Add(resDict);
+        //MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Add(resDict);
     }
 
     public static string GetThemeUri(ThemeColors theme)

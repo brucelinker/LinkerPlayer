@@ -87,9 +87,6 @@ public partial class SettingsWindow
         }
 
         Properties.Settings.Default.Save();
-
-        InfoSnackbar.MessageQueue?.Clear();
-        InfoSnackbar.MessageQueue?.Enqueue("Saved!", null, null, null, false, true, TimeSpan.FromSeconds(1));
     }
 
     string _editedHotkey = "";
@@ -131,10 +128,6 @@ public partial class SettingsWindow
                     if (prop.Value == newHotkey)
                     {
                         hotkeyIsUsed = true;
-
-                        InfoSnackbar.MessageQueue?.Clear();
-                        InfoSnackbar.MessageQueue?.Enqueue($"This one is already used by {prop.Key}, try another one", null, null, null, false, true, TimeSpan.FromSeconds(1));
-
                         break;
                     }
                 }

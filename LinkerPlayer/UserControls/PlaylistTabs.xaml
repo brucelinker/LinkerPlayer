@@ -253,10 +253,6 @@
       <DataTemplate x:Key="TabContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <DataGrid
           Name="PlaylistDataGrid"
-          Width="Auto"
-          Height="Auto"
-          MaxWidth="3840"
-          MaxHeight="2160"
           Margin="0,0,0,0"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"

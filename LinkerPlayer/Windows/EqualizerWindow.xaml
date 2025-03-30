@@ -112,7 +112,7 @@
       <RowDefinition Height="50" />
       <RowDefinition Height="30" />
       <RowDefinition />
-      <RowDefinition Height="40" />
+      <RowDefinition Height="50" />
     </Grid.RowDefinitions>
 
     <Grid Grid.Row="0">
@@ -595,7 +595,7 @@
         Name="CloseButton"
         Height="25"
         MinWidth="80"
-        Margin="0,0,20,10"
+        Margin="0,0,20,0"
         HorizontalAlignment="Right"
         VerticalAlignment="Center"
         d:Foreground="White"

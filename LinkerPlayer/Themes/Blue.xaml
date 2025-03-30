@@ -5,6 +5,7 @@
 
   <Color x:Key="MainWindowGradientStartColor">#40586A</Color>
   <Color x:Key="MainWindowGradientEndColor">#668396</Color>
+  <Color x:Key="MainWindowBorderColor">#B0C4DE</Color>
 
   <Color x:Key="ChildWindowBackgroundColor">#40586A</Color>
 
@@ -19,7 +20,7 @@
   <Color x:Key="ControlDisabledColor">Gray</Color>
   <Color x:Key="ControlThumbFillColor">Transparent</Color>
   <Color x:Key="ControlThumbBorderColor">White</Color>
-  <!-- B0C4DE -->
+  <!--  B0C4DE  -->
   <Color x:Key="DefaultTextColor">White</Color>
 
   <Color x:Key="FirstDarkColor">SteelBlue</Color>

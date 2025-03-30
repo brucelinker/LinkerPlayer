@@ -6,15 +6,16 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   d:DesignHeight="450"
-  d:DesignWidth="300"
+  d:DesignWidth="250"
   FontFamily="Segoe UI"
+  FontWeight="Light"
   mc:Ignorable="d">
 
   <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
+      <RowDefinition />
     </Grid.RowDefinitions>
 
     <!--  AlbumCover  -->
@@ -24,8 +25,8 @@
       Grid.Column="0"
       Margin="0,1,0,0"
       HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch">
-
+      VerticalAlignment="Stretch"
+      d:DesignHeight="250">
       <Grid
         x:Name="ImageGrid"
         RenderOptions.BitmapScalingMode="HighQuality"
@@ -55,9 +56,10 @@
 
     <Grid
       Grid.Row="1"
-      Margin="10,0,0,0"
+      Margin="0,0,0,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Center">
+
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
@@ -66,11 +68,14 @@
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
 
+      <Border Grid.Row="0" Grid.RowSpan="5" />
+
       <TextBlock
         Name="TrackName"
         Grid.Row="0"
         Grid.ColumnSpan="2"
         Margin="0,8,0,2"
+        Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Title"
         FontSize="{DynamicResource FontSizeBiggest}"
@@ -82,7 +87,7 @@
         Name="TrackArtist"
         Grid.Row="1"
         Margin="0,0,0,0"
-        Padding="0"
+        Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Artist"
         FontSize="{DynamicResource FontSizeNormal}"
@@ -95,7 +100,7 @@
         Grid.Row="2"
         Grid.ColumnSpan="2"
         Margin="0,0,0,0"
-        Padding="1"
+        Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Album"
         FontSize="{DynamicResource FontSizeNormal}"
@@ -107,7 +112,7 @@
         <TextBlock
           Name="TrackYear"
           Margin="0,0,10,0"
-          Padding="1"
+          Padding="8,0,0,0"
           VerticalAlignment="Center"
           d:Text="Year"
           FontSize="{DynamicResource FontSizeNormal}"
@@ -118,7 +123,7 @@
         <TextBlock
           Name="TrackBitrate"
           Margin="0,0,0,0"
-          Padding="1"
+          Padding="8,0,0,0"
           VerticalAlignment="Center"
           d:Text="Year"
           FontSize="{DynamicResource FontSizeNormal}"
@@ -131,7 +136,7 @@
         Name="TrackGenre"
         Grid.Row="4"
         Margin="0,0,0,0"
-        Padding="1"
+        Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Genre"
         FontSize="{DynamicResource FontSizeNormal}"
@@ -142,13 +147,12 @@
     </Grid>
     <Grid
       Grid.Row="2"
-      Margin="10,0,8,0"
-      VerticalAlignment="Bottom">
+      Margin="8,0,8,0"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Stretch">
+
       <audio:SpectrumAnalyzer
         x:Name="Spectrum"
-        Height="240"
-        HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch"
         AveragePeaks="False"
         BarHeightScaling="Decibel"
         MaximumFrequency="20000"

@@ -6,11 +6,7 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   Title="LinkerPlayer"
-  Width="1280"
-  Height="790"
-  MinWidth="800"
-  MinHeight="514"
-  AllowsTransparency="True"
+  AllowsTransparency="False"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
   Closing="Window_Closing"
@@ -20,73 +16,79 @@
   TextElement.FontSize="14"
   TextElement.FontWeight="Medium"
   TextElement.Foreground="{DynamicResource DefaultTextBrush}"
+  UseLayoutRounding="True"
   WindowStyle="None"
   mc:Ignorable="d">
 
   <WindowChrome.WindowChrome>
-    <WindowChrome CaptionHeight="30" />
+    <WindowChrome
+      CaptionHeight="40"
+      CornerRadius="0"
+      GlassFrameThickness="0"
+      NonClientFrameEdges="None"
+      ResizeBorderThickness="5" />
   </WindowChrome.WindowChrome>
 
-  <Grid Focusable="True">
-    <Grid.Background>
-      <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
-        <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
-        <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientEndColor}" />
-      </LinearGradientBrush>
-    </Grid.Background>
+  <Border BorderBrush="{DynamicResource MainWindowBorderBrush}" BorderThickness="1">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="40" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
 
-    <Grid.RowDefinitions>
-      <RowDefinition Height="40" />
-      <RowDefinition />
-      <RowDefinition Height="105" />
-    </Grid.RowDefinitions>
+      <!--  Title Bar Area (Draggable)  -->
+      <Border Grid.Row="0" Background="{DynamicResource MainWindowGradientStartBrush}">
+        <userControls:TitlebarButtons
+          x:Name="TitlebarButtons"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
+      </Border>
 
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="30.5*" />
-      <ColumnDefinition Width="5" />
-      <ColumnDefinition Width="75*" />
-    </Grid.ColumnDefinitions>
+      <!--  Main Content Area  -->
+      <Grid Grid.Row="1">
+        <Grid.Background>
+          <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
+            <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientEndColor}" />
+          </LinearGradientBrush>
+        </Grid.Background>
 
-    <userControls:TitlebarButtons
-      x:Name="TitlebarButtons"
-      Grid.Row="0"
-      Grid.ColumnSpan="3"
-      Panel.ZIndex="1" />
+        <Grid.RowDefinitions>
+          <RowDefinition Height="*" />
+          <RowDefinition Height="105" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="3*" />
+          <ColumnDefinition Width="5" />
+          <ColumnDefinition Width="7*" />
+        </Grid.ColumnDefinitions>
 
-    <userControls:TrackInfo
-      x:Name="TrackInfo"
-      Grid.Row="1"
-      Grid.Column="0"
-      HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch" />
+        <userControls:TrackInfo
+          x:Name="TrackInfo"
+          Grid.Row="0"
+          Grid.Column="0"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
 
-    <GridSplitter
-      Grid.Row="1"
-      Grid.RowSpan="2"
-      Grid.Column="1"
-      HorizontalAlignment="Stretch"
-      Background="Transparent" />
+        <GridSplitter
+          Grid.Row="0"
+          Grid.Column="1"
+          HorizontalAlignment="Stretch"
+          Background="Transparent" />
 
-    <userControls:PlaylistTabs
-      x:Name="PlaylistTabs"
-      Grid.Row="1"
-      Grid.Column="2"
-      HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch" />
+        <userControls:PlaylistTabs
+          x:Name="PlaylistTabs"
+          Grid.Row="0"
+          Grid.Column="2"
+          HorizontalAlignment="Stretch"
+          VerticalAlignment="Stretch" />
 
-    <!--<materialDesign:Snackbar
-      Name="InfoSnackbar"
-      Grid.Row="1"
-      Grid.Column="0"
-      Grid.ColumnSpan="3"
-      IsActive="False"
-      MessageQueue="{materialDesign:MessageQueue}" />-->
-
-    <userControls:PlayerControls
-      x:Name="PlayerControls"
-      Grid.Row="2"
-      Grid.Column="0"
-      Grid.ColumnSpan="3" />
-
-  </Grid>
+        <userControls:PlayerControls
+          x:Name="PlayerControls"
+          Grid.Row="1"
+          Grid.Column="0"
+          Grid.ColumnSpan="3" />
+      </Grid>
+    </Grid>
+  </Border>
 </Window>
