@@ -2,9 +2,12 @@
   x:Class="LinkerPlayer.Windows.MainWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
+  xmlns:controlzEx="clr-namespace:ControlzEx.Behaviors;assembly=ControlzEx"
+  xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
   Title="LinkerPlayer"
   AllowsTransparency="False"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
@@ -20,14 +23,18 @@
   WindowStyle="None"
   mc:Ignorable="d">
 
-  <WindowChrome.WindowChrome>
+  <b:Interaction.Behaviors>
+    <controlzEx:WindowChromeBehavior />
+  </b:Interaction.Behaviors>
+
+  <!--<WindowChrome.WindowChrome>
     <WindowChrome
       CaptionHeight="40"
       CornerRadius="0"
       GlassFrameThickness="0"
-      NonClientFrameEdges="None"
+      NonClientFrameEdges="Right"
       ResizeBorderThickness="5" />
-  </WindowChrome.WindowChrome>
+  </WindowChrome.WindowChrome>-->
 
   <Border BorderBrush="{DynamicResource MainWindowBorderBrush}" BorderThickness="1">
     <Grid>

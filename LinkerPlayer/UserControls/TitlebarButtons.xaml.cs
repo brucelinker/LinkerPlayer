@@ -24,7 +24,14 @@ public partial class TitlebarButtons
     {
         (((sender as Button)?.Content as Image)!).Opacity = 0.6;
     }
-    
+
+    private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        Window window = Window.GetWindow(this)!;
+
+        window.DragMove();
+    }
+
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
         //if (_isSettingsWindowOpen)
