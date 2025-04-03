@@ -1,6 +1,6 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <Color x:Key="TitleBarForegroundColor">Black</Color>
+  <Color x:Key="TitleBarForegroundColor">#505050</Color>
   <Color x:Key="TitleBarBackgroundColor">#D9D2C2</Color>
 
   <Color x:Key="MainWindowGradientStartColor">#D9D2C2</Color>
@@ -11,7 +11,7 @@
 
   <Color x:Key="ControlAccentLightColor">#9B8B4D</Color>
   <Color x:Key="ControlAccentDarkColor">#B18D00</Color>
-  <Color x:Key="ControlForegroundColor">Black</Color>
+  <Color x:Key="ControlForegroundColor">#505050</Color>
   <Color x:Key="ControlBackgroundColor">Transparent</Color>
   <Color x:Key="ControlBorderLightColor">#FFAAAAAA</Color>
   <Color x:Key="ControlBorderDarkColor">#FF888888</Color>
@@ -21,7 +21,7 @@
   <Color x:Key="ControlThumbFillColor">Transparent</Color>
   <Color x:Key="ControlThumbBorderColor">White</Color>
 
-  <Color x:Key="DefaultTextColor">Black</Color>
+  <Color x:Key="DefaultTextColor">#505050</Color>
 
   <Color x:Key="FirstDarkColor">SteelBlue</Color>
   <Color x:Key="FirstLightColor">LightSteelBlue</Color>
@@ -59,7 +59,7 @@
   <Color x:Key="TrackListTipBackgroundColor">White</Color>
   <Color x:Key="TrackListTipForegroundColor">Black</Color>
 
-  <Color x:Key="PlayerForegroundColor">Black</Color>
+  <Color x:Key="PlayerForegroundColor">#505050</Color>
   <Color x:Key="PlayerBackgroundColor">#D9D2C2</Color>
   <Color x:Key="PlayerActiveColor">DarkGray</Color>
   <Color x:Key="PlayStartGradientColor">White</Color>
@@ -70,19 +70,19 @@
   <Color x:Key="PlayerControlButtonPressedColor">#888888</Color>
   <Color x:Key="PlayerControlButtonMouseOverBorderColor">#CBB971</Color>
 
-  <Color x:Key="MenuForegroundColor">#5A6D75</Color>
-  <Color x:Key="MenuBackgroundColor">#D2CCB7</Color>
+  <Color x:Key="MenuForegroundColor">#505050</Color>
+  <Color x:Key="MenuBackgroundColor">#FCF7E3</Color>
   <Color x:Key="MenuDisabledColor">Gray</Color>
-  <Color x:Key="MenuTextColor">Gray</Color>
-  <Color x:Key="MenuMouseOverForegroundColor">#333333</Color>
-  <Color x:Key="MenuMouseOverBackgroundColor">#FCF7E3</Color>
+  <Color x:Key="MenuTextColor">#505050</Color>
+  <Color x:Key="MenuMouseOverForegroundColor">#505050</Color>
+  <Color x:Key="MenuMouseOverBackgroundColor">#DCD7C1</Color>
   <Color x:Key="MenuSelectionBackgroundColor">#9B8B4D</Color>
 
   <Color x:Key="ImageBackgroundColor">White</Color>
 
   <Color x:Key="ScrollBarTrackColor">#DBD4C4</Color>
-  <Color x:Key="ScrollBarThumbColor">#CBB971</Color>
-  <Color x:Key="ScrollBarArrowForegroundColor">#CBB971</Color>
+  <Color x:Key="ScrollBarThumbColor">#707070</Color>
+  <Color x:Key="ScrollBarArrowForegroundColor">#707070</Color>
   <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>
   <Color x:Key="ScrollBarRepeatButtonColor">Transparent</Color>
 

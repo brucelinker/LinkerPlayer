@@ -107,6 +107,7 @@
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
         <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Opacity" Value="1" />
         <Setter Property="Padding" Value="10" />
         <Setter Property="Margin" Value="10" />

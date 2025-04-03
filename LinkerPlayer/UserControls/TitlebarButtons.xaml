@@ -3,10 +3,11 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  MouseLeftButtonDown="OnMouseLeftButtonDown"
   d:DesignHeight="40"
   d:DesignWidth="800"
+  MouseLeftButtonDown="OnMouseLeftButtonDown"
   mc:Ignorable="d">
 
   <UserControl.Resources>
@@ -65,7 +66,7 @@
       HorizontalAlignment="Left"
       VerticalAlignment="Top"
       d:Foreground=" White"
-      FontSize="22"
+      FontSize="24"
       FontWeight="Light"
       Foreground="{DynamicResource TitleBarForegroundBrush}"
       Text="LinkerPlayer" />
@@ -82,65 +83,60 @@
         Width="45"
         Height="36"
         Click="SettingsButton_Click"
+        Content="{iconPacks:Material Cog,
+                                     Width=18,
+                                     Height=18}"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
         MouseEnter="ButtonMouseEnter"
         MouseLeave="ButtonMouseLeave"
         Style="{DynamicResource MaximizeMinimizeButton}"
-        Foreground="{DynamicResource TitleBarForegroundBrush}"
         ToolTip="Settings">
-        <Image
+        <!--<Image
           Width="20"
           Height="20"
-          Margin="0,0,8,0"
+          Margin="0,0,0,0"
           Opacity="0.6"
-          Source="/Images/settings.png" />
+          Source="/Images/settings.png" />-->
       </Button>
 
       <Rectangle
         Width="1"
         Height="20"
-        Fill="Azure" />
+        Margin="5"
+        Fill="{DynamicResource TitleBarForegroundBrush}" />
 
       <Button
         Name="MinimizeButton"
         Click="MinimizeButton_Click"
+        Content="{iconPacks:Material Minus,
+                                     Width=18,
+                                     Height=18}"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
         MouseEnter="ButtonMouseEnter"
         MouseLeave="ButtonMouseLeave"
-        Style="{DynamicResource MaximizeMinimizeButton}">
-        <Image
-          Name="MinimizeButtonImage"
-          Width="14"
-          Height="14"
-          Opacity="0.6"
-          Source="/Images/minimize.png" />
-      </Button>
+        Style="{DynamicResource MaximizeMinimizeButton}" />
 
       <Button
         Name="MaximizeButton"
         Click="MaximizeButton_Click"
+        Content="{iconPacks:Material WindowMaximize,
+                                     Width=18,
+                                     Height=18}"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
         MouseEnter="ButtonMouseEnter"
         MouseLeave="ButtonMouseLeave"
-        Style="{DynamicResource MaximizeMinimizeButton}">
-        <Image
-          Name="MaximizeButtonImage"
-          Width="14"
-          Height="14"
-          Opacity="0.6"
-          Source="/Images/maximize.png" />
-      </Button>
+        Style="{DynamicResource MaximizeMinimizeButton}" />
 
       <Button
         Name="CloseButton"
         Click="CloseButton_Click"
+        Content="{iconPacks:Material Close,
+                                     Width=18,
+                                     Height=18}"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
         MouseEnter="ButtonMouseEnter"
         MouseLeave="ButtonMouseLeave"
-        Style="{DynamicResource CloseButton}">
-        <Image
-          Name="CloseButtonImage"
-          Width="14"
-          Height="14"
-          Opacity="0.6"
-          Source="/Images/close.png" />
-      </Button>
+        Style="{DynamicResource CloseButton}" />
     </StackPanel>
   </Grid>
 </UserControl>

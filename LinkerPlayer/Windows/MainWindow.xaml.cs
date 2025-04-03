@@ -45,17 +45,17 @@ public partial class MainWindow
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
-        if (WindowState == WindowState.Maximized)
-        {
-            Uri uri = new("/Images/restore.png", UriKind.Relative);
-            ImageSource imgSource = new BitmapImage(uri);
-            TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        }
-        else if (WindowState == WindowState.Normal)
-        {
-            Uri uri = new("/Images/maximize.png", UriKind.Relative);
-            ImageSource imgSource = new BitmapImage(uri);
-            TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        }
+        //if (WindowState == WindowState.Maximized)
+        //{
+        //    Uri uri = new("/Images/restore.png", UriKind.Relative);
+        //    ImageSource imgSource = new BitmapImage(uri);
+        //    TitlebarButtons.MaximizeButtonImage.Source = imgSource;
+        //}
+        //else if (WindowState == WindowState.Normal)
+        //{
+        //    Uri uri = new("/Images/maximize.png", UriKind.Relative);
+        //    ImageSource imgSource = new BitmapImage(uri);
+        //    TitlebarButtons.MaximizeButtonImage.Source = imgSource;
+        //}
     }
 }

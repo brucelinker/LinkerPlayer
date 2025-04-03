@@ -24,7 +24,8 @@
   mc:Ignorable="d">
 
   <b:Interaction.Behaviors>
-    <controlzEx:WindowChromeBehavior />
+    <controlzEx:WindowChromeBehavior
+      CornerPreference="DoNotRound"/>
   </b:Interaction.Behaviors>
 
   <!--<WindowChrome.WindowChrome>

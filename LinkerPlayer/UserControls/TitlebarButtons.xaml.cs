@@ -17,12 +17,12 @@ public partial class TitlebarButtons
 
     private void ButtonMouseEnter(object sender, MouseEventArgs e)
     {
-        ((sender as Button)?.Content as Image)!.Opacity = 1;
+        //((sender as Button)?.Content as Image)!.Opacity = 1;
     }
 
     private void ButtonMouseLeave(object sender, MouseEventArgs e)
     {
-        (((sender as Button)?.Content as Image)!).Opacity = 0.6;
+        //(((sender as Button)?.Content as Image)!).Opacity = 0.6;
     }
 
     private void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
