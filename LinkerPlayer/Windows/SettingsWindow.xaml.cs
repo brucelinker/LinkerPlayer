@@ -64,7 +64,7 @@ public partial class SettingsWindow
         _themeManager.ModifyTheme(selectedTheme);
     }
 
-    private void Save_Click(object sender, RoutedEventArgs e)
+    private void Close_Click(object sender, RoutedEventArgs e)
     {
         if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || 
             MainOutputDevicesList.SelectedItem.ToString() != OutputDeviceManager.GetCurrentDeviceName())

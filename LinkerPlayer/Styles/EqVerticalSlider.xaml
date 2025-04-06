@@ -27,7 +27,7 @@
               <Setter TargetName="increaseBorder" Property="Background" Value="{StaticResource ControlAccentLightBrush}" />
             </Trigger>
             <!--<Trigger Property="IsPressed" Value="true">
-              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
+              <Setter TargetName="increaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
             </Trigger>-->
             <Trigger Property="IsEnabled" Value="false">
               <!--<Setter TargetName="contentPresenter" Property="Opacity" Value="0.56" />-->
@@ -62,10 +62,10 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlBorderLightBrush}" />
+              <Setter TargetName="decreaseBorder" Property="Background" Value="{StaticResource ControlBorderBrush}" />
             </Trigger>
             <!--<Trigger Property="IsPressed" Value="true">
-              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderDarkBrush}" />
+              <Setter TargetName="decreaseBorder" Property="BorderBrush" Value="{StaticResource ControlBorderBrush}" />
             </Trigger>-->
             <Trigger Property="IsEnabled" Value="false">
               <!--<Setter TargetName="contentPresenter" Property="Opacity" Value="0.56" />-->
@@ -89,7 +89,7 @@
             Width="12"
             Height="12"
             Fill="Transparent"
-            Stroke="{DynamicResource PlayerControlButtonBorderBrush}" />
+            Stroke="{DynamicResource ControlBorderBrush}" />
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
               <Setter TargetName="Ellipse" Property="Stroke" Value="{DynamicResource ControlAccentLightBrush}" />

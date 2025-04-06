@@ -10,8 +10,7 @@
   <SolidColorBrush x:Key="ControlAccentDarkBrush" Color="{DynamicResource ControlAccentDarkColor}" />
   <SolidColorBrush x:Key="ControlForegroundBrush" Color="{DynamicResource ControlForegroundColor}" />
   <SolidColorBrush x:Key="ControlBackgroundBrush" Color="{DynamicResource ControlBackgroundColor}" />
-  <SolidColorBrush x:Key="ControlBorderLightBrush" Color="{DynamicResource ControlBorderLightColor}" />
-  <SolidColorBrush x:Key="ControlBorderDarkBrush" Color="{DynamicResource ControlBorderDarkColor}" />
+  <SolidColorBrush x:Key="ControlBorderBrush" Color="{DynamicResource ControlBorderColor}" />
   <SolidColorBrush x:Key="ControlMouseOverBrush" Color="{DynamicResource ControlMouseOverColor}" />
   <SolidColorBrush x:Key="ControlPressedBrush" Color="{DynamicResource ControlPressedColor}" />
   <SolidColorBrush x:Key="ControlDisabledBrush" Color="{DynamicResource ControlDisabledColor}" />
@@ -66,11 +65,6 @@
   <SolidColorBrush x:Key="PlayerActiveBrush" Color="{DynamicResource PlayerActiveColor}" />
   <SolidColorBrush x:Key="PlayerStartGradientBrush" Color="{DynamicResource PlayStartGradientColor}" />
   <SolidColorBrush x:Key="PlayerEndGradientBrush" Color="{DynamicResource PlayEndGradientColor}" />
-
-  <SolidColorBrush x:Key="PlayerControlButtonBrush" Color="{DynamicResource PlayerControlButtonColor}" />
-  <SolidColorBrush x:Key="PlayerControlButtonBorderBrush" Color="{DynamicResource PlayerControlButtonBorderColor}" />
-  <SolidColorBrush x:Key="PlayerControlButtonPressedBrush" Color="{DynamicResource PlayerControlButtonPressedColor}" />
-  <SolidColorBrush x:Key="PlayerControlButtonMouseOverBorderBrush" Color="{DynamicResource PlayerControlButtonMouseOverBorderColor}" />
 
   <SolidColorBrush x:Key="MenuForegroundBrush" Color="{DynamicResource MenuForegroundColor}" />
   <SolidColorBrush x:Key="MenuBackgroundBrush" Color="{DynamicResource MenuBackgroundColor}" />

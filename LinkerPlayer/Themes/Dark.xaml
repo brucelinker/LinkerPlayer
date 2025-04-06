@@ -13,8 +13,7 @@
   <Color x:Key="ControlAccentDarkColor">#186868</Color>
   <Color x:Key="ControlForegroundColor">White</Color>
   <Color x:Key="ControlBackgroundColor">Transparent</Color>
-  <Color x:Key="ControlBorderLightColor">#FFAAAAAA</Color>
-  <Color x:Key="ControlBorderDarkColor">#FF888888</Color>
+  <Color x:Key="ControlBorderColor">#BBBBBB</Color>
   <Color x:Key="ControlMouseOverColor">SteelBlue</Color>
   <Color x:Key="ControlPressedColor">#FF211AA9</Color>
   <Color x:Key="ControlDisabledColor">Gray</Color>
@@ -31,13 +30,13 @@
   <Color x:Key="StandardTextForegroundColor">#4682B4</Color>
   <Color x:Key="InactiveSelectionColor">#333333</Color>
 
-  <Color x:Key="PlaylistTabForegroundColor">#F0F0F0</Color>
+  <Color x:Key="PlaylistTabForegroundColor">#B0B0B0</Color>
   <Color x:Key="PlaylistTabBackgroundColor">#4F4F4F</Color>
   <Color x:Key="PlaylistTabBorderColor">#4F4F4F</Color>
   <Color x:Key="PlaylistTabMouseOverForegroundColor">#F0F0F0</Color>
   <Color x:Key="PlaylistTabMouseOverBackgroundColor">Black</Color>
-  <Color x:Key="PlaylistTabSelectedForegroundColor">#6B7B82</Color>
-  <Color x:Key="PlaylistTabSelectedBackgroundColor">#6B7B82</Color>
+  <Color x:Key="PlaylistTabSelectedForegroundColor">#F0F0F0</Color>
+  <Color x:Key="PlaylistTabSelectedBackgroundColor">#707070</Color>
 
   <Color x:Key="NewPlaylistButtonForegroundColor">#C8C8C8</Color>
   <Color x:Key="NewPlaylistButtonBackgroundColor">Transparent</Color>
@@ -64,11 +63,6 @@
   <Color x:Key="PlayerActiveColor">#C8C8C8</Color>
   <Color x:Key="PlayStartGradientColor">#090909</Color>
   <Color x:Key="PlayEndGradientColor">#202020</Color>
-
-  <Color x:Key="PlayerControlButtonColor">Transparent</Color>
-  <Color x:Key="PlayerControlButtonBorderColor">#BBBBBB</Color>
-  <Color x:Key="PlayerControlButtonPressedColor">#888888</Color>
-  <Color x:Key="PlayerControlButtonMouseOverBorderColor">#888888</Color>
 
   <Color x:Key="MenuForegroundColor">#999999</Color>
   <Color x:Key="MenuBackgroundColor">#999999</Color>

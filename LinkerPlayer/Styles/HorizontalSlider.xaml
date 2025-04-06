@@ -49,10 +49,10 @@
             Width="18"
             Height="18"
             Fill="Transparent"
-            Stroke="{DynamicResource PlayerControlButtonBorderBrush}" />
+            Stroke="{DynamicResource ControlBorderBrush}" />
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
-              <Setter TargetName="Ellipse" Property="Stroke" Value="{DynamicResource ControlAccentLightBrush}" />
+              <Setter TargetName="Ellipse" Property="Stroke" Value="{DynamicResource ControlAccentDarkBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
