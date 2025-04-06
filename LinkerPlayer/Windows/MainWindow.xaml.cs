@@ -5,8 +5,7 @@ using LinkerPlayer.ViewModels;
 using Serilog;
 using System;
 using System.Windows;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using System.Windows.Input;
 
 namespace LinkerPlayer.Windows;
 
@@ -36,7 +35,7 @@ public partial class MainWindow
         _mainViewModel.OnWindowLoaded();
         WeakReferenceMessenger.Default.Send(new MainWindowLoadedMessage(true));
     }
-    
+
     private void Window_Closing(object sender, EventArgs e)
     {
         WeakReferenceMessenger.Default.Send(new MainWindowClosingMessage(true));
@@ -45,17 +44,11 @@ public partial class MainWindow
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
-        //if (WindowState == WindowState.Maximized)
-        //{
-        //    Uri uri = new("/Images/restore.png", UriKind.Relative);
-        //    ImageSource imgSource = new BitmapImage(uri);
-        //    TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        //}
-        //else if (WindowState == WindowState.Normal)
-        //{
-        //    Uri uri = new("/Images/maximize.png", UriKind.Relative);
-        //    ImageSource imgSource = new BitmapImage(uri);
-        //    TitlebarButtons.MaximizeButtonImage.Source = imgSource;
-        //}
+
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+
     }
 }

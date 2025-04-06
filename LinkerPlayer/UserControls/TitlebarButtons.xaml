@@ -60,7 +60,6 @@
   </UserControl.Resources>
 
   <Grid Background="{DynamicResource TitleBarBackgroundBrush}">
-    <!--<Border Background="{DynamicResource TitleBarBackgroundBrush}" />-->
     <TextBlock
       Margin="15,5,0,0"
       HorizontalAlignment="Left"
@@ -87,16 +86,8 @@
                                      Width=18,
                                      Height=18}"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
-        MouseEnter="ButtonMouseEnter"
-        MouseLeave="ButtonMouseLeave"
         Style="{DynamicResource MaximizeMinimizeButton}"
         ToolTip="Settings">
-        <!--<Image
-          Width="20"
-          Height="20"
-          Margin="0,0,0,0"
-          Opacity="0.6"
-          Source="/Images/settings.png" />-->
       </Button>
 
       <Rectangle
@@ -112,8 +103,6 @@
                                      Width=18,
                                      Height=18}"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
-        MouseEnter="ButtonMouseEnter"
-        MouseLeave="ButtonMouseLeave"
         Style="{DynamicResource MaximizeMinimizeButton}" />
 
       <Button
@@ -123,8 +112,6 @@
                                      Width=18,
                                      Height=18}"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
-        MouseEnter="ButtonMouseEnter"
-        MouseLeave="ButtonMouseLeave"
         Style="{DynamicResource MaximizeMinimizeButton}" />
 
       <Button
@@ -134,8 +121,6 @@
                                      Width=18,
                                      Height=18}"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
-        MouseEnter="ButtonMouseEnter"
-        MouseLeave="ButtonMouseLeave"
         Style="{DynamicResource CloseButton}" />
     </StackPanel>
   </Grid>

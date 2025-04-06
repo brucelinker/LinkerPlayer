@@ -1,20 +1,25 @@
-﻿<Window
+﻿<controlzex:WindowChromeWindow
   x:Class="LinkerPlayer.Windows.MainWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+  xmlns:controlzex="urn:controlzex"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
-  xmlns:controlzEx="clr-namespace:ControlzEx.Behaviors;assembly=ControlzEx"
-  xmlns:b="http://schemas.microsoft.com/xaml/behaviors"
   Title="LinkerPlayer"
+  Width="800"
+  Height="600"
+  MinWidth="300"
+  MinHeight="200"
   AllowsTransparency="False"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
   Closing="Window_Closing"
+  CornerPreference="DoNotRound"
+  GlassFrameThickness="5"
   Icon="/Images/app64.ico"
   Loaded="Window_Loaded"
+  ResizeBorderThickness="5"
   StateChanged="Window_StateChanged"
   TextElement.FontSize="14"
   TextElement.FontWeight="Medium"
@@ -23,80 +28,67 @@
   WindowStyle="None"
   mc:Ignorable="d">
 
-  <b:Interaction.Behaviors>
-    <controlzEx:WindowChromeBehavior
-      CornerPreference="DoNotRound"/>
-  </b:Interaction.Behaviors>
+  <Grid Margin="0">
+    <!--  Single border at Window level  -->
+    <Grid.RowDefinitions>
+      <RowDefinition Height="40" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
 
-  <!--<WindowChrome.WindowChrome>
-    <WindowChrome
-      CaptionHeight="40"
-      CornerRadius="0"
-      GlassFrameThickness="0"
-      NonClientFrameEdges="Right"
-      ResizeBorderThickness="5" />
-  </WindowChrome.WindowChrome>-->
+    <Border
+      Grid.Row="0"
+      Background="{DynamicResource MainWindowGradientStartBrush}"
+      MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+      <!--  Extend to cover top/left padding  -->
+      <userControls:TitlebarButtons
+        x:Name="TitlebarButtons"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch" />
+    </Border>
 
-  <Border BorderBrush="{DynamicResource MainWindowBorderBrush}" BorderThickness="1">
-    <Grid>
+    <Grid Grid.Row="1">
+      <Grid.Background>
+        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+          <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
+          <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientEndColor}" />
+        </LinearGradientBrush>
+      </Grid.Background>
+
       <Grid.RowDefinitions>
-        <RowDefinition Height="40" />
         <RowDefinition Height="*" />
+        <RowDefinition Height="105" />
       </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="3*" />
+        <ColumnDefinition Width="5" />
+        <ColumnDefinition Width="7*" />
+      </Grid.ColumnDefinitions>
 
-      <!--  Title Bar Area (Draggable)  -->
-      <Border Grid.Row="0" Background="{DynamicResource MainWindowGradientStartBrush}">
-        <userControls:TitlebarButtons
-          x:Name="TitlebarButtons"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch" />
-      </Border>
+      <userControls:TrackInfo
+        x:Name="TrackInfo"
+        Grid.Row="0"
+        Grid.Column="0"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch" />
 
-      <!--  Main Content Area  -->
-      <Grid Grid.Row="1">
-        <Grid.Background>
-          <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
-            <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
-            <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientEndColor}" />
-          </LinearGradientBrush>
-        </Grid.Background>
+      <GridSplitter
+        Grid.Row="0"
+        Grid.Column="1"
+        HorizontalAlignment="Stretch"
+        Background="Transparent" />
 
-        <Grid.RowDefinitions>
-          <RowDefinition Height="*" />
-          <RowDefinition Height="105" />
-        </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="3*" />
-          <ColumnDefinition Width="5" />
-          <ColumnDefinition Width="7*" />
-        </Grid.ColumnDefinitions>
+      <userControls:PlaylistTabs
+        x:Name="PlaylistTabs"
+        Grid.Row="0"
+        Grid.Column="2"
+        HorizontalAlignment="Stretch"
+        VerticalAlignment="Stretch" />
 
-        <userControls:TrackInfo
-          x:Name="TrackInfo"
-          Grid.Row="0"
-          Grid.Column="0"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch" />
-
-        <GridSplitter
-          Grid.Row="0"
-          Grid.Column="1"
-          HorizontalAlignment="Stretch"
-          Background="Transparent" />
-
-        <userControls:PlaylistTabs
-          x:Name="PlaylistTabs"
-          Grid.Row="0"
-          Grid.Column="2"
-          HorizontalAlignment="Stretch"
-          VerticalAlignment="Stretch" />
-
-        <userControls:PlayerControls
-          x:Name="PlayerControls"
-          Grid.Row="1"
-          Grid.Column="0"
-          Grid.ColumnSpan="3" />
-      </Grid>
+      <userControls:PlayerControls
+        x:Name="PlayerControls"
+        Grid.Row="1"
+        Grid.Column="0"
+        Grid.ColumnSpan="3" />
     </Grid>
-  </Border>
-</Window>
+  </Grid>
+</controlzex:WindowChromeWindow>
