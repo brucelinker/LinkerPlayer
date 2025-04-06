@@ -8,6 +8,7 @@
   d:DesignHeight="40"
   d:DesignWidth="800"
   MouseLeftButtonDown="OnMouseLeftButtonDown"
+  MouseDoubleClick="TitlebarButtons_OnMouseDoubleClick"
   mc:Ignorable="d">
 
   <UserControl.Resources>

@@ -48,4 +48,11 @@ public partial class TitlebarButtons
         Window? win = Window.GetWindow(this);
         if (win != null) win.Close();
     }
+
+    private void TitlebarButtons_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        Window? win = Window.GetWindow(this);
+        if (win != null)
+            win.WindowState = win.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
 }
