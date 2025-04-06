@@ -7,8 +7,6 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/SolidColorBrushes.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/BrushResources.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/FontSizes/Small.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/HorizontalSlider.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CircularButton.xaml" />

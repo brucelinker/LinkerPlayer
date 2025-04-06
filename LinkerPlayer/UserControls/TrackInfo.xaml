@@ -157,7 +157,8 @@
         BarHeightScaling="Decibel"
         MaximumFrequency="20000"
         MinimumFrequency="20"
-        PeakFallDelay="10" />
+        PeakFallDelay="10"
+        Style="{StaticResource SpectrumAnalyzerStyle}" />
     </Grid>
   </Grid>
 

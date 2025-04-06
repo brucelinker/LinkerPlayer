@@ -87,8 +87,7 @@
                                      Height=18}"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
         Style="{DynamicResource MaximizeMinimizeButton}"
-        ToolTip="Settings">
-      </Button>
+        ToolTip="Settings" />
 
       <Rectangle
         Width="1"

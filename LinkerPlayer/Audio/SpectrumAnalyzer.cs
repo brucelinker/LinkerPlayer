@@ -799,11 +799,11 @@ public class SpectrumAnalyzer : Control
 
     #region Constructors
 
-    public readonly AudioEngine audioEngine;
+    public readonly AudioEngine AudioEngine;
 
     static SpectrumAnalyzer()
     {
-        DefaultStyleKeyProperty.OverrideMetadata(typeof(SpectrumAnalyzer), new FrameworkPropertyMetadata(typeof(SpectrumAnalyzer)));
+        //DefaultStyleKeyProperty.OverrideMetadata(typeof(SpectrumAnalyzer), new FrameworkPropertyMetadata(typeof(SpectrumAnalyzer)));
     }
 
     /// <summary>
@@ -811,8 +811,8 @@ public class SpectrumAnalyzer : Control
     /// </summary>
     public SpectrumAnalyzer()
     {
-        audioEngine = AudioEngine.Instance;
-        _soundPlayer = audioEngine;
+        AudioEngine = AudioEngine.Instance;
+        _soundPlayer = AudioEngine;
 
         _animationTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
         {
@@ -882,7 +882,7 @@ public class SpectrumAnalyzer : Control
         double lastPeakHeight = 0f;
         if (_spectrumCanvas != null)
         {
-            double height = _spectrumCanvas.RenderSize.Height;
+            double height = _spectrumCanvas.RenderSize.Height * 1;
             int barIndex = 0;
             double peakDotHeight = Math.Max(_barWidth / 2.0f, 1);
             double barHeightScale = (height - peakDotHeight);

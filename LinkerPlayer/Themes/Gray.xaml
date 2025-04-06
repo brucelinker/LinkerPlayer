@@ -70,7 +70,7 @@
   <Color x:Key="PlayerControlButtonPressedColor">#888888</Color>
   <Color x:Key="PlayerControlButtonMouseOverBorderColor">#888888</Color>
 
-   <Color x:Key="MenuForegroundColor">#999999</Color>
+  <Color x:Key="MenuForegroundColor">#999999</Color>
   <Color x:Key="MenuBackgroundColor">#999999</Color>
   <Color x:Key="MenuDisabledColor">Gray</Color>
   <Color x:Key="MenuTextColor">Gray</Color>
