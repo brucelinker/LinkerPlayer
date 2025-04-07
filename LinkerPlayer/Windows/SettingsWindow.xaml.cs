@@ -87,6 +87,9 @@ public partial class SettingsWindow
         }
 
         Properties.Settings.Default.Save();
+
+        Window? win = Window.GetWindow(this);
+        if (win != null) win.Close();
     }
 
     string _editedHotkey = "";

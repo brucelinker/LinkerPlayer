@@ -38,7 +38,7 @@
             <Ellipse
               x:Name="Ellipse"
               Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="3" />
+              StrokeThickness="2" />
             <ContentPresenter
               x:Name="IconContent"
               Margin="{TemplateBinding Padding}"
