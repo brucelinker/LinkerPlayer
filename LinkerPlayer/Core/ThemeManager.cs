@@ -41,7 +41,7 @@ public class ThemeManager
 
         switch (theme)
         {
-            case ThemeColors.Blue: resourceLocator = @"Themes\Blue.xaml"; break;
+            case ThemeColors.Slate: resourceLocator = @"Themes\Slate.xaml"; break;
             case ThemeColors.Light: resourceLocator = @"Themes\Light.xaml"; break;
             case ThemeColors.Dark: resourceLocator = @"Themes\Dark.xaml"; break;
             case ThemeColors.Gray: resourceLocator = @"Themes\Gray.xaml"; break;
@@ -145,7 +145,7 @@ public class ThemeManager
         switch (theme)
         {
             case "Light": ApplyTheme(main, ThemeColors.Light, currentSize); break;
-            case "Blue": ApplyTheme(main, ThemeColors.Blue, currentSize); break;
+            case "Slate": ApplyTheme(main, ThemeColors.Slate, currentSize); break;
             case "Gray": ApplyTheme(main, ThemeColors.Gray, currentSize); break;
             case "Dark": ApplyTheme(main, ThemeColors.Dark, currentSize); break;
             case "URI": ApplyTheme(fileName); break;
@@ -158,7 +158,7 @@ public class ThemeManager
         switch (theme)
         {
             case "Light": return ThemeColors.Light;
-            case "Blue": return ThemeColors.Blue;
+            case "Slate": return ThemeColors.Slate;
             case "Gray": return ThemeColors.Gray;
             case "Dark": return ThemeColors.Dark;
             default: return ThemeColors.Midnight;
@@ -170,7 +170,7 @@ public class ThemeManager
         switch (theme)
         {
             case "Light": return (int)ThemeColors.Light;
-            case "Blue": return (int)ThemeColors.Blue;
+            case "Slate": return (int)ThemeColors.Slate;
             case "Gray": return (int)ThemeColors.Gray;
             case "Dark": return (int)ThemeColors.Dark;
             default: return (int)ThemeColors.Midnight;
@@ -182,7 +182,7 @@ public class ThemeManager
         switch (theme)
         {
             case (int)ThemeColors.Light: return "Light";
-            case (int)ThemeColors.Blue: return "Blue";
+            case (int)ThemeColors.Slate: return "Slate";
             case (int)ThemeColors.Gray: return "Gray";
             case (int)ThemeColors.Dark: return "Dark";
             default: return "Midnight";

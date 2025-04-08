@@ -4,7 +4,7 @@ public enum ThemeColors
 {
     Light = 0,
     Gray = 1,
-    Dark = 2,
-    Blue = 3,
+    Slate = 2,
+    Dark = 3,
     Midnight = 4
 }

@@ -170,8 +170,8 @@
             SelectionChanged="OnThemeSelectionChanged">
             <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
             <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
+            <ComboBoxItem Content="Slate" Tag="{x:Static models:ThemeColors.Slate}" />
             <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
-            <ComboBoxItem Content="Blue" Tag="{x:Static models:ThemeColors.Blue}" />
             <ComboBoxItem Content="Midnight" Tag="{x:Static models:ThemeColors.Midnight}" />
           </ComboBox>
         </Grid>
