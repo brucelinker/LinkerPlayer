@@ -94,8 +94,8 @@
                         <!--  Chevron Path  -->
                         <Path
                           x:Name="Chevron"
-                          Width="12"
-                          Height="6"
+                          Width="14"
+                          Height="7"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"
                           Data="M 0 0 L 6 6 L 12 0"
