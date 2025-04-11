@@ -25,6 +25,7 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CustomCombobox.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <Style x:Key="CloseButton" TargetType="{x:Type Button}">
@@ -142,10 +143,16 @@
             HorizontalAlignment="Right"
             Text="Main Output Device:" />
 
-          <ComboBox
-            Name="MainOutputDevicesList"
-            Grid.Column="2"
-            Foreground="Black" />
+          <ComboBox Style="{StaticResource CustomComboBoxStyle}"
+                    Name="MainOutputDevicesList"
+                    Grid.Column="2"
+                    Width="Auto"
+                    Height="30"
+                    Background="White"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    Foreground="Black"
+                    HorizontalContentAlignment="Center" />
         </Grid>
 
         <!--  Color Theme  -->
@@ -162,12 +169,18 @@
             Foreground="{DynamicResource ControlForegroundBrush}"
             Text="Color Theme:" />
 
-          <ComboBox
-            x:Name="ThemesList"
-            Grid.Column="2"
-            HorizontalContentAlignment="Center"
-            ItemsSource="{Binding Path=ThemeColors}"
-            SelectionChanged="OnThemeSelectionChanged">
+          <ComboBox Style="{StaticResource CustomComboBoxStyle}"
+                     x:Name="ThemesList"
+                     Grid.Column="2"
+                     Width="Auto"
+                     Height="30"
+                     Background="White"
+                     BorderBrush="Gray"
+                     BorderThickness="1"
+                     Foreground="Black"
+                     HorizontalContentAlignment="Center"
+                     ItemsSource="{Binding Path=ThemeColors}"
+                     SelectionChanged="OnThemeSelectionChanged">
             <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
             <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
             <ComboBoxItem Content="Slate" Tag="{x:Static models:ThemeColors.Slate}" />

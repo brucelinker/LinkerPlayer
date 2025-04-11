@@ -1,0 +1,182 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--  Style for ComboBoxItem to customize dropdown items  -->
+  <Style x:Key="CustomComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
+    <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
+    <!--  Item background  -->
+    <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+    <!--  Item text color  -->
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+          <Border
+            x:Name="ItemBorder"
+            Background="{DynamicResource MenuBackgroundBrush}"
+            BorderBrush="Transparent"
+            BorderThickness="0">
+            <ContentPresenter Margin="{TemplateBinding Padding}" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <!--  Hover effect  -->
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+              <!--  Light blue hover  -->
+            </Trigger>
+            <!--  Selected item effect  -->
+            <Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+              <!--  Slightly darker blue  -->
+              <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+              <!--  Bold text for selected  -->
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="CustomComboBoxStyle" TargetType="{x:Type ComboBox}">
+    <!--  Apply item style  -->
+    <Setter Property="ItemContainerStyle" Value="{StaticResource CustomComboBoxItemStyle}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type ComboBox}">
+          <Grid>
+            <!--  Main ComboBox Border  -->
+            <Border
+              x:Name="Border"
+              Background="{DynamicResource MenuBackgroundBrush}"
+              BorderBrush="{DynamicResource MenuForegroundBrush}"
+              BorderThickness="1"
+              CornerRadius="0">
+              <Grid>
+                <!--  Full-surface ToggleButton to capture clicks  -->
+                <ToggleButton
+                  x:Name="FullSurfaceToggle"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Stretch"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  ClickMode="Press"
+                  Focusable="False"
+                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                  <ToggleButton.Template>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                      <Border Background="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                  </ToggleButton.Template>
+                </ToggleButton>
+
+                <!--  ContentPresenter for selected item  -->
+                <ContentPresenter
+                  x:Name="ContentPresenter"
+                  Margin="10,0,40,0"
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Center"
+                  Content="{TemplateBinding SelectionBoxItem}"
+                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                  IsHitTestVisible="False" />
+
+                <!--  Toggle Button with Chevron  -->
+                <ToggleButton
+                  x:Name="ToggleButton"
+                  Width="30"
+                  HorizontalAlignment="Right"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  ClickMode="Press"
+                  Focusable="False"
+                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                  <ToggleButton.Template>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                      <Border Background="Transparent">
+                        <!--  Chevron Path  -->
+                        <Path
+                          x:Name="Chevron"
+                          Width="12"
+                          Height="6"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Data="M 0 0 L 6 6 L 12 0"
+                          Stretch="Uniform"
+                          Stroke="{DynamicResource ControlForegroundBrush}"
+                          StrokeThickness="2">
+                          <Path.RenderTransform>
+                            <RotateTransform x:Name="ChevronRotate" Angle="0" CenterX="6" CenterY="3" />
+                          </Path.RenderTransform>
+                        </Path>
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <!--  Rotate chevron when checked  -->
+                        <Trigger Property="IsChecked" Value="True">
+                          <Trigger.EnterActions>
+                            <BeginStoryboard>
+                              <Storyboard>
+                                <DoubleAnimation
+                                  Storyboard.TargetName="ChevronRotate"
+                                  Storyboard.TargetProperty="Angle"
+                                  To="180"
+                                  Duration="0:0:0.2" />
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </Trigger.EnterActions>
+                          <Trigger.ExitActions>
+                            <BeginStoryboard>
+                              <Storyboard>
+                                <DoubleAnimation
+                                  Storyboard.TargetName="ChevronRotate"
+                                  Storyboard.TargetProperty="Angle"
+                                  To="0"
+                                  Duration="0:0:0.2" />
+                              </Storyboard>
+                            </BeginStoryboard>
+                          </Trigger.ExitActions>
+                        </Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </ToggleButton.Template>
+                </ToggleButton>
+              </Grid>
+            </Border>
+            <!--  Popup for dropdown  -->
+            <Popup
+              x:Name="PART_Popup"
+              AllowsTransparency="True"
+              Focusable="False"
+              IsOpen="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}}"
+              Placement="Bottom"
+              PopupAnimation="Slide">
+              <Border
+                x:Name="DropDownBorder"
+                MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                Background="{DynamicResource MenuBackgroundBrush}"
+                BorderBrush="{DynamicResource MenuForegroundBrush}"
+                BorderThickness="1"
+                CornerRadius="0">
+                <ScrollViewer>
+                  <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
+                </ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <!--  Change border color on focus  -->
+            <Trigger Property="IsFocused" Value="True">
+              <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
+            </Trigger>
+            <!--  Change background on hover  -->
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Border" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+            </Trigger>
+            <!--  Open dropdown styling  -->
+            <Trigger Property="IsDropDownOpen" Value="True">
+              <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+</ResourceDictionary>
