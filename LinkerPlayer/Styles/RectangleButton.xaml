@@ -21,13 +21,13 @@
             <Rectangle
               x:Name="Rectangle"
               Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="1" />
+              StrokeThickness="2" />
             <ContentPresenter
               x:Name="contentPresenter"
               Margin="{TemplateBinding Padding}"
               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsPressed" Value="True">
@@ -63,7 +63,8 @@
               <Setter TargetName="Rectangle" Property="Opacity" Value="0.7" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="True">
-              <Setter TargetName="Rectangle" Property="Opacity" Value="0.7" />
+              <!--<Setter TargetName="Rectangle" Property="Opacity" Value="0.7" />-->
+              <Setter TargetName="contentPresenter" Property="TextBlock.Foreground" Value="{DynamicResource ControlForegroundBrush}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="Rectangle" Property="Opacity" Value="0.3" />

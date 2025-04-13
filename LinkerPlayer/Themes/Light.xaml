@@ -67,10 +67,22 @@
   <Color x:Key="MenuForegroundColor">#505050</Color>
   <Color x:Key="MenuBackgroundColor">#FCF7E3</Color>
   <Color x:Key="MenuDisabledColor">Gray</Color>
-  <Color x:Key="MenuTextColor">#505050</Color>
   <Color x:Key="MenuMouseOverForegroundColor">#505050</Color>
   <Color x:Key="MenuMouseOverBackgroundColor">#DCD7C1</Color>
+  <Color x:Key="MenuSelectionForegroundColor">#505050</Color>
   <Color x:Key="MenuSelectionBackgroundColor">#9B8B4D</Color>
+
+  <Color x:Key="ComboboxForegroundColor">#505050</Color>
+  <Color x:Key="ComboboxBackgroundColor">#DCD7C1</Color>
+  <Color x:Key="ComboboxDisabledColor">Gray</Color>
+  <Color x:Key="ComboboxMouseOverForegroundColor">#505050</Color>
+  <Color x:Key="ComboboxMouseOverBackgroundColor">#FCF7E3</Color>
+  <Color x:Key="ComboboxItemForegroundColor">#505050</Color>
+  <Color x:Key="ComboboxItemBackgroundColor">#FCF7E3</Color>
+  <Color x:Key="ComboboxItemMouseOverForegroundColor">#505050</Color>
+  <Color x:Key="ComboboxItemMouseOverBackgroundColor">#DCD7C1</Color>
+  <Color x:Key="ComboboxItemSelectedForegroundColor">#505050</Color>
+  <Color x:Key="ComboboxItemSelectedBackgroundColor">#FCF7E3</Color>
 
   <Color x:Key="ImageBackgroundColor">White</Color>
 

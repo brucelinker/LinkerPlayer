@@ -11,7 +11,7 @@
 
   <Color x:Key="ControlAccentLightColor">#597080</Color>
   <Color x:Key="ControlAccentDarkColor">Black</Color>
-  <Color x:Key="ControlForegroundColor">White</Color>
+  <Color x:Key="ControlForegroundColor">#000000</Color>
   <Color x:Key="ControlBackgroundColor">Transparent</Color>
   <Color x:Key="ControlBorderColor">Gray</Color>
   <Color x:Key="ControlMouseOverColor">Black</Color>
@@ -68,9 +68,21 @@
   <Color x:Key="MenuBackgroundColor">#DEDEDE</Color>
   <Color x:Key="MenuDisabledColor">Gray</Color>
   <Color x:Key="MenuTextColor">Gray</Color>
-  <Color x:Key="MenuMouseOverForegroundColor">LightSteelBlue</Color>
-  <Color x:Key="MenuMouseOverBackgroundColor">Black</Color>
+  <Color x:Key="MenuMouseOverForegroundColor">Black</Color>
+  <Color x:Key="MenuMouseOverBackgroundColor">White</Color>
   <Color x:Key="MenuSelectionBackgroundColor">Black</Color>
+
+  <Color x:Key="ComboboxForegroundColor">Black</Color>
+  <Color x:Key="ComboboxBackgroundColor">#DEDEDE</Color>
+  <Color x:Key="ComboboxDisabledColor">Gray</Color>
+  <Color x:Key="ComboboxMouseOverForegroundColor">Black</Color>
+  <Color x:Key="ComboboxMouseOverBackgroundColor">#FCF7E3</Color>
+  <Color x:Key="ComboboxItemForegroundColor">Black</Color>
+  <Color x:Key="ComboboxItemBackgroundColor">#DEDEDE</Color>
+  <Color x:Key="ComboboxItemMouseOverForegroundColor">Black</Color>
+  <Color x:Key="ComboboxItemMouseOverBackgroundColor">White</Color>
+  <Color x:Key="ComboboxItemSelectedForegroundColor">Black</Color>
+  <Color x:Key="ComboboxItemSelectedBackgroundColor">#DEDEDE</Color>
 
   <Color x:Key="ImageBackgroundColor">White</Color>
 

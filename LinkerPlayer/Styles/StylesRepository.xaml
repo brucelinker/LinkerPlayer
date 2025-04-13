@@ -6,6 +6,70 @@
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   mc:Ignorable="d">
 
+  <!--
+    ************************
+    MaximizeMinimizeButton
+    ************************
+  -->
+
+  <Style x:Key="MaximizeMinimizeButton" TargetType="{x:Type Button}">
+    <Setter Property="Foreground" Value="{DynamicResource TitleBarForegroundBrush}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type Button}">
+          <Grid Width="48" Height="36">
+            <Border x:Name="border" Background="Transparent" />
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="{DynamicResource ControlAccentDarkBrush}" />
+              <!--<Setter TargetName="border" Property="Background">
+                <Setter.Value>
+                  <SolidColorBrush Opacity="0.1" Color="Black" />
+                </Setter.Value>
+              </Setter>-->
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    ************************
+    CloseButton
+    ************************
+  -->
+  <Style x:Key="CloseButton" TargetType="{x:Type Button}">
+    <Setter Property="Foreground" Value="{DynamicResource TitleBarForegroundBrush}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type Button}">
+          <Grid Width="48" Height="36">
+            <Border x:Name="border" Background="Transparent" />
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="Black" />
+              <Setter TargetName="border" Property="Background">
+                <Setter.Value>
+                  <SolidColorBrush Opacity="0.9" Color="Red" />
+                </Setter.Value>
+              </Setter>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    ************************
+    CustomScrollBarStyle
+    ************************
+  -->
   <Style x:Key="CustomScrollBarStyle" TargetType="{x:Type ScrollBar}">
     <Setter Property="OverridesDefaultStyle" Value="True" />
     <Setter Property="Background" Value="{DynamicResource ScrollBarTrackBrush}" />
@@ -421,21 +485,18 @@
     </Style.Triggers>
   </Style>
 
-  <!--  Region: SpectrumAnalyzer  -->
-  <LinearGradientBrush x:Key="SpectrumBarBrush" StartPoint="0.5,0" EndPoint="0.5,1">
-    <GradientStop Offset="0" Color="{DynamicResource SpectrumStartColor}" />
-    <GradientStop Offset="1" Color="{DynamicResource SpectrumEndColor}" />
-  </LinearGradientBrush>
-
-  <SolidColorBrush x:Key="SpectrumPeakBrush" Color="{DynamicResource SpectrumPeakColor}" />
-
+  <!--
+    ************************
+    SpectrumAnalyzer
+    ************************
+  -->
   <Style x:Key="SpectrumAnalyzerStyle" TargetType="{x:Type audio:SpectrumAnalyzer}">
     <Setter Property="BarCount" Value="32" />
     <Setter Property="BarSpacing" Value="3" />
     <Setter Property="BarStyle">
       <Setter.Value>
         <Style TargetType="{x:Type Rectangle}">
-          <Setter Property="Fill" Value="{StaticResource SpectrumBarBrush}" />
+          <Setter Property="Fill" Value="{DynamicResource SpectrumBarBrush}" />
           <Setter Property="RadiusX" Value="3" />
           <Setter Property="RadiusY" Value="3" />
         </Style>
@@ -444,7 +505,7 @@
     <Setter Property="PeakStyle">
       <Setter.Value>
         <Style TargetType="{x:Type Rectangle}">
-          <Setter Property="Fill" Value="{StaticResource SpectrumPeakBrush}" />
+          <Setter Property="Fill" Value="{DynamicResource SpectrumPeakBrush}" />
           <Setter Property="RadiusX" Value="3" />
           <Setter Property="RadiusY" Value="3" />
         </Style>

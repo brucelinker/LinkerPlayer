@@ -74,6 +74,19 @@
   <SolidColorBrush x:Key="MenuSelectionForegroundBrush" Color="{DynamicResource MenuSelectionForegroundColor}" />
   <SolidColorBrush x:Key="MenuSelectionBackgroundBrush" Color="{DynamicResource MenuSelectionBackgroundColor}" />
 
+  <SolidColorBrush x:Key="ComboboxForegroundBrush" Color="{DynamicResource ComboboxForegroundColor}" />
+  <SolidColorBrush x:Key="ComboboxBackgroundBrush" Color="{DynamicResource ComboboxBackgroundColor}" />
+  <SolidColorBrush x:Key="ComboboxDisabledBrush" Color="{DynamicResource ComboboxDisabledColor}" />
+  <SolidColorBrush x:Key="ComboboxMouseOverForegroundBrush" Color="{DynamicResource ComboboxMouseOverForegroundColor}" />
+  <SolidColorBrush x:Key="ComboboxMouseOverBackgroundBrush" Color="{DynamicResource ComboboxMouseOverBackgroundColor}" />
+  <SolidColorBrush x:Key="ComboboxItemForegroundBrush" Color="{DynamicResource ComboboxItemForegroundColor}" />
+  <SolidColorBrush x:Key="ComboboxItemBackgroundBrush" Color="{DynamicResource ComboboxItemBackgroundColor}" />
+  <SolidColorBrush x:Key="ComboboxItemMouseOverForegroundBrush" Color="{DynamicResource ComboboxItemMouseOverForegroundColor}" />
+  <SolidColorBrush x:Key="ComboboxItemMouseOverBackgroundBrush" Color="{DynamicResource ComboboxItemMouseOverBackgroundColor}" />
+  <SolidColorBrush x:Key="ComboboxItemSelectedForegroundBrush" Color="{DynamicResource ComboboxItemSelectedForegroundColor}" />
+  <SolidColorBrush x:Key="ComboboxItemSelectedBackgroundBrush" Color="{DynamicResource ComboboxItemSelectedBackgroundColor}" />
+
+
   <SolidColorBrush x:Key="ImageBackgroundBrush" Color="{DynamicResource ImageBackgroundColor}" />
 
   <SolidColorBrush x:Key="ScrollBarTrackBrush" Color="{DynamicResource ScrollBarTrackColor}" />
@@ -86,6 +99,11 @@
   <SolidColorBrush x:Key="SpectrumStartBrush" Color="{DynamicResource SpectrumStartColor}" />
   <SolidColorBrush x:Key="SpectrumEndBrush" Color="{DynamicResource SpectrumEndColor}" />
   <SolidColorBrush x:Key="SpectrumLineBrush" Color="{DynamicResource SpectrumLineColor}" />
+  <SolidColorBrush x:Key="SpectrumPeakBrush" Color="{DynamicResource SpectrumPeakColor}" />
+  <LinearGradientBrush x:Key="SpectrumBarBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="{DynamicResource SpectrumStartColor}" />
+    <GradientStop Offset="1" Color="{DynamicResource SpectrumEndColor}" />
+  </LinearGradientBrush>
 
   <sys:Double x:Key="FontSizeLarge">11</sys:Double>
   <sys:Double x:Key="FontSizeBiggest">11</sys:Double>

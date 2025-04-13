@@ -64,13 +64,25 @@
   <Color x:Key="PlayStartGradientColor">#090909</Color>
   <Color x:Key="PlayEndGradientColor">#202020</Color>
 
-  <Color x:Key="MenuForegroundColor">#CCCCCC</Color>
+  <Color x:Key="MenuForegroundColor">#C0C0C0</Color>
   <Color x:Key="MenuBackgroundColor">#252525</Color>
   <Color x:Key="MenuDisabledColor">Gray</Color>
   <Color x:Key="MenuMouseOverForegroundColor">#CCCCCC</Color>
-  <Color x:Key="MenuMouseOverBackgroundColor">#2C086A</Color>
+  <Color x:Key="MenuMouseOverBackgroundColor">#252525</Color>
   <Color x:Key="MenuSelectionForegroundColor">#CCCCCC</Color>
-  <Color x:Key="MenuSelectionBackgroundColor">#2C086A</Color>
+  <Color x:Key="MenuSelectionBackgroundColor">#252525</Color>
+
+  <Color x:Key="ComboboxForegroundColor">#C0C0C0</Color>
+  <Color x:Key="ComboboxBackgroundColor">#252525</Color>
+  <Color x:Key="ComboboxDisabledColor">Gray</Color>
+  <Color x:Key="ComboboxMouseOverForegroundColor">#C0C0C0</Color>
+  <Color x:Key="ComboboxMouseOverBackgroundColor">#000000</Color>
+  <Color x:Key="ComboboxItemForegroundColor">#C0C0C0</Color>
+  <Color x:Key="ComboboxItemBackgroundColor">#252525</Color>
+  <Color x:Key="ComboboxItemMouseOverForegroundColor">#C0C0C0</Color>
+  <Color x:Key="ComboboxItemMouseOverBackgroundColor">#000000</Color>
+  <Color x:Key="ComboboxItemSelectedForegroundColor">#C0C0C0</Color>
+  <Color x:Key="ComboboxItemSelectedBackgroundColor">#000000</Color>
 
   <Color x:Key="ImageBackgroundColor">Black</Color>
 

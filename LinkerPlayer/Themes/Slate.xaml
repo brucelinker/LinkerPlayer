@@ -72,6 +72,18 @@
   <Color x:Key="MenuMouseOverBackgroundColor">LightSteelBlue</Color>
   <Color x:Key="MenuSelectionBackgroundColor">LightSteelBlue</Color>
 
+  <Color x:Key="ComboboxForegroundColor">#334046</Color>
+  <Color x:Key="ComboboxBackgroundColor">LightSteelBlue</Color>
+  <Color x:Key="ComboboxDisabledColor">Gray</Color>
+  <Color x:Key="ComboboxMouseOverForegroundColor">#334046</Color>
+  <Color x:Key="ComboboxMouseOverBackgroundColor">#E1E3E4</Color>
+  <Color x:Key="ComboboxItemForegroundColor">#334046</Color>
+  <Color x:Key="ComboboxItemBackgroundColor">#E1E3E4</Color>
+  <Color x:Key="ComboboxItemMouseOverForegroundColor">#334046</Color>
+  <Color x:Key="ComboboxItemMouseOverBackgroundColor">LightSteelBlue</Color>
+  <Color x:Key="ComboboxItemSelectedForegroundColor">#334046</Color>
+  <Color x:Key="ComboboxItemSelectedBackgroundColor">#E1E3E4</Color>
+
   <Color x:Key="ImageBackgroundColor">White</Color>
 
   <Color x:Key="ScrollBarTrackColor">#597080</Color>

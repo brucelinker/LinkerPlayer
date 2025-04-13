@@ -12,52 +12,11 @@
   mc:Ignorable="d">
 
   <UserControl.Resources>
-    <Style x:Key="MaximizeMinimizeButton" TargetType="{x:Type Button}">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="48" Height="36">
-              <Border x:Name="border" Background="{DynamicResource TitleBarBackgroundBrush}" />
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Grid>
-
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="border" Property="Background">
-                  <Setter.Value>
-                    <SolidColorBrush Opacity="0.1" Color="black" />
-                  </Setter.Value>
-                </Setter>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
-    <Style x:Key="CloseButton" TargetType="{x:Type Button}">
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="{x:Type Button}">
-            <Grid Width="48" Height="36">
-              <Border x:Name="border" Background="{DynamicResource TitleBarBackgroundBrush}" />
-              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-            </Grid>
-
-            <ControlTemplate.Triggers>
-              <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="border" Property="Background">
-                  <Setter.Value>
-                    <SolidColorBrush Opacity="0.9" Color="Red" />
-                  </Setter.Value>
-                </Setter>
-              </Trigger>
-            </ControlTemplate.Triggers>
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
   </UserControl.Resources>
 
   <Grid Background="{DynamicResource TitleBarBackgroundBrush}">
@@ -86,7 +45,6 @@
         Content="{iconPacks:Material Cog,
                                      Width=18,
                                      Height=18}"
-        Foreground="{DynamicResource TitleBarForegroundBrush}"
         Style="{DynamicResource MaximizeMinimizeButton}"
         ToolTip="Settings" />
 
@@ -102,7 +60,6 @@
         Content="{iconPacks:Material Minus,
                                      Width=18,
                                      Height=18}"
-        Foreground="{DynamicResource TitleBarForegroundBrush}"
         Style="{DynamicResource MaximizeMinimizeButton}" />
 
       <Button
@@ -111,7 +68,6 @@
         Content="{iconPacks:Material WindowMaximize,
                                      Width=18,
                                      Height=18}"
-        Foreground="{DynamicResource TitleBarForegroundBrush}"
         Style="{DynamicResource MaximizeMinimizeButton}" />
 
       <Button
@@ -120,7 +76,6 @@
         Content="{iconPacks:Material Close,
                                      Width=18,
                                      Height=18}"
-        Foreground="{DynamicResource TitleBarForegroundBrush}"
         Style="{DynamicResource CloseButton}" />
     </StackPanel>
   </Grid>

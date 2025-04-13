@@ -2,9 +2,9 @@
 
   <!--  Style for ComboBoxItem to customize dropdown items  -->
   <Style x:Key="CustomComboBoxItemStyle" TargetType="{x:Type ComboBoxItem}">
-    <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ComboboxItemBackgroundBrush}" />
     <!--  Item background  -->
-    <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ComboboxItemForegroundBrush}" />
     <!--  Item text color  -->
     <Setter Property="Padding" Value="10,5" />
     <Setter Property="Template">
@@ -12,7 +12,7 @@
         <ControlTemplate TargetType="{x:Type ComboBoxItem}">
           <Border
             x:Name="ItemBorder"
-            Background="{DynamicResource MenuBackgroundBrush}"
+            Background="{DynamicResource ComboboxItemBackgroundBrush}"
             BorderBrush="Transparent"
             BorderThickness="0">
             <ContentPresenter Margin="{TemplateBinding Padding}" />
@@ -20,16 +20,16 @@
           <ControlTemplate.Triggers>
             <!--  Hover effect  -->
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+              <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ComboboxItemMouseOverBackgroundBrush}" />
               <!--  Light blue hover  -->
             </Trigger>
             <!--  Selected item effect  -->
-            <Trigger Property="IsSelected" Value="True">
-              <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
-              <!--  Slightly darker blue  -->
-              <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
-              <!--  Bold text for selected  -->
-            </Trigger>
+            <!--<Trigger Property="IsSelected" Value="True">
+              <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ComboboxItemSelectedBackgroundBrush}" />
+              --><!--  Slightly darker blue  --><!--
+              <Setter Property="Foreground" Value="{DynamicResource ComboboxItemSelectedForegroundBrush}" />
+              --><!--  Bold text for selected  --><!--
+            </Trigger>-->
           </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
@@ -46,8 +46,8 @@
             <!--  Main ComboBox Border  -->
             <Border
               x:Name="Border"
-              Background="{DynamicResource MenuBackgroundBrush}"
-              BorderBrush="{DynamicResource MenuForegroundBrush}"
+              Background="{DynamicResource ComboboxBackgroundBrush}"
+              BorderBrush="{DynamicResource ComboboxForegroundBrush}"
               BorderThickness="1"
               CornerRadius="0">
               <Grid>
@@ -63,7 +63,7 @@
                   IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
                   <ToggleButton.Template>
                     <ControlTemplate TargetType="{x:Type ToggleButton}">
-                      <Border Background="{TemplateBinding Background}" />
+                      <Border Background="{DynamicResource ComboboxBackgroundBrush}" />
                     </ControlTemplate>
                   </ToggleButton.Template>
                 </ToggleButton>
@@ -76,7 +76,8 @@
                   VerticalAlignment="Center"
                   Content="{TemplateBinding SelectionBoxItem}"
                   ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                  IsHitTestVisible="False" />
+                  IsHitTestVisible="False"
+                  TextElement.Foreground="{TemplateBinding Foreground}" />
 
                 <!--  Toggle Button with Chevron  -->
                 <ToggleButton
@@ -100,7 +101,7 @@
                           VerticalAlignment="Center"
                           Data="M 0 0 L 6 6 L 12 0"
                           Stretch="Uniform"
-                          Stroke="{DynamicResource ControlForegroundBrush}"
+                          Stroke="{DynamicResource ComboboxForegroundBrush}"
                           StrokeThickness="2">
                           <Path.RenderTransform>
                             <RotateTransform x:Name="ChevronRotate" Angle="0" CenterX="6" CenterY="3" />
@@ -150,8 +151,8 @@
               <Border
                 x:Name="DropDownBorder"
                 MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                Background="{DynamicResource MenuBackgroundBrush}"
-                BorderBrush="{DynamicResource MenuForegroundBrush}"
+                Background="{DynamicResource ComboboxBackgroundBrush}"
+                BorderBrush="{DynamicResource ComboboxForegroundBrush}"
                 BorderThickness="1"
                 CornerRadius="0">
                 <ScrollViewer>
@@ -163,15 +164,15 @@
           <ControlTemplate.Triggers>
             <!--  Change border color on focus  -->
             <Trigger Property="IsFocused" Value="True">
-              <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
+              <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource ComboboxMouseOverForegroundBrush}" />
             </Trigger>
             <!--  Change background on hover  -->
             <Trigger Property="IsMouseOver" Value="True">
-              <Setter TargetName="Border" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+              <Setter TargetName="Border" Property="Background" Value="{DynamicResource ComboboxMouseOverBackgroundBrush}" />
             </Trigger>
             <!--  Open dropdown styling  -->
             <Trigger Property="IsDropDownOpen" Value="True">
-              <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
+              <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource ComboboxMouseOverForegroundBrush}" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

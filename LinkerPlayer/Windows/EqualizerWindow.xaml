@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
@@ -14,6 +15,9 @@
   AllowsTransparency="True"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
+  FontFamily="Segoe UI"
+  FontStyle="Normal"
+  FontWeight="Normal"
   Loaded="Window_Loaded"
   WindowStyle="None"
   mc:Ignorable="d">
@@ -28,6 +32,8 @@
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CircularButton.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/EqVerticalSlider.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CustomCombobox.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <converters:EqFloatToStringConverter x:Key="EqFloatToStringConverter" />
@@ -43,47 +49,8 @@
     <Grid.Resources>
 
       <Style x:Key="TextBlockFontStyle" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="/Fonts/#Montserrat" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
-      </Style>
-
-      <Style x:Key="CloseButton" TargetType="{x:Type Button}">
-        <Setter Property="Template">
-          <Setter.Value>
-            <ControlTemplate TargetType="{x:Type Button}">
-              <Grid Width="45" Height="30">
-                <Border x:Name="border" Background="Black" />
-                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-              </Grid>
-
-              <ControlTemplate.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                  <Setter TargetName="border" Property="Background">
-                    <Setter.Value>
-                      <SolidColorBrush Opacity="0.9" Color="Red" />
-                    </Setter.Value>
-                  </Setter>
-                </Trigger>
-              </ControlTemplate.Triggers>
-            </ControlTemplate>
-          </Setter.Value>
-        </Setter>
-      </Style>
-
-      <!--<Style TargetType="TextBlock">
-      -->
-      <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
-      <!--
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="Foreground" Value="#FAFAFA" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-      </Style>-->
-
-      <Style TargetType="ComboBox">
-        <!--<Setter Property="FontFamily" Value="/Fonts/#Montserrat" />-->
-        <Setter Property="FontSize" Value="16" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Height" Value="27" />
       </Style>
 
       <Style TargetType="materialDesign:PackIcon">
@@ -91,24 +58,18 @@
         <Setter Property="HorizontalAlignment" Value="Center" />
       </Style>
 
-      <!--<Style BasedOn="{StaticResource LinkerCircleButton}" TargetType="Button">
-        <Setter Property="Height" Value="30" />
-        <Setter Property="Width" Value="30" />
-        <Setter Property="Margin" Value="0,0,0,0" />
-      </Style>-->
-
     </Grid.Resources>
 
     <Grid.Background>
       <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
         <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
-        <GradientStop Offset=".3" Color="{DynamicResource MainWindowGradientStartColor}" />
+        <GradientStop Offset=".5" Color="{DynamicResource MainWindowGradientStartColor}" />
         <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientEndColor}" />
       </LinearGradientBrush>
     </Grid.Background>
 
     <Grid.RowDefinitions>
-      <RowDefinition Height="30" />
+      <RowDefinition Height="38" />
       <RowDefinition Height="50" />
       <RowDefinition Height="30" />
       <RowDefinition />
@@ -136,16 +97,10 @@
         <Button
           Name="CloseBox"
           Click="CloseButton_Click"
-          MouseEnter="ButtonMouseEnter"
-          MouseLeave="ButtonMouseLeave"
-          Style="{DynamicResource CloseButton}">
-          <Image
-            Name="CloseButtonImage"
-            Width="10"
-            Height="10"
-            Opacity="0.6"
-            Source="/Images/close.png" />
-        </Button>
+          Content="{iconPacks:Material Close,
+                                       Width=14,
+                                       Height=14}"
+          Style="{DynamicResource CloseButton}" />
       </StackPanel>
     </Grid>
 
@@ -160,7 +115,6 @@
 
     <Grid Grid.Row="2" Margin="25,0,20,0">
       <Grid.ColumnDefinitions>
-        <!--<ColumnDefinition Width="*" />-->
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
@@ -169,15 +123,20 @@
         Name="Presets"
         Grid.Column="0"
         Width="160"
-        Height="25"
+        Height="28"
         Margin="0,0,0,0"
         HorizontalAlignment="Left"
         materialDesign:HintAssist.Hint="Default"
         Background="Transparent"
         BorderBrush="{DynamicResource ControlBorderBrush}"
+        FontFamily="Segoe UI"
+        FontStyle="Normal"
+        FontWeight="Normal"
+        FontSize="16"
         Foreground="Black"
         IsTextSearchEnabled="false"
         SelectionChanged="Presets_SelectionChanged"
+        Style="{StaticResource CustomComboBoxStyle}"
         ToolTip="Profiles" />
 
       <Grid Grid.Column="1">
@@ -277,12 +236,12 @@
 
       <Border BorderBrush="Transparent" BorderThickness="1">
 
-        <Grid Margin="0,16,0,6">
+        <Grid Margin="0,12,0,8">
           <Grid.RowDefinitions>
-            <RowDefinition Height="20" />
+            <RowDefinition Height="30" />
             <RowDefinition Height="*" MinHeight="10" />
-            <RowDefinition Height="20" />
-            <RowDefinition Height="40" />
+            <RowDefinition Height="30" />
+            <RowDefinition Height="30" />
           </Grid.RowDefinitions>
 
           <TextBlock
@@ -311,7 +270,7 @@
       <Grid
         Name="EqGrid"
         Grid.Column="1"
-        Margin="0,19,0,10"
+        Margin="0,16,0,0"
         HorizontalAlignment="Stretch">
 
         <StackPanel

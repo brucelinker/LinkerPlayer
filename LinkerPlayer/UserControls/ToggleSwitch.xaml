@@ -73,8 +73,12 @@
         Grid.Column="0"
         Width="35"
         Height="15"
-        Background="Gray"
-        CornerRadius="5" />
+        d:Background="Gray"
+        Background="{DynamicResource ControlBorderBrush}"
+        BorderBrush="{DynamicResource ControlForegroundBrush}"
+        BorderThickness="1"
+        CornerRadius="6"
+        Opacity=".5" />
       <Ellipse
         x:Name="EllipseToggle"
         Grid.Column="0"
@@ -101,6 +105,5 @@
         Foreground="{DynamicResource TitleBarForegroundBrush}" />
     </Grid>
   </Button>
-  <!--<TextBlock Text="ON" TextWrapping="Wrap" FontWeight="Bold" FontSize="12" HorizontalAlignment="Right" Margin="0,0,3,0" />-->
-  <!--<TextBlock Text="OFF" TextWrapping="Wrap" FontWeight="Bold" FontSize="12" HorizontalAlignment="Left" Margin="2,0,0,0" />-->
+
 </UserControl>
