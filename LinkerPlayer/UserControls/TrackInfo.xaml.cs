@@ -27,18 +27,17 @@ public partial class TrackInfo
         audioEngine = AudioEngine.Instance;
         Spectrum.RegisterSoundPlayer(audioEngine);
 
-
-        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
-        {
-            OnActiveTrackChanged(m.Value);
-        });
-
-        //WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
+        //WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         //{
-        //    if (m.Value == null) return;
-
-        //    OnSelectedTrackChanged(m.Value);
+        //    OnActiveTrackChanged(m.Value);
         //});
+
+        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
+        {
+            if (m.Value == null) return;
+
+            OnSelectedTrackChanged(m.Value);
+        });
     }
 
     private static BitmapImage? _defaultAlbumImage;
@@ -59,17 +58,17 @@ public partial class TrackInfo
         }
     }
 
-    private void OnActiveTrackChanged(MediaFile? mediaFile)
-    {
-        if (mediaFile == null) return;
+    //private void OnActiveTrackChanged(MediaFile? mediaFile)
+    //{
+    //    if (mediaFile == null) return;
 
+    //    SetActiveMediaFile(mediaFile);
+    //}
+
+    private void OnSelectedTrackChanged(MediaFile mediaFile)
+    {
         SetActiveMediaFile(mediaFile);
     }
-
-    //private void OnSelectedTrackChanged(MediaFile mediaFile)
-    //{
-    //    //SetActiveMediaFile(mediaFile);
-    //}
 
     public static void ReloadDefaultAlbumImage()
     {

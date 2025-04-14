@@ -148,6 +148,11 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             }
 
             _dataGrid.ScrollIntoView(SelectedTrack!);
+
+            if (ActiveTrack == null || ActiveTrack == SelectedTrack)
+            {
+                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+            }
         }
     }
 
@@ -227,6 +232,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
 
         ActiveTrack = SelectedTrack;
+
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
     }
 
     public void NewPlaylist()
