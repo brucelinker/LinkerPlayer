@@ -7,14 +7,8 @@ namespace LinkerPlayer.Converters;
 
 public class EnumToVisibilityConverter : IValueConverter
 {
-    public EnumToVisibilityConverter()
-    {
-        this.TrueValue = Visibility.Visible;
-        this.FalseValue = Visibility.Hidden;
-    }
-
-    public Visibility TrueValue { get; set; }
-    public Visibility FalseValue { get; set; }
+    public Visibility TrueValue { get; set; } = Visibility.Visible;
+    public Visibility FalseValue { get; set; } = Visibility.Hidden;
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {

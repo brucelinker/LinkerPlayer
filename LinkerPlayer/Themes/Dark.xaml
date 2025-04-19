@@ -86,7 +86,7 @@
 
   <Color x:Key="ImageBackgroundColor">Black</Color>
 
-  <Color x:Key="ScrollBarTrackColor">#202020</Color>
+  <Color x:Key="ScrollBarTrackColor">#4F4F4F</Color>
   <Color x:Key="ScrollBarThumbColor">#959595</Color>
   <Color x:Key="ScrollBarArrowForegroundColor">#959595</Color>
   <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>

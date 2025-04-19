@@ -28,11 +28,11 @@
             Kind="Pause" />
         </converters:EnumBooleanConverter.TrueValue>
         <converters:EnumBooleanConverter.FalseValue>
-          <iconPacks:PackIconFontAwesome
-            Width="20"
-            Height="20"
-            Margin="3,0,0,0"
-            Kind="PlaySolid" />
+          <iconPacks:PackIconMaterial
+            Width="19"
+            Height="19"
+            Margin="4,0,0,0"
+            Kind="Play" />
         </converters:EnumBooleanConverter.FalseValue>
       </converters:EnumBooleanConverter>
 
@@ -58,24 +58,6 @@
       Margin="25,0,25,0"
       VerticalAlignment="Center"
       Orientation="Horizontal">
-      <!--<Grid Height="83">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="265" />
-          <ColumnDefinition />
-          <ColumnDefinition Width="260" />
-          <ColumnDefinition Width="120" />
-        </Grid.ColumnDefinitions>
-
-      -->
-      <!--  Player Buttons  -->
-      <!--
-        <Grid Grid.Column="0" Margin="30,14,0,0">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>-->
 
       <!--  Prev Button  -->
       <Button
@@ -103,6 +85,7 @@
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
         d:Foreground="White"
+        d:Content="{iconPacks:PackIconMaterial Kind=Play, Width=19, Height=19, Margin=4 0 0 0}"
         Command="{Binding PlayPauseCommand}"
         Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
         Foreground="{DynamicResource PlayerForegroundBrush}"
@@ -143,63 +126,12 @@
         ToolTip="Next File (j)" />
     </StackPanel>
 
-    <!--  Player Slider Group  -->
-    <!--<Grid Grid.Column="1" Margin="0,1,30,0">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="65" />
-            <ColumnDefinition />
-            <ColumnDefinition Width="65" />
-          </Grid.ColumnDefinitions>-->
-
-    <!--<Border Grid.Column="0" BorderBrush="YellowGreen" BorderThickness="2" />
-        <Border Grid.Column="1" BorderBrush="YellowGreen" BorderThickness="2" />
-        <Border Grid.Column="2" BorderBrush="YellowGreen" BorderThickness="2" />-->
-
-    <!--<Grid Grid.Column="1">
-            <Grid.RowDefinitions>
-              <RowDefinition Height="1*" />
-    -->
-    <!--  Current Track  -->
-    <!--
-              <RowDefinition Height="2*" />
-    -->
-    <!--  Timers and Slider  -->
-    <!--
-            </Grid.RowDefinitions>-->
-
-    <!--  Current Track Name  -->
-
-    <!--<Grid Grid.Row="1">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="30*" />
-                <ColumnDefinition Width="10*" />
-                <ColumnDefinition Width="9*" />
-                <ColumnDefinition Width="17*" />
-              </Grid.ColumnDefinitions>-->
-
-    <!--<Border Grid.Column="0" BorderBrush="Yellow" BorderThickness="1" />
-            <Border Grid.Column="1" BorderBrush="Yellow" BorderThickness="1" />
-            <Border Grid.Column="2" BorderBrush="Yellow" BorderThickness="1" />
-            <Border Grid.Column="3" BorderBrush="Yellow" BorderThickness="1" />-->
-
-
-    <!--<UniformGrid
-                Name="UniGrid"
-                Grid.Column="0"
-                Grid.ColumnSpan="4"
-                Margin="0,0,0,10"
-                Rows="1"
-                SizeChanged="UniGrid_SizeChanged" />
-            </Grid>
-
-          </Grid>-->
-
     <Grid Grid.Column="1">
       <Grid.RowDefinitions>
-        <RowDefinition Height="Auto" />
         <!--  CurrentTrackName  -->
-        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
         <!--  CurrentTime, Progress Slider, TotalTime  -->
+        <RowDefinition Height="*" />
       </Grid.RowDefinitions>
 
       <!--  Current Track Name (Row 0, spans all columns)  -->
@@ -267,10 +199,6 @@
       Grid.Column="2"
       Margin="25,5,5,5"
       Orientation="Horizontal">
-      <!--<Grid.ColumnDefinitions>
-            <ColumnDefinition Width="50" />
-            <ColumnDefinition />
-          </Grid.ColumnDefinitions>-->
 
       <!--  Mute Button  -->
       <ToggleButton
@@ -278,6 +206,8 @@
         Width="36"
         Height="36"
         Margin="4,0,5,0"
+        d:IsChecked="False"
+        d:Content="{iconPacks:PackIconOcticons Kind=Unmute, Width=15, Height=15}"
         Command="{Binding MuteCommand}"
         CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
         ToolTip="Mute (m)">
@@ -317,14 +247,14 @@
           </Grid.ColumnDefinitions>-->
 
       <!--  Shuffle Mode Button  -->
-      <ToggleButton
+      <ToggleButton 
         Name="ShuffleModeButton"
-        Grid.Column="0"
         Width="36"
         Height="36"
         Margin="10,0,5,0"
         HorizontalAlignment="Center"
         VerticalAlignment="Center"
+        d:Content="{iconPacks:PackIconMaterial Kind=ShuffleDisabled, Width=15, Height=15}"
         Command="{Binding ShuffleCommand}"
         CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
         ToolTip="Shuffle (s)">
@@ -344,7 +274,6 @@
       <!--  Equalizer Button  -->
       <Button
         Name="EqualizerButton"
-        Grid.Column="1"
         Width="36"
         Height="36"
         Margin="5,0,25,0"
@@ -361,22 +290,4 @@
     </StackPanel>
   </Grid>
 
-  <!--<Grid VerticalAlignment="Bottom">
-
-        <StatusBar
-          Margin="8,0,0,5"
-          d:Foreground="White"
-          Background="Transparent"
-          Foreground="{DynamicResource ControlForegroundBrush}">
-          <StatusBarItem>
-            <TextBlock
-              Name="StatusText"
-              d:Text="MP3 | 320kbps | 44100 Hz | stereo"
-              FontSize="13"
-              FontWeight="Light" />
-          </StatusBarItem>
-        </StatusBar>
-
-      </Grid>-->
-  <!--</Grid>-->
 </UserControl>

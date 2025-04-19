@@ -26,9 +26,13 @@
             <!--  Selected item effect  -->
             <!--<Trigger Property="IsSelected" Value="True">
               <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ComboboxItemSelectedBackgroundBrush}" />
-              --><!--  Slightly darker blue  --><!--
+            -->
+            <!--  Slightly darker blue  -->
+            <!--
               <Setter Property="Foreground" Value="{DynamicResource ComboboxItemSelectedForegroundBrush}" />
-              --><!--  Bold text for selected  --><!--
+            -->
+            <!--  Bold text for selected  -->
+            <!--
             </Trigger>-->
           </ControlTemplate.Triggers>
         </ControlTemplate>

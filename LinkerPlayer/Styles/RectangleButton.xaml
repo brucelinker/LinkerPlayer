@@ -27,7 +27,7 @@
               Margin="{TemplateBinding Padding}"
               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsPressed" Value="True">

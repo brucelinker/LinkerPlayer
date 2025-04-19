@@ -1,9 +1,9 @@
 ﻿using LinkerPlayer.Models;
 using LinkerPlayer.Properties;
+using LinkerPlayer.UserControls;
 using LinkerPlayer.Windows;
 using System;
 using System.Windows;
-using LinkerPlayer.UserControls;
 
 namespace LinkerPlayer.Core;
 
@@ -17,9 +17,6 @@ public class ThemeManager
 
         Application.Current.Resources.MergedDictionaries.Clear();
         MainWindow.Instance.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Clear();
-        //MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Clear();
     }
 
     public static void AddDict(ResourceDictionary resDict)
@@ -30,9 +27,6 @@ public class ThemeManager
 
         Application.Current.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.PlayerControls.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.PlaylistTabs.Resources.MergedDictionaries.Add(resDict);
-        //MainWindow.Instance.TitlebarButtons.Resources.MergedDictionaries.Add(resDict);
     }
 
     public static string GetThemeUri(ThemeColors theme)
@@ -135,8 +129,6 @@ public class ThemeManager
         AddDict(sizesDict);
 
         ActiveSkin = skin;
-
-        //Application.Current.Resources.MergedDictionaries[0].Values.ToString();
     }
 
     public void ApplyThemeByName(MainWindow main, string theme, string fileName = "")
@@ -187,18 +179,5 @@ public class ThemeManager
             case (int)ThemeColors.Dark: return "Dark";
             default: return "Midnight";
         }
-    }
-
-    public void ApplyFontSize(MainWindow main, FontSize size)
-    {
-        ApplyTheme(main, (ThemeColors)Enum.Parse(typeof(ThemeColors), Settings.Default.SelectedTheme), size);
-    }
-
-    public void ApplyPadding(MainWindow main, PaddingType type)
-    {
-        string dictStr = @"Styles\Padding\Padding" + type.ToString() + ".xaml";
-        Uri paddingUri = new Uri(dictStr, UriKind.Relative);
-        ResourceDictionary paddingDict = (Application.LoadComponent(paddingUri) as ResourceDictionary)!;
-        AddDict(paddingDict);
     }
 }

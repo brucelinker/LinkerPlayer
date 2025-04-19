@@ -83,13 +83,13 @@ public class SampleAggregator : ISampleProvider
     /// </summary>
     /// <param name="fftBuffer">A buffer where the FFT data will be stored.</param>
 
-    int binaryExponentation = (int) Math.Log(FftLength, 2);
+    int _binaryExponentation = (int) Math.Log(FftLength, 2);
 
     public void CalcFftResults(float[] fftBuffer)
     {
         Complex[] channelDataClone = new Complex[FftLength];
         _fftBuffer.CopyTo(channelDataClone, 0);
-        FastFourierTransform.FFT(true, binaryExponentation, channelDataClone);
+        FastFourierTransform.FFT(true, _binaryExponentation, channelDataClone);
         for (int i = 0; i < channelDataClone.Length / 2; i++)
         {
             // Calculate actual intensities for the FFT results.

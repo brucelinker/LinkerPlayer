@@ -10,9 +10,8 @@ namespace LinkerPlayer.Converters
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
         {
             DataGrid? dataGrid = values[0] as DataGrid;
-            object? item = values[1];
 
-            if (dataGrid != null && item != null)
+            if (dataGrid != null && values[1] is { } item)
             {
                 int index = dataGrid.Items.IndexOf(item) + 1;
                 return index.ToString();  // Ensure it's a string

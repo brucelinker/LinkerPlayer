@@ -14,7 +14,7 @@ public partial class TrackInfo
 {
     public MediaFile SelectedMediaFile = new();
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
-    public readonly AudioEngine? audioEngine;
+    public readonly AudioEngine? AudioEngine;
 
     private static int _count;
 
@@ -24,8 +24,8 @@ public partial class TrackInfo
 
         this.DataContext = this;
         InitializeComponent();
-        audioEngine = AudioEngine.Instance;
-        Spectrum.RegisterSoundPlayer(audioEngine);
+        AudioEngine = AudioEngine.Instance;
+        Spectrum.RegisterSoundPlayer(AudioEngine);
 
         //WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         //{

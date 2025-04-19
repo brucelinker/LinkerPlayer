@@ -5,7 +5,7 @@
 
   <Color x:Key="MainWindowGradientStartColor">#D9D2C2</Color>
   <Color x:Key="MainWindowGradientEndColor">#FDF6E3</Color>
-  <Color x:Key="MainWindowBorderColor">#D9D2C2</Color>
+  <Color x:Key="MainWindowBorderColor">#B18D00</Color>
 
   <Color x:Key="ChildWindowBackgroundColor">#CCCCCC</Color>
 
@@ -86,7 +86,7 @@
 
   <Color x:Key="ImageBackgroundColor">White</Color>
 
-  <Color x:Key="ScrollBarTrackColor">#DBD4C4</Color>
+  <Color x:Key="ScrollBarTrackColor">#D2CCB7</Color>
   <Color x:Key="ScrollBarThumbColor">#707070</Color>
   <Color x:Key="ScrollBarArrowForegroundColor">#707070</Color>
   <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>

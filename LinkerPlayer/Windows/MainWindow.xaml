@@ -61,17 +61,16 @@
         <RowDefinition Height="105" />
       </Grid.RowDefinitions>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="3*" />
+        <ColumnDefinition Width="238*" />
         <ColumnDefinition Width="5" />
-        <ColumnDefinition Width="7*" />
+        <ColumnDefinition Width="426*" />
+        <ColumnDefinition Width="129*" />
       </Grid.ColumnDefinitions>
 
       <userControls:TrackInfo
         x:Name="TrackInfo"
         Grid.Row="0"
-        Grid.Column="0"
-        HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch" />
+        Grid.Column="0" />
 
       <GridSplitter
         Grid.Row="0"
@@ -83,14 +82,13 @@
         x:Name="PlaylistTabs"
         Grid.Row="0"
         Grid.Column="2"
-        HorizontalAlignment="Stretch"
-        VerticalAlignment="Stretch" />
+        Grid.ColumnSpan="2" />
 
       <userControls:PlayerControls
         x:Name="PlayerControls"
         Grid.Row="1"
         Grid.Column="0"
-        Grid.ColumnSpan="3" />
+        Grid.ColumnSpan="4" />
     </Grid>
   </Grid>
 </controlzex:WindowChromeWindow>

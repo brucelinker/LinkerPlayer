@@ -55,7 +55,7 @@ public partial class ToggleSwitch
         set
         {
             SetValue(CircleBackgroundColorProperty, value);
-            EllipseToggle.Fill = new SolidColorBrush(value); ;
+            EllipseToggle.Fill = new SolidColorBrush(value);
         }
     }
 

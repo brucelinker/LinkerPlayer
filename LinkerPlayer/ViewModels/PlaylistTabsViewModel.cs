@@ -449,7 +449,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         if (SelectedTrack != null && _dataGrid != null)
         {
             int newIndex;
-            int oldIndex;
 
             if (ActiveTrack != null)
             {
@@ -457,7 +456,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
                 MusicLibrary.ClearPlayState();
             }
 
-            oldIndex = SelectedTrackIndex;
+            int oldIndex = SelectedTrackIndex;
 
             if (_shuffleMode)
             {
@@ -498,7 +497,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         if (SelectedTrack != null && _dataGrid != null)
         {
             int newIndex;
-            int oldIndex;
 
             if (ActiveTrack != null)
             {
@@ -506,7 +504,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
                 MusicLibrary.ClearPlayState();
             }
 
-            oldIndex = SelectedTrackIndex;
+            int oldIndex = SelectedTrackIndex;
             
             if (_shuffleMode)
             {

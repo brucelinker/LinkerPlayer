@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.Serialization;
 
 namespace LinkerPlayer.Core;
 
@@ -19,9 +18,4 @@ namespace LinkerPlayer.Core;
             : base(message, innerException)
         {
         }
-
-        //protected MediaFileException(SerializationInfo info, StreamingContext context)
-        //    : base(info, context)
-        //{
-        //}
     }

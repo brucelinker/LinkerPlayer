@@ -86,9 +86,9 @@
 
   <Color x:Key="ImageBackgroundColor">White</Color>
 
-  <Color x:Key="ScrollBarTrackColor">#DEDEDE</Color>
-  <Color x:Key="ScrollBarThumbColor">#959595</Color>
-  <Color x:Key="ScrollBarArrowForegroundColor">#959595</Color>
+  <Color x:Key="ScrollBarTrackColor">#A9A9A9</Color>
+  <Color x:Key="ScrollBarThumbColor">#505050</Color>
+  <Color x:Key="ScrollBarArrowForegroundColor">#505050</Color>
   <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>
   <Color x:Key="ScrollBarRepeatButtonColor">Transparent</Color>
 

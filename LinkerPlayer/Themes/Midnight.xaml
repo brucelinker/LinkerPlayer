@@ -5,7 +5,7 @@
 
   <Color x:Key="MainWindowGradientStartColor">Black</Color>
   <Color x:Key="MainWindowGradientEndColor">Black</Color>
-  <Color x:Key="MainWindowBorderColor">#3E3E3E</Color>
+  <Color x:Key="MainWindowBorderColor">#673AB7</Color>
 
   <Color x:Key="ChildWindowBackgroundColor">#333333</Color>
 
