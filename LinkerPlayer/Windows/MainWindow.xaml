@@ -27,7 +27,6 @@
   TextElement.FontWeight="Medium"
   TextElement.Foreground="{DynamicResource DefaultTextBrush}"
   UseLayoutRounding="True"
-  WindowStyle="None"
   mc:Ignorable="d">
 
   <Grid Margin="0">
