@@ -7,8 +7,6 @@
   <Color x:Key="MainWindowGradientEndColor">#EEF1F5</Color>
   <Color x:Key="MainWindowBorderColor">#3E3E3E</Color>
 
-  <Color x:Key="ChildWindowBackgroundColor">#AAAAAA</Color>
-
   <Color x:Key="ControlAccentLightColor">#597080</Color>
   <Color x:Key="ControlAccentDarkColor">Black</Color>
   <Color x:Key="ControlForegroundColor">#000000</Color>
@@ -22,28 +20,13 @@
 
   <Color x:Key="DefaultTextColor">Black</Color>
 
-  <Color x:Key="FirstDarkColor">SteelBlue</Color>
-  <Color x:Key="FirstLightColor">LightSteelBlue</Color>
-  <Color x:Key="FirstBackgroundColor">#FAFAFA</Color>
-  <Color x:Key="PrimaryBackgroundColor">#FAFAFA</Color>
-  <Color x:Key="SecondBackgroundColor">#F0F0F0</Color>
-  <Color x:Key="StandardTextForeground">#400000</Color>
-  <Color x:Key="InactiveSelectionColor">WhiteSmoke</Color>
-
   <Color x:Key="PlaylistTabForegroundColor">White</Color>
   <Color x:Key="PlaylistTabBackgroundColor">DarkGray</Color>
-  <Color x:Key="PlaylistTabBorderColor">#4F4F4F</Color>
+  <Color x:Key="PlaylistTabBorderColor">LightSteelBlue</Color>
   <Color x:Key="PlaylistTabMouseOverForegroundColor">White</Color>
   <Color x:Key="PlaylistTabMouseOverBackgroundColor">White</Color>
   <Color x:Key="PlaylistTabSelectedForegroundColor">black</Color>
   <Color x:Key="PlaylistTabSelectedBackgroundColor">White</Color>
-
-  <Color x:Key="NewPlaylistButtonForegroundColor">SteelBlue</Color>
-  <Color x:Key="NewPlaylistButtonBackgroundColor">Transparent</Color>
-  <Color x:Key="NewPlaylistButtonMouseOverForegroundColor">#597080</Color>
-  <Color x:Key="NewPlaylistButtonMouseOverBackgroundColor">Transparent</Color>
-  <Color x:Key="NewPlaylistNamePopupForegroundColor">WhiteSmoke</Color>
-  <Color x:Key="NewPlaylistNamePopupBackgroundColor">Black</Color>
 
   <Color x:Key="TrackListColumnHeaderForegroundColor">Black</Color>
   <Color x:Key="TrackListColumnHeaderBackgroundColor">White</Color>
@@ -60,9 +43,6 @@
 
   <Color x:Key="PlayerForegroundColor">Black</Color>
   <Color x:Key="PlayerBackgroundColor">#A9A9A9</Color>
-  <Color x:Key="PlayerActiveColor">DarkGray</Color>
-  <Color x:Key="PlayStartGradientColor">#D0D0D0</Color>
-  <Color x:Key="PlayEndGradientColor">#EAEAEA</Color>
 
   <Color x:Key="MenuForegroundColor">Black</Color>
   <Color x:Key="MenuBackgroundColor">#DEDEDE</Color>
@@ -83,8 +63,6 @@
   <Color x:Key="ComboboxItemMouseOverBackgroundColor">White</Color>
   <Color x:Key="ComboboxItemSelectedForegroundColor">Black</Color>
   <Color x:Key="ComboboxItemSelectedBackgroundColor">#DEDEDE</Color>
-
-  <Color x:Key="ImageBackgroundColor">White</Color>
 
   <Color x:Key="ScrollBarTrackColor">#A9A9A9</Color>
   <Color x:Key="ScrollBarThumbColor">#505050</Color>

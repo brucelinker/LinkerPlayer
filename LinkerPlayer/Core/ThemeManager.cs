@@ -46,27 +46,6 @@ public class ThemeManager
         return resourceLocator;
     }
 
-    public static Uri GetSizeUri(FontSize size)
-    {
-        string resourceLocator = string.Empty;
-        switch (size)
-        {
-            case FontSize.Big: resourceLocator = @"Styles\FontSizes\Big.xaml"; break;
-            case FontSize.Bigger: resourceLocator = @"Styles\FontSizes\Bigger.xaml"; break;
-            case FontSize.Biggest: resourceLocator = @"Styles\FontSizes\Biggest.xaml"; break;
-            case FontSize.Huge: resourceLocator = @"Styles\FontSizes\Huge.xaml"; break;
-            case FontSize.Medium: resourceLocator = @"Styles\FontSizes\Medium.xaml"; break;
-            case FontSize.Normal: resourceLocator = @"Styles\FontSizes\FontSizesNormal.xaml"; break;
-            case FontSize.Small: resourceLocator = @"Styles\FontSizes\Small.xaml"; break;
-            case FontSize.Smaller: resourceLocator = @"Styles\FontSizes\Smaller.xaml"; break;
-            case FontSize.Smallest: resourceLocator = @"Styles\FontSizes\Smallest.xaml"; break;
-            case FontSize.Gonzo: resourceLocator = @"Styles\FontSizes\Gonzo.xaml"; break;
-        }
-
-        Uri langDictUri = new Uri(resourceLocator, UriKind.Relative);
-        return langDictUri;
-    }
-
     public ThemeColors ModifyTheme(ThemeColors themeColor, FontSize fontSize = FontSize.Normal)
     {
         ClearStyles();
@@ -77,11 +56,6 @@ public class ThemeManager
         ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
 
         AddDict(brushesDict);
-
-        Uri sizeUri = ThemeManager.GetSizeUri(fontSize);
-        ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
-
-        AddDict(sizesDict);
 
         return themeColor;
     }
@@ -122,11 +96,6 @@ public class ThemeManager
         ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
 
         AddDict(brushesDict);
-
-        Uri sizeUri = GetSizeUri(size);
-        ResourceDictionary sizesDict = (Application.LoadComponent(sizeUri) as ResourceDictionary)!;
-
-        AddDict(sizesDict);
 
         ActiveSkin = skin;
     }

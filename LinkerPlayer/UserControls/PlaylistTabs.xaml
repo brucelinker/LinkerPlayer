@@ -16,10 +16,6 @@
 
   <UserControl.Resources>
     <ResourceDictionary>
-      <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/FontSizes/FontSizesNormal.xaml" />
-      </ResourceDictionary.MergedDictionaries>
-
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
       <converters:IndexConverter x:Key="IndexConverter" />
@@ -260,7 +256,6 @@
           AlternationCount="2"
           AutoGenerateColumns="False"
           Background="Transparent"
-          BorderBrush="#424242"
           BorderThickness="0"
           CanUserAddRows="False"
           CanUserDeleteRows="False"
@@ -349,7 +344,7 @@
                 <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
                 <Setter Property="FontStyle" Value="Normal" />
                 <Setter Property="FontWeight" Value="Normal" />
-                <Setter Property="BorderBrush" Value="{DynamicResource FirstLightBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
               </Style.Setters>
             </Style>

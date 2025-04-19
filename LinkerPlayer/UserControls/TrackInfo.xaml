@@ -78,7 +78,7 @@
         Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Title"
-        FontSize="{DynamicResource FontSizeBiggest}"
+        FontSize="18"
         FontWeight="Regular"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
@@ -90,7 +90,7 @@
         Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Artist"
-        FontSize="{DynamicResource FontSizeNormal}"
+        FontSize="14"
         FontWeight="Normal"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
@@ -103,7 +103,7 @@
         Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Album"
-        FontSize="{DynamicResource FontSizeNormal}"
+        FontSize="12"
         FontWeight="Normal"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
@@ -115,7 +115,7 @@
           Padding="8,0,0,0"
           VerticalAlignment="Center"
           d:Text="Year"
-          FontSize="{DynamicResource FontSizeNormal}"
+          FontSize="14"
           FontWeight="Normal"
           Foreground="{DynamicResource DefaultTextBrush}"
           TextTrimming="CharacterEllipsis" />
@@ -126,7 +126,7 @@
           Padding="8,0,0,0"
           VerticalAlignment="Center"
           d:Text="Year"
-          FontSize="{DynamicResource FontSizeNormal}"
+          FontSize="14"
           FontWeight="Normal"
           Foreground="{DynamicResource DefaultTextBrush}"
           TextTrimming="CharacterEllipsis" />
@@ -139,7 +139,7 @@
         Padding="8,0,0,0"
         VerticalAlignment="Center"
         d:Text="Genre"
-        FontSize="{DynamicResource FontSizeNormal}"
+        FontSize="14"
         FontWeight="Normal"
         Foreground="{DynamicResource DefaultTextBrush}"
         TextTrimming="CharacterEllipsis" />
