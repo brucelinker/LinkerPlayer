@@ -30,7 +30,6 @@
   mc:Ignorable="d">
 
   <Grid Margin="0">
-    <!--  Single border at Window level  -->
     <Grid.RowDefinitions>
       <RowDefinition Height="40" />
       <RowDefinition Height="*" />
@@ -40,7 +39,6 @@
       Grid.Row="0"
       Background="{DynamicResource MainWindowGradientStartBrush}"
       MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-      <!--  Extend to cover top/left padding  -->
       <userControls:TitlebarButtons
         x:Name="TitlebarButtons"
         HorizontalAlignment="Stretch"

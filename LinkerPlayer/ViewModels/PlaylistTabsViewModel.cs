@@ -4,7 +4,6 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Properties;
-using LinkerPlayer.Windows;
 using Microsoft.Win32;
 using NAudio.Wave;
 using PlaylistsNET.Content;
@@ -37,7 +36,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
     private static TabControl? _tabControl;
     private static DataGrid? _dataGrid;
-    private readonly MainWindow _mainWindow;
 
     private static readonly List<MediaFile> ShuffleList = new();
     private static int _shuffledIndex;
@@ -52,7 +50,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     public PlaylistTabsViewModel()
     {
         Log.Information($"PLAYLISTTABSVIEWMODEL - {++_count}");
-        _mainWindow = (MainWindow?)Application.Current.MainWindow!;
 
         _shuffleMode = Settings.Default.ShuffleMode;
 
@@ -140,8 +137,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             SelectedTab!.SelectedTrack = SelectedTrack;
             SelectedTab.SelectedIndex = SelectedTrackIndex;
 
-//            Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
-
             if (MusicLibrary.Playlists.Count > 0)
             {
                 MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
@@ -198,10 +193,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
 
-
             MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
-
-            //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : SelectFirstTrack().Id;
         }
 
         if (ShuffleList.Any())
@@ -292,13 +284,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         IEnumerable<FileInfo> files = dirInfo.GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => _supportedAudioExtensions.Any(ext => file.Extension.Equals(ext, StringComparison.OrdinalIgnoreCase))).ToList();
 
-        //if (!files.Any())
-        //{
-        //    _mainWindow.InfoSnackbar.MessageQueue?.Clear();
-        //    _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
-        //        false, true, TimeSpan.FromSeconds(3));
-        //}
-
         foreach (FileInfo? file in files)
         {
             LoadAudioFile(file.FullName, SelectedPlaylist!.Name);
@@ -323,13 +308,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         DirectoryInfo dirInfo = new(selectedFolderPath);
         List<FileInfo> files = dirInfo.GetFiles("*.*", SearchOption.AllDirectories)
             .Where(file => _supportedAudioExtensions.Any(ext => file.Name.EndsWith(ext, StringComparison.OrdinalIgnoreCase))).ToList();
-
-        //if (!files.Any())
-        //{
-        //    _mainWindow.InfoSnackbar.MessageQueue?.Clear();
-        //    _mainWindow.InfoSnackbar.MessageQueue?.Enqueue($"No files were found in {selectedFolderPath}.", null, null, null,
-        //        false, true, TimeSpan.FromSeconds(3));
-        //}
 
         string playlistName = dirInfo.Name;
 
@@ -417,8 +395,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
 
-        //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
-
         MediaFile musicFile = (ActiveTrack ?? SelectedTrack)!;
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
     }
@@ -429,8 +405,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         SelectedTrack = TabList[SelectedTabIndex].Tracks[SelectedTrackIndex];
 
         MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
-
-        //Settings.Default.LastSelectedTrackId = SelectedTrack != null ? SelectedTrack.Id : "";
 
         _dataGrid!.SelectedItem = SelectedTrack;
         _dataGrid.SelectedIndex = SelectedTrackIndex;
@@ -640,7 +614,6 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             {
                 _shuffledIndex = 0;
             }
-
         }
         else
         {
