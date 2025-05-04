@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="BunLabs.NAudio.Flac" Version="2.0.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="ControlzEx" Version="7.0.1-rc0014" />
     <PackageReference Include="MahApps.Metro.IconPacks" Version="5.1.0" />
@@ -28,7 +29,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.4" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="NAudio.Extras" Version="2.2.1" />
-    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="PlaylistsNET" Version="1.4.1" />
     <PackageReference Include="RestoreWindowPlace" Version="3.1.0" />
