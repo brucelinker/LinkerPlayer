@@ -1,24 +1,4 @@
-﻿// Copyright (C) 2011 - 2012, Jacob Johnston 
-//
-// Permission is hereby granted, free of charge, to any person obtaining a 
-// copy of this software and associated documentation files (the "Software"), 
-// to deal in the Software without restriction, including without limitation 
-// the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-// and/or sell copies of the Software, and to permit persons to whom the 
-// Software is furnished to do so, subject to the following conditions: 
-//
-// The above copyright notice and this permission notice shall be included in 
-// all copies or substantial portions of the Software. 
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL 
-// THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
-// DEALINGS IN THE SOFTWARE. 
-
-
+﻿using Serilog;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -45,16 +25,13 @@ public class SpectrumAnalyzer : Control
     private ISpectrumPlayer _soundPlayer;
     private readonly List<Shape> _barShapes = new();
     private readonly List<Shape> _peakShapes = new();
-    //private double[] _barHeights = {};
-    //private double[] _peakHeights = {};
-    private float[] _channelData = new float[2048];
-    private float[] _channelPeakData = {};
-    //private double _bandWidth = 1.0;
+    private float[] _channelData = new float[2048]; // Reverted to 2048 for working visuals
+    private float[] _channelPeakData = { };
     private double _barWidth = 1;
-    private int _maximumFrequencyIndex = 2047;
+    private int _maximumFrequencyIndex = 2047; // Reverted to 2047
     private int _minimumFrequencyIndex;
-    private int[] _barIndexMax = {};
-    private int[] _barLogScaleIndexMax = {};
+    private int[] _barIndexMax = { };
+    private int[] _barLogScaleIndexMax = { };
     #endregion
 
     #region Constants
@@ -117,7 +94,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public int MaximumFrequency
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (int)GetValue(MaximumFrequencyProperty);
         set => SetValue(MaximumFrequencyProperty, value);
     }
@@ -133,7 +109,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceMinimumFrequency((int)value);
-        
+
         return value;
     }
 
@@ -172,11 +148,9 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public int MinimumFrequency
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (int)GetValue(MinimumFrequencyProperty);
         set => SetValue(MinimumFrequencyProperty, value);
     }
-
     #endregion
 
     #region BarCount
@@ -189,7 +163,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceBarCount((int)value);
-        
+
         return value;
     }
 
@@ -228,7 +202,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public int BarCount
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (int)GetValue(BarCountProperty);
         set => SetValue(BarCountProperty, value);
     }
@@ -244,7 +217,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceBarSpacing((double)value);
-      
+
         return value;
     }
 
@@ -281,7 +254,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public double BarSpacing
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (double)GetValue(BarSpacingProperty);
         set => SetValue(BarSpacingProperty, value);
     }
@@ -297,7 +269,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoercePeakFallDelay((int)value);
-        
+
         return value;
     }
 
@@ -325,7 +297,6 @@ public class SpectrumAnalyzer : Control
     /// <param name="newValue">The new value of <see cref="PeakFallDelay"/></param>
     protected virtual void OnPeakFallDelayChanged(int oldValue, int newValue)
     {
-
     }
 
     /// <summary>
@@ -337,7 +308,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public int PeakFallDelay
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (int)GetValue(PeakFallDelayProperty);
         set => SetValue(PeakFallDelayProperty, value);
     }
@@ -353,7 +323,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceIsFrequencyScaleLinear((bool)value);
-        
+
         return value;
     }
 
@@ -394,7 +364,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public bool IsFrequencyScaleLinear
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (bool)GetValue(IsFrequencyScaleLinearProperty);
         set => SetValue(IsFrequencyScaleLinearProperty, value);
     }
@@ -410,7 +379,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceBarHeightScaling((BarHeightScalingStyles)value);
-       
+
         return value;
     }
 
@@ -437,7 +406,6 @@ public class SpectrumAnalyzer : Control
     /// <param name="newValue">The new value of <see cref="BarHeightScaling"/></param>
     protected virtual void OnBarHeightScalingChanged(BarHeightScalingStyles oldValue, BarHeightScalingStyles newValue)
     {
-
     }
 
     /// <summary>
@@ -446,7 +414,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public BarHeightScalingStyles BarHeightScaling
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (BarHeightScalingStyles)GetValue(BarHeightScalingProperty);
         set => SetValue(BarHeightScalingProperty, value);
     }
@@ -462,7 +429,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceAveragePeaks((bool)value);
-        
+
         return value;
     }
 
@@ -489,7 +456,6 @@ public class SpectrumAnalyzer : Control
     /// <param name="newValue">The new value of <see cref="AveragePeaks"/></param>
     protected virtual void OnAveragePeaksChanged(bool oldValue, bool newValue)
     {
-
     }
 
     /// <summary>
@@ -500,7 +466,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public bool AveragePeaks
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (bool)GetValue(AveragePeaksProperty);
         set => SetValue(AveragePeaksProperty, value);
     }
@@ -516,7 +481,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceBarStyle((Style)value);
-       
+
         return value;
     }
 
@@ -551,7 +516,6 @@ public class SpectrumAnalyzer : Control
     /// </summary>
     public Style BarStyle
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (Style)GetValue(BarStyleProperty);
         set => SetValue(BarStyleProperty, value);
     }
@@ -567,7 +531,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoercePeakStyle((Style)value);
-        
+
         return value;
     }
 
@@ -584,7 +548,6 @@ public class SpectrumAnalyzer : Control
     /// <returns>The adjusted value of <see cref="PeakStyle"/></returns>
     protected virtual Style OnCoercePeakStyle(Style value)
     {
-
         return value;
     }
 
@@ -604,7 +567,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public Style PeakStyle
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (Style)GetValue(PeakStyleProperty);
         set => SetValue(PeakStyleProperty, value);
     }
@@ -620,7 +582,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceActualBarWidth((double)value);
-        
+
         return value;
     }
 
@@ -647,7 +609,6 @@ public class SpectrumAnalyzer : Control
     /// <param name="newValue">The new value of <see cref="ActualBarWidth"/></param>
     protected virtual void OnActualBarWidthChanged(double oldValue, double newValue)
     {
-
     }
 
     /// <summary>
@@ -655,7 +616,6 @@ public class SpectrumAnalyzer : Control
     /// </summary>
     public double ActualBarWidth
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (double)GetValue(ActualBarWidthProperty);
         protected set => SetValue(ActualBarWidthProperty, value);
     }
@@ -671,7 +631,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceRefreshInterval((int)value);
-        
+
         return value;
     }
 
@@ -711,7 +671,6 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public int RefreshInterval
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (int)GetValue(RefreshIntervalProperty);
         set => SetValue(RefreshIntervalProperty, value);
     }
@@ -727,7 +686,7 @@ public class SpectrumAnalyzer : Control
     {
         if (o is SpectrumAnalyzer spectrumAnalyzer)
             return spectrumAnalyzer.OnCoerceFFTComplexity((FftDataSize)value);
-        
+
         return value;
     }
 
@@ -754,7 +713,7 @@ public class SpectrumAnalyzer : Control
     /// <param name="newValue">The new value of <see cref="FftComplexity"/></param>
     protected virtual void OnFFTComplexityChanged(FftDataSize oldValue, FftDataSize newValue)
     {
-        _channelData = new float[((int)newValue / 2)];
+        _channelData = new float[(int)newValue]; // Fixed: Expects full buffer size (2048 for Fft2048)
     }
 
     /// <summary>
@@ -764,12 +723,10 @@ public class SpectrumAnalyzer : Control
     [Category("Common")]
     public FftDataSize FftComplexity
     {
-        // IMPORTANT: To maintain parity between setting a property in XAML and procedural code, do not touch the getter and setter inside this dependency property!
         get => (FftDataSize)GetValue(FftComplexityProperty);
         set => SetValue(FftComplexityProperty, value);
     }
     #endregion
-
     #endregion
 
     #region Template Overrides
@@ -798,9 +755,6 @@ public class SpectrumAnalyzer : Control
     #endregion
 
     #region Constructors
-
-    public readonly AudioEngine AudioEngine;
-
     static SpectrumAnalyzer()
     {
         //DefaultStyleKeyProperty.OverrideMetadata(typeof(SpectrumAnalyzer), new FrameworkPropertyMetadata(typeof(SpectrumAnalyzer)));
@@ -811,9 +765,7 @@ public class SpectrumAnalyzer : Control
     /// </summary>
     public SpectrumAnalyzer()
     {
-        AudioEngine = AudioEngine.Instance;
-        _soundPlayer = AudioEngine;
-
+        _soundPlayer = null; // Delay initialization until RegisterSoundPlayer
         _animationTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
         {
             Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval),
@@ -830,10 +782,22 @@ public class SpectrumAnalyzer : Control
     /// <param name="soundPlayer">A sound player that provides spectrum data through the ISpectrumPlayer interface methods.</param>
     public void RegisterSoundPlayer(ISpectrumPlayer soundPlayer)
     {
-        this._soundPlayer = soundPlayer;
-        soundPlayer.PropertyChanged += soundPlayer_PropertyChanged;
-        UpdateBarLayout();
-        _animationTimer.Start();
+        if (_soundPlayer != null)
+        {
+            _soundPlayer.PropertyChanged -= soundPlayer_PropertyChanged;
+            _soundPlayer.OnFftCalculated -= SoundPlayer_OnFftCalculated;
+        }
+
+        _soundPlayer = soundPlayer;
+        if (_soundPlayer != null)
+        {
+            _soundPlayer.PropertyChanged += soundPlayer_PropertyChanged;
+            _soundPlayer.OnFftCalculated += SoundPlayer_OnFftCalculated;
+            UpdateBarLayout();
+            if (_soundPlayer.IsPlaying)
+                _animationTimer.Start();
+            Log.Information("SpectrumAnalyzer: Registered sound player");
+        }
     }
     #endregion
 
@@ -867,9 +831,22 @@ public class SpectrumAnalyzer : Control
     private void UpdateSpectrum()
     {
         if (_spectrumCanvas == null || _spectrumCanvas.RenderSize.Width < 1 || _spectrumCanvas.RenderSize.Height < 1)
+        {
+            Log.Information("SpectrumAnalyzer: UpdateSpectrum skipped - canvas is null or invalid size");
             return;
+        }
 
-        _channelData = _soundPlayer.GetFftData();
+        if (_soundPlayer == null)
+        {
+            Log.Error("SpectrumAnalyzer: _soundPlayer is null, cannot fetch FFT data");
+            return;
+        }
+
+        if (_soundPlayer.IsPlaying && !_soundPlayer.GetFftData(_channelData))
+        {
+            Log.Information("SpectrumAnalyzer: GetFftData returned false, skipping update");
+            return;
+        }
 
         UpdateSpectrumShapes();
     }
@@ -961,9 +938,8 @@ public class SpectrumAnalyzer : Control
             return;
 
         _barWidth = Math.Max(((_spectrumCanvas.RenderSize.Width - (BarSpacing * (BarCount + 1))) / BarCount), 1);
-        _maximumFrequencyIndex = Math.Min(_soundPlayer.GetFftFrequencyIndex(MaximumFrequency) + 1, 2047);
-        _minimumFrequencyIndex = Math.Min(_soundPlayer.GetFftFrequencyIndex(MinimumFrequency), 2047);
-        //_bandWidth = Math.Max(((double)(_maximumFrequencyIndex - _minimumFrequencyIndex)) / _spectrumCanvas.RenderSize.Width, 1.0);
+        _maximumFrequencyIndex = _soundPlayer != null ? Math.Min(_soundPlayer.GetFftFrequencyIndex(MaximumFrequency) + 1, 2047) : 2047;
+        _minimumFrequencyIndex = _soundPlayer != null ? Math.Min(_soundPlayer.GetFftFrequencyIndex(MinimumFrequency), 2047) : 0;
 
         int actualBarCount;
 
@@ -988,9 +964,6 @@ public class SpectrumAnalyzer : Control
         maxLogScaleIndexList.Add(_maximumFrequencyIndex);
         _barIndexMax = maxIndexList.ToArray();
         _barLogScaleIndexMax = maxLogScaleIndexList.ToArray();
-
-        //_barHeights = new double[actualBarCount];
-        //_peakHeights = new double[actualBarCount];
 
         _spectrumCanvas.Children.Clear();
         _barShapes.Clear();
@@ -1029,12 +1002,27 @@ public class SpectrumAnalyzer : Control
     #endregion
 
     #region Event Handlers
+    private void SoundPlayer_OnFftCalculated(float[] fftData)
+    {
+        // AudioEngine provides 1024 real values, but SpectrumAnalyzer expects 2048
+        if (fftData.Length == 1024 && _channelData.Length == 2048)
+        {
+            Array.Copy(fftData, 0, _channelData, 0, fftData.Length);
+            Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length); // Zero the rest
+            //Log.Information($"SpectrumAnalyzer: Received FFT data sample: {string.Join(", ", fftData.Take(10))}");
+        }
+        else
+        {
+            Log.Warning($"SpectrumAnalyzer: FFT data length mismatch, expected {_channelData.Length}, got {fftData.Length}");
+        }
+    }
+
     private void soundPlayer_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
             case "IsPlaying":
-                if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
+                if (_soundPlayer != null && _soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
                     _animationTimer.Start();
                 break;
         }
@@ -1050,6 +1038,7 @@ public class SpectrumAnalyzer : Control
         UpdateBarLayout();
     }
     #endregion
+
     public enum BarHeightScalingStyles
     {
         /// <summary>
@@ -1070,40 +1059,38 @@ public class SpectrumAnalyzer : Control
     }
 
     /// <summary>
-    /// The various FFT data set sizes that can be used for processing. Note that
-    /// when a control requires an array of real intensity results, the array will
-    /// be half the size specified here.
+    /// The various FFT data set sizes that can be used for processing. Values represent
+    /// the number of real values expected by the Spectrum Analyzer.
     /// </summary>
     public enum FftDataSize
     {
         /// <summary>
-        /// A 256 point FFT. Real data will be 128 floating point values.
+        /// A 256-point FFT. Expects 256 real values.
         /// </summary>
         Fft256 = 256,
         /// <summary>
-        /// A 512 point FFT. Real data will be 256 floating point values.
+        /// A 512-point FFT. Expects 512 real values.
         /// </summary>
         Fft512 = 512,
         /// <summary>
-        /// A 1024 point FFT. Real data will be 512 floating point values.
+        /// A 1024-point FFT. Expects 1024 real values.
         /// </summary>
         Fft1024 = 1024,
         /// <summary>
-        /// A 2048 point FFT. Real data will be 1024 floating point values.
+        /// A 2048-point FFT. Expects 2048 real values.
         /// </summary>
         Fft2048 = 2048,
         /// <summary>
-        /// A 4096 point FFT. Real data will be 2048 floating point values.
+        /// A 4096-point FFT. Expects 4096 real values.
         /// </summary>
         Fft4096 = 4096,
         /// <summary>
-        /// A 8192 point FFT. Real data will be 4096 floating point values.
+        /// A 8192-point FFT. Expects 8192 real values.
         /// </summary>
         Fft8192 = 8192,
         /// <summary>
-        /// A 16384 point FFT. Real data will be 8192 floating point values.
+        /// A 16384-point FFT. Expects 16384 real values.
         /// </summary>
         Fft16384 = 16384
-
     }
 }

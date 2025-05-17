@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using ManagedBass;
+using Serilog;
 using System;
 using System.Collections.Generic;
 
@@ -6,88 +7,135 @@ namespace LinkerPlayer.Audio;
 
 public static class OutputDeviceManager
 {
+    private static readonly List<string> _devices = new();
+    private static bool _isInitialized;
+    private static string _currentDeviceName = "Default";
+
     public static void InitializeOutputDevice()
     {
-        if (string.IsNullOrEmpty(Properties.Settings.Default.MainOutputDevice))
+        if (_isInitialized)
         {
-            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(-1);
-        }
-        else if (!GetOutputDevicesList().Contains(Properties.Settings.Default.MainOutputDevice))
-        {
-            Properties.Settings.Default.MainOutputDevice = GetOutputDeviceNameById(-1);
+            Log.Information("OutputDeviceManager: Already initialized, skipping");
+            return;
         }
 
-        if (string.IsNullOrEmpty(Properties.Settings.Default.AdditionalOutputDevice))
+        try
         {
-            foreach (string outputDevice in GetOutputDevicesList())
+            AudioEngine.Initialize();
+            _devices.Clear();
+            GetOutputDevicesList();
+            SetMainOutputDevice();
+            _isInitialized = true;
+            Log.Information("OutputDeviceManager: Initialization complete");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"OutputDeviceManager: Initialization failed: {ex.Message}");
+            throw;
+        }
+    }
+
+    public static List<string> GetOutputDevicesList()
+    {
+        _devices.Clear();
+        if (!AudioEngine.IsInitialized)
+        {
+            Log.Warning("GetOutputDevicesList: BASS not initialized, initializing now");
+            AudioEngine.Initialize();
+        }
+
+        try
+        {
+            // Use a reasonable max to avoid infinite loops
+            for (int i = 1; i < 100; i++) // Start at 1 to skip "No sound" (index 0)
             {
-                if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase))
+                try
                 {
-                    Properties.Settings.Default.AdditionalOutputDevice = outputDevice;
+                    var device = Bass.GetDeviceInfo(i);
+                    if (string.IsNullOrEmpty(device.Name) || !device.IsEnabled)
+                    {
+                        Log.Debug($"GetOutputDevicesList: Stopped at index {i} (empty name or disabled)");
+                        break;
+                    }
+
+                    _devices.Add(device.Name);
+                    Log.Information($"Added device to list: {device.Name} (index {i})");
                 }
+                catch (BassException ex)
+                {
+                    Log.Debug($"GetOutputDevicesList: Invalid device at index {i}: {ex.Message}");
+                    break;
+                }
+            }
+
+            Log.Information($"GetOutputDevicesList: Found {_devices.Count} enabled devices");
+            return _devices;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"GetOutputDevicesList: Failed: {ex.Message}");
+            return _devices;
+        }
+    }
+
+    public static void SetMainOutputDevice(string deviceName = "Default")
+    {
+        try
+        {
+            if (_devices.Contains(deviceName))
+            {
+                AudioEngine.Instance.ReselectOutputDevice(deviceName);
+                _currentDeviceName = deviceName;
+                Log.Information($"MainOutputDevice: {deviceName}");
+            }
+            else
+            {
+                Log.Warning($"SetMainOutputDevice: Device '{deviceName}' not found, using default");
+                AudioEngine.Instance.ReselectOutputDevice("Default");
+                _currentDeviceName = "Default";
+                Log.Information("MainOutputDevice: Default");
             }
         }
-        else if (!GetOutputDevicesList().Contains(Properties.Settings.Default.AdditionalOutputDevice))
+        catch (Exception ex)
         {
-            Properties.Settings.Default.AdditionalOutputDevice = "";
-
-            foreach (string outputDevice in GetOutputDevicesList())
-            {
-                if (outputDevice.Contains("virtual", StringComparison.OrdinalIgnoreCase))
-                {
-                    Properties.Settings.Default.AdditionalOutputDevice = outputDevice;
-                }
-            }
+            Log.Error($"SetMainOutputDevice: Failed: {ex.Message}");
         }
     }
 
     public static string GetCurrentDeviceName()
     {
-        return Properties.Settings.Default.MainOutputDevice;
-    }
-
-    public static int GetCurrentDeviceId()
-    {
-        return GetOutputDeviceId(Properties.Settings.Default.MainOutputDevice);
-    }
-
-    public static int GetOutputDeviceId(string nameDevice)
-    {
-        if (string.IsNullOrWhiteSpace(nameDevice))
+        if (!_isInitialized || !AudioEngine.IsInitialized)
         {
-            throw new ArgumentNullException(nameof(nameDevice));
+            Log.Debug("GetCurrentDeviceName: OutputDeviceManager or BASS not initialized, returning cached name");
+            return _currentDeviceName;
         }
 
-        for (int n = -1; n < WaveOut.DeviceCount; n++)
+        try
         {
-            if (nameDevice == WaveOut.GetCapabilities(n).ProductName)
+            int currentDevice = Bass.CurrentDevice;
+            var device = Bass.GetDeviceInfo(currentDevice);
+            if (!string.IsNullOrEmpty(device.Name) && device.IsEnabled)
             {
-                return n;
+                _currentDeviceName = device.Name;
+                Log.Debug($"GetCurrentDeviceName: Returned {device.Name} (index {currentDevice})");
+                return device.Name;
             }
-        }
 
-        return 0;
+            Log.Warning("GetCurrentDeviceName: No valid device found, returning cached name");
+            return _currentDeviceName;
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"GetCurrentDeviceName: Failed: {ex.Message}");
+            return _currentDeviceName;
+        }
     }
 
-    public static List<string> GetOutputDevicesList()
+    public static void Dispose()
     {
-        var list = new List<string>();
-
-        for (int n = -1; n < WaveOut.DeviceCount; n++)
-        {
-            list.Add(WaveOut.GetCapabilities(n).ProductName);
-        }
-
-        return list;
-    }
-
-    public static string GetOutputDeviceNameById(int id)
-    {
-        if (WaveOut.DeviceCount <= id)
-        {
-            return WaveOut.GetCapabilities(0).ProductName;
-        }
-
-        return WaveOut.GetCapabilities(id).ProductName;
+        _devices.Clear();
+        _isInitialized = false;
+        _currentDeviceName = "Default";
+        Log.Information("OutputDeviceManager: Disposed");
     }
 }

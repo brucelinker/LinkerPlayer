@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Core;
-using NAudio.Wave;
+using ManagedBass;
 using Newtonsoft.Json;
 using Serilog;
 using System;

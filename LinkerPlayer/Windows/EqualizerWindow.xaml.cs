@@ -50,7 +50,10 @@ public partial class EqualizerWindow
             label.Text = FormatLabel(value);
         }
 
-        _audioEngine.SetBandGain(index, value);
+        if (_audioEngine.IsEqualizerInitialized)
+        {
+            _audioEngine.SetBandGain(index, value);
+        }
     }
 
     private string FormatLabel(float value)
@@ -336,4 +339,3 @@ public partial class EqualizerWindow
         }
     }
 }
-

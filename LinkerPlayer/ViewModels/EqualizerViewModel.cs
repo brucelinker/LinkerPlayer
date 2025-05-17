@@ -37,16 +37,16 @@ public partial class EqualizerViewModel : ObservableObject
     [ObservableProperty] private float _band8;
     [ObservableProperty] private float _band9;
 
-    partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(0, value); }
-    partial void OnBand1Changed(float value) { _audioEngine.SetBandGain(1, value); }
-    partial void OnBand2Changed(float value) { _audioEngine.SetBandGain(2, value); }
-    partial void OnBand3Changed(float value) { _audioEngine.SetBandGain(3, value); }
-    partial void OnBand4Changed(float value) { _audioEngine.SetBandGain(4, value); }
-    partial void OnBand5Changed(float value) { _audioEngine.SetBandGain(5, value); }
-    partial void OnBand6Changed(float value) { _audioEngine.SetBandGain(6, value); }
-    partial void OnBand7Changed(float value) { _audioEngine.SetBandGain(7, value); }
-    partial void OnBand8Changed(float value) { _audioEngine.SetBandGain(8, value); }
-    partial void OnBand9Changed(float value) { _audioEngine.SetBandGain(9, value); }
+    partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
+    partial void OnBand1Changed(float value) { _audioEngine.SetBandGain(64.0f, value); }
+    partial void OnBand2Changed(float value) { _audioEngine.SetBandGain(125.0f, value); }
+    partial void OnBand3Changed(float value) { _audioEngine.SetBandGain(250.0f, value); }
+    partial void OnBand4Changed(float value) { _audioEngine.SetBandGain(500.0f, value); }
+    partial void OnBand5Changed(float value) { _audioEngine.SetBandGain(1000.0f, value); }
+    partial void OnBand6Changed(float value) { _audioEngine.SetBandGain(2000.0f, value); }
+    partial void OnBand7Changed(float value) { _audioEngine.SetBandGain(4000.0f, value); }
+    partial void OnBand8Changed(float value) { _audioEngine.SetBandGain(8000.0f, value); }
+    partial void OnBand9Changed(float value) { _audioEngine.SetBandGain(16000.0f, value); }
 
     public void LoadFromJson()
     {

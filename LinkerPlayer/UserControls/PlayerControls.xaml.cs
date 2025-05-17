@@ -5,12 +5,9 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
-using NAudio.Wave;
+using ManagedBass;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -152,45 +149,23 @@ public partial class PlayerControls
         _seekBarTimer.Start();
     }
 
-    //private void UniGrid_SizeChanged(object? sender, SizeChangedEventArgs? e)
-    //{
-    //    int n = UniGrid.Children.Count;
-
-    //    if (n == 0)
-    //    {
-    //        return;
-    //    }
-
-    //    int k = (int)UniGrid.ActualWidth / 6;
-
-    //    List<int> numbers = new();
-    //    for (int i = 0; i < n; i++)
-    //    {
-    //        numbers.Add(i);
-    //    }
-
-    //    List<int> reducedList = numbers.EvenlySpacedSubset(k);
-
-    //    for (int i = 0; i < UniGrid.Children.Count; i++)
-    //    {
-    //        if (UniGrid.Children[i] is Border border)
-    //        {
-    //            border.Visibility = reducedList.Contains(i) ? Visibility.Visible : Visibility.Collapsed;
-    //        }
-    //    }
-    //}
-
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
+        double clickPosition = e.GetPosition(SeekBar).X;
+        double seekPercentage = clickPosition / SeekBar.ActualWidth;
+        double posInSeekBar = seekPercentage * _audioEngine.CurrentTrackLength;
 
-        if (_audioEngine.PathToMusic != null &&
-            Math.Abs(_audioEngine.CurrentTrackPosition - posInSeekBar) > 0 &&
-            !_audioEngine.IsPaused)
+        Serilog.Log.Information($"SeekBar clicked at position: {clickPosition}, percentage: {seekPercentage}, seeking to: {posInSeekBar}s");
+
+        if (_audioEngine.PathToMusic != null && !double.IsNaN(posInSeekBar))
         {
             _audioEngine.SeekAudioFile(posInSeekBar);
-
+            SeekBar.Value = seekPercentage * 100;
             _seekBarTimer.Start();
+        }
+        else
+        {
+            Serilog.Log.Warning("Seek conditions not met: PathToMusic or position invalid");
         }
     }
 
@@ -258,17 +233,5 @@ public partial class PlayerControls
     {
         Properties.Settings.Default.VolumeSliderValue = VolumeSlider.Value;
         Properties.Settings.Default.LastSeekBarValue = SeekBar.Value;
-    }
-}
-
-public static class ListExtensions
-{
-    public static List<T> EvenlySpacedSubset<T>(this List<T> list, int count)
-    {
-        int length = list.Count;
-        int[] indices = Enumerable.Range(0, count)
-            .Select(i => (int)Math.Round((double)(i * (length - 1)) / (count - 1)))
-            .ToArray();
-        return indices.Select(i => list[i]).ToList();
     }
 }

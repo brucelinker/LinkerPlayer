@@ -24,13 +24,10 @@ public partial class TrackInfo
 
         this.DataContext = this;
         InitializeComponent();
+        Loaded += TrackInfo_Loaded;
+
         AudioEngine = AudioEngine.Instance;
         Spectrum.RegisterSoundPlayer(AudioEngine);
-
-        //WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
-        //{
-        //    OnActiveTrackChanged(m.Value);
-        //});
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
@@ -58,12 +55,19 @@ public partial class TrackInfo
         }
     }
 
-    //private void OnActiveTrackChanged(MediaFile? mediaFile)
-    //{
-    //    if (mediaFile == null) return;
-
-    //    SetActiveMediaFile(mediaFile);
-    //}
+    private void TrackInfo_Loaded(object sender, RoutedEventArgs e)
+    {
+        var spectrum = FindName("Spectrum") as SpectrumAnalyzer;
+        if (spectrum != null)
+        {
+            spectrum.RegisterSoundPlayer(AudioEngine.Instance);
+            Log.Information("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
+        }
+        else
+        {
+            Log.Error("TrackInfo: SpectrumAnalyzer control not found");
+        }
+    }
 
     private void OnSelectedTrackChanged(MediaFile mediaFile)
     {

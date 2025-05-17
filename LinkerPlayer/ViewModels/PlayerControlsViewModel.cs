@@ -5,7 +5,7 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Properties;
-using NAudio.Wave;
+using ManagedBass;
 using Serilog;
 using System.IO;
 
@@ -31,7 +31,6 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public readonly AudioEngine audioEngine;
     public readonly PlaylistTabsViewModel playlistTabsViewModel;
-
 
     public PlayerControlsViewModel()
     {
@@ -62,21 +61,15 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PlayPauseTrack()
     {
-//        SelectedTrack = playlistTabsViewModel.SelectedTrack ?? playlistTabsViewModel.SelectFirstTrack();
+        Log.Information("PlayPauseTrack called");
 
-        if (State != PlaybackState.Playing)
+        // Ensure SelectedTrack is set
+        SelectedTrack = playlistTabsViewModel.SelectedTrack ?? playlistTabsViewModel.SelectFirstTrack();
+        Log.Information($"SelectedTrack: {(SelectedTrack != null ? SelectedTrack.Path : "null")}");
+
+        if (audioEngine.IsPlaying)
         {
-            if (ActiveTrack?.State == PlaybackState.Paused)
-            {
-                ResumeTrack();
-            }
-            else
-            {
-                PlayTrack();
-            }
-        }
-        else
-        {
+            Log.Information("Track is playing, pausing");
             audioEngine.Pause();
             State = PlaybackState.Paused;
 
@@ -84,32 +77,50 @@ public partial class PlayerControlsViewModel : BaseViewModel
             {
                 ActiveTrack.State = PlaybackState.Paused;
             }
-
+        }
+        else
+        {
+            if (ActiveTrack?.State == PlaybackState.Paused)
+            {
+                Log.Information("Track is paused, resuming");
+                ResumeTrack();
+            }
+            else
+            {
+                Log.Information("Track is stopped, playing");
+                PlayTrack();
+            }
         }
     }
 
     public void PlayTrack()
     {
+        //Log.Information("PlayTrack called");
+
         if (ActiveTrack != null)
         {
-            audioEngine.PathToMusic = ActiveTrack?.Path;
-            audioEngine.StopAndPlayFromPosition(0.0);
-            ActiveTrack!.State = PlaybackState.Playing;
+            //Log.Information($"Playing ActiveTrack: {ActiveTrack.Path}");
+            audioEngine.PathToMusic = ActiveTrack.Path;
+            audioEngine.Play();
+            ActiveTrack.State = PlaybackState.Playing;
             State = PlaybackState.Playing;
         }
         else if (SelectedTrack != null)
         {
+            Log.Information($"Playing SelectedTrack: {SelectedTrack.Path}");
             audioEngine.PathToMusic = SelectedTrack.Path;
-            audioEngine.StopAndPlayFromPosition(0.0);
+            audioEngine.Play();
 
             if (ActiveTrack == null)
             {
-                //ActivePlaylistIndex = SelectedPlaylistIndex;
-                //ActiveTrackIndex = SelectedTrackIndex;
                 ActiveTrack = SelectedTrack;
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
             }
+        }
+        else
+        {
+            Log.Warning("Cannot play: Both ActiveTrack and SelectedTrack are null");
         }
 
         WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
@@ -118,6 +129,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void ResumeTrack()
     {
+        Log.Information("ResumeTrack called");
         audioEngine.ResumePlay();
         State = PlaybackState.Playing;
 
@@ -129,7 +141,6 @@ public partial class PlayerControlsViewModel : BaseViewModel
         WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
     }
 
-
     [RelayCommand]
     private void Stop()
     {
@@ -138,14 +149,13 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void StopTrack()
     {
+        Log.Information("StopTrack called");
         audioEngine.Stop();
         State = PlaybackState.Stopped;
 
         if (ActiveTrack != null)
         {
             ActiveTrack.State = PlaybackState.Stopped;
-            //ActivePlaylistIndex = null;
-            //ActiveTrackIndex = null;
             ActiveTrack = null;
         }
 
@@ -160,14 +170,16 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PreviousTrack()
     {
-        MediaFile? prevMediaFile = playlistTabsViewModel.PreviousMediaFile()!;
+        Log.Information("PreviousTrack called");
+        MediaFile? prevMediaFile = playlistTabsViewModel.PreviousMediaFile();
 
         if (prevMediaFile == null || !File.Exists(prevMediaFile.Path))
         {
-            Log.Error("MediaFile not found.");
+            Log.Error("MediaFile not found for previous track.");
             return;
         }
 
+        ActiveTrack = prevMediaFile;
         PlayTrack();
     }
 
@@ -179,24 +191,28 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void NextTrack()
     {
-        MediaFile? nextMediaFile = playlistTabsViewModel.NextMediaFile()!;
+        Log.Information("NextTrack called");
+        MediaFile? nextMediaFile = playlistTabsViewModel.NextMediaFile();
 
         if (nextMediaFile == null || !File.Exists(nextMediaFile.Path))
         {
-            Log.Error("MediaFile not found.");
+            Log.Error("MediaFile not found for next track.");
             return;
         }
 
+        ActiveTrack = nextMediaFile;
         PlayTrack();
     }
 
     private void OnPlaybackStateChanged(PlaybackState playbackState)
     {
+        //Log.Information($"Playback state changed: {playbackState}");
         State = playbackState;
     }
 
     private void OnAudioStopped(bool trackEnded)
     {
+        Log.Information($"Audio stopped, trackEnded: {trackEnded}");
         if (trackEnded)
         {
             NextTrack();
@@ -215,7 +231,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     private void SetShuffleMode(bool shuffleMode)
     {
-        //ShuffleMode = shuffleMode;
+        ShuffleMode = shuffleMode;
         Settings.Default.ShuffleMode = shuffleMode;
         Settings.Default.Save();
 
@@ -237,14 +253,33 @@ public partial class PlayerControlsViewModel : BaseViewModel
     public double CurrentSeekbarPosition()
     {
         MonitorNextTrack();
-        return (audioEngine.CurrentTrackPosition * 100) / audioEngine.CurrentTrackLength;
+
+        double length = audioEngine.CurrentTrackLength;
+        double position = audioEngine.CurrentTrackPosition;
+
+        if (length <= 0 || double.IsNaN(position) || double.IsNaN(length))
+        {
+            return 0;
+        }
+
+        double percentage = (position / length) * 100;
+        if (double.IsNaN(percentage) || double.IsInfinity(percentage))
+        {
+            return 0;
+        }
+
+        return percentage;
     }
 
     private void MonitorNextTrack()
     {
-        if (audioEngine.CurrentTrackPosition + 5.0 > audioEngine.CurrentTrackLength)
+        double length = audioEngine.CurrentTrackLength;
+        double position = audioEngine.CurrentTrackPosition;
+
+        if (length > 0 && position + 10.0 > length)
         {
-            NextTrack();
+            if (audioEngine.GetDecibelLevel() <= -50 || position + 0.5 > length)
+                NextTrack();
         }
     }
 }

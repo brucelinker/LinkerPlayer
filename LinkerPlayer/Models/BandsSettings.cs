@@ -1,6 +1,6 @@
-﻿using System;
+﻿using LinkerPlayer.Audio;
+using System;
 using System.Collections.Generic;
-using NAudio.Extras;
 
 namespace LinkerPlayer.Models;
 
@@ -8,5 +8,5 @@ public class BandsSettings
 {
     public string Name = string.Empty;
     public bool Locked = false;
-    public List<EqualizerBand>? EqualizerBands = new();
+    public List<EqualizerBandSettings>? EqualizerBands = new();
 }
