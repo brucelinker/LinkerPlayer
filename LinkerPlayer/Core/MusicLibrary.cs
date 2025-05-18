@@ -188,11 +188,11 @@ public abstract class MusicLibrary
 
     public static void RemovePlaylist(string playlistName)
     {
-        Playlist? playlist = Playlists.Find(x => x!.Name == playlistName)!;
+        Playlist playlist = Playlists.Find(x => x!.Name == playlistName)!;
 
-        if (playlist!.TrackIds.Any())
+        if (playlist.TrackIds.Any())
         {
-            foreach (var trackId in playlist.TrackIds.ToList())
+            foreach (string trackId in playlist.TrackIds.ToList())
             {
                 playlist.TrackIds.ToList().RemoveAll(x => x == trackId);
                 MainLibrary.RemoveAll(x => x!.Id == trackId);

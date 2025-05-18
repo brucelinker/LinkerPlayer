@@ -57,7 +57,7 @@ public partial class TrackInfo
 
     private void TrackInfo_Loaded(object sender, RoutedEventArgs e)
     {
-        var spectrum = FindName("Spectrum") as SpectrumAnalyzer;
+        SpectrumAnalyzer? spectrum = FindName("Spectrum") as SpectrumAnalyzer;
         if (spectrum != null)
         {
             spectrum.RegisterSoundPlayer(AudioEngine.Instance);

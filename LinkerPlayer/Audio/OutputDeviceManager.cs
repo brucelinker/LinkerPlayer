@@ -7,7 +7,7 @@ namespace LinkerPlayer.Audio;
 
 public static class OutputDeviceManager
 {
-    private static readonly List<string> _devices = new();
+    private static readonly List<string> Devices = new();
     private static bool _isInitialized;
     private static string _currentDeviceName = "Default";
 
@@ -22,7 +22,7 @@ public static class OutputDeviceManager
         try
         {
             AudioEngine.Initialize();
-            _devices.Clear();
+            Devices.Clear();
             GetOutputDevicesList();
             SetMainOutputDevice();
             _isInitialized = true;
@@ -37,7 +37,7 @@ public static class OutputDeviceManager
 
     public static List<string> GetOutputDevicesList()
     {
-        _devices.Clear();
+        Devices.Clear();
         if (!AudioEngine.IsInitialized)
         {
             Log.Warning("GetOutputDevicesList: BASS not initialized, initializing now");
@@ -51,14 +51,14 @@ public static class OutputDeviceManager
             {
                 try
                 {
-                    var device = Bass.GetDeviceInfo(i);
+                    DeviceInfo device = Bass.GetDeviceInfo(i);
                     if (string.IsNullOrEmpty(device.Name) || !device.IsEnabled)
                     {
                         Log.Debug($"GetOutputDevicesList: Stopped at index {i} (empty name or disabled)");
                         break;
                     }
 
-                    _devices.Add(device.Name);
+                    Devices.Add(device.Name);
                     Log.Information($"Added device to list: {device.Name} (index {i})");
                 }
                 catch (BassException ex)
@@ -68,13 +68,13 @@ public static class OutputDeviceManager
                 }
             }
 
-            Log.Information($"GetOutputDevicesList: Found {_devices.Count} enabled devices");
-            return _devices;
+            Log.Information($"GetOutputDevicesList: Found {Devices.Count} enabled devices");
+            return Devices;
         }
         catch (Exception ex)
         {
             Log.Error($"GetOutputDevicesList: Failed: {ex.Message}");
-            return _devices;
+            return Devices;
         }
     }
 
@@ -82,7 +82,7 @@ public static class OutputDeviceManager
     {
         try
         {
-            if (_devices.Contains(deviceName))
+            if (Devices.Contains(deviceName))
             {
                 AudioEngine.Instance.ReselectOutputDevice(deviceName);
                 _currentDeviceName = deviceName;
@@ -113,7 +113,7 @@ public static class OutputDeviceManager
         try
         {
             int currentDevice = Bass.CurrentDevice;
-            var device = Bass.GetDeviceInfo(currentDevice);
+            DeviceInfo device = Bass.GetDeviceInfo(currentDevice);
             if (!string.IsNullOrEmpty(device.Name) && device.IsEnabled)
             {
                 _currentDeviceName = device.Name;
@@ -133,7 +133,7 @@ public static class OutputDeviceManager
 
     public static void Dispose()
     {
-        _devices.Clear();
+        Devices.Clear();
         _isInitialized = false;
         _currentDeviceName = "Default";
         Log.Information("OutputDeviceManager: Disposed");

@@ -20,14 +20,14 @@ public class EnumToVisibilityConverter : IValueConverter
             }
             else
             {
-                var equals = Equals(value, parameter);
+                bool equals = Equals(value, parameter);
                 return equals ? this.TrueValue : this.FalseValue;
             }
         }
         return Binding.DoNothing;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         return DependencyProperty.UnsetValue;
     }

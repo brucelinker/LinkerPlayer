@@ -13,7 +13,7 @@ public class EnumBooleanConverter : BooleanConverter
     {
         if (parameter != null)
         {
-            var equals = value != null && Equals(value, parameter);
+            bool equals = value != null && Equals(value, parameter);
             return equals ? this.TrueValue : this.FalseValue;
         }
         return this.FalseValue;

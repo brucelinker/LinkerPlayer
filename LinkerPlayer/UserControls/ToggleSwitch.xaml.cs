@@ -10,7 +10,7 @@ public partial class ToggleSwitch
     public ToggleSwitch()
     {
         InitializeComponent();
-        Switched = (send, arg) => { };
+        Switched = (_, _) => { };
     }
 
     public EventHandler Switched;
@@ -79,7 +79,7 @@ public partial class ToggleSwitch
     {
         get
         {
-            bool value = (bool)GetValue(IsOnProperty);
+            //bool value = (bool)GetValue(IsOnProperty);
             if (ButtonToggle.Tag.ToString() == "On")
             {
                 return true;
@@ -99,9 +99,9 @@ public partial class ToggleSwitch
             {
                 ButtonToggle.Tag = "On";
                 BorderTrack.Background = new SolidColorBrush(TrackBackgroundOffColor);
-                var ca = new ColorAnimation(TrackBackgroundOnColor, TimeSpan.FromSeconds(.25));
+                ColorAnimation ca = new ColorAnimation(TrackBackgroundOnColor, TimeSpan.FromSeconds(.25));
                 BorderTrack.Background.BeginAnimation(SolidColorBrush.ColorProperty, ca);
-                var da = new DoubleAnimation(10, TimeSpan.FromSeconds(.25));
+                DoubleAnimation da = new DoubleAnimation(10, TimeSpan.FromSeconds(.25));
                 ToggleLabel.Content = "Equalizer is enabled";
                 TranslateTransform.BeginAnimation(TranslateTransform.XProperty, da);
             }
@@ -109,9 +109,9 @@ public partial class ToggleSwitch
             {
                 ButtonToggle.Tag = "Off";
                 BorderTrack.Background = new SolidColorBrush(TrackBackgroundOnColor);
-                var ca = new ColorAnimation(TrackBackgroundOffColor, TimeSpan.FromSeconds(.25));
+                ColorAnimation ca = new ColorAnimation(TrackBackgroundOffColor, TimeSpan.FromSeconds(.25));
                 BorderTrack.Background.BeginAnimation(SolidColorBrush.ColorProperty, ca);
-                var da = new DoubleAnimation(-10, TimeSpan.FromSeconds(.25));
+                DoubleAnimation da = new DoubleAnimation(-10, TimeSpan.FromSeconds(.25));
                 ToggleLabel.Content = "Equalizer is disabled";
                 TranslateTransform.BeginAnimation(TranslateTransform.XProperty, da);
             }

@@ -1,4 +1,5 @@
-﻿using ManagedBass;
+﻿using LinkerPlayer.Models;
+using ManagedBass;
 using ManagedBass.Fx;
 using Serilog;
 using System;
@@ -6,22 +7,22 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using LinkerPlayer.Models;
+using System.Threading;
+// ReSharper disable InconsistentNaming
 
 namespace LinkerPlayer.Audio;
 
 public class AudioEngine : ISpectrumPlayer, IDisposable
 {
-    private static readonly Lazy<AudioEngine> _instance = new Lazy<AudioEngine>(() => new AudioEngine(), isThreadSafe: true);
+    private static readonly Lazy<AudioEngine> _instance = new(() => new AudioEngine(), isThreadSafe: true);
     private static bool _isBassInitialized;
-    private static readonly object _initLock = new object();
-    private int _currentStream = 0;
+    private static readonly Lock _initLock = new();
+    private int _currentStream;
     private string _pathToMusic = string.Empty;
     private double _currentTrackLength;
     private double _currentTrackPosition;
     private bool _isPlaying;
     private float _musicVolume = 1.0f;
-    private readonly int _maxFft = (int)DataFlags.FFT2048;
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
     private readonly List<EqualizerBandSettings> _equalizerBands =
@@ -37,23 +38,53 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         new(8000.0f, 0f, 1.0f),
         new(16000.0f, 0f, 1.0f)
     ];
-    private bool _eqInitialized = false;
+    private bool _eqInitialized;
     private int[] _eqFxHandles = [];
     private int _endSyncHandle;
 
     public static AudioEngine Instance => _instance.Value;
 
+    // ReSharper disable once InconsistentlySynchronizedField
     public static bool IsInitialized => _isBassInitialized;
 
     public event Action OnPlaybackStopped;
     public event Action<float[]> OnFftCalculated;
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public bool IsEqualizerInitialized => _eqInitialized;
 
     public float[] FftUpdate { get; private set; }
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
+
+        private AudioEngine()
+    {
+        Initialize();
+
+        // Load plugins
+        LoadBassPlugins();
+
+        // Configure buffer and update period
+        Bass.Configure(Configuration.PlaybackBufferLength, 500);
+        Bass.Configure(Configuration.UpdatePeriod, 50);
+
+        // Log BASS and BASS_FX versions
+        Log.Information($"BASS version: {Bass.Version}");
+        Log.Information($"BASS_FX version: {BassFx.Version}");
+
+        var info = Bass.Info;
+        Log.Information($"Actual device sample rate: {info.SampleRate} Hz");
+        if (info.SampleRate != 44100)
+        {
+            Log.Warning($"Device sample rate ({info.SampleRate} Hz) does not match requested sample rate (44100 Hz)");
+        }
+
+        _positionTimer = new System.Timers.Timer(50);
+        _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
+        _positionTimer.AutoReset = true;
+
+        FftUpdate = new float[ExpectedFftSize];
+    }
 
     public string PathToMusic
     {
@@ -133,7 +164,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
             try
             {
-                if (!Bass.Init(-1, 48000, DeviceInitFlags.Default))
+                if (!Bass.Init(-1, 48000)) // default args DeviceInitFlags.Default))
                 {
                     string errorMessage = $"BASS initialization failed: {Bass.LastError}";
                     Log.Error(errorMessage);
@@ -148,35 +179,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
                 _isBassInitialized = true;
             }
         }
-    }
-
-    private AudioEngine()
-    {
-        Initialize();
-
-        // Load plugins
-        LoadBassPlugins();
-
-        // Configure buffer and update period
-        Bass.Configure(Configuration.PlaybackBufferLength, 500);
-        Bass.Configure(Configuration.UpdatePeriod, 50);
-
-        // Log BASS and BASS_FX versions
-        Log.Information($"BASS version: {Bass.Version}");
-        Log.Information($"BASS_FX version: {BassFx.Version}");
-
-        var info = Bass.Info;
-        Log.Information($"Actual device sample rate: {info.SampleRate} Hz");
-        if (info.SampleRate != 44100)
-        {
-            Log.Warning($"Device sample rate ({info.SampleRate} Hz) does not match requested sample rate (44100 Hz)");
-        }
-
-        _positionTimer = new System.Timers.Timer(50);
-        _positionTimer.Elapsed += (s, e) => HandleFftCalculated();
-        _positionTimer.AutoReset = true;
-
-        FftUpdate = new float[ExpectedFftSize];
     }
 
     private void LoadBassPlugins()
@@ -255,7 +257,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             return;
         }
 
-        var info = Bass.ChannelGetInfo(_currentStream);
+        //var info = Bass.ChannelGetInfo(_currentStream);
         //Log.Information($"Stream format: flags={info.Flags}, type={info.ChannelType}, freq={info.Frequency}");
         //Log.Information($"Stream type: {info.ChannelType}");
 
@@ -265,7 +267,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             Log.Error($"Failed to get track length: {Bass.LastError}");
             Bass.StreamFree(_currentStream);
             _currentStream = 0;
-            _eqFxHandles = null;
+            _eqFxHandles = [];
             _eqInitialized = false;
             return;
         }
@@ -324,7 +326,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
                 return;
             }
             //Log.Information($"Playing stream: {_currentStream}");
-            var state = Bass.ChannelIsActive(_currentStream);
+            //var state = Bass.ChannelIsActive(_currentStream);
             //Log.Information($"Stream state after play: {state}");
             IsPlaying = true;
             //Log.Information("Playback started successfully");
@@ -350,13 +352,14 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             Bass.ChannelStop(_currentStream);
             Bass.StreamFree(_currentStream);
             _currentStream = 0;
-            _eqFxHandles = null;
+            _eqFxHandles = [];
             _eqInitialized = false;
             //Log.Information("Stream stopped and freed");
         }
         IsPlaying = false;
         CurrentTrackPosition = 0;
         //Log.Information("Stop: Invoking OnPlaybackStopped");
+        // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
         OnPlaybackStopped?.Invoke();
     }
 
@@ -461,7 +464,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             if (!Bass.ChannelPlay(_currentStream))
             {
                 Log.Error($"Failed to resume stream after seek: {Bass.LastError}");
-                return;
             }
             //Log.Information("Resumed stream after seek");
         }
@@ -490,7 +492,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         }
 
         Bass.Free();
-        if (!Bass.Init(deviceId, 44100, DeviceInitFlags.Default))
+        if (!Bass.Init(deviceId)) // Default args 44100, DeviceInitFlags.Default))
         {
             Log.Error($"Failed to initialize BASS with device {deviceName}: {Bass.LastError}");
             return;
@@ -516,7 +518,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             return;
         }
 
-        if (_eqFxHandles != null)
+        if (_eqFxHandles.Length > 0)
         {
             foreach (int fxHandle in _eqFxHandles)
             {
@@ -551,7 +553,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
                 Log.Error($"Failed to set EQ params for {freq}Hz: {Bass.LastError}");
                 Bass.ChannelRemoveFX(_currentStream, fxHandle);
                 _eqFxHandles[i] = 0;
-                continue;
             }
 
             //Log.Information($"EQ band {freq} Hz initialized (gain={eqParams.fGain} dB)");
@@ -574,8 +575,8 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
     public float GetBandGain(int index)
     {
-        EqualizerBandSettings? band = _equalizerBands[index];
-        return band != null ? band.Gain : 0f;
+        EqualizerBandSettings band = _equalizerBands[index];
+        return band.Gain;
     }
 
     public void SetBandGain(int index, float gain)
@@ -585,13 +586,13 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
     public void SetBandGain(float frequency, float gain)
     {
-        if (!_eqInitialized || _eqFxHandles == null || _currentStream == 0)
+        if (!_eqInitialized || !_eqFxHandles.Any() || _currentStream == 0)
         {
             Log.Warning($"SetBandGain skipped: EQ not initialized or stream invalid.");
             return;
         }
 
-        int bandIndex = _equalizerBands.FindIndex(b => b.Frequency == frequency);
+        int bandIndex = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < .1);
         if (bandIndex == -1 || bandIndex >= _eqFxHandles.Length || _eqFxHandles[bandIndex] == 0)
         {
             Log.Warning($"SetBandGain skipped: FX handle invalid for {frequency} Hz");
@@ -630,7 +631,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             return false;
         }
 
-        if (FftUpdate != null && FftUpdate.Length == ExpectedFftSize)
+        if (FftUpdate.Length == ExpectedFftSize)
         {
             Array.Copy(FftUpdate, fftDataBuffer, ExpectedFftSize);
             return true;
@@ -684,7 +685,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         {
             Log.Error($"HandleFftCalculated: Failed to get FFT data: {Bass.LastError}");
             FftUpdate = new float[ExpectedFftSize];
-            OnFftCalculated?.Invoke(FftUpdate);
+            OnFftCalculated.Invoke(FftUpdate);
             return;
         }
 
@@ -724,11 +725,8 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         FftUpdate = fftResult;
 
         //Log.Information($"FFT data sample: {string.Join(", ", fftResult.Take(10))}");
-        if (OnFftCalculated != null)
-        {
-            //Log.Information("Invoking OnFftCalculated");
-            OnFftCalculated.Invoke(FftUpdate);
-        }
+
+        OnFftCalculated.Invoke(FftUpdate);
     }
 
     private void OnPropertyChanged(string propertyName)

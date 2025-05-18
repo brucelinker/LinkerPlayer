@@ -58,7 +58,7 @@ internal static class Helper
         // all mp3 files including in directories and subdirectories
         List<string> mp3Files = new List<string>();
 
-        foreach (var file in files)
+        foreach (string file in files)
         {
             if (File.Exists(file))
             {
