@@ -1,5 +1,4 @@
 ﻿using LinkerPlayer.Models;
-using LinkerPlayer.Properties;
 using LinkerPlayer.UserControls;
 using LinkerPlayer.Windows;
 using System;
@@ -9,8 +8,6 @@ namespace LinkerPlayer.Core;
 
 public class ThemeManager
 {
-    public static ThemeColors ActiveSkin = ThemeColors.Dark;
-
     private void ClearStyles()
     {
         if (MainWindow.Instance == null) return;
@@ -40,13 +37,13 @@ public class ThemeManager
             case ThemeColors.Dark: resourceLocator = @"Themes\Dark.xaml"; break;
             case ThemeColors.Gray: resourceLocator = @"Themes\Gray.xaml"; break;
             case ThemeColors.Midnight: resourceLocator = @"Themes\Midnight.xaml"; break;
-            default: resourceLocator = @"Themes\White.xaml"; break;
+            default: resourceLocator = @"Themes\Slate.xaml"; break;
         }
 
         return resourceLocator;
     }
 
-    public ThemeColors ModifyTheme(ThemeColors themeColor, FontSize fontSize = FontSize.Normal)
+    public ThemeColors ModifyTheme(ThemeColors themeColor)
     {
         ClearStyles();
         AddTheme(themeColor);
@@ -76,53 +73,53 @@ public class ThemeManager
         AddDict(langDict);
     }
 
-    private void ApplyTheme(string uri)
-    {
-        ClearStyles();
+    //private void ApplyTheme(string uri)
+    //{
+    //    ClearStyles();
 
-        Uri langDictUri = new Uri(uri, UriKind.Relative);
-        ResourceDictionary langDict = (Application.LoadComponent(langDictUri) as ResourceDictionary)!;
+    //    Uri langDictUri = new Uri(uri, UriKind.Relative);
+    //    ResourceDictionary langDict = (Application.LoadComponent(langDictUri) as ResourceDictionary)!;
 
-        AddDict(langDict);
-    }
+    //    AddDict(langDict);
+    //}
 
-    private void ApplyTheme(MainWindow main, ThemeColors skin, FontSize size)
-    {
-        ClearStyles();
-        AddTheme(skin);
+    //private void ApplyTheme(ThemeColors skin)
+    //{
+    //    ClearStyles();
+    //    AddTheme(skin);
 
-        string colors = @"Styles\SolidColorBrushes.xaml";
-        Uri colorsUri = new Uri(colors, UriKind.Relative);
-        ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
+    //    string colors = @"Styles\SolidColorBrushes.xaml";
+    //    Uri colorsUri = new Uri(colors, UriKind.Relative);
+    //    ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
 
-        AddDict(brushesDict);
+    //    AddDict(brushesDict);
 
-        ActiveSkin = skin;
-    }
+    //    ActiveSkin = skin;
+    //}
 
-    public void ApplyThemeByName(MainWindow main, string theme, string fileName = "")
-    {
-        FontSize currentSize = (FontSize)Settings.Default.FontSize;
-        switch (theme)
-        {
-            case "Light": ApplyTheme(main, ThemeColors.Light, currentSize); break;
-            case "Slate": ApplyTheme(main, ThemeColors.Slate, currentSize); break;
-            case "Gray": ApplyTheme(main, ThemeColors.Gray, currentSize); break;
-            case "Dark": ApplyTheme(main, ThemeColors.Dark, currentSize); break;
-            case "URI": ApplyTheme(fileName); break;
-            default: ApplyTheme(main, ThemeColors.Light, currentSize); break;
-        }
-    }
+    //public void ApplyThemeByName(MainWindow main, string theme, string fileName = "")
+    //{
+    //    FontSize currentSize = (FontSize)Settings.Default.FontSize;
+    //    switch (theme)
+    //    {
+    //        case "Light": ApplyTheme(ThemeColors.Light); break;
+    //        case "Slate": ApplyTheme(ThemeColors.Slate); break;
+    //        case "Gray": ApplyTheme(ThemeColors.Gray); break;
+    //        case "Dark": ApplyTheme(ThemeColors.Dark); break;
+    //        case "URI": ApplyTheme(fileName); break;
+    //        default: ApplyTheme(ThemeColors.Light); break;
+    //    }
+    //}
 
     public ThemeColors StringToThemeColor(string theme)
     {
         switch (theme)
         {
             case "Light": return ThemeColors.Light;
-            case "Slate": return ThemeColors.Slate;
             case "Gray": return ThemeColors.Gray;
             case "Dark": return ThemeColors.Dark;
-            default: return ThemeColors.Midnight;
+            case "Midnight": return ThemeColors.Midnight;
+            default: return ThemeColors.Slate;
         }
     }
 
@@ -131,10 +128,10 @@ public class ThemeManager
         switch (theme)
         {
             case "Light": return (int)ThemeColors.Light;
-            case "Slate": return (int)ThemeColors.Slate;
             case "Gray": return (int)ThemeColors.Gray;
             case "Dark": return (int)ThemeColors.Dark;
-            default: return (int)ThemeColors.Midnight;
+            case "Midnight": return (int)ThemeColors.Midnight;
+            default: return (int)ThemeColors.Slate;
         }
     }
 
@@ -143,10 +140,10 @@ public class ThemeManager
         switch (theme)
         {
             case (int)ThemeColors.Light: return "Light";
-            case (int)ThemeColors.Slate: return "Slate";
             case (int)ThemeColors.Gray: return "Gray";
             case (int)ThemeColors.Dark: return "Dark";
-            default: return "Midnight";
+            case (int)ThemeColors.Midnight: return "Midnight";
+            default: return "Slate";
         }
     }
 }

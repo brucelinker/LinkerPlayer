@@ -139,7 +139,7 @@ public partial class PlayerControls
         return "";
     }
 
-    private void OnDataGridPlay(PlayerState value)
+    private void OnDataGridPlay(PlaybackState value)
     {
         _playerControlsViewModel.StopTrack();
         _seekBarTimer.Stop();

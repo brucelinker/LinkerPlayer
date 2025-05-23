@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using ManagedBass;
 using System;
 using System.ComponentModel;
 using System.Linq;
@@ -76,7 +77,7 @@ public partial class PlaylistTabs
             PlaylistTabsViewModel.OnDoubleClickDataGrid();
         }, null);
 
-        WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlayerState.Playing));
+        WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
     }
 
     private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
