@@ -7,6 +7,7 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:wave="clr-namespace:ManagedBass;assembly=ManagedBass"
   d:DesignHeight="105"
   d:DesignWidth="1000"
   Background="{DynamicResource PlayerBackgroundBrush}"
@@ -90,7 +91,7 @@
                                                Margin=4 0 0 0}"
         d:Foreground="White"
         Command="{Binding PlayPauseCommand}"
-        Content="{Binding IsPlaying, Source={x:Static audio:AudioEngine.Instance}, Mode=OneWay, Converter={StaticResource PlayerStateToIconConverter}}"
+        Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
         Foreground="{DynamicResource PlayerForegroundBrush}"
         Style="{StaticResource LinkerCircleButton}" />
 
