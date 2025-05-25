@@ -64,14 +64,14 @@ public class SpectrumAnalyzer : Control
     {
         if (_soundPlayer != null)
         {
-            _soundPlayer.PropertyChanged -= soundPlayer_PropertyChanged;
+            _soundPlayer.PropertyChanged -= SoundPlayer_PropertyChanged;
             _soundPlayer.OnFftCalculated -= SoundPlayer_OnFftCalculated;
         }
 
         _soundPlayer = soundPlayer;
         if (_soundPlayer != null)
         {
-            _soundPlayer.PropertyChanged += soundPlayer_PropertyChanged;
+            _soundPlayer.PropertyChanged += SoundPlayer_PropertyChanged;
             _soundPlayer.OnFftCalculated += SoundPlayer_OnFftCalculated;
             UpdateBarLayout();
             if (_soundPlayer.IsPlaying)
@@ -86,16 +86,16 @@ public class SpectrumAnalyzer : Control
 
     private readonly DispatcherTimer _animationTimer;
     private Canvas? _spectrumCanvas;
-    private ISpectrumPlayer _soundPlayer;
-    private readonly List<Shape> _barShapes = new();
-    private readonly List<Shape> _peakShapes = new();
+    private ISpectrumPlayer? _soundPlayer;
+    private readonly List<Shape> _barShapes = [];
+    private readonly List<Shape> _peakShapes = [];
     private float[] _channelData = new float[2048]; // Reverted to 2048 for working visuals
-    private float[] _channelPeakData = { };
+    private float[] _channelPeakData = [];
     private double _barWidth = 1;
     private int _maximumFrequencyIndex = 2047; // Reverted to 2047
     private int _minimumFrequencyIndex;
-    private int[] _barIndexMax = { };
-    private int[] _barLogScaleIndexMax = { };
+    private int[] _barIndexMax = [];
+    private int[] _barLogScaleIndexMax = [];
 
     #endregion
 
@@ -861,7 +861,7 @@ public class SpectrumAnalyzer : Control
     public override void OnApplyTemplate()
     {
         _spectrumCanvas = GetTemplateChild("PART_SpectrumCanvas") as Canvas;
-        if (_spectrumCanvas != null) _spectrumCanvas.SizeChanged += spectrumCanvas_SizeChanged;
+        if (_spectrumCanvas != null) _spectrumCanvas.SizeChanged += SpectrumCanvas_SizeChanged;
         UpdateBarLayout();
     }
 
@@ -874,7 +874,7 @@ public class SpectrumAnalyzer : Control
     {
         base.OnTemplateChanged(oldTemplate, newTemplate);
         if (_spectrumCanvas != null)
-            _spectrumCanvas.SizeChanged -= spectrumCanvas_SizeChanged;
+            _spectrumCanvas.SizeChanged -= SpectrumCanvas_SizeChanged;
     }
 
     #endregion
@@ -891,12 +891,11 @@ public class SpectrumAnalyzer : Control
     /// </summary>
     public SpectrumAnalyzer()
     {
-        _soundPlayer = null; // Delay initialization until RegisterSoundPlayer
         _animationTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
         {
             Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
         };
-        _animationTimer.Tick += animationTimer_Tick;
+        _animationTimer.Tick += AnimationTimer_Tick;
     }
 
     #endregion
@@ -970,7 +969,7 @@ public class SpectrumAnalyzer : Control
             for (int i = _minimumFrequencyIndex; i <= _maximumFrequencyIndex; i++)
             {
                 // If we're paused, keep drawing, but set the current height to 0 so the peaks fall.
-                if (!_soundPlayer.IsPlaying)
+                if (!_soundPlayer!.IsPlaying)
                 {
                     barHeight = 0f;
                 }
@@ -1033,7 +1032,7 @@ public class SpectrumAnalyzer : Control
             }
         }
 
-        if (allZero && !_soundPlayer.IsPlaying)
+        if (allZero && !_soundPlayer!.IsPlaying)
             _animationTimer.Stop();
     }
 
@@ -1060,8 +1059,8 @@ public class SpectrumAnalyzer : Control
 
         int indexCount = _maximumFrequencyIndex - _minimumFrequencyIndex;
         int linearIndexBucketSize = (int)Math.Round(indexCount / (double)actualBarCount, 0);
-        List<int> maxIndexList = new();
-        List<int> maxLogScaleIndexList = new();
+        List<int> maxIndexList = [];
+        List<int> maxLogScaleIndexList = [];
         double maxLog = Math.Log(actualBarCount, actualBarCount);
         for (int i = 1; i < actualBarCount; i++)
         {
@@ -1073,8 +1072,8 @@ public class SpectrumAnalyzer : Control
 
         maxIndexList.Add(_maximumFrequencyIndex);
         maxLogScaleIndexList.Add(_maximumFrequencyIndex);
-        _barIndexMax = maxIndexList.ToArray();
-        _barLogScaleIndexMax = maxLogScaleIndexList.ToArray();
+        _barIndexMax = [.. maxIndexList];
+        _barLogScaleIndexMax = [.. maxLogScaleIndexList];
 
         _spectrumCanvas.Children.Clear();
         _barShapes.Clear();
@@ -1131,7 +1130,7 @@ public class SpectrumAnalyzer : Control
         }
     }
 
-    private void soundPlayer_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void SoundPlayer_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
@@ -1142,12 +1141,12 @@ public class SpectrumAnalyzer : Control
         }
     }
 
-    private void animationTimer_Tick(object? sender, EventArgs e)
+    private void AnimationTimer_Tick(object? sender, EventArgs e)
     {
         UpdateSpectrum();
     }
 
-    private void spectrumCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
+    private void SpectrumCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
         UpdateBarLayout();
     }

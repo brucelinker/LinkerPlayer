@@ -47,7 +47,7 @@ public partial class PlayerControls
         {
             OnDataGridPlay(m.Value);
         });
-        WeakReferenceMessenger.Default.Register<MuteMessage>(this, (_, m) =>
+        WeakReferenceMessenger.Default.Register<IsMutedMessage>(this, (_, m) =>
         {
             OnMuteChanged(m.Value);
         });
@@ -73,8 +73,7 @@ public partial class PlayerControls
         LogCommandBinding(PrevButton, "PrevCommand");
         LogCommandBinding(NextButton, "NextCommand");
         LogCommandBinding(StopButton, "StopCommand");
-//        LogCommandBinding(ShuffleModeButton, "ShuffleCommand");
-        LogCommandBinding(MuteButton, "MuteCommand");
+        // MuteButton uses IsChecked binding, not a command
     }
 
     private void LogCommandBinding(ButtonBase button, string commandName)
@@ -163,45 +162,47 @@ public partial class PlayerControls
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
     }
 
-    private double _mainVolumeSliderBeforeMuteValue;
-
     private void OnMuteChanged(bool isMuted)
     {
         if (_playerControlsViewModel == null) return;
 
-        if (isMuted)
-        {
-            _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
-            AnimateVolumeSliderValue(VolumeSlider, 0, () =>
-            {
-                _playerControlsViewModel.VolumeSliderValue = 0; // Sync view model after animation
-                _playerControlsViewModel.IsMuted = true;
-            });
-        }
-        else
-        {
-            AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue, () =>
-            {
-                _playerControlsViewModel.VolumeSliderValue = _mainVolumeSliderBeforeMuteValue;
-                _playerControlsViewModel.IsMuted = false;
-            });
-        }
+        double targetValue = isMuted ? 0 : _playerControlsViewModel.GetVolumeBeforeMute();
+        AnimateVolumeSliderValue(VolumeSlider, targetValue, isMuted);
     }
 
-    private void AnimateVolumeSliderValue(Slider slider, double newVal, Action? onCompleted = null)
+    private void AnimateVolumeSliderValue(Slider slider, double position, bool isMuted)
     {
+        double fromValue = slider.Value;
         DoubleAnimation animation = new()
         {
-            From = slider.Value,
-            To = newVal,
-            Duration = TimeSpan.FromMilliseconds(300),
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            From = fromValue,
+            To = position,
+            Duration = TimeSpan.FromMilliseconds(700),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
+            FillBehavior = FillBehavior.Stop
         };
 
-        if (onCompleted != null)
+        // Update audio volume during animation
+        animation.CurrentTimeInvalidated += (s, e) =>
         {
-            animation.Completed += (s, e) => onCompleted();
-        }
+            if (_playerControlsViewModel != null)
+            {
+                double currentValue = slider.Value;
+                _audioEngine.MusicVolume = (float)currentValue / 100;
+                //Serilog.Log.Debug("Animation tick: Slider.Value={Value}, MusicVolume={Volume}", currentValue, _audioEngine.MusicVolume);
+            }
+        };
+
+        animation.Completed += (s, e) =>
+        {
+            slider.BeginAnimation(RangeBase.ValueProperty, null);
+            slider.Value = position;
+            if (_playerControlsViewModel != null)
+            {
+                _playerControlsViewModel.UpdateVolumeAfterAnimation(position, isMuted);
+            }
+            //Serilog.Log.Information("VolumeSlider animation completed, Value={Value}, IsMuted={IsMuted}", position, isMuted);
+        };
 
         slider.BeginAnimation(RangeBase.ValueProperty, animation);
     }

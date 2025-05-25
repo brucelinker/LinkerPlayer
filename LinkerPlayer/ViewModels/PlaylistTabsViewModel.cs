@@ -27,14 +27,14 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     [ObservableProperty] private int _selectedTabIndex;
     [ObservableProperty] private Playlist? _selectedPlaylist;
     [ObservableProperty] private PlaybackState _state;
-    [ObservableProperty] private bool _shuffleMode;
-    [ObservableProperty] private ObservableCollection<PlaylistTab> _tabList = new();
+    [ObservableProperty] private ObservableCollection<PlaylistTab> _tabList = [];
 
     private readonly SettingsManager _settingsManager;
     private TabControl? _tabControl;
     private DataGrid? _dataGrid;
 
-    private readonly List<MediaFile> ShuffleList = new();
+    private bool _shuffleMode;
+    private readonly List<MediaFile> _shuffleList = [];
     private int _shuffledIndex;
 
     private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wav"];
@@ -100,9 +100,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
 
         SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x!.Id == SelectedPlaylist.SelectedTrack);
         MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
-        if (ShuffleMode)
+        if (_shuffleMode)
         {
-            ShuffleTracks(ShuffleMode);
+            ShuffleTracks(_shuffleMode);
         }
 
         Log.Information("OnTabSelectionChanged: SelectedTabIndex={Index}, TabName={Name}", SelectedTabIndex, SelectedTab?.Name ?? "none");
@@ -142,7 +142,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     public void OnDataGridSorted(string propertyName, ListSortDirection direction)
     {
         if (_dataGrid is null) return;
-        List<MediaFile> sortedList = new(TabList[SelectedTabIndex].Tracks);
+        List<MediaFile> sortedList = [..TabList[SelectedTabIndex].Tracks];
         sortedList.Sort((x, y) =>
         {
             object? propX = x.GetType().GetProperty(propertyName)!.GetValue(x);
@@ -171,12 +171,12 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             _dataGrid.ScrollIntoView(_dataGrid.SelectedIndex);
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
-            MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack.Id;
+            MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
         }
 
-        if (ShuffleList.Any())
+        if (_shuffleList.Count > 0)
         {
-            ShuffleList.Clear();
+            _shuffleList.Clear();
         }
 
         _shuffleMode = _settingsManager.Settings.ShuffleMode;
@@ -251,9 +251,9 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         string selectedFolderPath = folderDialog.FolderName;
         DirectoryInfo dirInfo = new(selectedFolderPath);
         IEnumerable<FileInfo> files = dirInfo.GetFiles("*.*", SearchOption.AllDirectories)
-            .Where(file => _supportedAudioExtensions.Any(ext => file.Extension.Equals(ext, StringComparison.OrdinalIgnoreCase))).ToList();
+            .Where(file => _supportedAudioExtensions.Any(ext => file.Extension.Equals(ext, StringComparison.OrdinalIgnoreCase)));
 
-        foreach (FileInfo? file in files)
+        foreach (FileInfo file in files)
         {
             LoadAudioFile(file.FullName, SelectedPlaylist!.Name);
         }
@@ -286,7 +286,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         timer.Reset();
         timer.Start();
 
-        foreach (FileInfo? file in files)
+        foreach (FileInfo file in files)
         {
             LoadAudioFile(file.FullName, playlistName);
         }
@@ -387,7 +387,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             int oldIndex = SelectedTrackIndex;
             if (_shuffleMode)
             {
-                if (!ShuffleList.Any())
+                if (_shuffleList.Count == 0)
                 {
                     ShuffleTracks(true);
                 }
@@ -430,7 +430,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             int oldIndex = SelectedTrackIndex;
             if (_shuffleMode)
             {
-                if (!ShuffleList.Any())
+                if (_shuffleList.Count == 0)
                 {
                     ShuffleTracks(true);
                 }
@@ -466,11 +466,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         SelectPlaylistByName(SelectedTab.Name!);
 
         SelectedTrack = MusicLibrary.GetTracksFromPlaylist(SelectedTab.Name)
-            .Find(s => s.Id == SelectedPlaylist!.SelectedTrack);
-        if (SelectedTrack == null)
-        {
-            SelectedTrack = SelectFirstTrack();
-        }
+            .Find(s => s.Id == SelectedPlaylist!.SelectedTrack) ?? SelectFirstTrack();
 
         SelectTrack(SelectedPlaylist!, SelectedTrack);
         if (_dataGrid != null)
@@ -519,8 +515,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     {
         if (_dataGrid == null) return;
 
-        ShuffleMode = shuffleMode;
-        ShuffleList.Clear();
+        _shuffleMode = shuffleMode;
+        _shuffleList.Clear();
 
         if (shuffleMode)
         {
@@ -530,13 +526,13 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             while (tempList.Count > 0)
             {
                 int index = random.Next(0, tempList.Count - 1);
-                ShuffleList.Add(tempList[index]);
+                _shuffleList.Add(tempList[index]);
                 tempList.RemoveAt(index);
             }
 
-            if (ActiveTrack != null && ShuffleList.Any())
+            if (ActiveTrack != null && _shuffleList.Count > 0)
             {
-                _shuffledIndex = ShuffleList.FindIndex(x => x.Id == ActiveTrack.Id);
+                _shuffledIndex = _shuffleList.FindIndex(x => x.Id == ActiveTrack.Id);
                 if (_shuffledIndex < 0)
                 {
                     _shuffledIndex = SelectedTrackIndex;
@@ -553,7 +549,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         }
         else
         {
-            ShuffleList.Clear();
+            _shuffleList.Clear();
         }
     }
 
@@ -561,13 +557,13 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     {
         if (_dataGrid == null) return 0;
 
-        if (_shuffledIndex == ShuffleList.Count - 1)
+        if (_shuffledIndex == _shuffleList.Count - 1)
             _shuffledIndex = 0;
         else
             _shuffledIndex += 1;
 
         int newIndex = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()
-            .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex].Id));
+            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex].Id));
         Log.Information($"GetNextShuffledIndex: {newIndex}");
 
         return newIndex;
@@ -578,20 +574,20 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         if (_dataGrid == null) return 0;
 
         if (_shuffledIndex == 0)
-            _shuffledIndex = ShuffleList.Count - 1;
+            _shuffledIndex = _shuffleList.Count - 1;
         else
             _shuffledIndex -= 1;
 
         int newIndex = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()
-            .FindIndex(x => x.Id.Contains(ShuffleList[_shuffledIndex].Id));
+            .FindIndex(x => x.Id.Contains(_shuffleList[_shuffledIndex].Id));
         Log.Information($"GetPreviousShuffledIndex: {newIndex}");
 
         return newIndex;
     }
 
-    private ObservableCollection<MediaFile> LoadPlaylistTracks(string? playListName)
+    private static ObservableCollection<MediaFile> LoadPlaylistTracks(string? playListName)
     {
-        ObservableCollection<MediaFile> tracks = new();
+        ObservableCollection<MediaFile> tracks = [];
         List<MediaFile> songs = MusicLibrary.GetTracksFromPlaylist(playListName);
 
         foreach (MediaFile song in songs)
@@ -630,7 +626,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
             _tabControl!.SelectedIndex = TabList.Count - 1;
             SelectPlaylistByName(playlistTab.Name!);
 
-            List<string> paths = new();
+            List<string> paths = [];
             if (fileName.EndsWith("m3u"))
             {
                 M3uContent content = new();
@@ -660,7 +656,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
                 paths = plsPlaylist.GetTracksPaths();
             }
 
-            if (paths.Any())
+            if (paths.Count > 0)
             {
                 foreach (string path in paths)
                 {

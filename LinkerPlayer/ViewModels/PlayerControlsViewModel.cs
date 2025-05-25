@@ -33,6 +33,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
         ShuffleMode = _settingsManager.Settings.ShuffleMode;
         VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
+        _volumeBeforeMute = VolumeSliderValue;
 
         _settingsManager.SettingsChanged += OnSettingsChanged;
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
@@ -80,12 +81,60 @@ public partial class PlayerControlsViewModel : BaseViewModel
         WeakReferenceMessenger.Default.Send(new ShuffleModeMessage(value));
     }
 
+    partial void OnIsMutedChanged(bool value)
+    {
+        if (value)
+        {
+            _volumeBeforeMute = VolumeSliderValue > 0 ? VolumeSliderValue : _volumeBeforeMute;
+        }
+        WeakReferenceMessenger.Default.Send(new IsMutedMessage(value));
+        //Log.Information("IsMuted changed to {Value}, VolumeBeforeMute={Volume}", value, _volumeBeforeMute);
+    }
+
     partial void OnVolumeSliderValueChanged(double value)
     {
-        _audioEngine.MusicVolume = (float)value / 100;
+        if (value > 0 && IsMuted)
+        {
+            IsMuted = false; // Unmute if slider is moved up
+        }
+        else if (value == 0 && !IsMuted)
+        {
+            IsMuted = true; // Mute if slider is set to 0
+        }
+
+        if (!IsMuted)
+        {
+            _audioEngine.MusicVolume = (float)value / 100;
+            _volumeBeforeMute = value;
+        }
+        else
+        {
+            _audioEngine.MusicVolume = 0;
+        }
+
         _settingsManager.Settings.VolumeSliderValue = value;
         _settingsManager.SaveSettings(nameof(AppSettings.VolumeSliderValue));
-        Log.Information("VolumeSliderValue changed to {Value}", value);
+        //Log.Information("VolumeSliderValue changed to {Value}, IsMuted={IsMuted}", value, IsMuted);
+    }
+
+    public double GetVolumeBeforeMute()
+    {
+        return _volumeBeforeMute > 0 ? _volumeBeforeMute : 50; // Fallback to 50 if 0
+    }
+
+    public void UpdateVolumeAfterAnimation(double value, bool isMuted)
+    {
+        VolumeSliderValue = value;
+        if (!isMuted)
+        {
+            _audioEngine.MusicVolume = (float)value / 100;
+            _volumeBeforeMute = value;
+        }
+        else
+        {
+            _audioEngine.MusicVolume = 0;
+        }
+        //Log.Information("Updated VolumeSliderValue={Value}, IsMuted={IsMuted}", value, isMuted);
     }
 
     private void OnSettingsChanged(string propertyName)
@@ -93,7 +142,13 @@ public partial class PlayerControlsViewModel : BaseViewModel
         if (propertyName == nameof(AppSettings.ShuffleMode))
             ShuffleMode = _settingsManager.Settings.ShuffleMode;
         if (propertyName == nameof(AppSettings.VolumeSliderValue))
+        {
             VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
+            if (!IsMuted)
+            {
+                _volumeBeforeMute = VolumeSliderValue;
+            }
+        }
     }
 
     public void SaveSettingsOnShutdown(double volumeValue, double seekBarValue)
@@ -261,13 +316,6 @@ public partial class PlayerControlsViewModel : BaseViewModel
         {
             _audioEngine.Stop();
         }
-    }
-
-    [RelayCommand]
-    private void Mute(bool isMuted)
-    {
-        IsMuted = isMuted;
-        WeakReferenceMessenger.Default.Send(new MuteMessage(isMuted));
     }
 
     private bool CanPlayPause()

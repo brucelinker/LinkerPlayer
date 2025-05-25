@@ -214,8 +214,7 @@
                                                Width=15,
                                                Height=15}"
         d:IsChecked="False"
-        Command="{Binding MuteCommand}"
-        CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}, Mode=TwoWay}"
+        IsChecked="{Binding IsMuted, Mode=TwoWay}"
         ToolTip="Mute (m)">
         <ToggleButton.Style>
           <Style BasedOn="{StaticResource LinkerCircleToggleButton}" TargetType="ToggleButton">

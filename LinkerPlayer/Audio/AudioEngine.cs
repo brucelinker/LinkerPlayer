@@ -1,4 +1,5 @@
-﻿using LinkerPlayer.Models;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
 using Serilog;
@@ -12,11 +13,11 @@ using System.Threading;
 
 namespace LinkerPlayer.Audio;
 
-public class AudioEngine : ISpectrumPlayer, IDisposable
+public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
     private static readonly Lazy<AudioEngine> _instance = new(() => new AudioEngine(), isThreadSafe: true);
     private static bool _isBassInitialized;
-    private static readonly Lock _initLock = new();
+//    private static readonly Lock _initLock = new();
     private int _currentStream;
     private string _pathToMusic = string.Empty;
     private double _currentTrackLength;
@@ -47,9 +48,9 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
     // ReSharper disable once InconsistentlySynchronizedField
     public static bool IsInitialized => _isBassInitialized;
 
-    public event Action OnPlaybackStopped;
-    public event Action<float[]> OnFftCalculated;
-    public event PropertyChangedEventHandler? PropertyChanged;
+    public event Action? OnPlaybackStopped;
+    public event Action<float[]>? OnFftCalculated;
+//    public event PropertyChangedEventHandler? PropertyChanged;
 
     public bool IsEqualizerInitialized => _eqInitialized;
 
@@ -67,17 +68,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         // Configure buffer and update period
         Bass.Configure(Configuration.PlaybackBufferLength, 500);
         Bass.Configure(Configuration.UpdatePeriod, 50);
-
-        // Log BASS and BASS_FX versions
-        Log.Information($"BASS version: {Bass.Version}");
-        Log.Information($"BASS_FX version: {BassFx.Version}");
-
-        var info = Bass.Info;
-        Log.Information($"Actual device sample rate: {info.SampleRate} Hz");
-        if (info.SampleRate != 44100)
-        {
-            Log.Warning($"Device sample rate ({info.SampleRate} Hz) does not match requested sample rate (44100 Hz)");
-        }
 
         _positionTimer = new System.Timers.Timer(50);
         _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
@@ -140,7 +130,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             if (_currentStream != 0)
             {
                 Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, _musicVolume);
-                Log.Information($"Volume set to: {_musicVolume}");
+                //Log.Information($"Volume set to: {_musicVolume}");
             }
         }
     }
@@ -161,11 +151,11 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         }
     }
 
-    private void LoadBassPlugins()
+    private static void LoadBassPlugins()
     {
         string basePath = AppDomain.CurrentDomain.BaseDirectory;
-        string[] pluginFiles = new[]
-        {
+        string[] pluginFiles =
+        [
             "bassflac.dll",    // FLAC support
             "bassalac.dll",    // Apple Lossless
             "basswv.dll",      // WavPack
@@ -174,7 +164,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             "bass_aac.dll",    // AAC
             "bass_ac3.dll",    // AC3
             "bassape.dll"      // Monkey's Audio
-        };
+        ];
 
         foreach (string plugin in pluginFiles)
         {
@@ -529,7 +519,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
     public List<EqualizerBandSettings> GetBandsList()
     {
-        return new List<EqualizerBandSettings>(_equalizerBands);
+        return [.._equalizerBands];
     }
 
     public void SetBandsList(List<EqualizerBandSettings> bands)
@@ -552,7 +542,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
     public void SetBandGain(float frequency, float gain)
     {
-        if (!_eqInitialized || !_eqFxHandles.Any() || _currentStream == 0)
+        if (!_eqInitialized || _eqFxHandles.Length == 0 || _currentStream == 0)
         {
             Log.Warning($"SetBandGain skipped: EQ not initialized or stream invalid.");
             return;
@@ -651,7 +641,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         {
             Log.Error($"HandleFftCalculated: Failed to get FFT data: {Bass.LastError}");
             FftUpdate = new float[ExpectedFftSize];
-            OnFftCalculated.Invoke(FftUpdate);
+            OnFftCalculated!.Invoke(FftUpdate);
             return;
         }
 
@@ -692,18 +682,19 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
         //Log.Information($"FFT data sample: {string.Join(", ", fftResult.Take(10))}");
 
-        OnFftCalculated.Invoke(FftUpdate);
+        OnFftCalculated!.Invoke(FftUpdate);
     }
 
-    private void OnPropertyChanged(string propertyName)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
+    //private void OnPropertyChanged(string propertyName)
+    //{
+    //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    //}
 
     public void Dispose()
     {
         Stop();
         Bass.Free();
         _positionTimer.Dispose();
+        GC.SuppressFinalize(this);
     }
 }
