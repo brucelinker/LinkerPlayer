@@ -12,18 +12,15 @@ public class EditableTabHeaderControl : ContentControl
     /// <summary>
     /// Dependency property to bind EditMode with XAML Trigger
     /// </summary>
-    private static readonly DependencyProperty IsInEditModeProperty = 
+    private static readonly DependencyProperty IsInEditModeProperty =
         DependencyProperty.Register(nameof(IsInEditMode), typeof(bool), typeof(EditableTabHeaderControl));
     private TextBox? _textBox;
     private string? _oldText;
     private DispatcherTimer? _timer;
     private delegate void FocusTextBox();
 
-    public readonly PlaylistTabsViewModel PlaylistTabsViewModel;
-
     public EditableTabHeaderControl()
     {
-        PlaylistTabsViewModel = PlaylistTabsViewModel.Instance;
     }
 
     /// <summary>
@@ -105,7 +102,14 @@ public class EditableTabHeaderControl : ContentControl
         else if (e.Key == Key.Enter)
         {
             IsInEditMode = false;
-            PlaylistTabsViewModel.ChangeSelectedPlaylistName(_textBox!.Text);
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.ChangeSelectedPlaylistName(_textBox!.Text);
+            }
+            else
+            {
+                Serilog.Log.Error("EditableTabHeaderControl: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType()?.FullName ?? "null");
+            }
         }
     }
 

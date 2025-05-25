@@ -4,6 +4,7 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.ViewModels;
 using ManagedBass;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using System.Windows;
@@ -17,22 +18,20 @@ public partial class MainWindow
     private readonly MainViewModel _mainViewModel;
     private static int _count;
 
-    public MainWindow()
+    public MainWindow(IServiceProvider serviceProvider)
     {
         Instance = this;
         InitializeComponent();
 
-        _mainViewModel = new MainViewModel();
+        _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
         DataContext = _mainViewModel;
 
         Log.Information("App started");
         Log.Information($"MAINWINDOW - {++_count}");
 
-        // Remember window placement
         ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
         WinMax.DoSourceInitialized(this);
 
-        InitializeComponent();
         try
         {
             AudioEngine.Initialize();
@@ -76,11 +75,9 @@ public partial class MainWindow
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
-
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-
     }
 }

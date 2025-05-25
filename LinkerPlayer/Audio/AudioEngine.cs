@@ -57,7 +57,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
 
-        private AudioEngine()
+    private AudioEngine()
     {
         Initialize();
 
@@ -147,37 +147,17 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
     public static void Initialize()
     {
-        lock (_initLock)
+        if (_isBassInitialized)
         {
-            if (_isBassInitialized)
-            {
-                Log.Information("BASS already initialized (flag set), skipping");
-                return;
-            }
+            return;
+        }
 
-            if (Bass.CurrentDevice != -1)
-            {
-                Log.Information("BASS already initialized (CurrentDevice set), skipping");
-                _isBassInitialized = true;
-                return;
-            }
+        _isBassInitialized = Bass.Init(1, 48000);
+        Log.Information("BASS initialized");
 
-            try
-            {
-                if (!Bass.Init(-1, 48000)) // default args DeviceInitFlags.Default))
-                {
-                    string errorMessage = $"BASS initialization failed: {Bass.LastError}";
-                    Log.Error(errorMessage);
-                    throw new BassException(Bass.LastError);
-                }
-                Log.Information("BASS initialized");
-                _isBassInitialized = true;
-            }
-            catch (BassException ex) when (ex.ErrorCode == Errors.Already)
-            {
-                Log.Information("BASS already initialized (caught Errors.Already), continuing");
-                _isBassInitialized = true;
-            }
+        if (!_isBassInitialized)
+        {
+            Log.Error("BASS failed to initialize.");
         }
     }
 
@@ -257,10 +237,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             return;
         }
 
-        //var info = Bass.ChannelGetInfo(_currentStream);
-        //Log.Information($"Stream format: flags={info.Flags}, type={info.ChannelType}, freq={info.Frequency}");
-        //Log.Information($"Stream type: {info.ChannelType}");
-
         long lengthBytes = Bass.ChannelGetLength(_currentStream);
         if (lengthBytes < 0)
         {
@@ -275,7 +251,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
         Log.Information($"Track length set to {CurrentTrackLength} seconds");
 
         CurrentTrackPosition = 0;
-        SeekAudioFile(position);
 
         //Log.Information($"Successfully loaded audio file: {pathToMusic}");
     }
@@ -301,7 +276,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             return;
         }
 
-        //Log.Information($"Track changed or no stream loaded, stopping current stream and loading: {pathToMusic}");
         Stop();
 
         LoadAudioFile(pathToMusic, position);
@@ -430,10 +404,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             {
                 Log.Error($"Failed to pause stream before seek: {Bass.LastError}");
             }
-            //else
-            //{
-            //Log.Information("Paused stream before seek");
-            //}
         }
 
         long bytePosition = Bass.ChannelSeconds2Bytes(_currentStream, position);
@@ -455,7 +425,6 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             Log.Error($"Invalid position after seek: {actualPosition}");
             return;
         }
-        //Log.Information($"Actual position after seek: {actualPosition:F2}s");
 
         CurrentTrackPosition = actualPosition;
 
@@ -465,10 +434,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
             {
                 Log.Error($"Failed to resume stream after seek: {Bass.LastError}");
             }
-            //Log.Information("Resumed stream after seek");
         }
-
-        //Log.Information($"Seeked to position {actualPosition:F2}s");
     }
 
     public void ReselectOutputDevice(string deviceName)
@@ -514,7 +480,7 @@ public class AudioEngine : ISpectrumPlayer, IDisposable
 
         if (_currentStream == 0)
         {
-            Log.Error("Cannot initialize equalizer: No stream loaded");
+            //Log.Error("Cannot initialize equalizer: No stream loaded");
             return;
         }
 

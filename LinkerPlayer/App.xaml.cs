@@ -1,4 +1,6 @@
-﻿using LinkerPlayer.ViewModels;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
+using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -10,14 +12,12 @@ namespace LinkerPlayer;
 
 public partial class App
 {
-    public static IHost? AppHost { get; set; }
+    public static IHost AppHost { get; set; } = null!;
     public WindowPlace WindowPlace { get; }
 
     public App()
     {
-        System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.Default;
-
-        this.WindowPlace = new WindowPlace("placement.config");
+        WindowPlace = new WindowPlace("placement.config");
 
         AppHost = Host.CreateDefaultBuilder()
             .UseSerilog((_, configuration) =>
@@ -25,17 +25,21 @@ public partial class App
                 configuration
                     .WriteTo.Debug()
                     .WriteTo.Console()
-                    .WriteTo.File("Logs/LinkerPlayer-{Date}.txt");
+                    .WriteTo.File("Logs/LinkerPlayer-{Date}.txt", rollingInterval: RollingInterval.Day);
             })
             .ConfigureServices((_, services) =>
             {
+                services.AddSingleton<SettingsManager>();
                 services.AddSingleton<MainWindow>();
+                services.AddSingleton<MainViewModel>();
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
+                services.AddSingleton<EqualizerWindow>();
+                services.AddSingleton<EqualizerViewModel>();
+                services.AddSingleton<AudioEngine>(_ => AudioEngine.Instance);
             })
             .Build();
 
-        // Global logger
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.Debug()
@@ -43,9 +47,9 @@ public partial class App
             .CreateLogger();
     }
 
-    protected override async void OnStartup(StartupEventArgs e)
+    protected override void OnStartup(StartupEventArgs e)
     {
-        await AppHost!.StartAsync();
+        AppHost.Start();
 
         MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
         mainWindow.Show();
@@ -53,11 +57,13 @@ public partial class App
         base.OnStartup(e);
     }
 
-    protected override async void OnExit(ExitEventArgs e)
+    protected override void OnExit(ExitEventArgs e)
     {
-        await AppHost!.StopAsync();
+        var settingsManager = AppHost!.Services.GetRequiredService<SettingsManager>();
+        settingsManager.SaveSettings(null!);
+        AppHost.StopAsync();
         AppHost.Dispose();
+        WindowPlace.Save();
         base.OnExit(e);
-        this.WindowPlace.Save();
     }
 }

@@ -16,27 +16,44 @@ namespace LinkerPlayer.UserControls;
 [ObservableObject]
 public partial class PlaylistTabs
 {
-    public readonly PlaylistTabsViewModel PlaylistTabsViewModel;
-    public readonly PlayerControlsViewModel PlayerControlsViewModel;
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
 
     public PlaylistTabs()
     {
-        PlaylistTabsViewModel = PlaylistTabsViewModel.Instance;
-        PlayerControlsViewModel = PlayerControlsViewModel.Instance;
-
-        DataContext = PlaylistTabsViewModel;
-
         InitializeComponent();
+        Loaded += PlaylistTabs_Loaded;
+    }
 
-        PlaylistTabsViewModel.LoadPlaylistTabs();
+    private void PlaylistTabs_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is PlaylistTabsViewModel viewModel)
+        {
+            viewModel.LoadPlaylistTabs();
+            Serilog.Log.Information("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
+            if (viewModel.TabList.Any())
+            {
+                viewModel.SelectedTabIndex = 0; // Force initial selection
+                Serilog.Log.Information("PlaylistTabs: Set SelectedTabIndex to 0");
+            }
+            else
+            {
+                Serilog.Log.Warning("PlaylistTabs: No playlists loaded");
+            }
+        }
+        else
+        {
+            Serilog.Log.Error("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType()?.FullName ?? "null");
+        }
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.OnDataGridLoaded(sender, e);
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.OnDataGridLoaded(sender, e);
+            }
         }, null);
     }
 
@@ -44,28 +61,32 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.OnTrackSelectionChanged(sender, e);
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.OnTrackSelectionChanged(sender, e);
+            }
         }, null);
-
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.Source is TabControl && (e.AddedItems.Count > 0 || e.RemovedItems.Count > 0))
         {
-            // Verify that the items are TabItems (or your tab content type)
             bool isTabChange = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
-
             if (isTabChange)
             {
-                this.Dispatcher.BeginInvoke(
-                    (Action)delegate { PlaylistTabsViewModel.OnTabSelectionChanged(sender, e); }, null);
+                this.Dispatcher.BeginInvoke((Action)delegate
+                {
+                    if (DataContext is PlaylistTabsViewModel viewModel)
+                    {
+                        viewModel.OnTabSelectionChanged(sender, e);
+                    }
+                }, null);
                 Console.WriteLine("Tab selection changed.");
             }
         }
         else
         {
-            // Ignore events from child controls like DataGrid
             Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
         }
     }
@@ -74,9 +95,11 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.OnDoubleClickDataGrid();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.OnDoubleClickDataGrid();
+            }
         }, null);
-
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
     }
 
@@ -84,7 +107,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.NewPlaylist();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.NewPlaylist();
+            }
         }, null);
     }
 
@@ -92,7 +118,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.LoadPlaylist();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.LoadPlaylist();
+            }
         }, null);
     }
 
@@ -108,7 +137,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.RemovePlaylist(sender);
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.RemovePlaylist(sender);
+            }
         }, null);
     }
 
@@ -116,7 +148,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.AddFolder();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.AddFolder();
+            }
         }, null);
     }
 
@@ -124,7 +159,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.AddFiles();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.AddFiles();
+            }
         }, null);
     }
 
@@ -132,7 +170,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlayerControlsViewModel.PlayTrack();
+            if (DataContext is PlayerControlsViewModel viewModel)
+            {
+                viewModel.PlayTrack();
+            }
         }, null);
     }
 
@@ -140,7 +181,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.RemoveTrack();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.RemoveTrack();
+            }
         }, null);
     }
 
@@ -148,7 +192,10 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            PlaylistTabsViewModel.NewPlaylistFromFolder();
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.NewPlaylistFromFolder();
+            }
         }, null);
     }
 
@@ -156,33 +203,33 @@ public partial class PlaylistTabs
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-        _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
+            _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
         }, null);
     }
 
     private void TabHeader_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
-
-        PlaylistTabsViewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
+        if (DataContext is PlaylistTabsViewModel viewModel)
+        {
+            viewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
+        }
     }
 
     private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
     {
-        // Cast the Column to DataGridColumn to access its properties
         if (e.Column is DataGridColumn column)
         {
-            // Get the sort direction
             ListSortDirection direction = (column.SortDirection != ListSortDirection.Ascending)
                 ? ListSortDirection.Ascending
                 : ListSortDirection.Descending;
-
-            // Determine the property name. This assumes your column's Binding Path is the property name.
-            string propertyName = (column.SortMemberPath ?? column.Header.ToString()!);
-
+            string propertyName = (column.SortMemberPath ?? column.Header.ToString())!;
             this.Dispatcher.BeginInvoke((Action)delegate
             {
-                PlaylistTabsViewModel.OnDataGridSorted(propertyName, direction);
+                if (DataContext is PlaylistTabsViewModel viewModel)
+                {
+                    viewModel.OnDataGridSorted(propertyName, direction);
+                }
             }, null);
         }
     }

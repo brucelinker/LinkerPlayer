@@ -8,27 +8,37 @@ namespace LinkerPlayer.ViewModels;
 public class MainViewModel : ObservableObject
 {
     private static readonly ThemeManager ThemeMgr = new();
+    private readonly SettingsManager _settingsManager;
+    private readonly PlayerControlsViewModel _playerControlsViewModel;
+    private readonly PlaylistTabsViewModel _playlistTabsViewModel;
 
-    public MainViewModel()
+    public MainViewModel(
+        SettingsManager settingsManager,
+        PlayerControlsViewModel playerControlsViewModel,
+        PlaylistTabsViewModel playlistTabsViewModel)
     {
-        ThemeColors selectedTheme;
+        Serilog.Log.Information("MainViewModel: Initializing");
+        _settingsManager = settingsManager;
+        _playerControlsViewModel = playerControlsViewModel;
+        _playlistTabsViewModel = playlistTabsViewModel;
 
+        ThemeColors selectedTheme;
         OutputDeviceManager.InitializeOutputDevice();
 
-        if (!string.IsNullOrEmpty(Properties.Settings.Default.SelectedTheme))
+        if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedTheme))
         {
-            selectedTheme = ThemeMgr.StringToThemeColor(Properties.Settings.Default.SelectedTheme);
+            selectedTheme = ThemeMgr.StringToThemeColor(_settingsManager.Settings.SelectedTheme);
         }
         else
         {
             selectedTheme = ThemeColors.Dark;
         }
 
-        // Sets the theme
         selectedTheme = ThemeMgr.ModifyTheme(selectedTheme);
-
-        Properties.Settings.Default.Save();
     }
+
+    public PlayerControlsViewModel PlayerControlsViewModel => _playerControlsViewModel;
+    public PlaylistTabsViewModel PlaylistTabsViewModel => _playlistTabsViewModel;
 
     public void OnWindowLoaded()
     {
@@ -38,8 +48,7 @@ public class MainViewModel : ObservableObject
     {
         MusicLibrary.ClearPlayState();
         MusicLibrary.SaveToJson();
-
-        Properties.Settings.Default.MainOutputDevice = OutputDeviceManager.GetCurrentDeviceName();
-        Properties.Settings.Default.Save();
+        _settingsManager.Settings.MainOutputDevice = OutputDeviceManager.GetCurrentDeviceName();
+        _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
     }
 }

@@ -30,6 +30,7 @@
   mc:Ignorable="d">
 
   <Grid Margin="0">
+
     <Grid.RowDefinitions>
       <RowDefinition Height="40" />
       <RowDefinition Height="*" />
@@ -39,6 +40,7 @@
       Grid.Row="0"
       Background="{DynamicResource MainWindowGradientStartBrush}"
       MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+
       <userControls:TitlebarButtons
         x:Name="TitlebarButtons"
         HorizontalAlignment="Stretch"
@@ -46,6 +48,7 @@
     </Border>
 
     <Grid Grid.Row="1">
+
       <Grid.Background>
         <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
           <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
@@ -57,6 +60,7 @@
         <RowDefinition Height="*" />
         <RowDefinition Height="105" />
       </Grid.RowDefinitions>
+
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="238*" />
         <ColumnDefinition Width="5" />
@@ -79,13 +83,16 @@
         x:Name="PlaylistTabs"
         Grid.Row="0"
         Grid.Column="2"
-        Grid.ColumnSpan="2" />
+        Grid.ColumnSpan="2"
+        DataContext="{Binding PlaylistTabsViewModel}" />
 
       <userControls:PlayerControls
         x:Name="PlayerControls"
         Grid.Row="1"
         Grid.Column="0"
-        Grid.ColumnSpan="4" />
+        Grid.ColumnSpan="4"
+        DataContext="{Binding PlayerControlsViewModel}" />
+
     </Grid>
   </Grid>
 </controlzex:WindowChromeWindow>

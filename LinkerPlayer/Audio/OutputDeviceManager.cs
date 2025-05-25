@@ -46,12 +46,14 @@ public static class OutputDeviceManager
 
         try
         {
-            // Use a reasonable max to avoid infinite loops
-            for (int i = 1; i < 100; i++) // Start at 1 to skip "No sound" (index 0)
+            for (int i = 0; i < Bass.DeviceCount; i++) // Start at 1 to skip "No sound" (index 0)
             {
                 try
                 {
                     DeviceInfo device = Bass.GetDeviceInfo(i);
+
+                    Log.Information($"Device {i}: {device.Name} - {device.Type}");
+
                     if (string.IsNullOrEmpty(device.Name) || !device.IsEnabled)
                     {
                         Log.Debug($"GetOutputDevicesList: Stopped at index {i} (empty name or disabled)");
@@ -59,7 +61,6 @@ public static class OutputDeviceManager
                     }
 
                     Devices.Add(device.Name);
-                    Log.Information($"Added device to list: {device.Name} (index {i})");
                 }
                 catch (BassException ex)
                 {

@@ -4,6 +4,7 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using System.Linq;
@@ -21,6 +22,7 @@ public partial class EqualizerWindow
     private BandsSettings _selectedPreset = null!;
     private const string FlatPreset = "Flat";
     private readonly EqualizerViewModel _equalizerViewModel = new();
+    private readonly SettingsManager _settingsManager;
 
     public EqualizerWindow()
     {
@@ -35,6 +37,10 @@ public partial class EqualizerWindow
 
         EqSwitch.Switched += OnEqSwitched;
         this.Closed += Window_Closed!;
+
+        _settingsManager = App.AppHost!.Services.GetRequiredService<SettingsManager>();
+        EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
+        ;
 
         WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
         {
@@ -297,7 +303,8 @@ public partial class EqualizerWindow
             ResetSliders();
         }
 
-        Properties.Settings.Default.EqualizerOnStartEnabled = EqSwitch.IsOn;
+        _settingsManager.Settings.EqualizerEnabled = EqSwitch.IsOn;
+        _settingsManager.SaveSettings(nameof(AppSettings.EqualizerEnabled));
     }
 
     private void NewPopupTextBox_KeyDown(object sender, KeyEventArgs e)

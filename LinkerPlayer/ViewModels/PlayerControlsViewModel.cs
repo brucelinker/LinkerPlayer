@@ -2,56 +2,69 @@
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Properties;
 using ManagedBass;
 using Serilog;
+using System;
 using System.IO;
 
 namespace LinkerPlayer.ViewModels;
 
 public partial class PlayerControlsViewModel : BaseViewModel
 {
+    private readonly SettingsManager _settingsManager;
+    private readonly AudioEngine _audioEngine;
+    private readonly PlaylistTabsViewModel _playlistTabsViewModel;
+    private readonly EqualizerViewModel _equalizerViewModel;
+    private double _volumeBeforeMute;
+
+    public PlayerControlsViewModel(
+        SettingsManager settingsManager,
+        AudioEngine audioEngine,
+        PlaylistTabsViewModel playlistTabsViewModel,
+        EqualizerViewModel equalizerViewModel)
+    {
+        _settingsManager = settingsManager;
+        _audioEngine = audioEngine;
+        _playlistTabsViewModel = playlistTabsViewModel;
+        _equalizerViewModel = equalizerViewModel;
+
+        ShuffleMode = _settingsManager.Settings.ShuffleMode;
+        VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
+
+        _settingsManager.SettingsChanged += OnSettingsChanged;
+        WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+        {
+            OnPlaybackStateChanged(m.Value);
+        });
+
+        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
+        {
+            OnAudioStopped(m.Value);
+        });
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
     private PlaybackState _state;
 
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
-    private static bool _shuffleMode;
+    private bool _shuffleMode;
 
     [ObservableProperty]
     [NotifyPropertyChangedRecipients]
     private bool _isMuted;
 
-    public static PlayerControlsViewModel Instance { get; } = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedRecipients]
+    private double _volumeSliderValue;
 
-    private static int _count;
-
-    public readonly AudioEngine audioEngine;
-    public readonly PlaylistTabsViewModel playlistTabsViewModel;
-
-    public PlayerControlsViewModel()
-    {
-        audioEngine = AudioEngine.Instance;
-        playlistTabsViewModel = PlaylistTabsViewModel.Instance;
-
-        Log.Information($"PLAYERCONTROLSVIEWMODEL - {++_count}");
-
-        if (_count == 1)
-        {
-            WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
-            {
-                OnPlaybackStateChanged(m.Value);
-            });
-
-            WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
-            {
-                OnAudioStopped(m.Value);
-            });
-        }
-    }
+    // Direct access to other ViewModels
+    public PlaylistTabsViewModel PlaylistTabs => _playlistTabsViewModel;
+    public EqualizerViewModel Equalizer => _equalizerViewModel;
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause()
@@ -59,18 +72,49 @@ public partial class PlayerControlsViewModel : BaseViewModel
         PlayPauseTrack();
     }
 
+    partial void OnShuffleModeChanged(bool value)
+    {
+        _settingsManager.Settings.ShuffleMode = value;
+        _settingsManager.SaveSettings(nameof(AppSettings.ShuffleMode));
+        Log.Information("ShuffleMode changed to {Value}", value);
+        WeakReferenceMessenger.Default.Send(new ShuffleModeMessage(value));
+    }
+
+    partial void OnVolumeSliderValueChanged(double value)
+    {
+        _audioEngine.MusicVolume = (float)value / 100;
+        _settingsManager.Settings.VolumeSliderValue = value;
+        _settingsManager.SaveSettings(nameof(AppSettings.VolumeSliderValue));
+        Log.Information("VolumeSliderValue changed to {Value}", value);
+    }
+
+    private void OnSettingsChanged(string propertyName)
+    {
+        if (propertyName == nameof(AppSettings.ShuffleMode))
+            ShuffleMode = _settingsManager.Settings.ShuffleMode;
+        if (propertyName == nameof(AppSettings.VolumeSliderValue))
+            VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
+    }
+
+    public void SaveSettingsOnShutdown(double volumeValue, double seekBarValue)
+    {
+        _settingsManager.Settings.VolumeSliderValue = volumeValue;
+        _settingsManager.SaveSettings(nameof(AppSettings.VolumeSliderValue));
+        Log.Information("Saved shutdown settings: Volume={Volume}, SeekBar={SeekBar}", volumeValue, seekBarValue);
+    }
+
     public void PlayPauseTrack()
     {
         Log.Information("PlayPauseTrack called");
 
         // Ensure SelectedTrack is set
-        SelectedTrack = playlistTabsViewModel.SelectedTrack ?? playlistTabsViewModel.SelectFirstTrack();
+        SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
         Log.Information($"SelectedTrack: {(SelectedTrack != null ? SelectedTrack.Path : "null")}");
 
-        if (audioEngine.IsPlaying)
+        if (_audioEngine.IsPlaying)
         {
             Log.Information("Track is playing, pausing");
-            audioEngine.Pause();
+            _audioEngine.Pause();
             State = PlaybackState.Paused;
 
             if (ActiveTrack != null)
@@ -95,21 +139,18 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     public void PlayTrack()
     {
-        //Log.Information("PlayTrack called");
-
         if (ActiveTrack != null)
         {
-            //Log.Information($"Playing ActiveTrack: {ActiveTrack.Path}");
-            audioEngine.PathToMusic = ActiveTrack.Path;
-            audioEngine.Play();
+            _audioEngine.PathToMusic = ActiveTrack.Path;
+            _audioEngine.Play();
             ActiveTrack.State = PlaybackState.Playing;
             State = PlaybackState.Playing;
         }
         else if (SelectedTrack != null)
         {
             Log.Information($"Playing SelectedTrack: {SelectedTrack.Path}");
-            audioEngine.PathToMusic = SelectedTrack.Path;
-            audioEngine.Play();
+            _audioEngine.PathToMusic = SelectedTrack.Path;
+            _audioEngine.Play();
 
             if (ActiveTrack == null)
             {
@@ -130,7 +171,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
     public void ResumeTrack()
     {
         Log.Information("ResumeTrack called");
-        audioEngine.ResumePlay();
+        _audioEngine.ResumePlay();
         State = PlaybackState.Playing;
 
         if (ActiveTrack != null)
@@ -150,7 +191,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
     public void StopTrack()
     {
         Log.Information("StopTrack called");
-        audioEngine.Stop();
+        _audioEngine.Stop();
         State = PlaybackState.Stopped;
 
         if (ActiveTrack != null)
@@ -171,7 +212,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
     public void PreviousTrack()
     {
         Log.Information("PreviousTrack called");
-        MediaFile? prevMediaFile = playlistTabsViewModel.PreviousMediaFile();
+        MediaFile? prevMediaFile = _playlistTabsViewModel.PreviousMediaFile();
 
         if (prevMediaFile == null || !File.Exists(prevMediaFile.Path))
         {
@@ -192,7 +233,7 @@ public partial class PlayerControlsViewModel : BaseViewModel
     public void NextTrack()
     {
         Log.Information("NextTrack called");
-        MediaFile? nextMediaFile = playlistTabsViewModel.NextMediaFile();
+        MediaFile? nextMediaFile = _playlistTabsViewModel.NextMediaFile();
 
         if (nextMediaFile == null || !File.Exists(nextMediaFile.Path))
         {
@@ -206,7 +247,6 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     private void OnPlaybackStateChanged(PlaybackState playbackState)
     {
-        //Log.Information($"Playback state changed: {playbackState}");
         State = playbackState;
     }
 
@@ -219,23 +259,8 @@ public partial class PlayerControlsViewModel : BaseViewModel
         }
         else
         {
-            audioEngine.Stop();
+            _audioEngine.Stop();
         }
-    }
-
-    [RelayCommand]
-    private void Shuffle(bool isChecked)
-    {
-        SetShuffleMode(isChecked);
-    }
-
-    private void SetShuffleMode(bool shuffleMode)
-    {
-        ShuffleMode = shuffleMode;
-        Settings.Default.ShuffleMode = shuffleMode;
-        Settings.Default.Save();
-
-        WeakReferenceMessenger.Default.Send(new ShuffleModeMessage(shuffleMode));
     }
 
     [RelayCommand]
@@ -254,8 +279,8 @@ public partial class PlayerControlsViewModel : BaseViewModel
     {
         MonitorNextTrack();
 
-        double length = audioEngine.CurrentTrackLength;
-        double position = audioEngine.CurrentTrackPosition;
+        double length = _audioEngine.CurrentTrackLength;
+        double position = _audioEngine.CurrentTrackPosition;
 
         if (length <= 0 || double.IsNaN(position) || double.IsNaN(length))
         {
@@ -273,12 +298,12 @@ public partial class PlayerControlsViewModel : BaseViewModel
 
     private void MonitorNextTrack()
     {
-        double length = audioEngine.CurrentTrackLength;
-        double position = audioEngine.CurrentTrackPosition;
+        double length = _audioEngine.CurrentTrackLength;
+        double position = _audioEngine.CurrentTrackPosition;
 
         if (length > 0 && position + 10.0 > length)
         {
-            if (audioEngine.GetDecibelLevel() <= -50 || position + 0.5 > length)
+            if (_audioEngine.GetDecibelLevel() <= -50 || position + 0.5 > length)
                 NextTrack();
         }
     }

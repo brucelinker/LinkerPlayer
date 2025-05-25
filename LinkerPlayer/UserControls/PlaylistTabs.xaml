@@ -265,7 +265,7 @@
           GridLinesVisibility="None"
           HorizontalScrollBarVisibility="Visible"
           IsReadOnly="True"
-          ItemsSource="{Binding Tracks, IsAsync=True}"
+          ItemsSource="{Binding Tracks}"
           Loaded="DataGrid_Loaded"
           RowHeaderWidth="0"
           RowHeight="20"

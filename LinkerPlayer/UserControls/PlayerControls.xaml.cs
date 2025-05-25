@@ -1,13 +1,13 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using ManagedBass;
+using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -17,87 +17,82 @@ using System.Windows.Threading;
 
 namespace LinkerPlayer.UserControls;
 
-[ObservableObject]
 public partial class PlayerControls
 {
-    private readonly PlayerControlsViewModel _playerControlsViewModel;
     private readonly DispatcherTimer _seekBarTimer = new();
     private readonly AudioEngine _audioEngine;
-
     private readonly EqualizerWindow _equalizerWindow;
+    private PlayerControlsViewModel? _playerControlsViewModel;
 
     public PlayerControls()
     {
         InitializeComponent();
 
         _audioEngine = AudioEngine.Instance;
-        _playerControlsViewModel = PlayerControlsViewModel.Instance;
-        DataContext = PlayerControlsViewModel.Instance;
-
         _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
         _seekBarTimer.Tick += timer_Tick!;
-
         SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
         SeekBar.ValueChanged += SeekBar_ValueChanged;
         Dispatcher.ShutdownStarted += PlayerControls_ShutdownStarted!;
 
-
-        VolumeSlider.Value = Properties.Settings.Default.VolumeSliderValue;
-        ShuffleModeButton.IsChecked = Properties.Settings.Default.ShuffleMode;
-
-        _equalizerWindow = new();
+        _equalizerWindow = App.AppHost.Services.GetRequiredService<EqualizerWindow>();
         _equalizerWindow.Hide();
-        //{
-        //    Owner = Window.GetWindow(this),
-        //    WindowStartupLocation = WindowStartupLocation.CenterOwner,
-        //    Visibility = Visibility.Hidden
-        //};
-
-        // Remember window placement
         ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
-
-        //WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
-        //{
-        //    OnSelectedTrackChanged(m.Value);
-        //});
 
         WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         {
             OnActiveTrackChanged(m.Value);
         });
-
         WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (_, m) =>
         {
             OnDataGridPlay(m.Value);
         });
-
         WeakReferenceMessenger.Default.Register<MuteMessage>(this, (_, m) =>
         {
             OnMuteChanged(m.Value);
         });
-
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
         {
             OnPlaybackStateChanged(m.Value);
         });
+
+        Loaded += PlayerControls_Loaded;
+    }
+
+    private void PlayerControls_Loaded(object sender, RoutedEventArgs e)
+    {
+        Serilog.Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType()?.FullName ?? "null");
+
+        if (DataContext is PlayerControlsViewModel viewModel)
+        {
+            _playerControlsViewModel = viewModel;
+            Serilog.Log.Information("PlayerControlsViewModel set successfully");
+        }
+
+        LogCommandBinding(PlayButton, "PlayPauseCommand");
+        LogCommandBinding(PrevButton, "PrevCommand");
+        LogCommandBinding(NextButton, "NextCommand");
+        LogCommandBinding(StopButton, "StopCommand");
+//        LogCommandBinding(ShuffleModeButton, "ShuffleCommand");
+        LogCommandBinding(MuteButton, "MuteCommand");
+    }
+
+    private void LogCommandBinding(ButtonBase button, string commandName)
+    {
+        if (button.Command == null)
+        {
+            Serilog.Log.Error("{ButtonName} Command is null for {CommandName}", button.Name, commandName);
+        }
+        else
+        {
+            Serilog.Log.Information("{ButtonName} Command bound to {CommandType}", button.Name, button.Command.GetType().FullName);
+        }
     }
 
     private void OnActiveTrackChanged(MediaFile? mediaFile)
     {
         if (mediaFile == null) return;
-
         SetTrackStatus(mediaFile);
-    }
-
-    private void OnSelectedTrackChanged(MediaFile? mediaFile)
-    {
-        if (mediaFile != null)
-        {
-            _audioEngine.PathToMusic = mediaFile.Path;
-            _audioEngine.LoadAudioFile(mediaFile.Path);
-        }
-
-        SetTrackStatus(mediaFile ?? new MediaFile());
     }
 
     private void SetTrackStatus(MediaFile selectedTrack)
@@ -106,11 +101,6 @@ public partial class PlayerControls
         TimeSpan ts = selectedTrack.Duration;
         TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
         CurrentTime.Text = "0:00";
-
-        string extension = Path.GetExtension(selectedTrack.FileName).Substring(1).ToUpper();
-        string channels = GetChannelsString(selectedTrack.Channels);
-
-        //StatusText.Text = $"{extension} | {selectedTrack.Bitrate} kbps | {selectedTrack.SampleRate} Hz | {channels}";
     }
 
     private void OnPlaybackStateChanged(PlaybackState state)
@@ -130,21 +120,11 @@ public partial class PlayerControls
         }
     }
 
-    private string GetChannelsString(int channels)
-    {
-        if (channels == 1) return "Mono";
-        if (channels == 2) return "stereo";
-        if (channels > 2) return "multichannel";
-
-        return "";
-    }
-
     private void OnDataGridPlay(PlaybackState value)
     {
-        _playerControlsViewModel.StopTrack();
+        _playerControlsViewModel!.StopTrack();
         _seekBarTimer.Stop();
         SeekBar.Value = 0;
-
         PlayButton.Command.Execute(value);
         _seekBarTimer.Start();
     }
@@ -155,9 +135,7 @@ public partial class PlayerControls
         double seekPercentage = clickPosition / SeekBar.ActualWidth;
         double posInSeekBar = seekPercentage * _audioEngine.CurrentTrackLength;
 
-        Serilog.Log.Information($"SeekBar clicked at position: {clickPosition}, percentage: {seekPercentage}, seeking to: {posInSeekBar}s");
-
-        if (_audioEngine.PathToMusic != null && !double.IsNaN(posInSeekBar))
+        if (!string.IsNullOrEmpty(_audioEngine.PathToMusic) && !double.IsNaN(posInSeekBar))
         {
             _audioEngine.SeekAudioFile(posInSeekBar);
             SeekBar.Value = seekPercentage * 100;
@@ -169,69 +147,76 @@ public partial class PlayerControls
         }
     }
 
-    private void VolumeSlider_ValueChanged(object sender, EventArgs e)
-    {
-        _audioEngine.MusicVolume = (float)VolumeSlider.Value / 100;
-
-        Properties.Settings.Default.VolumeSliderValue = VolumeSlider.Value;
-    }
-
     private void timer_Tick(object sender, EventArgs e)
     {
         if (!(SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            SeekBar.Value = _playerControlsViewModel.CurrentSeekbarPosition();
+            SeekBar.Value = _playerControlsViewModel!.CurrentSeekbarPosition();
         }
     }
 
-    private void SeekBar_ValueChanged(object? sender, RoutedPropertyChangedEventArgs<double>? e)
+    private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_playerControlsViewModel.SelectedTrack == null) return;
-
+        if (_playerControlsViewModel!.SelectedTrack == null) return;
         double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
     }
 
-    double _mainVolumeSliderBeforeMuteValue;
+    private double _mainVolumeSliderBeforeMuteValue;
 
     private void OnMuteChanged(bool isMuted)
     {
+        if (_playerControlsViewModel == null) return;
+
         if (isMuted)
         {
             _mainVolumeSliderBeforeMuteValue = VolumeSlider.Value;
-
-            AnimateVolumeSliderValue(VolumeSlider, 0);
+            AnimateVolumeSliderValue(VolumeSlider, 0, () =>
+            {
+                _playerControlsViewModel.VolumeSliderValue = 0; // Sync view model after animation
+                _playerControlsViewModel.IsMuted = true;
+            });
         }
         else
         {
-            AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue);
+            AnimateVolumeSliderValue(VolumeSlider, _mainVolumeSliderBeforeMuteValue, () =>
+            {
+                _playerControlsViewModel.VolumeSliderValue = _mainVolumeSliderBeforeMuteValue;
+                _playerControlsViewModel.IsMuted = false;
+            });
         }
     }
 
-    private void AnimateVolumeSliderValue(Slider slider, double newVal)
+    private void AnimateVolumeSliderValue(Slider slider, double newVal, Action? onCompleted = null)
     {
-        DoubleAnimation doubleAnimation = new()
+        DoubleAnimation animation = new()
         {
             From = slider.Value,
             To = newVal,
             Duration = TimeSpan.FromMilliseconds(300),
-            EasingFunction = new CubicEase() { EasingMode = EasingMode.EaseOut }
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
 
-        slider.BeginAnimation(RangeBase.ValueProperty, doubleAnimation);
+        if (onCompleted != null)
+        {
+            animation.Completed += (s, e) => onCompleted();
+        }
+
+        slider.BeginAnimation(RangeBase.ValueProperty, animation);
     }
 
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
         if (_equalizerWindow is { IsVisible: true }) return;
-
         _equalizerWindow.Show();
     }
 
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
     {
-        Properties.Settings.Default.VolumeSliderValue = VolumeSlider.Value;
-        Properties.Settings.Default.LastSeekBarValue = SeekBar.Value;
+        if (_playerControlsViewModel != null)
+        {
+            _playerControlsViewModel.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
+        }
     }
 }
