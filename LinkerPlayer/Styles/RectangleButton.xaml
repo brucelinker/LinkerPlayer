@@ -21,7 +21,7 @@
             <Rectangle
               x:Name="Rectangle"
               Stroke="{TemplateBinding BorderBrush}"
-              StrokeThickness="2" />
+              StrokeThickness="1" />
             <ContentPresenter
               x:Name="contentPresenter"
               Margin="{TemplateBinding Padding}"

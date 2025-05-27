@@ -127,7 +127,7 @@ public abstract class MusicLibrary
         {
             mediaFile.UpdateFromFileMetadata();
             MainLibrary.Add(mediaFile.Clone());
-            //SaveToJson();
+            //SaveBandsSettings();
 
             return mediaFile;
         }
@@ -142,7 +142,7 @@ public abstract class MusicLibrary
         if (Playlists[playlistIndex] != null && Playlists[playlistIndex]!.TrackIds.Contains(trackId))
         {
             Playlists[playlistIndex]!.TrackIds.Remove(trackId);
-            //SaveToJson();
+            //SaveBandsSettings();
         }
 
         Log.Information($"Track with id {trackId} removed");
@@ -225,7 +225,7 @@ public abstract class MusicLibrary
                     }
                 }
 
-                //SaveToJson();
+                //SaveBandsSettings();
             }
         }
     }
@@ -245,7 +245,7 @@ public abstract class MusicLibrary
 
     //        Log.Information($"Track with id {trackId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'");
 
-    //        //SaveToJson();
+    //        //SaveBandsSettings();
     //    }
     //}
 
@@ -258,7 +258,7 @@ public abstract class MusicLibrary
     //        Log.Information($"Track with id {trackId} has been renamed");
 
     //        track.Title = newName;
-    //        //SaveToJson();
+    //        //SaveBandsSettings();
 
     //        return true;
     //    }
@@ -275,7 +275,7 @@ public abstract class MusicLibrary
     //        Log.Information($"Playlist with name {oldName} has been renamed to {newName}");
 
     //        playlist.Name = newName;
-    //        //SaveToJson();
+    //        //SaveBandsSettings();
 
     //        return true;
     //    }

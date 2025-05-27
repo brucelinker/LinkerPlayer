@@ -5,10 +5,7 @@ using ManagedBass.Fx;
 using Serilog;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
-using System.Linq;
-using System.Threading;
 // ReSharper disable InconsistentNaming
 
 namespace LinkerPlayer.Audio;
@@ -439,12 +436,6 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
                 deviceId = i;
                 break;
             }
-        }
-
-        if (deviceId == -1)
-        {
-            Log.Error($"Output device not found: {deviceName}");
-            return;
         }
 
         Bass.Free();

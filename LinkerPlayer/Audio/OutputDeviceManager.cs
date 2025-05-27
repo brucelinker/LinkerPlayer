@@ -1,4 +1,7 @@
-﻿using ManagedBass;
+﻿using LinkerPlayer.Core;
+using LinkerPlayer.Models;
+using ManagedBass;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -10,6 +13,8 @@ public static class OutputDeviceManager
     private static readonly List<string> Devices = new();
     private static bool _isInitialized;
     private static string _currentDeviceName = "Default";
+
+    private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
 
     public static void InitializeOutputDevice()
     {
@@ -96,6 +101,9 @@ public static class OutputDeviceManager
                 _currentDeviceName = "Default";
                 Log.Information("MainOutputDevice: Default");
             }
+
+            SettingsManager.Settings.MainOutputDevice = deviceName;
+            SettingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
         }
         catch (Exception ex)
         {

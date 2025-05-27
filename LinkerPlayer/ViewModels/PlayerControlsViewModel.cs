@@ -7,7 +7,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Serilog;
-using System;
 using System.IO;
 
 namespace LinkerPlayer.ViewModels;

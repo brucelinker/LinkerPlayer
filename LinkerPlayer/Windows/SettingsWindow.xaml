@@ -10,7 +10,10 @@
   Title="Settings"
   MinWidth="420"
   MinHeight="200"
+  BorderBrush="{DynamicResource MainWindowBorderBrush}"
+  BorderThickness="1"
   Closing="Window_Closing"
+  FontFamily="Segoe UI"
   Loaded="Window_Loaded"
   ResizeMode="NoResize"
   ShowInTaskbar="False"
@@ -32,7 +35,7 @@
 
       <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI" />
-        <Setter Property="FontSize" Value="16" />
+        <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
       </Style>
@@ -66,7 +69,7 @@
         HorizontalAlignment="Left"
         VerticalAlignment="Top"
         d:Foreground=" White"
-        FontSize="22"
+        FontSize="{DynamicResource FontSizeTitle}"
         FontWeight="Light"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
         Text="Settings" />
@@ -85,7 +88,6 @@
           Content="{iconPacks:Material Close,
                                        Width=14,
                                        Height=14}"
-          Foreground="{DynamicResource TitleBarForegroundBrush}"
           Style="{DynamicResource CloseButton}" />
 
       </StackPanel>
@@ -112,13 +114,13 @@
             Name="MainOutputDevicesList"
             Grid.Column="2"
             Width="Auto"
-            Height="30"
+            Height="24"
             HorizontalContentAlignment="Center"
             Background="{DynamicResource ComboboxItemBackgroundBrush}"
             BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
             BorderThickness="1"
             FontFamily="Segoe UI"
-            FontSize="16"
+            FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
             Style="{StaticResource CustomComboBoxStyle}" />
         </Grid>
@@ -141,13 +143,13 @@
             x:Name="ThemesList"
             Grid.Column="2"
             Width="120"
-            Height="28"
+            Height="24"
             HorizontalAlignment="Left"
             Background="{DynamicResource ComboboxItemBackgroundBrush}"
             BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
             BorderThickness="1"
             FontFamily="Segoe UI"
-            FontSize="16"
+            FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
             ItemsSource="{Binding Path=ThemeColors}"
             SelectionChanged="OnThemeSelectionChanged"
@@ -168,13 +170,13 @@
       VerticalAlignment="Bottom"
       Background="{DynamicResource MainWindowGradientStartBrush}">
       <Button
-        Width="100"
+        Width="80"
         Height="30"
-        Margin="0,10,14,14"
+        Margin="0,10,14,10"
         HorizontalAlignment="Right"
         Click="Close_Click"
         Content="Close"
-        FontSize="18"
+        FontSize="{DynamicResource FontSizeButton}"
         FontWeight="Light"
         Foreground="{DynamicResource ControlForegroundBrush}"
         Style="{StaticResource LinkerRectangleButton}" />

@@ -5,7 +5,7 @@
 
   <Color x:Key="MainWindowGradientStartColor">#373737</Color>
   <Color x:Key="MainWindowGradientEndColor">#525252</Color>
-  <Color x:Key="MainWindowBorderColor">#3E3E3E</Color>
+  <Color x:Key="MainWindowBorderColor">#B0B0B0</Color>
 
   <Color x:Key="ControlAccentLightColor">#186868</Color>
   <Color x:Key="ControlAccentDarkColor">#186868</Color>

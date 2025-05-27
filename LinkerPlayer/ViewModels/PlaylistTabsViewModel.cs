@@ -5,6 +5,7 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.Win32;
+using Newtonsoft.Json.Linq;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
 using Serilog;
@@ -85,6 +86,8 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         else
         {
             _settingsManager.Settings.SelectedTabIndex = SelectedTabIndex;
+            _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
+
         }
 
         SelectedTab = (sender as TabControl)?.SelectedItem as PlaylistTab;

@@ -8,6 +8,7 @@
   xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
+  xmlns:system="clr-namespace:System;assembly=System.Runtime"
   xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   d:DesignHeight="80"
   d:DesignWidth="800"

@@ -1,6 +1,7 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Windows;
@@ -13,6 +14,10 @@ public partial class SettingsWindow
 {
     private readonly ThemeManager _themeManager = new();
     private readonly AudioEngine _audioEngine;
+    private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
+
+    private const string DefaultDevice = "Default";
+
 
     public SettingsWindow()
     {
@@ -33,16 +38,16 @@ public partial class SettingsWindow
             MainOutputDevicesList.Items.Add(device);
         }
 
-        if (MainOutputDevicesList.Items.Contains(Properties.Settings.Default.MainOutputDevice))
+        if (MainOutputDevicesList.Items.Contains(SettingsManager.Settings.MainOutputDevice))
         {
-            MainOutputDevicesList.SelectedItem = Properties.Settings.Default.MainOutputDevice;
+            MainOutputDevicesList.SelectedItem = SettingsManager.Settings.MainOutputDevice;
         }
         else
         {
             MainOutputDevicesList.SelectedItem = OutputDeviceManager.GetCurrentDeviceName();
         }
 
-        int selectedThemeIndex = _themeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme);
+        int selectedThemeIndex = _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme);
         if (ThemesList.Items.Count >= 0 && selectedThemeIndex <= ThemesList.Items.Count)
         {
             ThemesList.SelectedIndex = selectedThemeIndex;
@@ -66,30 +71,34 @@ public partial class SettingsWindow
 
     private void Close_Click(object sender, RoutedEventArgs e)
     {
-        if (MainOutputDevicesList.SelectedItem.ToString() != Properties.Settings.Default.MainOutputDevice || 
-            MainOutputDevicesList.SelectedItem.ToString() != OutputDeviceManager.GetCurrentDeviceName())
+        string deviceName = MainOutputDevicesList.SelectedItem.ToString() ?? DefaultDevice;
+
+        if (deviceName != SettingsManager.Settings.MainOutputDevice || 
+            deviceName != OutputDeviceManager.GetCurrentDeviceName())
         {
-            Properties.Settings.Default.MainOutputDevice = MainOutputDevicesList.SelectedItem.ToString();
-            _audioEngine.ReselectOutputDevice(Properties.Settings.Default.MainOutputDevice!);
+            SettingsManager.Settings.MainOutputDevice = deviceName!;
+            SettingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
+            _audioEngine.ReselectOutputDevice(SettingsManager.Settings.MainOutputDevice!);
         }
         
-        if (ThemesList.SelectedIndex != _themeManager.StringToThemeColorIndex(Properties.Settings.Default.SelectedTheme))
+        if (ThemesList.SelectedIndex != _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme))
         {
-            Properties.Settings.Default.SelectedTheme = _themeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
+            SettingsManager.Settings.SelectedTheme = _themeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
+            SettingsManager.SaveSettings(nameof(AppSettings.SelectedTheme));
         }
 
-        foreach (KeyValuePair<string, string> prop in _tempHotkeys)
-        {
-            if (prop.Key.EndsWith("Hotkey"))
-            {
-                Properties.Settings.Default[prop.Key] = _tempHotkeys[prop.Key];
-            }
-        }
+        //foreach (KeyValuePair<string, string> prop in _tempHotkeys)
+        //{
+        //    if (prop.Key.EndsWith("Hotkey"))
+        //    {
+                //Properties.Settings.Default[prop.Key] = _tempHotkeys[prop.Key];
+        //    }
+        //}
 
-        Properties.Settings.Default.Save();
+        //Properties.Settings.Default.Save();
 
-        Window? win = Window.GetWindow(this);
-        if (win != null) win.Close();
+        Window? win = GetWindow(this);
+        win?.Close();
     }
 
     string _editedHotkey = "";
@@ -170,15 +179,5 @@ public partial class SettingsWindow
     {
         Window? win = Window.GetWindow(this);
         if (win != null) win.Close();
-    }
-
-    private void ButtonMouseEnter(object sender, MouseEventArgs e)
-    {
-        ((sender as Button)?.Content as Image)!.Opacity = 1;
-    }
-
-    private void ButtonMouseLeave(object sender, MouseEventArgs e)
-    {
-        (((sender as Button)?.Content as Image)!).Opacity = 0.6;
     }
 }

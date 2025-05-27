@@ -1,4 +1,6 @@
-﻿using System;
+﻿using LinkerPlayer.Core;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -7,6 +9,8 @@ namespace LinkerPlayer.UserControls;
 
 public partial class ToggleSwitch
 {
+    private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
+
     public ToggleSwitch()
     {
         InitializeComponent();
@@ -73,7 +77,7 @@ public partial class ToggleSwitch
     }
 
     public static readonly DependencyProperty IsOnProperty = DependencyProperty.Register(
-        nameof(IsOn), typeof(bool), typeof(ToggleSwitch), new PropertyMetadata(Properties.Settings.Default.EqualizerOnStartEnabled));
+        nameof(IsOn), typeof(bool), typeof(ToggleSwitch), new PropertyMetadata(SettingsManager.Settings.EqualizerEnabled));
 
     public bool IsOn
     {

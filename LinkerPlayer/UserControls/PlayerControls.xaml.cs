@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
-using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
@@ -73,7 +72,6 @@ public partial class PlayerControls
         LogCommandBinding(PrevButton, "PrevCommand");
         LogCommandBinding(NextButton, "NextCommand");
         LogCommandBinding(StopButton, "StopCommand");
-        // MuteButton uses IsChecked binding, not a command
     }
 
     private void LogCommandBinding(ButtonBase button, string commandName)

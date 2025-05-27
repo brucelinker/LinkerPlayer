@@ -19,7 +19,7 @@ namespace LinkerPlayer.Windows;
 public partial class EqualizerWindow
 {
     private readonly AudioEngine _audioEngine;
-    private BandsSettings _selectedPreset = null!;
+    private BandsSettings? _selectedPreset;
     private const string FlatPreset = "Flat";
     private readonly EqualizerViewModel _equalizerViewModel = new();
     private readonly SettingsManager _settingsManager;
@@ -185,6 +185,7 @@ public partial class EqualizerWindow
 
     private void ButtonsSetEnabledState(bool state)
     {
+        if (_selectedPreset == null) { return; }
         NewButton.IsEnabled = state;
         SaveButton.IsEnabled = !_selectedPreset.Locked && state;
         DeleteButton.IsEnabled = !_selectedPreset.Locked && state;
