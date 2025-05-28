@@ -4,7 +4,6 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using System.Linq;
@@ -19,16 +18,20 @@ namespace LinkerPlayer.Windows;
 public partial class EqualizerWindow
 {
     private readonly AudioEngine _audioEngine;
-    private BandsSettings? _selectedPreset;
+    private Preset? _selectedPreset;
     private const string FlatPreset = "Flat";
-    private readonly EqualizerViewModel _equalizerViewModel = new();
+
+    private readonly EqualizerViewModel _equalizerViewModel;
     private readonly SettingsManager _settingsManager;
 
-    public EqualizerWindow()
+    public EqualizerWindow(EqualizerViewModel viewModel, SettingsManager settingsManager)
     {
         InitializeComponent();
         WinMax.DoSourceInitialized(this);
         DataContext = _equalizerViewModel;
+
+        DataContext = viewModel;
+        _equalizerViewModel = viewModel;
 
         _audioEngine = AudioEngine.Instance;
 
@@ -38,9 +41,14 @@ public partial class EqualizerWindow
         EqSwitch.Switched += OnEqSwitched;
         this.Closed += Window_Closed!;
 
-        _settingsManager = App.AppHost!.Services.GetRequiredService<SettingsManager>();
+        _settingsManager = settingsManager;
         EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
-        ;
+
+        WeakReferenceMessenger.Default.Register<OpenNewPopupMessage>(this, (_, _) =>
+        {
+            NewPopup.IsOpen = true;
+            NewPopupTextBox.Focus();
+        });
 
         WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
         {
@@ -74,7 +82,7 @@ public partial class EqualizerWindow
 
         if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
+            Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
 
             bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
 
@@ -86,7 +94,7 @@ public partial class EqualizerWindow
     {
         if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
+            Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
 
             bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
 
@@ -98,7 +106,7 @@ public partial class EqualizerWindow
     {
         if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
         {
-            _equalizerViewModel.BandsSettings!.Remove(_equalizerViewModel.BandsSettings.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!);
+            _equalizerViewModel.EqPresets!.Remove(_equalizerViewModel.EqPresets.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!);
 
             Presets.SelectedItem = 0;
 
@@ -133,7 +141,7 @@ public partial class EqualizerWindow
     {
         if (EqSwitch.IsOn)
         {
-            _selectedPreset = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
+            _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
 
             if (_selectedPreset is { EqualizerBands: not null } && _selectedPreset.EqualizerBands.Any())
             {
@@ -155,7 +163,7 @@ public partial class EqualizerWindow
     {
         Presets.Items.Clear();
 
-        foreach (BandsSettings preset in _equalizerViewModel.BandsSettings!)
+        foreach (Preset preset in _equalizerViewModel.EqPresets!)
         {
             Presets.Items.Add(preset.Name);
         }
@@ -172,7 +180,7 @@ public partial class EqualizerWindow
 
     private void SliderSetEnabledState(bool state)
     {
-        BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault();
+        Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault();
 
         if (bandsSettings == null) { return; }
 
@@ -219,12 +227,12 @@ public partial class EqualizerWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        BandsSettings? bandsSettings = _equalizerViewModel.BandsSettings!.FirstOrDefault();
+        Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault();
 
         if (bandsSettings == null) { return; }
 
         Presets.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
-        _selectedPreset = _equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
+        _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
 
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
@@ -316,15 +324,15 @@ public partial class EqualizerWindow
 
             if (!string.IsNullOrEmpty(popupTextBoxText))
             {
-                if (_equalizerViewModel.BandsSettings!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
+                if (_equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
                 {
-                    BandsSettings bandsSettings = new()
+                    Preset bandsSettings = new()
                     {
                         Name = popupTextBoxText,
                         EqualizerBands = _audioEngine.GetBandsList()
                     };
 
-                    _equalizerViewModel.BandsSettings!.Add(bandsSettings);
+                    _equalizerViewModel.EqPresets!.Add(bandsSettings);
 
                     Log.Information("New preset created");
 

@@ -22,10 +22,6 @@
   WindowStyle="None"
   mc:Ignorable="d">
 
-  <Window.DataContext>
-    <viewModels:EqualizerViewModel x:Name="ViewModel" />
-  </Window.DataContext>
-
   <Window.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -136,9 +132,8 @@
         Foreground="Black"
         IsTextSearchEnabled="false"
         SelectionChanged="Presets_SelectionChanged"
-        SelectedItem="{Binding SelectedPreset}"
         Style="{StaticResource CustomComboBoxStyle}"
-        ToolTip="Profiles" />
+        ToolTip="Equalizer Presets" />
 
       <Grid Grid.Column="1">
         <Grid.ColumnDefinitions>
@@ -159,7 +154,12 @@
           <Border Padding="5" Background="{DynamicResource MainWindowGradientStartBrush}">
             <TextBox
               Name="NewPopupTextBox"
-              Foreground="#BDBDBD"
+              Background="{DynamicResource ComboboxBackgroundBrush}"
+              FontFamily="Segoe UI"
+              FontSize="{DynamicResource FontSizeNormal}"
+              FontStyle="Normal"
+              FontWeight="Normal"
+              Foreground="{DynamicResource ComboboxForegroundBrush}"
               KeyDown="NewPopupTextBox_KeyDown" />
           </Border>
         </Popup>

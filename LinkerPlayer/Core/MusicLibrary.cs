@@ -127,7 +127,6 @@ public abstract class MusicLibrary
         {
             mediaFile.UpdateFromFileMetadata();
             MainLibrary.Add(mediaFile.Clone());
-            //SaveBandsSettings();
 
             return mediaFile;
         }
@@ -142,7 +141,6 @@ public abstract class MusicLibrary
         if (Playlists[playlistIndex] != null && Playlists[playlistIndex]!.TrackIds.Contains(trackId))
         {
             Playlists[playlistIndex]!.TrackIds.Remove(trackId);
-            //SaveBandsSettings();
         }
 
         Log.Information($"Track with id {trackId} removed");
@@ -224,82 +222,11 @@ public abstract class MusicLibrary
                         playlist.TrackIds.Insert(position, trackId);
                     }
                 }
-
-                //SaveBandsSettings();
             }
         }
     }
 
-    // ReSharper disable once UnusedMember.Global
-    //public static void MoveTrackToPlaylist(string trackId, string fromPlaylist, string toPlaylist)
-    //{
-    //    Log.Information("MusicLibrary - AddPlaylist");
-
-    //    Playlist? from = Playlists.Find(p => p!.Name == fromPlaylist);
-    //    Playlist? to = Playlists.Find(p => p!.Name == toPlaylist);
-
-    //    if (from != null && to != null)
-    //    {
-    //        from.TrackIds.Remove(trackId);
-    //        to.TrackIds.Add(trackId);
-
-    //        Log.Information($"Track with id {trackId} moved from \'{fromPlaylist}\' to \'{toPlaylist}\'");
-
-    //        //SaveBandsSettings();
-    //    }
-    //}
-
-    //public static bool RenameTrack(string trackId, string newName)
-    //{
-    //    MediaFile? track = MainLibrary.Find(s => s!.Id == trackId);
-
-    //    if (track != null && !string.IsNullOrEmpty(newName))
-    //    {
-    //        Log.Information($"Track with id {trackId} has been renamed");
-
-    //        track.Title = newName;
-    //        //SaveBandsSettings();
-
-    //        return true;
-    //    }
-
-    //    return false;
-    //}
-
-    //public static bool RenamePlaylist(string oldName, string? newName)
-    //{
-    //    Playlist? playlist = Playlists.Find(s => s!.Name == oldName);
-
-    //    if (playlist != null && !string.IsNullOrEmpty(newName) && Playlists.Find(s => s!.Name == newName) == null)
-    //    {
-    //        Log.Information($"Playlist with name {oldName} has been renamed to {newName}");
-
-    //        playlist.Name = newName;
-    //        //SaveBandsSettings();
-
-    //        return true;
-    //    }
-
-    //    return false;
-    //}
-
-    //public static List<MediaFile> GetTracks()
-    //{
-    //    Log.Information("MusicLibrary - GetTracks");
-
-    //    List<MediaFile> tracks = new();
-
-    //    if (MainLibrary.Any())
-    //    {
-    //        foreach (MediaFile? track in MainLibrary)
-    //        {
-    //            tracks.Add(track!);
-    //        }
-    //    }
-
-    //    return tracks;
-    //}
-
+ 
     public static List<Playlist> GetPlaylists()
     {
         List<Playlist> playlists = new();

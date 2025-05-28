@@ -256,7 +256,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     {
         //Log.Information($"Play method called for {pathToMusic} at position {position}");
 
-        var playbackState = Bass.ChannelIsActive(_currentStream);
+        PlaybackState playbackState = Bass.ChannelIsActive(_currentStream);
         if (!string.IsNullOrEmpty(pathToMusic) && playbackState == PlaybackState.Paused)
         {
             ResumePlay();
@@ -276,7 +276,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             }
 
             InitializeEqualizer();
-            foreach (var band in _equalizerBands)
+            foreach (EqualizerBandSettings band in _equalizerBands)
             {
                 SetBandGain(band.Frequency, band.Gain);
             }
@@ -320,7 +320,6 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         IsPlaying = false;
         CurrentTrackPosition = 0;
         //Log.Information("Stop: Invoking OnPlaybackStopped");
-        // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
         OnPlaybackStopped?.Invoke();
     }
 
@@ -348,7 +347,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
                 return;
             }
             Log.Information("Stream resumed");
-            var state = Bass.ChannelIsActive(_currentStream);
+            PlaybackState state = Bass.ChannelIsActive(_currentStream);
             Log.Information($"Stream state after resume: {state}");
             IsPlaying = true;
 
@@ -383,7 +382,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             return;
         }
 
-        var playbackState = Bass.ChannelIsActive(_currentStream);
+        PlaybackState playbackState = Bass.ChannelIsActive(_currentStream);
         bool wasPlaying = playbackState == PlaybackState.Playing;
         if (wasPlaying)
         {
@@ -429,7 +428,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         int deviceId = -1;
         for (int i = 0; ; i++)
         {
-            var device = Bass.GetDeviceInfo(i);
+            DeviceInfo device = Bass.GetDeviceInfo(i);
             if (string.IsNullOrEmpty(device.Name)) break;
             if (device.Name == deviceName)
             {
@@ -487,7 +486,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
             _eqFxHandles[i] = fxHandle;
 
-            var eqParams = new PeakEQParameters
+            PeakEQParameters eqParams = new PeakEQParameters
             {
                 fCenter = freq,
                 fGain = _equalizerBands[i].Gain,
@@ -546,7 +545,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
             return;
         }
 
-        var eqParams = new PeakEQParameters
+        PeakEQParameters eqParams = new PeakEQParameters
         {
             fCenter = frequency,
             fBandwidth = _equalizerBands[bandIndex].Bandwidth,
@@ -614,7 +613,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
                 CurrentTrackPosition = positionSeconds;
             }
 
-            var state = Bass.ChannelIsActive(_currentStream);
+            PlaybackState state = Bass.ChannelIsActive(_currentStream);
             if (state != PlaybackState.Playing)
             {
                 Log.Information("HandleFftCalculated: Stream not playing, skipping FFT");
@@ -675,11 +674,6 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 
         OnFftCalculated!.Invoke(FftUpdate);
     }
-
-    //private void OnPropertyChanged(string propertyName)
-    //{
-    //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    //}
 
     public void Dispose()
     {
