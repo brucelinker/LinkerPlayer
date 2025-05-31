@@ -17,14 +17,14 @@ namespace LinkerPlayer.Windows;
 
 public partial class EqualizerWindow
 {
-    private readonly AudioEngine _audioEngine;
     private Preset? _selectedPreset;
     private const string FlatPreset = "Flat";
 
     private readonly EqualizerViewModel _equalizerViewModel;
+    private readonly AudioEngine _audioEngine;
     private readonly SettingsManager _settingsManager;
 
-    public EqualizerWindow(EqualizerViewModel viewModel, SettingsManager settingsManager)
+    public EqualizerWindow(EqualizerViewModel viewModel, AudioEngine audioEngine, SettingsManager settingsManager)
     {
         InitializeComponent();
         WinMax.DoSourceInitialized(this);
@@ -33,7 +33,7 @@ public partial class EqualizerWindow
         DataContext = viewModel;
         _equalizerViewModel = viewModel;
 
-        _audioEngine = AudioEngine.Instance;
+        _audioEngine = audioEngine;
 
         _equalizerViewModel.LoadFromJson();
         UpdatePresets();
@@ -267,16 +267,16 @@ public partial class EqualizerWindow
     }
 
     // CloseBox button
-    private void ButtonMouseEnter(object sender, MouseEventArgs e)
-    {
-        ((sender as Button)?.Content as Image)!.Opacity = 1;
-    }
+    //private void ButtonMouseEnter(object sender, MouseEventArgs e)
+    //{
+    //    ((sender as Button)?.Content as Image)!.Opacity = 1;
+    //}
 
     // CloseBox button
-    private void ButtonMouseLeave(object sender, MouseEventArgs e)
-    {
-        (((sender as Button)?.Content as Image)!).Opacity = 0.6;
-    }
+    //private void ButtonMouseLeave(object sender, MouseEventArgs e)
+    //{
+    //    (((sender as Button)?.Content as Image)!).Opacity = 0.6;
+    //}
 
     private void OnEqSwitched(object? sender, EventArgs e)
     {

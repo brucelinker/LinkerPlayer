@@ -10,19 +10,21 @@ using System.IO;
 
 namespace LinkerPlayer.Audio;
 
-public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
+public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
-    private static readonly Lazy<AudioEngine> _instance = new(() => new AudioEngine(), isThreadSafe: true);
-    private static bool _isBassInitialized;
-//    private static readonly Lock _initLock = new();
+    //private static readonly Lazy<AudioEngine> _instance = new(() => new AudioEngine(), isThreadSafe: true);
+    [ObservableProperty] private bool _isBassInitialized;
     private int _currentStream;
-    private string _pathToMusic = string.Empty;
-    private double _currentTrackLength;
-    private double _currentTrackPosition;
-    private bool _isPlaying;
-    private float _musicVolume = 1.0f;
+
+    [ObservableProperty] private string _pathToMusic = string.Empty;
+    [ObservableProperty] private double _currentTrackLength;
+    [ObservableProperty] private double _currentTrackPosition;
+    [ObservableProperty] private float _musicVolume = 0.5f;
+    [ObservableProperty] private bool _isPlaying;
+
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
+
     private readonly List<EqualizerBandSettings> _equalizerBands =
     [
         new(32.0f, 0f, 1.0f),
@@ -36,18 +38,18 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         new(8000.0f, 0f, 1.0f),
         new(16000.0f, 0f, 1.0f)
     ];
+
     private bool _eqInitialized;
     private int[] _eqFxHandles = [];
     private int _endSyncHandle;
 
-    public static AudioEngine Instance => _instance.Value;
+    //public static AudioEngine Instance => _instance.Value;
 
     // ReSharper disable once InconsistentlySynchronizedField
-    public static bool IsInitialized => _isBassInitialized;
+    public bool IsInitialized => IsBassInitialized;
 
     public event Action? OnPlaybackStopped;
     public event Action<float[]>? OnFftCalculated;
-//    public event PropertyChangedEventHandler? PropertyChanged;
 
     public bool IsEqualizerInitialized => _eqInitialized;
 
@@ -55,7 +57,7 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
 
-    private AudioEngine()
+    public AudioEngine()
     {
         Initialize();
 
@@ -73,76 +75,17 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
         FftUpdate = new float[ExpectedFftSize];
     }
 
-    public string PathToMusic
+    public void Initialize()
     {
-        get => _pathToMusic;
-        set
-        {
-            _pathToMusic = value;
-            OnPropertyChanged(nameof(PathToMusic));
-        }
-    }
-
-    public double CurrentTrackLength
-    {
-        get => _currentTrackLength;
-        private set
-        {
-            _currentTrackLength = value;
-            OnPropertyChanged(nameof(CurrentTrackLength));
-        }
-    }
-
-    public double CurrentTrackPosition
-    {
-        get => _currentTrackPosition;
-        set
-        {
-            _currentTrackPosition = value;
-            OnPropertyChanged(nameof(CurrentTrackPosition));
-        }
-    }
-
-    public bool IsPlaying
-    {
-        get => _isPlaying;
-        private set
-        {
-            _isPlaying = value;
-            //Log.Information($"IsPlaying changed to: {_isPlaying}, PositionTimer enabled: {_isPlaying}");
-            if (_isPlaying)
-                _positionTimer.Start();
-            else
-                _positionTimer.Stop();
-            OnPropertyChanged(nameof(IsPlaying));
-        }
-    }
-
-    public float MusicVolume
-    {
-        get => _musicVolume;
-        set
-        {
-            _musicVolume = Math.Clamp(value, 0.0f, 1.0f);
-            if (_currentStream != 0)
-            {
-                Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, _musicVolume);
-                //Log.Information($"Volume set to: {_musicVolume}");
-            }
-        }
-    }
-
-    public static void Initialize()
-    {
-        if (_isBassInitialized)
+        if (IsBassInitialized)
         {
             return;
         }
 
-        _isBassInitialized = Bass.Init(1, 48000);
+        IsBassInitialized = Bass.Init(1, 48000);
         Log.Information("BASS initialized");
 
-        if (!_isBassInitialized)
+        if (!IsBassInitialized)
         {
             Log.Error("BASS failed to initialize.");
         }
@@ -204,6 +147,24 @@ public class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
     {
         Log.Information("EndTrackSyncProc: Track ended, invoking OnPlaybackStopped");
         Stop();
+    }
+
+    partial void OnMusicVolumeChanged(float value)
+    {
+        if (_currentStream != 0)
+        {
+            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, _musicVolume);
+            //Log.Information($"Volume set to: {_musicVolume}");
+        }
+
+    }
+
+    partial void OnIsPlayingChanged(bool value)
+    {
+        if (value)
+            _positionTimer.Start();
+        else
+            _positionTimer.Stop();
     }
 
     public void LoadAudioFile(string pathToMusic, double position = 0)

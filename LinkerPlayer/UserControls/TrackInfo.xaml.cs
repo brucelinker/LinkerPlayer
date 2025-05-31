@@ -3,6 +3,8 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
 using System.Windows;
@@ -12,22 +14,22 @@ namespace LinkerPlayer.UserControls;
 
 public partial class TrackInfo
 {
+    private readonly AudioEngine _audioEngine;
     public MediaFile SelectedMediaFile = new();
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
-    public readonly AudioEngine? AudioEngine;
 
     private static int _count;
 
     public TrackInfo()
     {
+        _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
         Log.Information($"TRACKINFO - {++_count}");
 
         this.DataContext = this;
         InitializeComponent();
         Loaded += TrackInfo_Loaded;
 
-        AudioEngine = AudioEngine.Instance;
-        Spectrum.RegisterSoundPlayer(AudioEngine);
+        Spectrum.RegisterSoundPlayer(_audioEngine);
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
@@ -60,7 +62,7 @@ public partial class TrackInfo
         SpectrumAnalyzer? spectrum = FindName("Spectrum") as SpectrumAnalyzer;
         if (spectrum != null)
         {
-            spectrum.RegisterSoundPlayer(AudioEngine.Instance);
+            spectrum.RegisterSoundPlayer(_audioEngine);
             Log.Information("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
         }
         else

@@ -27,7 +27,8 @@ public partial class PlayerControls
     {
         InitializeComponent();
 
-        _audioEngine = AudioEngine.Instance;
+        _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
+
         _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
         _seekBarTimer.Tick += timer_Tick!;
         SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;

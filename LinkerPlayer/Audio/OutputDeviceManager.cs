@@ -8,15 +8,22 @@ using System.Collections.Generic;
 
 namespace LinkerPlayer.Audio;
 
-public static class OutputDeviceManager
+public class OutputDeviceManager
 {
-    private static readonly List<string> Devices = new();
-    private static bool _isInitialized;
-    private static string _currentDeviceName = "Default";
+    private readonly AudioEngine _audioEngine;
+    private readonly SettingsManager _settingsManager;
 
-    private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
+    private readonly List<string> Devices = new();
+    private bool _isInitialized;
+    private string _currentDeviceName = "Default";
+    
+    public OutputDeviceManager(AudioEngine audioEngine, SettingsManager settingsManager)
+    {
+        _audioEngine = audioEngine;
+        _settingsManager = settingsManager;
+    }
 
-    public static void InitializeOutputDevice()
+    public void InitializeOutputDevice()
     {
         if (_isInitialized)
         {
@@ -26,7 +33,7 @@ public static class OutputDeviceManager
 
         try
         {
-            AudioEngine.Initialize();
+            _audioEngine.Initialize();
             Devices.Clear();
             GetOutputDevicesList();
             SetMainOutputDevice();
@@ -40,13 +47,13 @@ public static class OutputDeviceManager
         }
     }
 
-    public static List<string> GetOutputDevicesList()
+    public List<string> GetOutputDevicesList()
     {
         Devices.Clear();
-        if (!AudioEngine.IsInitialized)
+        if (!_audioEngine.IsInitialized)
         {
             Log.Warning("GetOutputDevicesList: BASS not initialized, initializing now");
-            AudioEngine.Initialize();
+            _audioEngine.Initialize();
         }
 
         try
@@ -84,26 +91,26 @@ public static class OutputDeviceManager
         }
     }
 
-    public static void SetMainOutputDevice(string deviceName = "Default")
+    public void SetMainOutputDevice(string deviceName = "Default")
     {
         try
         {
             if (Devices.Contains(deviceName))
             {
-                AudioEngine.Instance.ReselectOutputDevice(deviceName);
+                _audioEngine.ReselectOutputDevice(deviceName);
                 _currentDeviceName = deviceName;
                 Log.Information($"MainOutputDevice: {deviceName}");
             }
             else
             {
                 Log.Warning($"SetMainOutputDevice: Device '{deviceName}' not found, using default");
-                AudioEngine.Instance.ReselectOutputDevice("Default");
+                _audioEngine.ReselectOutputDevice("Default");
                 _currentDeviceName = "Default";
                 Log.Information("MainOutputDevice: Default");
             }
 
-            SettingsManager.Settings.MainOutputDevice = deviceName;
-            SettingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
+            _settingsManager.Settings.MainOutputDevice = deviceName;
+            _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
         }
         catch (Exception ex)
         {
@@ -111,9 +118,9 @@ public static class OutputDeviceManager
         }
     }
 
-    public static string GetCurrentDeviceName()
+    public string GetCurrentDeviceName()
     {
-        if (!_isInitialized || !AudioEngine.IsInitialized)
+        if (!_isInitialized || !_audioEngine.IsInitialized)
         {
             Log.Debug("GetCurrentDeviceName: OutputDeviceManager or BASS not initialized, returning cached name");
             return _currentDeviceName;
@@ -140,7 +147,7 @@ public static class OutputDeviceManager
         }
     }
 
-    public static void Dispose()
+    public void Dispose()
     {
         Devices.Clear();
         _isInitialized = false;

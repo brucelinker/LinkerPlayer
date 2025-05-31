@@ -11,19 +11,22 @@ public class MainViewModel : ObservableObject
     private readonly SettingsManager _settingsManager;
     private readonly PlayerControlsViewModel _playerControlsViewModel;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;
+    private readonly OutputDeviceManager _outputDeviceManager;
 
     public MainViewModel(
         SettingsManager settingsManager,
         PlayerControlsViewModel playerControlsViewModel,
-        PlaylistTabsViewModel playlistTabsViewModel)
+        PlaylistTabsViewModel playlistTabsViewModel,
+        OutputDeviceManager outputDeviceManager)
     {
         Serilog.Log.Information("MainViewModel: Initializing");
         _settingsManager = settingsManager;
         _playerControlsViewModel = playerControlsViewModel;
         _playlistTabsViewModel = playlistTabsViewModel;
+        _outputDeviceManager = outputDeviceManager;
 
         ThemeColors selectedTheme;
-        OutputDeviceManager.InitializeOutputDevice();
+        _outputDeviceManager.InitializeOutputDevice();
 
         if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedTheme))
         {
@@ -34,7 +37,7 @@ public class MainViewModel : ObservableObject
             selectedTheme = ThemeColors.Dark;
         }
 
-        selectedTheme = ThemeMgr.ModifyTheme(selectedTheme);
+        ThemeMgr.ModifyTheme(selectedTheme);
     }
 
     public PlayerControlsViewModel PlayerControlsViewModel => _playerControlsViewModel;
@@ -48,7 +51,7 @@ public class MainViewModel : ObservableObject
     {
         MusicLibrary.ClearPlayState();
         MusicLibrary.SaveToJson();
-        _settingsManager.Settings.MainOutputDevice = OutputDeviceManager.GetCurrentDeviceName();
+        _settingsManager.Settings.MainOutputDevice = _outputDeviceManager.GetCurrentDeviceName();
         _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
     }
 }

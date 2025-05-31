@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RestoreWindowPlace;
 using Serilog;
+using System;
 using System.Windows;
 
 namespace LinkerPlayer;
@@ -20,25 +21,27 @@ public partial class App
         WindowPlace = new WindowPlace("placement.config");
 
         AppHost = Host.CreateDefaultBuilder()
-            .UseSerilog((_, configuration) =>
-            {
-                configuration
-                    .WriteTo.Debug()
-                    .WriteTo.Console()
-                    .WriteTo.File("Logs/LinkerPlayer-{Date}.txt", rollingInterval: RollingInterval.Day);
-            })
-            .ConfigureServices((_, services) =>
-            {
-                services.AddSingleton<SettingsManager>();
-                services.AddSingleton<MainWindow>();
-                services.AddSingleton<MainViewModel>();
-                services.AddSingleton<PlaylistTabsViewModel>();
-                services.AddSingleton<PlayerControlsViewModel>();
-                services.AddSingleton<EqualizerWindow>();
-                services.AddSingleton<EqualizerViewModel>();
-                services.AddSingleton<AudioEngine>(_ => AudioEngine.Instance);
-            })
-            .Build();
+        .UseSerilog((_, configuration) =>
+        {
+            configuration
+                .WriteTo.Debug()
+                .WriteTo.Console()
+                .WriteTo.File("Logs/LinkerPlayer-{Date}.txt", rollingInterval: RollingInterval.Day);
+        })
+        .ConfigureServices((_, services) =>
+        {
+            services.AddSingleton<SettingsManager>();
+            services.AddSingleton<MainWindow>();
+            services.AddSingleton<MainViewModel>();
+            services.AddSingleton<PlaylistTabsViewModel>();
+            services.AddSingleton<PlayerControlsViewModel>();
+            services.AddSingleton<EqualizerWindow>();
+            services.AddSingleton<EqualizerViewModel>();
+            services.AddSingleton<AudioEngine>();
+            services.AddSingleton<OutputDeviceManager>();
+            services.AddSingleton<SettingsWindow>();
+        })
+        .Build();
 
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()

@@ -14,17 +14,19 @@ public partial class SettingsWindow
 {
     private readonly ThemeManager _themeManager = new();
     private readonly AudioEngine _audioEngine;
+    private readonly OutputDeviceManager _outputDeviceManager;
     private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
 
     private const string DefaultDevice = "Default";
 
 
-    public SettingsWindow()
+    public SettingsWindow(AudioEngine audioEngine, OutputDeviceManager outputDeviceManager)
     {
+        _audioEngine = audioEngine;
+        _outputDeviceManager = outputDeviceManager;
         InitializeComponent();
 
         DataContext = this;
-        _audioEngine = AudioEngine.Instance;
 
         WinMax.DoSourceInitialized(this);
 
@@ -33,7 +35,7 @@ public partial class SettingsWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        foreach (string device in OutputDeviceManager.GetOutputDevicesList())
+        foreach (string device in _outputDeviceManager.GetOutputDevicesList())
         {
             MainOutputDevicesList.Items.Add(device);
         }
@@ -44,7 +46,7 @@ public partial class SettingsWindow
         }
         else
         {
-            MainOutputDevicesList.SelectedItem = OutputDeviceManager.GetCurrentDeviceName();
+            MainOutputDevicesList.SelectedItem = _outputDeviceManager.GetCurrentDeviceName();
         }
 
         int selectedThemeIndex = _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme);
@@ -74,7 +76,7 @@ public partial class SettingsWindow
         string deviceName = MainOutputDevicesList.SelectedItem.ToString() ?? DefaultDevice;
 
         if (deviceName != SettingsManager.Settings.MainOutputDevice || 
-            deviceName != OutputDeviceManager.GetCurrentDeviceName())
+            deviceName != _outputDeviceManager.GetCurrentDeviceName())
         {
             SettingsManager.Settings.MainOutputDevice = deviceName!;
             SettingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));

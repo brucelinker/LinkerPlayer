@@ -1,4 +1,5 @@
 ﻿using LinkerPlayer.Windows;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -7,8 +8,12 @@ namespace LinkerPlayer.UserControls;
 
 public partial class TitlebarButtons
 {
+    private readonly SettingsWindow _settingsWindow;
+
     public TitlebarButtons()
     {
+        _settingsWindow = App.AppHost.Services.GetRequiredService<SettingsWindow>();
+
         InitializeComponent();
     }
 
@@ -21,13 +26,10 @@ public partial class TitlebarButtons
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        SettingsWindow settingsWindow = new()
-        {
-            Owner = Window.GetWindow(this),
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
+        if (_settingsWindow is { IsVisible: true }) return;
 
-        settingsWindow.Show();
+        _settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        _settingsWindow.Show();
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)

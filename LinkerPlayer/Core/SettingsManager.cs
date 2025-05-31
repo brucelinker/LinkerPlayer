@@ -10,7 +10,7 @@ namespace LinkerPlayer.Core;
 public class SettingsManager
 {
     private readonly string _settingsPath;
-    public AppSettings Settings { get; private set; } = new AppSettings();
+    public AppSettings Settings { get; private set; } = new();
     private readonly Timer _saveTimer;
     public event Action<string>? SettingsChanged;
 

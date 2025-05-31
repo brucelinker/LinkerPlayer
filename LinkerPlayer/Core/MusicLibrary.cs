@@ -226,7 +226,6 @@ public abstract class MusicLibrary
         }
     }
 
- 
     public static List<Playlist> GetPlaylists()
     {
         List<Playlist> playlists = new();

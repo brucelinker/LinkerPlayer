@@ -16,6 +16,8 @@ public partial class MainWindow
 {
     public static MainWindow? Instance { get; private set; }
     private readonly MainViewModel _mainViewModel;
+    private readonly AudioEngine _audioEngine;
+    private readonly OutputDeviceManager _outputDeviceManager;
     private static int _count;
 
     public MainWindow(IServiceProvider serviceProvider)
@@ -24,6 +26,8 @@ public partial class MainWindow
         InitializeComponent();
 
         _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
+        _audioEngine = serviceProvider.GetRequiredService<AudioEngine>();
+        _outputDeviceManager = serviceProvider.GetRequiredService<OutputDeviceManager>();
         DataContext = _mainViewModel;
 
         Log.Information("App started");
@@ -34,8 +38,8 @@ public partial class MainWindow
 
         try
         {
-            AudioEngine.Initialize();
-            OutputDeviceManager.InitializeOutputDevice();
+            _audioEngine.Initialize();
+            _outputDeviceManager.InitializeOutputDevice();
             Log.Information("MainWindow: Audio initialization complete");
         }
         catch (Exception ex)
@@ -63,8 +67,8 @@ public partial class MainWindow
         try
         {
             Log.Information("MainWindow: Shutting down application");
-            AudioEngine.Instance.Dispose();
-            OutputDeviceManager.Dispose();
+            _audioEngine.Dispose();
+            _outputDeviceManager.Dispose();
         }
         catch (Exception ex)
         {
