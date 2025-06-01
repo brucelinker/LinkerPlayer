@@ -12,7 +12,6 @@ namespace LinkerPlayer.Audio;
 
 public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
-    //private static readonly Lazy<AudioEngine> _instance = new(() => new AudioEngine(), isThreadSafe: true);
     [ObservableProperty] private bool _isBassInitialized;
     private int _currentStream;
 
@@ -153,7 +152,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (_currentStream != 0)
         {
-            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, _musicVolume);
+            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, value);
             //Log.Information($"Volume set to: {_musicVolume}");
         }
 
@@ -253,7 +252,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             IsPlaying = true;
             //Log.Information("Playback started successfully");
 
-            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, _musicVolume);
+            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, MusicVolume);
         }
         else
         {
@@ -447,7 +446,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             _eqFxHandles[i] = fxHandle;
 
-            PeakEQParameters eqParams = new PeakEQParameters
+            PeakEQParameters eqParams = new()
             {
                 fCenter = freq,
                 fGain = _equalizerBands[i].Gain,
@@ -470,7 +469,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public List<EqualizerBandSettings> GetBandsList()
     {
-        return [.._equalizerBands];
+        return new List<EqualizerBandSettings>(_equalizerBands);
     }
 
     public void SetBandsList(List<EqualizerBandSettings> bands)
@@ -486,7 +485,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         return band.Gain;
     }
 
-    public void SetBandGain(int index, float gain)
+    public void SetBandGainByIndex(int index, float gain)
     {
         SetBandGain(_equalizerBands[index].Frequency, gain);
     }
@@ -495,7 +494,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (!_eqInitialized || _eqFxHandles.Length == 0 || _currentStream == 0)
         {
-            Log.Warning($"SetBandGain skipped: EQ not initialized or stream invalid.");
+            Log.Warning("SetBandGain skipped: EQ not initialized or stream invalid.");
             return;
         }
 
@@ -506,7 +505,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        PeakEQParameters eqParams = new PeakEQParameters
+        PeakEQParameters eqParams = new() 
         {
             fCenter = frequency,
             fBandwidth = _equalizerBands[bandIndex].Bandwidth,

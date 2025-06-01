@@ -91,6 +91,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedPlaylist = GetSelectedPlaylist();
             _dataGrid.Items.Refresh();
             _dataGrid.UpdateLayout();
+            Log.Information("OnDataGridLoaded : ScrollIntoView");
             _dataGrid.ScrollIntoView(SelectedPlaylist.SelectedTrack);
         }
     }
@@ -153,6 +154,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 MusicLibrary.Playlists[SelectedTabIndex]!.SelectedTrack = SelectedTrack!.Id;
             }
 
+            Log.Information("OnTrackSelectionChanged : ScrollIntoView");
             _dataGrid.ScrollIntoView(SelectedTrack!);
             if (ActiveTrack == null || ActiveTrack == SelectedTrack)
             {

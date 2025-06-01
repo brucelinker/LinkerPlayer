@@ -61,7 +61,7 @@ public partial class PlayerControls
 
     private void PlayerControls_Loaded(object sender, RoutedEventArgs e)
     {
-        Serilog.Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType()?.FullName ?? "null");
+        Serilog.Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
 
         if (DataContext is PlayerControlsViewModel viewModel)
         {
@@ -176,13 +176,13 @@ public partial class PlayerControls
         {
             From = fromValue,
             To = position,
-            Duration = TimeSpan.FromMilliseconds(700),
+            Duration = TimeSpan.FromMilliseconds(500),
             EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut },
             FillBehavior = FillBehavior.Stop
         };
 
         // Update audio volume during animation
-        animation.CurrentTimeInvalidated += (s, e) =>
+        animation.CurrentTimeInvalidated += (_, _) =>
         {
             if (_playerControlsViewModel != null)
             {
@@ -192,7 +192,7 @@ public partial class PlayerControls
             }
         };
 
-        animation.Completed += (s, e) =>
+        animation.Completed += (_, _) =>
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = position;

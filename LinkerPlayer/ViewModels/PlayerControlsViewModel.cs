@@ -42,11 +42,6 @@ public partial class PlayerControlsViewModel : ObservableObject
         {
             OnPlaybackStateChanged(m.Value);
         });
-
-        WeakReferenceMessenger.Default.Register<PlaybackStoppedMessage>(this, (_, m) =>
-        {
-            OnAudioStopped(m.Value);
-        });
     }
 
     [ObservableProperty] private PlaybackState _state;
@@ -302,19 +297,6 @@ public partial class PlayerControlsViewModel : ObservableObject
     private void OnPlaybackStateChanged(PlaybackState playbackState)
     {
         State = playbackState;
-    }
-
-    private void OnAudioStopped(bool trackEnded)
-    {
-        Log.Information($"Audio stopped, trackEnded: {trackEnded}");
-        if (trackEnded)
-        {
-            NextTrack();
-        }
-        else
-        {
-            _audioEngine.Stop();
-        }
     }
 
     private bool CanPlayPause()

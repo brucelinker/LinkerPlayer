@@ -116,7 +116,7 @@
       </Grid.ColumnDefinitions>
 
       <ComboBox
-        Name="Presets"
+        Name="Presets_ComboBox"
         Grid.Column="0"
         Width="160"
         Height="28"

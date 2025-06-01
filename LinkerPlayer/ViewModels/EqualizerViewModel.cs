@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Audio;
-using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Newtonsoft.Json;
 using Serilog;
@@ -12,16 +11,14 @@ namespace LinkerPlayer.ViewModels;
 
 public partial class EqualizerViewModel : ObservableObject
 {
-    private static AudioEngine _audioEngine;
-    private static SettingsManager _settingsManager;
+    private readonly AudioEngine _audioEngine;
     private readonly string _jsonFilePath;
 
     public ObservableCollection<Preset>? EqPresets;
 
-    public EqualizerViewModel(AudioEngine audioEngine, SettingsManager settingsManager)
+    public EqualizerViewModel(AudioEngine audioEngine)
     {
         _audioEngine = audioEngine;
-        _settingsManager = settingsManager;
 
         _jsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "LinkerPlayer", "eqPresets.json");
@@ -39,7 +36,6 @@ public partial class EqualizerViewModel : ObservableObject
     [ObservableProperty] private float _band7;
     [ObservableProperty] private float _band8;
     [ObservableProperty] private float _band9;
-    [ObservableProperty] private Preset _selectedPreset;
     
     partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
     partial void OnBand1Changed(float value) { _audioEngine.SetBandGain(64.0f, value); }
@@ -51,20 +47,6 @@ public partial class EqualizerViewModel : ObservableObject
     partial void OnBand7Changed(float value) { _audioEngine.SetBandGain(4000.0f, value); }
     partial void OnBand8Changed(float value) { _audioEngine.SetBandGain(8000.0f, value); }
     partial void OnBand9Changed(float value) { _audioEngine.SetBandGain(16000.0f, value); }
-
-    //[RelayCommand]
-    //public void New()
-    //{
-    //    //NewPopup.IsOpen = true;
-    //    //NewPopupTextBox.Focus();
-    //    WeakReferenceMessenger.Default.Send(new OpenNewPopupMessage());
-
-    //    Preset? preset = EqPresets!.FirstOrDefault(n => n.Name == SelectedPreset!.Name);
-
-    //    preset!.EqualizerBands = _audioEngine.GetBandsList();
-
-    //    SaveEqPresets();
-    //}
 
     public void SaveEqPresets()
     {

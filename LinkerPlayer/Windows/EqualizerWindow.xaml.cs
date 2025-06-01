@@ -8,7 +8,6 @@ using LinkerPlayer.ViewModels;
 using Serilog;
 using System;
 using System.Linq;
-using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -46,13 +45,7 @@ public partial class EqualizerWindow
 
         _settingsManager = settingsManager;
         EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
-        UpdatePresets(_settingsManager.Settings.EqualizerPresetName);
-
-        WeakReferenceMessenger.Default.Register<OpenNewPopupMessage>(this, (_, _) =>
-        {
-            NewPopup.IsOpen = true;
-            NewPopupTextBox.Focus();
-        });
+        UpdatePresetsComboBox(_settingsManager.Settings.EqualizerPresetName);
 
         WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
         {
@@ -70,7 +63,7 @@ public partial class EqualizerWindow
 
         if (_audioEngine.IsEqualizerInitialized)
         {
-            _audioEngine.SetBandGain(index, value);
+            _audioEngine.SetBandGainByIndex(index, value);
         }
     }
 
@@ -84,45 +77,58 @@ public partial class EqualizerWindow
         NewPopup.IsOpen = true;
         NewPopupTextBox.Focus();
 
-        if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
+        if (!string.IsNullOrEmpty(Presets_ComboBox.SelectedItem as string))
         {
-            Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
+            Preset? preset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == _selectedPreset!.Name);
 
-            bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
+            if (preset != null)
+            {
+                preset.EqualizerBands = _audioEngine.GetBandsList();
 
-            _equalizerViewModel.SaveToJson();
+                _equalizerViewModel.EqPresets!.Add(preset);
+
+                Log.Information("New preset created");
+
+                _equalizerViewModel.SaveEqPresets();
+
+                _selectedPreset = preset;
+
+                UpdatePresetsComboBox(preset.Name!);
+            }
         }
     }
 
     private void SaveButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
+        if (!string.IsNullOrEmpty(Presets_ComboBox.SelectedItem as string))
         {
-            Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string);
+            Preset preset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == _selectedPreset!.Name)!;
 
-            bandsSettings!.EqualizerBands = _audioEngine.GetBandsList();
+            preset!.EqualizerBands = _audioEngine.GetBandsList();
 
-            _equalizerViewModel.SaveToJson();
+            _equalizerViewModel.SaveEqPresets();
+
+            UpdatePresetsComboBox(preset.Name!);
         }
     }
 
     private void DeleteButton_Click(object sender, RoutedEventArgs e)
     {
-        if (!string.IsNullOrEmpty(Presets.SelectedItem as string))
+        if (!string.IsNullOrEmpty(Presets_ComboBox.SelectedItem as string))
         {
-            _equalizerViewModel.EqPresets!.Remove(_equalizerViewModel.EqPresets.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!);
+            _equalizerViewModel.EqPresets!.Remove(_equalizerViewModel.EqPresets.FirstOrDefault(n => n.Name == Presets_ComboBox.SelectedItem as string)!);
 
-            Presets.SelectedItem = 0;
+            Presets_ComboBox.SelectedItem = 0;
 
             ResetSliders();
 
-            UpdatePresets();
+            UpdatePresetsComboBox();
 
             _selectedPreset = null!;
 
             Log.Information("Delete preset");
 
-            _equalizerViewModel.SaveToJson();
+            _equalizerViewModel.SaveEqPresets();
         }
     }
 
@@ -138,14 +144,14 @@ public partial class EqualizerWindow
     {
         ResetSliders();
 
-        UpdatePresets(FlatPreset);
+        UpdatePresetsComboBox(FlatPreset);
     }
 
     private void Presets_SelectionChanged(object sender, RoutedEventArgs e)
     {
         if (EqSwitch.IsOn)
         {
-            _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
+            _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets_ComboBox.SelectedItem as string)!;
 
             if (_selectedPreset is { EqualizerBands: not null } && _selectedPreset.EqualizerBands.Any())
             {
@@ -166,22 +172,22 @@ public partial class EqualizerWindow
         }
     }
 
-    private void UpdatePresets(string bandNameToSelect = null!)
+    private void UpdatePresetsComboBox(string bandNameToSelect = null!)
     {
-        Presets.Items.Clear();
+        Presets_ComboBox.Items.Clear();
 
         foreach (Preset preset in _equalizerViewModel.EqPresets!)
         {
-            Presets.Items.Add(preset.Name);
+            Presets_ComboBox.Items.Add(preset.Name);
         }
 
         if (bandNameToSelect != null!)
         {
-            Presets.SelectedItem = bandNameToSelect;
+            Presets_ComboBox.SelectedItem = bandNameToSelect;
         }
-        else if (!Presets.Items.IsEmpty)
+        else if (!Presets_ComboBox.Items.IsEmpty)
         {
-            Presets.SelectedItem = Presets.Items[0];
+            Presets_ComboBox.SelectedItem = Presets_ComboBox.Items[0];
         }
     }
 
@@ -238,8 +244,8 @@ public partial class EqualizerWindow
 
         if (bandsSettings == null) { return; }
 
-        Presets.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
-        _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets.SelectedItem as string)!;
+        Presets_ComboBox.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
+        _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets_ComboBox.SelectedItem as string)!;
 
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
@@ -343,11 +349,11 @@ public partial class EqualizerWindow
 
                     Log.Information("New preset created");
 
-                    _equalizerViewModel.SaveToJson();
+                    _equalizerViewModel.SaveEqPresets();
 
                     _selectedPreset = bandsSettings;
 
-                    UpdatePresets(bandsSettings.Name);
+                    UpdatePresetsComboBox(bandsSettings.Name);
                 }
 
                 NewPopupTextBox.Text = "";
