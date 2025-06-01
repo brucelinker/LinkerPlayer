@@ -11,24 +11,27 @@ using System.IO;
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class PlayerControlsViewModel : BaseViewModel
+public partial class PlayerControlsViewModel : ObservableObject
 {
-    private readonly SettingsManager _settingsManager;
     private readonly AudioEngine _audioEngine;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;
     private readonly EqualizerViewModel _equalizerViewModel;
+    private readonly SettingsManager _settingsManager;
+    private readonly SharedDataModel _sharedDataModel;
     private double _volumeBeforeMute;
 
     public PlayerControlsViewModel(
-        SettingsManager settingsManager,
         AudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
-        EqualizerViewModel equalizerViewModel)
+        EqualizerViewModel equalizerViewModel,
+        SettingsManager settingsManager,
+        SharedDataModel sharedDataModel)
     {
-        _settingsManager = settingsManager;
         _audioEngine = audioEngine;
         _playlistTabsViewModel = playlistTabsViewModel;
         _equalizerViewModel = equalizerViewModel;
+        _settingsManager = settingsManager;
+        _sharedDataModel = sharedDataModel;
 
         ShuffleMode = _settingsManager.Settings.ShuffleMode;
         VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
@@ -46,25 +49,22 @@ public partial class PlayerControlsViewModel : BaseViewModel
         });
     }
 
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
-    private PlaybackState _state;
+    [ObservableProperty] private PlaybackState _state;
+    [ObservableProperty] private bool _shuffleMode;
+    [ObservableProperty] private bool _isMuted;
+    [ObservableProperty] private double _volumeSliderValue;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
-    private bool _shuffleMode;
+    public MediaFile? SelectedTrack
+    {
+        get => _sharedDataModel.SelectedTrack;
+        set => _sharedDataModel.UpdateSelectedTrack(value!);
+    }
 
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
-    private bool _isMuted;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedRecipients]
-    private double _volumeSliderValue;
-
-    // Direct access to other ViewModels
-    public PlaylistTabsViewModel PlaylistTabs => _playlistTabsViewModel;
-    public EqualizerViewModel Equalizer => _equalizerViewModel;
+    public MediaFile? ActiveTrack
+    {
+        get => _sharedDataModel.ActiveTrack;
+        set => _sharedDataModel.UpdateActiveTrack(value!);
+    }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause()

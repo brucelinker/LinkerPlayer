@@ -55,7 +55,7 @@ public partial class MainWindow
         WeakReferenceMessenger.Default.Send(new MainWindowLoadedMessage(true));
     }
 
-    private void Window_Closing(object sender, EventArgs e)
+    private void OnMainWindowClose(object sender, EventArgs e)
     {
         Bass.Free();
         WeakReferenceMessenger.Default.Send(new MainWindowClosingMessage(true));

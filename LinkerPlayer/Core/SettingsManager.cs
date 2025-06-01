@@ -55,7 +55,7 @@ public class SettingsManager
     {
         try
         {
-            var options = new JsonSerializerOptions { WriteIndented = true };
+            JsonSerializerOptions options = new JsonSerializerOptions { WriteIndented = true };
             string json = JsonSerializer.Serialize(Settings, options);
             File.WriteAllText(_settingsPath, json);
         }

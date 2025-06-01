@@ -40,6 +40,7 @@ public partial class App
             services.AddSingleton<AudioEngine>();
             services.AddSingleton<OutputDeviceManager>();
             services.AddSingleton<SettingsWindow>();
+            services.AddSingleton<SharedDataModel>();
         })
         .Build();
 
@@ -58,11 +59,12 @@ public partial class App
         mainWindow.Show();
 
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        var settingsManager = AppHost!.Services.GetRequiredService<SettingsManager>();
+        SettingsManager settingsManager = AppHost!.Services.GetRequiredService<SettingsManager>();
         settingsManager.SaveSettings(null!);
         AppHost.StopAsync();
         AppHost.Dispose();

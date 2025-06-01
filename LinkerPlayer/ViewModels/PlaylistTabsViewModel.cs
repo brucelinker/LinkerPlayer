@@ -22,7 +22,7 @@ using System.Windows.Controls;
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class PlaylistTabsViewModel : BaseViewModel
+public partial class PlaylistTabsViewModel : ObservableObject
 {
     [ObservableProperty] private PlaylistTab? _selectedTab;
     [ObservableProperty] private int _selectedTabIndex;
@@ -30,6 +30,7 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     [ObservableProperty] private PlaybackState _state;
     [ObservableProperty] private ObservableCollection<PlaylistTab> _tabList = [];
 
+    private readonly SharedDataModel _sharedDataModel;
     private readonly SettingsManager _settingsManager;
     private TabControl? _tabControl;
     private DataGrid? _dataGrid;
@@ -44,9 +45,10 @@ public partial class PlaylistTabsViewModel : BaseViewModel
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
     private static int _count;
 
-    public PlaylistTabsViewModel(SettingsManager settingsManager)
+    public PlaylistTabsViewModel(SharedDataModel sharedDataModel, SettingsManager settingsManager)
     {
         Log.Information($"PLAYLISTTABSVIEWMODEL - {++_count}");
+        _sharedDataModel = sharedDataModel;
         _settingsManager = settingsManager;
         _shuffleMode = _settingsManager.Settings.ShuffleMode;
 
@@ -59,6 +61,30 @@ public partial class PlaylistTabsViewModel : BaseViewModel
         {
             OnShuffleChanged(m.Value);
         });
+    }
+
+    //public int SelectedPlaylistIndex
+    //{
+    //    get => _sharedDataModel.SelectedPlaylistIndex;
+    //    set => _sharedDataModel.UpdateSelectedPlaylistIndex(value);
+    //}
+
+    public int SelectedTrackIndex
+    {
+        get => _sharedDataModel.SelectedTrackIndex;
+        set => _sharedDataModel.UpdateSelectedTrackIndex(value);
+    }
+
+    public MediaFile? SelectedTrack
+    {
+        get => _sharedDataModel.SelectedTrack;
+        set => _sharedDataModel.UpdateSelectedTrack(value!);
+    }
+
+    public MediaFile? ActiveTrack
+    {
+        get => _sharedDataModel.ActiveTrack;
+        set => _sharedDataModel.UpdateActiveTrack(value!);
     }
 
     public void OnDataGridLoaded(object sender, RoutedEventArgs _)
