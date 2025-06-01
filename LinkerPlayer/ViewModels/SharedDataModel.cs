@@ -6,15 +6,9 @@ namespace LinkerPlayer.ViewModels;
 
 public partial class SharedDataModel : ObservableRecipient
 {
-    [ObservableProperty] private int _selectedPlaylistIndex;
     [ObservableProperty] private int _selectedTrackIndex;
     [ObservableProperty] private MediaFile? _selectedTrack;
     [ObservableProperty] private MediaFile? _activeTrack;
-
-    public void UpdateSelectedPlaylistIndex(int newIndex)
-    {
-        Application.Current.Dispatcher.Invoke(() => SelectedPlaylistIndex = newIndex);
-    }
 
     public void UpdateSelectedTrackIndex(int newIndex)
     {

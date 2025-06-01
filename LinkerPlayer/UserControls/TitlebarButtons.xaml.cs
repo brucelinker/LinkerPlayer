@@ -1,7 +1,6 @@
 ﻿using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace LinkerPlayer.UserControls;
@@ -47,8 +46,7 @@ public partial class TitlebarButtons
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        Window? win = Window.GetWindow(this);
-        if (win != null) win.Close();
+        Application.Current.Shutdown();
     }
 
     private void TitlebarButtons_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)

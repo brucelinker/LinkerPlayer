@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RestoreWindowPlace;
 using Serilog;
-using System;
 using System.Windows;
 
 namespace LinkerPlayer;

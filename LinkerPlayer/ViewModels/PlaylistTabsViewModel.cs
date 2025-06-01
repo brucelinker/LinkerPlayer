@@ -5,7 +5,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.Win32;
-using Newtonsoft.Json.Linq;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
 using Serilog;
@@ -62,12 +61,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
             OnShuffleChanged(m.Value);
         });
     }
-
-    //public int SelectedPlaylistIndex
-    //{
-    //    get => _sharedDataModel.SelectedPlaylistIndex;
-    //    set => _sharedDataModel.UpdateSelectedPlaylistIndex(value);
-    //}
 
     public int SelectedTrackIndex
     {
