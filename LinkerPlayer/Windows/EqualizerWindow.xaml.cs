@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
@@ -7,6 +8,7 @@ using LinkerPlayer.ViewModels;
 using Serilog;
 using System;
 using System.Linq;
+using System.Printing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -15,8 +17,10 @@ using System.Windows.Media.Animation;
 
 namespace LinkerPlayer.Windows;
 
+[ObservableObject]
 public partial class EqualizerWindow
 {
+    [ObservableProperty] private string _selectedPresetName = FlatPreset;
     private Preset? _selectedPreset;
     private const string FlatPreset = "Flat";
 
@@ -36,13 +40,13 @@ public partial class EqualizerWindow
         _audioEngine = audioEngine;
 
         _equalizerViewModel.LoadFromJson();
-        UpdatePresets();
 
         EqSwitch.Switched += OnEqSwitched;
         this.Closed += Window_Closed!;
 
         _settingsManager = settingsManager;
         EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
+        UpdatePresets(_settingsManager.Settings.EqualizerPresetName);
 
         WeakReferenceMessenger.Default.Register<OpenNewPopupMessage>(this, (_, _) =>
         {
@@ -153,6 +157,9 @@ public partial class EqualizerWindow
                 }
 
                 ButtonsSetEnabledState(true);
+
+                _settingsManager.Settings.EqualizerPresetName = _selectedPreset.Name!;
+                _settingsManager.SaveSettings(nameof(AppSettings.EqualizerPresetName));
 
                 Log.Information("Profile has been selected");
             }
