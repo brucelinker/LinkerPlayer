@@ -86,7 +86,7 @@ public abstract class MusicLibrary
     private static void RemoveDuplicatesFromMainLibrary()
     {
         List<MediaFile?> duplicates = MainLibrary
-            .GroupBy(item => new { item!.FileName, item.Album, item.Duration })
+            .GroupBy(item => new { item!.Path, item.Album, item.Duration })
             .Where(group => group.Count() > 1)
             .SelectMany(group => group)
             .ToList();
@@ -94,7 +94,7 @@ public abstract class MusicLibrary
         int count = 0;
         foreach (MediaFile? item in duplicates)
         {
-            Log.Information($"Duplicate: {item!.FileName}, {item.Album}, {item.Duration}");
+            Log.Information($"Duplicate: {item!.Path}, {item.Album}, {item.Duration}");
             ++count;
 
             MainLibrary.Remove(item);
@@ -106,7 +106,7 @@ public abstract class MusicLibrary
     public static MediaFile? IsTrackAlreadyInLibrary(MediaFile mediaFile)
     {
         MediaFile? mFile = MainLibrary.Find(s =>
-            s!.FileName == mediaFile.FileName &&
+            s!.Path == mediaFile.Path &&
             s.Album == mediaFile.Album &&
             s.Duration == mediaFile.Duration);
 

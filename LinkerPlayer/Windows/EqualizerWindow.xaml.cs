@@ -46,11 +46,95 @@ public partial class EqualizerWindow
         _settingsManager = settingsManager;
         EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
         UpdatePresetsComboBox(_settingsManager.Settings.EqualizerPresetName);
+        Preset? preset = _equalizerViewModel.EqPresets!
+            .FirstOrDefault(n => n.Name == _settingsManager.Settings.EqualizerPresetName);
+
+        ApplyPreset(preset ?? _equalizerViewModel.EqPresets[0]);
 
         WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
         {
             OnMainWindowClosing();
         });
+    }
+
+    private void OnEqSwitched(object? sender, EventArgs e)
+    {
+        _audioEngine.EqEnabled = EqSwitch.IsOn;
+
+        if (EqSwitch.IsOn)
+        {
+            ControlsSetEnabledState(true);
+
+            if (_audioEngine.IsPlaying)
+            {
+                _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);
+            }
+        }
+        else
+        {
+            ControlsSetEnabledState(false);
+
+            if (_audioEngine.IsPlaying)
+            {
+                _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);
+            }
+        }
+
+        _settingsManager.Settings.EqualizerEnabled = EqSwitch.IsOn;
+        _settingsManager.SaveSettings(nameof(AppSettings.EqualizerEnabled));
+    }
+
+    private void Presets_SelectionChanged(object sender, RoutedEventArgs e)
+    {
+        if (EqSwitch.IsOn)
+        {
+            _selectedPreset =
+                _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets_ComboBox.SelectedItem as string)!;
+
+            ApplyPreset(_selectedPreset);
+        }
+    }
+
+    private void ApplyPreset(Preset preset)
+    {
+
+        if (preset is { EqualizerBands: not null } && preset.EqualizerBands.Any())
+        {
+            _audioEngine.SetBandsList(preset.EqualizerBands);
+
+            for (int i = 0; i < preset.EqualizerBands!.Count; i++)
+            {
+                AnimationChangingSliderValue(i, preset.EqualizerBands![i].Gain);
+            }
+
+            // We only want to save the preset name if the switch is on
+            if (EqSwitch.IsOn)
+            {
+                _settingsManager.Settings.EqualizerPresetName = preset.Name!;
+                _settingsManager.SaveSettings(nameof(AppSettings.EqualizerPresetName));
+            }
+
+            Log.Information("Profile has been selected");
+        }
+    }
+
+    private void UpdatePresetsComboBox(string presetNameToSelect = null!)
+    {
+        Presets_ComboBox.Items.Clear();
+
+        foreach (Preset preset in _equalizerViewModel.EqPresets!)
+        {
+            Presets_ComboBox.Items.Add(preset.Name);
+        }
+
+        if (presetNameToSelect != null!)
+        {
+            Presets_ComboBox.SelectedItem = presetNameToSelect;
+        }
+        else if (!Presets_ComboBox.Items.IsEmpty)
+        {
+            Presets_ComboBox.SelectedItem = FlatPreset;
+        }
     }
 
     private void SetBand(int index, float value)
@@ -70,6 +154,45 @@ public partial class EqualizerWindow
     private string FormatLabel(float value)
     {
         return value > 0 ? value.ToString("+0.0") : value.ToString("0.0");
+    }
+
+    private void NewPopupTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            string popupTextBoxText = NewPopupTextBox.Text.Trim();
+
+            if (!string.IsNullOrEmpty(popupTextBoxText))
+            {
+                if (_equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
+                {
+                    Preset bandsSettings = new()
+                    {
+                        Name = popupTextBoxText,
+                        EqualizerBands = _audioEngine.GetBandsList()
+                    };
+
+                    _equalizerViewModel.EqPresets!.Add(bandsSettings);
+
+                    Log.Information("New preset created");
+
+                    _equalizerViewModel.SaveEqPresets();
+
+                    _selectedPreset = bandsSettings;
+
+                    UpdatePresetsComboBox(bandsSettings.Name);
+                }
+
+                NewPopupTextBox.Text = "";
+                NewPopup.IsOpen = false;
+            }
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            NewPopupTextBox.Text = "";
+            NewPopup.IsOpen = false;
+        }
     }
 
     private void NewButton_Click(object sender, RoutedEventArgs e)
@@ -147,70 +270,24 @@ public partial class EqualizerWindow
         UpdatePresetsComboBox(FlatPreset);
     }
 
-    private void Presets_SelectionChanged(object sender, RoutedEventArgs e)
-    {
-        if (EqSwitch.IsOn)
-        {
-            _selectedPreset = _equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == Presets_ComboBox.SelectedItem as string)!;
-
-            if (_selectedPreset is { EqualizerBands: not null } && _selectedPreset.EqualizerBands.Any())
-            {
-                _audioEngine.SetBandsList(_selectedPreset.EqualizerBands);
-
-                for (int i = 0; i < _selectedPreset.EqualizerBands!.Count; i++)
-                {
-                    AnimationChangingSliderValue(i, _selectedPreset.EqualizerBands![i].Gain);
-                }
-
-                ButtonsSetEnabledState(true);
-
-                _settingsManager.Settings.EqualizerPresetName = _selectedPreset.Name!;
-                _settingsManager.SaveSettings(nameof(AppSettings.EqualizerPresetName));
-
-                Log.Information("Profile has been selected");
-            }
-        }
-    }
-
-    private void UpdatePresetsComboBox(string bandNameToSelect = null!)
-    {
-        Presets_ComboBox.Items.Clear();
-
-        foreach (Preset preset in _equalizerViewModel.EqPresets!)
-        {
-            Presets_ComboBox.Items.Add(preset.Name);
-        }
-
-        if (bandNameToSelect != null!)
-        {
-            Presets_ComboBox.SelectedItem = bandNameToSelect;
-        }
-        else if (!Presets_ComboBox.Items.IsEmpty)
-        {
-            Presets_ComboBox.SelectedItem = Presets_ComboBox.Items[0];
-        }
-    }
-
-    private void SliderSetEnabledState(bool state)
-    {
-        Preset? bandsSettings = _equalizerViewModel.EqPresets!.FirstOrDefault();
-
-        if (bandsSettings == null) { return; }
-
-        for (int i = 0; i < bandsSettings.EqualizerBands!.Count; i++)
-        {
-            Slider slider = (Slider)EqGrid.FindName($"Slider{i}")!;
-            slider.IsEnabled = state;
-        }
-    }
-
-    private void ButtonsSetEnabledState(bool state)
+    private void ControlsSetEnabledState(bool state)
     {
         if (_selectedPreset == null) { return; }
+        Presets_ComboBox.IsEnabled = state;
         NewButton.IsEnabled = state;
         SaveButton.IsEnabled = !_selectedPreset.Locked && state;
         DeleteButton.IsEnabled = !_selectedPreset.Locked && state;
         ResetButton.IsEnabled = state;
+
+        Preset? presets = _equalizerViewModel.EqPresets!.FirstOrDefault();
+
+        if (presets == null) { return; }
+
+        for (int i = 0; i < presets.EqualizerBands!.Count; i++)
+        {
+            Slider slider = (Slider)EqGrid.FindName($"Slider{i}")!;
+            slider.IsEnabled = state;
+        }
     }
 
     private void AnimationChangingSliderValue(int index, float to)
@@ -249,9 +326,6 @@ public partial class EqualizerWindow
 
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
-        SliderSetEnabledState(EqSwitch.IsOn);
-        ButtonsSetEnabledState(EqSwitch.IsOn);
-
         Log.Information("Sliders was created");
     }
 
@@ -277,94 +351,5 @@ public partial class EqualizerWindow
         Window? win = GetWindow(this);
 
         win?.Hide();
-    }
-
-    // CloseBox button
-    //private void ButtonMouseEnter(object sender, MouseEventArgs e)
-    //{
-    //    ((sender as Button)?.Content as Image)!.Opacity = 1;
-    //}
-
-    // CloseBox button
-    //private void ButtonMouseLeave(object sender, MouseEventArgs e)
-    //{
-    //    (((sender as Button)?.Content as Image)!).Opacity = 0.6;
-    //}
-
-    private void OnEqSwitched(object? sender, EventArgs e)
-    {
-        WeakReferenceMessenger.Default.Send(new EqualizerIsOnMessage(EqSwitch.IsOn));
-
-        if (EqSwitch.IsOn)
-        {
-            if (_audioEngine.PathToMusic != null)
-            {
-                _audioEngine.InitializeEqualizer();
-
-                if (_audioEngine.IsPlaying)
-                {
-                    _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);
-                }
-
-                Presets_SelectionChanged(null!, null!);
-
-                SliderSetEnabledState(true);
-                ButtonsSetEnabledState(true);
-            }
-        }
-        else
-        {
-            if (_audioEngine.IsPlaying)
-            {
-                _audioEngine.StopAndPlayFromPosition(_audioEngine.CurrentTrackPosition);
-            }
-
-            SliderSetEnabledState(false);
-            ButtonsSetEnabledState(false);
-
-            ResetSliders();
-        }
-
-        _settingsManager.Settings.EqualizerEnabled = EqSwitch.IsOn;
-        _settingsManager.SaveSettings(nameof(AppSettings.EqualizerEnabled));
-    }
-
-    private void NewPopupTextBox_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Enter)
-        {
-            string popupTextBoxText = NewPopupTextBox.Text.Trim();
-
-            if (!string.IsNullOrEmpty(popupTextBoxText))
-            {
-                if (_equalizerViewModel.EqPresets!.FirstOrDefault(n => n.Name == popupTextBoxText) == null)
-                {
-                    Preset bandsSettings = new()
-                    {
-                        Name = popupTextBoxText,
-                        EqualizerBands = _audioEngine.GetBandsList()
-                    };
-
-                    _equalizerViewModel.EqPresets!.Add(bandsSettings);
-
-                    Log.Information("New preset created");
-
-                    _equalizerViewModel.SaveEqPresets();
-
-                    _selectedPreset = bandsSettings;
-
-                    UpdatePresetsComboBox(bandsSettings.Name);
-                }
-
-                NewPopupTextBox.Text = "";
-                NewPopup.IsOpen = false;
-            }
-        }
-
-        if (e.Key == Key.Escape)
-        {
-            NewPopupTextBox.Text = "";
-            NewPopup.IsOpen = false;
-        }
     }
 }

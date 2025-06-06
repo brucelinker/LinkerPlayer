@@ -13,8 +13,7 @@ namespace LinkerPlayer.Audio;
 public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
     [ObservableProperty] private bool _isBassInitialized;
-    private int _currentStream;
-
+    [ObservableProperty] private int _currentStream;
     [ObservableProperty] private string _pathToMusic = string.Empty;
     [ObservableProperty] private double _currentTrackLength;
     [ObservableProperty] private double _currentTrackPosition;
@@ -23,6 +22,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
+
 
     private readonly List<EqualizerBandSettings> _equalizerBands =
     [
@@ -42,14 +42,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     private int[] _eqFxHandles = [];
     private int _endSyncHandle;
 
-    //public static AudioEngine Instance => _instance.Value;
-
-    // ReSharper disable once InconsistentlySynchronizedField
     public bool IsInitialized => IsBassInitialized;
 
     public event Action? OnPlaybackStopped;
     public event Action<float[]>? OnFftCalculated;
 
+    public bool EqEnabled;
     public bool IsEqualizerInitialized => _eqInitialized;
 
     public float[] FftUpdate { get; private set; }
@@ -125,7 +123,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public double GetDecibelLevel()
     {
-        int level = Bass.ChannelGetLevel(_currentStream);
+        int level = Bass.ChannelGetLevel(CurrentStream);
         if (level == -1)
         {
             //Log.Information("Decibel Level: Unknown (no level data)");
@@ -150,9 +148,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     partial void OnMusicVolumeChanged(float value)
     {
-        if (_currentStream != 0)
+        if (CurrentStream != 0)
         {
-            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, value);
+            Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, value);
             //Log.Information($"Volume set to: {_musicVolume}");
         }
 
@@ -166,35 +164,35 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _positionTimer.Stop();
     }
 
-    public void LoadAudioFile(string pathToMusic, double position = 0)
+    public void LoadAudioFile(string pathToMusic)
     {
-        Log.Information($"Loading audio file: {pathToMusic} at position {position}");
+//        Log.Information($"Loading audio file: {pathToMusic} at position {position}");
 
-        _currentStream = Bass.CreateStream(pathToMusic, Flags: BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
-        if (_currentStream == 0)
+        CurrentStream = Bass.CreateStream(pathToMusic, Flags: BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
+        if (CurrentStream == 0)
         {
             Log.Error($"Failed to create decode stream: {Bass.LastError}");
             return;
         }
 
-        _currentStream = BassFx.TempoCreate(_currentStream, BassFlags.Default);
-        if (_currentStream == 0)
+        CurrentStream = BassFx.TempoCreate(CurrentStream, BassFlags.Default);
+        if (CurrentStream == 0)
         {
             Log.Error($"Failed to create tempo stream: {Bass.LastError}");
             return;
         }
 
-        long lengthBytes = Bass.ChannelGetLength(_currentStream);
+        long lengthBytes = Bass.ChannelGetLength(CurrentStream);
         if (lengthBytes < 0)
         {
             Log.Error($"Failed to get track length: {Bass.LastError}");
-            Bass.StreamFree(_currentStream);
-            _currentStream = 0;
+            Bass.StreamFree(CurrentStream);
+            CurrentStream = 0;
             _eqFxHandles = [];
             _eqInitialized = false;
             return;
         }
-        CurrentTrackLength = Bass.ChannelBytes2Seconds(_currentStream, lengthBytes);
+        CurrentTrackLength = Bass.ChannelBytes2Seconds(CurrentStream, lengthBytes);
         Log.Information($"Track length set to {CurrentTrackLength} seconds");
 
         CurrentTrackPosition = 0;
@@ -216,7 +214,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         //Log.Information($"Play method called for {pathToMusic} at position {position}");
 
-        PlaybackState playbackState = Bass.ChannelIsActive(_currentStream);
+        PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
         if (!string.IsNullOrEmpty(pathToMusic) && playbackState == PlaybackState.Paused)
         {
             ResumePlay();
@@ -225,34 +223,46 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         Stop();
 
-        LoadAudioFile(pathToMusic, position);
+        LoadAudioFile(pathToMusic);
 
-        if (_currentStream != 0)
+        if (CurrentStream != 0)
         {
-            _endSyncHandle = Bass.ChannelSetSync(_currentStream, SyncFlags.End, 0, EndTrackSyncProc);
+            _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
             if (_endSyncHandle == 0)
             {
                 Log.Error($"Failed to set end-of-track sync: {Bass.LastError}");
             }
 
-            InitializeEqualizer();
-            foreach (EqualizerBandSettings band in _equalizerBands)
+            if (EqEnabled)
             {
-                SetBandGain(band.Frequency, band.Gain);
+                InitializeEqualizer();
+                foreach (EqualizerBandSettings band in _equalizerBands)
+                {
+                    SetBandGain(band.Frequency, band.Gain);
+                }
+            }
+            
+            if (CurrentStream != 0)
+            {
+                long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
+                if (Bass.ChannelSetPosition(CurrentStream, bytePosition))
+                {
+                    Bass.ChannelPlay(CurrentStream);
+                }
             }
 
-            if (!Bass.ChannelPlay(_currentStream))
+            if (!Bass.ChannelPlay(CurrentStream))
             {
                 Log.Error($"Failed to play stream: {Bass.LastError}");
                 return;
             }
-            //Log.Information($"Playing stream: {_currentStream}");
-            //var state = Bass.ChannelIsActive(_currentStream);
+            //Log.Information($"Playing stream: {CurrentStream}");
+            //var state = Bass.ChannelIsActive(CurrentStream);
             //Log.Information($"Stream state after play: {state}");
             IsPlaying = true;
             //Log.Information("Playback started successfully");
 
-            Bass.ChannelSetAttribute(_currentStream, ChannelAttribute.Volume, MusicVolume);
+            Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, MusicVolume);
         }
         else
         {
@@ -262,17 +272,17 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Stop()
     {
-        if (_currentStream != 0)
+        if (CurrentStream != 0)
         {
             if (_endSyncHandle != 0)
             {
-                Bass.ChannelRemoveSync(_currentStream, _endSyncHandle);
+                Bass.ChannelRemoveSync(CurrentStream, _endSyncHandle);
                 _endSyncHandle = 0;
             }
 
-            Bass.ChannelStop(_currentStream);
-            Bass.StreamFree(_currentStream);
-            _currentStream = 0;
+            Bass.ChannelStop(CurrentStream);
+            Bass.StreamFree(CurrentStream);
+            CurrentStream = 0;
             _eqFxHandles = [];
             _eqInitialized = false;
             //Log.Information("Stream stopped and freed");
@@ -285,9 +295,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Pause()
     {
-        if (_currentStream != 0 && IsPlaying)
+        if (CurrentStream != 0 && IsPlaying)
         {
-            if (!Bass.ChannelPause(_currentStream))
+            if (!Bass.ChannelPause(CurrentStream))
             {
                 Log.Error($"Failed to pause stream: {Bass.LastError}");
                 return;
@@ -299,19 +309,19 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void ResumePlay()
     {
-        if (_currentStream != 0 && !IsPlaying)
+        if (CurrentStream != 0 && !IsPlaying)
         {
-            if (!Bass.ChannelPlay(_currentStream))
+            if (!Bass.ChannelPlay(CurrentStream))
             {
                 Log.Error($"Failed to resume stream: {Bass.LastError}");
                 return;
             }
             Log.Information("Stream resumed");
-            PlaybackState state = Bass.ChannelIsActive(_currentStream);
+            PlaybackState state = Bass.ChannelIsActive(CurrentStream);
             Log.Information($"Stream state after resume: {state}");
             IsPlaying = true;
 
-            _endSyncHandle = Bass.ChannelSetSync(_currentStream, SyncFlags.End, 0, EndTrackSyncProc);
+            _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
             if (_endSyncHandle == 0)
             {
                 Log.Error($"Failed to set end-of-track sync: {Bass.LastError}");
@@ -330,7 +340,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void SeekAudioFile(double position)
     {
-        if (_currentStream == 0)
+        if (CurrentStream == 0)
         {
             Log.Error("Cannot seek: Current stream is invalid");
             return;
@@ -342,30 +352,30 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        PlaybackState playbackState = Bass.ChannelIsActive(_currentStream);
+        PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
         bool wasPlaying = playbackState == PlaybackState.Playing;
         if (wasPlaying)
         {
-            if (!Bass.ChannelPause(_currentStream))
+            if (!Bass.ChannelPause(CurrentStream))
             {
                 Log.Error($"Failed to pause stream before seek: {Bass.LastError}");
             }
         }
 
-        long bytePosition = Bass.ChannelSeconds2Bytes(_currentStream, position);
+        long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
         if (bytePosition < 0)
         {
             Log.Error($"Failed to convert position {position} to bytes: {Bass.LastError}");
             return;
         }
 
-        if (!Bass.ChannelSetPosition(_currentStream, bytePosition))
+        if (!Bass.ChannelSetPosition(CurrentStream, bytePosition))
         {
             Log.Error($"Failed to seek to position {position}: {Bass.LastError}");
             return;
         }
 
-        double actualPosition = Bass.ChannelBytes2Seconds(_currentStream, Bass.ChannelGetPosition(_currentStream));
+        double actualPosition = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
         if (double.IsNaN(actualPosition) || actualPosition < 0)
         {
             Log.Error($"Invalid position after seek: {actualPosition}");
@@ -376,7 +386,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         if (wasPlaying)
         {
-            if (!Bass.ChannelPlay(_currentStream))
+            if (!Bass.ChannelPlay(CurrentStream))
             {
                 Log.Error($"Failed to resume stream after seek: {Bass.LastError}");
             }
@@ -414,14 +424,14 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    public void InitializeEqualizer()
+    public bool InitializeEqualizer()
     {
         _eqInitialized = false;
 
-        if (_currentStream == 0)
+        if (CurrentStream == 0)
         {
             //Log.Error("Cannot initialize equalizer: No stream loaded");
-            return;
+            return false;
         }
 
         if (_eqFxHandles.Length > 0)
@@ -429,7 +439,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             foreach (int fxHandle in _eqFxHandles)
             {
                 if (fxHandle != 0)
-                    Bass.ChannelRemoveFX(_currentStream, fxHandle);
+                    Bass.ChannelRemoveFX(CurrentStream, fxHandle);
             }
         }
 
@@ -437,7 +447,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         for (int i = 0; i < _equalizerBands.Count; i++)
         {
             float freq = _equalizerBands[i].Frequency;
-            int fxHandle = Bass.ChannelSetFX(_currentStream, EffectType.PeakEQ, 0);
+            int fxHandle = Bass.ChannelSetFX(CurrentStream, EffectType.PeakEQ, 0);
             if (fxHandle == 0)
             {
                 Log.Error($"Failed to set FX for {freq}Hz: {Bass.LastError}");
@@ -457,7 +467,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             if (!Bass.FXSetParameters(fxHandle, eqParams))
             {
                 Log.Error($"Failed to set EQ params for {freq}Hz: {Bass.LastError}");
-                Bass.ChannelRemoveFX(_currentStream, fxHandle);
+                Bass.ChannelRemoveFX(CurrentStream, fxHandle);
                 _eqFxHandles[i] = 0;
             }
 
@@ -465,6 +475,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
 
         _eqInitialized = true;
+
+        return true;
     }
 
     public List<EqualizerBandSettings> GetBandsList()
@@ -492,7 +504,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void SetBandGain(float frequency, float gain)
     {
-        if (!_eqInitialized || _eqFxHandles.Length == 0 || _currentStream == 0)
+        if (!_eqInitialized || _eqFxHandles.Length == 0 || CurrentStream == 0)
         {
             Log.Warning("SetBandGain skipped: EQ not initialized or stream invalid.");
             return;
@@ -531,7 +543,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return false;
         }
 
-        if (_currentStream == 0)
+        if (CurrentStream == 0)
         {
             Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
             return false;
@@ -543,7 +555,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return true;
         }
 
-        int bytesRead = Bass.ChannelGetData(_currentStream, fftDataBuffer, (int)DataFlags.FFT2048);
+        int bytesRead = Bass.ChannelGetData(CurrentStream, fftDataBuffer, (int)DataFlags.FFT2048);
         if (bytesRead < 0)
         {
             Log.Error($"GetFftData: Failed to get FFT data: {Bass.LastError}");
@@ -565,15 +577,15 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private void HandleFftCalculated()
     {
-        if (_currentStream != 0)
+        if (CurrentStream != 0)
         {
-            double positionSeconds = Bass.ChannelBytes2Seconds(_currentStream, Bass.ChannelGetPosition(_currentStream));
+            double positionSeconds = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
             if (!double.IsNaN(positionSeconds) && positionSeconds >= 0)
             {
                 CurrentTrackPosition = positionSeconds;
             }
 
-            PlaybackState state = Bass.ChannelIsActive(_currentStream);
+            PlaybackState state = Bass.ChannelIsActive(CurrentStream);
             if (state != PlaybackState.Playing)
             {
                 Log.Information("HandleFftCalculated: Stream not playing, skipping FFT");
@@ -586,7 +598,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        int bytesRead = Bass.ChannelGetData(_currentStream, _fftBuffer, (int)DataFlags.FFT2048);
+        int bytesRead = Bass.ChannelGetData(CurrentStream, _fftBuffer, (int)DataFlags.FFT2048);
         if (bytesRead < 0)
         {
             Log.Error($"HandleFftCalculated: Failed to get FFT data: {Bass.LastError}");

@@ -14,7 +14,7 @@ public partial class EqualizerViewModel : ObservableObject
     private readonly AudioEngine _audioEngine;
     private readonly string _jsonFilePath;
 
-    public ObservableCollection<Preset>? EqPresets;
+    [ObservableProperty] private static ObservableCollection<Preset> _eqPresets = [];
 
     public EqualizerViewModel(AudioEngine audioEngine)
     {
@@ -36,7 +36,12 @@ public partial class EqualizerViewModel : ObservableObject
     [ObservableProperty] private float _band7;
     [ObservableProperty] private float _band8;
     [ObservableProperty] private float _band9;
-    
+
+    partial void OnEqPresetsChanged(ObservableCollection<Preset> value)
+    {
+        Log.Information($"OnEqPresetChanged: {value}");
+    }
+
     partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
     partial void OnBand1Changed(float value) { _audioEngine.SetBandGain(64.0f, value); }
     partial void OnBand2Changed(float value) { _audioEngine.SetBandGain(125.0f, value); }
@@ -63,7 +68,7 @@ public partial class EqualizerViewModel : ObservableObject
         {
             string jsonString = File.ReadAllText(_jsonFilePath);
 
-            EqPresets = JsonConvert.DeserializeObject<ObservableCollection<Preset>>(jsonString);
+            EqPresets = JsonConvert.DeserializeObject<ObservableCollection<Preset>>(jsonString)!;
 
             if (EqPresets == null)
             {
@@ -78,14 +83,5 @@ public partial class EqualizerViewModel : ObservableObject
             Directory.CreateDirectory(Path.GetDirectoryName(_jsonFilePath)!);
             File.Create(_jsonFilePath).Close();
         }
-    }
-
-    public void SaveToJson()
-    {
-        JsonSerializerSettings settings = new() { TypeNameHandling = TypeNameHandling.Auto };
-        string json = JsonConvert.SerializeObject(EqPresets, Formatting.Indented, settings);
-        File.WriteAllText(_jsonFilePath, json);
-
-        Log.Information("Saved EqPresets to json");
     }
 }
