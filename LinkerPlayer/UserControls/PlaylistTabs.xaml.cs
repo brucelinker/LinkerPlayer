@@ -42,7 +42,7 @@ public partial class PlaylistTabs
         }
         else
         {
-            Serilog.Log.Error("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType()?.FullName ?? "null");
+            Serilog.Log.Error("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
         }
     }
 
@@ -105,65 +105,73 @@ public partial class PlaylistTabs
 
     private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.NewPlaylist();
+                await viewModel.NewPlaylistAsync();
             }
-        }, null);
+        });
     }
 
-    private void MenuItem_LoadPlaylist(object sender, RoutedEventArgs e)
+    private void MenuItem_LoadPlaylistAsync(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.LoadPlaylist();
+                await viewModel.LoadPlaylistAsync();
             }
-        }, null);
+        });
     }
 
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
     {
         this.Dispatcher.BeginInvoke((Action)delegate
         {
-            _selectedEditableTabHeaderControl?.SetEditMode(true);
+            if (_selectedEditableTabHeaderControl != null)
+            {
+                _selectedEditableTabHeaderControl.SetEditMode(true);
+                // Pass PlaylistTab to enable command binding
+                if (_selectedEditableTabHeaderControl.DataContext is PlaylistTab tab && DataContext is PlaylistTabsViewModel viewModel)
+                {
+                    _selectedEditableTabHeaderControl.Tag = viewModel; // Store view model for command access
+                }
+            }
         }, null);
     }
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.RemovePlaylist(sender);
+                await viewModel.RemovePlaylistAsync(sender);
             }
-        }, null);
+        });
     }
 
     private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.AddFolder();
+                await viewModel.AddFolderAsync();
             }
-        }, null);
+        });
     }
 
     private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.AddFiles();
+                await viewModel.AddFilesAsync();
             }
-        }, null);
+        });
     }
 
     private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
@@ -179,24 +187,24 @@ public partial class PlaylistTabs
 
     private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.RemoveTrack();
+                await viewModel.RemoveTrackAsync();
             }
-        }, null);
+        });
     }
 
     private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        this.Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
-                viewModel.NewPlaylistFromFolder();
+                await viewModel.NewPlaylistFromFolderAsync();
             }
-        }, null);
+        });
     }
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -212,7 +220,7 @@ public partial class PlaylistTabs
         _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            viewModel.RightMouseDown_TabSelect((string)_selectedEditableTabHeaderControl.Content);
+            viewModel.RightMouseDownTabSelect((string)_selectedEditableTabHeaderControl.Content);
         }
     }
 

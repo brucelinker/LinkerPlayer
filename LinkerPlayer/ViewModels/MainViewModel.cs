@@ -2,6 +2,7 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using System.Threading.Tasks;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -50,7 +51,10 @@ public class MainViewModel : ObservableObject
     public void OnWindowClosing()
     {
         MusicLibrary.ClearPlayState();
-        MusicLibrary.SaveToJson();
+        Task.Run(async () =>
+        {
+            await MusicLibrary.SaveToDatabaseAsync();
+        }).Wait();
         _settingsManager.Settings.MainOutputDevice = _outputDeviceManager.GetCurrentDeviceName();
         _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
     }

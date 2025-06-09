@@ -5,10 +5,8 @@ namespace LinkerPlayer.Models;
 
 public partial class PlaylistTab : ObservableObject
 {
-    public string? Name { get; set; }
-
-    [ObservableProperty]
-    private ObservableCollection<MediaFile> _tracks = new();
-    public MediaFile? SelectedTrack;
-    public int? SelectedIndex;
+    [ObservableProperty] private string? _name;
+    [ObservableProperty] private ObservableCollection<MediaFile> _tracks = new();
+    [ObservableProperty] private MediaFile? _selectedTrack;
+    [ObservableProperty] private int? _selectedIndex;
 }
