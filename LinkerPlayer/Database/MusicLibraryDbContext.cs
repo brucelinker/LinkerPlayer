@@ -24,8 +24,11 @@ public class MusicLibraryDbContext : DbContext
             .HasIndex(p => p.Name)
             .IsUnique();
 
+        modelBuilder.Entity<Playlist>()
+            .Ignore(p => p.TrackIds); // Ignore TrackIds, use PlaylistTracks
+
         modelBuilder.Entity<PlaylistTrack>()
-            .HasKey(pt => new { pt.PlaylistId, pt.TrackId });
+            .HasKey(pt => new { pt.PlaylistId, pt.TrackId }); // Keep your key for now
 
         modelBuilder.Entity<PlaylistTrack>()
             .HasOne(pt => pt.Playlist)
@@ -45,7 +48,6 @@ public class MusicLibraryDbContext : DbContext
             .HasForeignKey(p => p.SelectedTrack)
             .OnDelete(DeleteBehavior.SetNull);
 
-        // Explicitly configure SelectedTrack as nullable
         modelBuilder.Entity<Playlist>()
             .Property(p => p.SelectedTrack)
             .IsRequired(false);

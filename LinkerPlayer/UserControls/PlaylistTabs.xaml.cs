@@ -207,6 +207,28 @@ public partial class PlaylistTabs
         });
     }
 
+    //private void OnDragOver(object sender, DragEventArgs e)
+    //{
+    //    this.Dispatcher.BeginInvoke( () =>
+    //    {
+    //        if (DataContext is PlaylistTabsViewModel viewModel)
+    //        {
+    //            viewModel.DragOverCommand.Execute(e);
+    //        }
+    //    });
+    //}
+
+    //private void OnDrop(object sender, DragEventArgs e)
+    //{
+    //    this.Dispatcher.BeginInvoke( () =>
+    //    {
+    //        if (DataContext is PlaylistTabsViewModel viewModel)
+    //        {
+    //            viewModel.DropCommand.Execute(e);
+    //        }
+    //    });
+    //}
+
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         this.Dispatcher.BeginInvoke((Action)delegate

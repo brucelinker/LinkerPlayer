@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -20,6 +21,7 @@
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
       <converters:IndexConverter x:Key="IndexConverter" />
+      <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
       <Style TargetType="TabControl">
         <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
@@ -222,6 +224,7 @@
           CanUserAddRows="False"
           CanUserDeleteRows="False"
           CanUserReorderColumns="True"
+          AllowDrop="True"
           EnableColumnVirtualization="False"
           EnableRowVirtualization="True"
           GridLinesVisibility="None"
@@ -240,6 +243,14 @@
           VerticalScrollBarVisibility="Visible"
           VirtualizingStackPanel.IsVirtualizing="True"
           VirtualizingStackPanel.VirtualizationMode="Recycling">
+          <i:Interaction.Triggers>
+            <i:EventTrigger EventName="DragOver">
+              <i:InvokeCommandAction Command="{Binding DataContext.DragOverCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
+            </i:EventTrigger>
+            <i:EventTrigger EventName="Drop">
+              <i:InvokeCommandAction Command="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
+            </i:EventTrigger>
+          </i:Interaction.Triggers>
           <DataGrid.Resources>
             <ResourceDictionary>
               <ResourceDictionary.MergedDictionaries>
@@ -483,7 +494,7 @@
     </ResourceDictionary>
   </UserControl.Resources>
 
-  <Grid>
+  <Grid AllowDrop="True">
     <TabControl
       Name="Tabs123"
       Grid.Row="0"
@@ -502,5 +513,16 @@
         </ContextMenu>
       </TabControl.ContextMenu>
     </TabControl>
+
+    <ProgressBar
+      Panel.ZIndex="1"
+      Visibility="{Binding IsProcessing, Converter={StaticResource BooleanToVisibilityConverter}}"
+      Minimum="0"
+      Maximum="{Binding TotalTracks}"
+      Value="{Binding ProcessedTracks}"
+      Height="20"
+      Margin="10"
+      VerticalAlignment="Bottom" />
   </Grid>
+
 </UserControl>
