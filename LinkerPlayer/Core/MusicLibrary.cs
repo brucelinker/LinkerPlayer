@@ -1,7 +1,10 @@
-﻿using LinkerPlayer.Database;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Database;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Internal;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -17,7 +20,7 @@ public class MusicLibrary
     private static readonly string DbPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "LinkerPlayer", "music_library.db");
-    private static readonly MusicLibraryDbContext _dbContext;
+    private static readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
     public static ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public static ObservableCollection<Playlist> Playlists { get; } = new();
     private static readonly string[] SupportedAudioExtensions = [".mp3", ".flac", ".wav"];
@@ -30,8 +33,11 @@ public class MusicLibrary
             var options = new DbContextOptionsBuilder<MusicLibraryDbContext>()
                 .UseSqlite($"Data Source={DbPath}")
                 .Options;
-            _dbContext = new MusicLibraryDbContext(options);
-            _dbContext.Database.EnsureCreated();
+            _dbContextFactory = new PooledDbContextFactory<MusicLibraryDbContext>(options);
+            using (var context = _dbContextFactory.CreateDbContext())
+            {
+                context.Database.EnsureCreated();
+            }
             LoadFromDatabaseAsync().GetAwaiter().GetResult();
         }
         catch (Exception ex)
@@ -41,42 +47,36 @@ public class MusicLibrary
         }
     }
 
+    //public static async Task ReloadLibraryAsync()
+    //{
+    //    try
+    //    {
+    //        await LoadFromDatabaseAsync();
+    //        WeakReferenceMessenger.Default.Send(new PlaylistsReloadedMessage());
+    //        Log.Information("Music library reloaded from database");
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Log.Error(ex, "Failed to reload music library");
+    //        throw;
+    //    }
+    //}
+
     public static async Task LoadFromDatabaseAsync()
     {
+        using var context = _dbContextFactory.CreateDbContext();
         try
         {
             Playlists.Clear();
-            using (var context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
-                .UseSqlite($"Data Source={DbPath}")
-                .Options))
-            {
-                var duplicateNames = await context.Playlists
-                    .GroupBy(p => p.Name)
-                    .Where(g => g.Count() > 1)
-                    .Select(g => g.Key)
-                    .ToListAsync();
-                foreach (var name in duplicateNames)
-                {
-                    var duplicates = await context.Playlists
-                        .Where(p => p.Name == name)
-                        .OrderBy(p => p.Id)
-                        .Skip(1)
-                        .ToListAsync();
-                    context.Playlists.RemoveRange(duplicates);
-                    Log.Information($"Removed {duplicates.Count} duplicate playlists named '{name}'");
-                }
-                await context.SaveChangesAsync();
-            }
-
             MainLibrary.Clear();
 
-            var tracks = await _dbContext.Tracks.AsNoTracking().ToListAsync();
+            var tracks = await context.Tracks.AsNoTracking().ToListAsync();
             foreach (var track in tracks)
             {
                 MainLibrary.Add(track);
             }
 
-            var playlists = await _dbContext.Playlists
+            var playlists = await context.Playlists
                 .Include(p => p.PlaylistTracks)
                 .ThenInclude(pt => pt!.Track)
                 .Include(p => p.SelectedTrackNavigation)
@@ -131,13 +131,10 @@ public class MusicLibrary
 
     public static async Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks)
     {
+        using var context = _dbContextFactory.CreateDbContext();
         try
         {
-            using var context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
-                .UseSqlite($"Data Source={DbPath}")
-                .Options);
-
-            context.ChangeTracker.AutoDetectChangesEnabled = false; // Optimize bulk inserts
+            context.ChangeTracker.AutoDetectChangesEnabled = false;
 
             foreach (var track in tracks)
             {
@@ -151,7 +148,7 @@ public class MusicLibrary
                 if (existingTrack == null)
                 {
                     context.Tracks.Add(track);
-                    MainLibrary.Add(track); // Ensure MainLibrary is updated
+                    MainLibrary.Add(track);
                 }
                 else
                 {
@@ -172,7 +169,7 @@ public class MusicLibrary
                     existingTrack.Copyright = track.Copyright;
                     existingTrack.Comment = track.Comment;
                     existingTrack.State = track.State;
-                    track.Id = existingTrack.Id; // Sync in-memory Id
+                    track.Id = existingTrack.Id;
                 }
             }
 
@@ -188,12 +185,9 @@ public class MusicLibrary
 
     public static async Task SaveToDatabaseAsync()
     {
+        using var context = _dbContextFactory.CreateDbContext();
         try
         {
-            using var context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
-                .UseSqlite($"Data Source={DbPath}")
-                .Options);
-
             Log.Information($"Using database file: {Path.GetFullPath(DbPath)}");
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
@@ -243,7 +237,7 @@ public class MusicLibrary
                     existingPlaylist.SelectedTrack = playlist.SelectedTrack != null && MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
                         ? playlist.SelectedTrack
                         : null;
-                    context.Entry(existingPlaylist).Property(p => p.SelectedTrack).IsModified = true; // Force update
+                    context.Entry(existingPlaylist).Property(p => p.SelectedTrack).IsModified = true;
                     context.Entry(existingPlaylist).State = EntityState.Modified;
                     context.PlaylistTracks.RemoveRange(existingPlaylist.PlaylistTracks);
                     playlist.Id = playlistId;
@@ -274,21 +268,21 @@ public class MusicLibrary
             context.ChangeTracker.AutoDetectChangesEnabled = true;
             Log.Information("Data saved to database");
 
-            // Verify database state
             var savedPlaylists = await context.Playlists.ToListAsync();
             foreach (var p in savedPlaylists)
             {
                 var trackIds = await context.PlaylistTracks
                     .Where(pt => pt.PlaylistId == p.Id)
+                    .OrderBy(pt => pt.Position)
                     .Select(pt => pt.TrackId)
                     .ToListAsync();
                 Log.Information($"Database state for playlist {p.Name} (Id {p.Id}): SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
             }
         }
-        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 19)
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
         {
-            Log.Error(ex, "Foreign key constraint violation while saving to database");
-            throw;
+            Log.Error(ex, "Database is locked while saving to database");
+            throw new InvalidOperationException("Database is locked. Please try again later.", ex);
         }
         catch (Exception ex)
         {
@@ -299,16 +293,17 @@ public class MusicLibrary
 
     public static async Task CleanOrphanedTracksAsync()
     {
+        using var context = _dbContextFactory.CreateDbContext();
         try
         {
-            var referencedTrackIds = await _dbContext!.PlaylistTracks.Select(pt => pt!.TrackId!).Distinct().ToListAsync();
-            var orphanedTracks = await _dbContext!.Tracks
+            var referencedTrackIds = await context.PlaylistTracks.Select(pt => pt!.TrackId!).Distinct().ToListAsync();
+            var orphanedTracks = await context.Tracks
                 .Where(t => !referencedTrackIds.Contains(t.Id))
                 .ToListAsync();
             if (orphanedTracks.Any())
             {
-                _dbContext!.Tracks.RemoveRange(orphanedTracks);
-                await _dbContext.SaveChangesAsync();
+                context.Tracks.RemoveRange(orphanedTracks);
+                await context.SaveChangesAsync();
                 Log.Information($"Removed {orphanedTracks.Count} orphaned tracks from database");
             }
         }
@@ -381,6 +376,7 @@ public class MusicLibrary
         var existingPlaylist = Playlists.FirstOrDefault(p => p.Name == playlistName);
         if (existingPlaylist != null)
         {
+            Log.Information($"Returning existing playlist {playlistName} with Id {existingPlaylist.Id}");
             return existingPlaylist;
         }
 
@@ -391,6 +387,7 @@ public class MusicLibrary
             SelectedTrack = null
         };
         await AddPlaylistAsync(playlist);
+        Log.Information($"Created new playlist {playlistName} with Id {playlist.Id}");
         return playlist;
     }
 
@@ -417,22 +414,31 @@ public class MusicLibrary
 
     public static async Task RemovePlaylistAsync(string playlistName)
     {
-        var playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
-        if (playlist != null)
+        using var context = _dbContextFactory.CreateDbContext();
+        try
         {
-            Playlists.Remove(playlist);
-            var dbPlaylist = await _dbContext.Playlists
-                .Include(p => p.PlaylistTracks)
-                .FirstOrDefaultAsync(p => p.Name == playlistName);
-            if (dbPlaylist != null)
+            var playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
+            if (playlist != null)
             {
-                _dbContext.PlaylistTracks!.RemoveRange(dbPlaylist!.PlaylistTracks!);
-                _dbContext.Playlists!.Remove(dbPlaylist);
-                await _dbContext.SaveChangesAsync();
-                Log.Information($"Removed playlist '{playlistName}' and {dbPlaylist!.PlaylistTracks!.Count} tracks from database");
+                Playlists.Remove(playlist);
+                var dbPlaylist = await context.Playlists
+                    .Include(p => p.PlaylistTracks)
+                    .FirstOrDefaultAsync(p => p.Name == playlistName);
+                if (dbPlaylist != null)
+                {
+                    context.PlaylistTracks!.RemoveRange(dbPlaylist!.PlaylistTracks!);
+                    context.Playlists!.Remove(dbPlaylist);
+                    await context.SaveChangesAsync();
+                    Log.Information($"Removed playlist '{playlistName}' and {dbPlaylist!.PlaylistTracks!.Count} tracks from database");
+                }
+                await CleanOrphanedTracksAsync();
+                Log.Information($"Playlist '{playlistName}' removed");
             }
-            await CleanOrphanedTracksAsync();
-            Log.Information($"Playlist '{playlistName}' removed");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"Failed to remove playlist '{playlistName}'");
+            throw;
         }
     }
 

@@ -495,6 +495,11 @@
   </UserControl.Resources>
 
   <Grid AllowDrop="True">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="25" />
+    </Grid.RowDefinitions>
+
     <TabControl
       Name="Tabs123"
       Grid.Row="0"
@@ -514,15 +519,22 @@
       </TabControl.ContextMenu>
     </TabControl>
 
-    <ProgressBar
-      Panel.ZIndex="1"
-      Visibility="{Binding IsProcessing, Converter={StaticResource BooleanToVisibilityConverter}}"
-      Minimum="0"
-      Maximum="{Binding TotalTracks}"
-      Value="{Binding ProcessedTracks}"
-      Height="20"
-      Margin="10"
-      VerticalAlignment="Bottom" />
+    <StatusBar DockPanel.Dock="Bottom" Height="25" Grid.Row="1">
+      <StatusBar.ItemsPanel>
+        <ItemsPanelTemplate>
+          <DockPanel LastChildFill="True"/>
+        </ItemsPanelTemplate>
+      </StatusBar.ItemsPanel>
+      <ProgressBar Value="{Binding ProcessedTracks}" 
+                   Maximum="{Binding TotalTracks}" 
+                   Visibility="{Binding IsProcessing, Converter={StaticResource BooleanToVisibilityConverter}}"
+                   Width="100" 
+                   Height="15" 
+                   Margin="5,0"/>
+      <TextBlock Text="{Binding CurrentTrack}" 
+                 VerticalAlignment="Center" 
+                 Margin="5,0"/>
+    </StatusBar>
   </Grid>
 
 </UserControl>
