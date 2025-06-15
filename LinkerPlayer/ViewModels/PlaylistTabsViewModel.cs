@@ -472,14 +472,16 @@ public partial class PlaylistTabsViewModel : ObservableObject
         SelectedPlaylist = GetSelectedPlaylist();
         if (SelectedPlaylist == null) return;
 
-        if (!string.IsNullOrEmpty(SelectedPlaylist.SelectedTrack))
+        if (!SelectedPlaylist.TrackIds.Any())
         {
-            SelectedPlaylist.SelectedTrack = SelectedPlaylist.TrackIds.FirstOrDefault();
+            SelectedPlaylist.SelectedTrack = null;
+            SelectedTrack = null;
+            SelectedTrackIndex = -1;
+            return;
         }
 
+        SelectedPlaylist.SelectedTrack = SelectedPlaylist.TrackIds.FirstOrDefault();
         SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x.Id == SelectedPlaylist.SelectedTrack);
-
-        if (SelectedTrack == null) return;
 
         MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack!.Id;
         if (_shuffleMode)
@@ -522,6 +524,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
             }
+        }
+        else
+        {
+            SelectedTab!.SelectedTrack = null;
+            SelectedTab.SelectedIndex = -1;
+            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
         }
     }
 
@@ -846,14 +854,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     Log.Information($"Selected track {track.Title} with Id {track.Id} in playlist {SelectedTab.Name} at index {SelectedTrackIndex}");
 
                     var musicFile = ActiveTrack ?? SelectedTrack;
-                    if (musicFile != null)
-                    {
-                        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
-                    }
-                    else
-                    {
-                        Log.Warning($"No valid music file for SelectedTrackChangedMessage in {SelectedTab.Name}");
-                    }
+                    //if (musicFile != null)
+                    //{
+                    WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
+                    //}
+                    //else
+                    //{
+                    //    Log.Warning($"No valid music file for SelectedTrackChangedMessage in {SelectedTab.Name}");
+                    //}
                     return;
                 }
             }

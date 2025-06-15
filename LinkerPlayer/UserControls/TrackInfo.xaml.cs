@@ -3,7 +3,6 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System;
@@ -33,8 +32,6 @@ public partial class TrackInfo
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
-            if (m.Value == null) return;
-
             OnSelectedTrackChanged(m.Value);
         });
     }
@@ -81,9 +78,16 @@ public partial class TrackInfo
         _defaultAlbumImage = new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
     }
 
-    public void SetActiveMediaFile(MediaFile mediaFile)
+    public void SetActiveMediaFile(MediaFile? mediaFile)
     {
         SelectedMediaFile = mediaFile;
+
+        if (mediaFile == null)
+        {
+            TrackImage.Source = DefaultAlbumImage;
+            TrackImageText.Text = "[ No Selection ]";
+            return;
+        }
 
         DisplayTrackImage(mediaFile);
 
