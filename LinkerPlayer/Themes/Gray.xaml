@@ -1,9 +1,9 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <Color x:Key="TitleBarForegroundColor">Black</Color>
-  <Color x:Key="TitleBarBackgroundColor">#A9A9A9</Color>
+  <Color x:Key="TitleBarBackgroundColor">#DEDEDE</Color>
 
-  <Color x:Key="MainWindowGradientStartColor">#A9A9A9</Color>
+  <Color x:Key="MainWindowGradientStartColor">#DEDEDE</Color>
   <Color x:Key="MainWindowGradientEndColor">#EEF1F5</Color>
   <Color x:Key="MainWindowBorderColor">#3E3E3E</Color>
 
@@ -20,9 +20,9 @@
 
   <Color x:Key="DefaultTextColor">Black</Color>
 
-  <Color x:Key="PlaylistTabForegroundColor">White</Color>
-  <Color x:Key="PlaylistTabBackgroundColor">DarkGray</Color>
-  <Color x:Key="PlaylistTabBorderColor">LightSteelBlue</Color>
+  <Color x:Key="PlaylistTabForegroundColor">Black</Color>
+  <Color x:Key="PlaylistTabBackgroundColor">#DEDEDE</Color>
+  <Color x:Key="PlaylistTabBorderColor">DarkGray</Color>
   <Color x:Key="PlaylistTabMouseOverForegroundColor">White</Color>
   <Color x:Key="PlaylistTabMouseOverBackgroundColor">White</Color>
   <Color x:Key="PlaylistTabSelectedForegroundColor">black</Color>
@@ -64,7 +64,7 @@
   <Color x:Key="ComboboxItemSelectedForegroundColor">Black</Color>
   <Color x:Key="ComboboxItemSelectedBackgroundColor">#DEDEDE</Color>
 
-  <Color x:Key="ScrollBarTrackColor">#A9A9A9</Color>
+  <Color x:Key="ScrollBarTrackColor">#DEDEDE</Color>
   <Color x:Key="ScrollBarThumbColor">#505050</Color>
   <Color x:Key="ScrollBarArrowForegroundColor">#505050</Color>
   <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>

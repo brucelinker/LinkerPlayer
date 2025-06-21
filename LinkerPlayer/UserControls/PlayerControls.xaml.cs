@@ -7,6 +7,7 @@ using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -21,7 +22,10 @@ public partial class PlayerControls
     private readonly DispatcherTimer _seekBarTimer = new();
     private readonly AudioEngine _audioEngine;
     private readonly EqualizerWindow _equalizerWindow;
-    private PlayerControlsViewModel? _playerControlsViewModel;
+    private PlayerControlsViewModel? vm;
+
+    private bool isStopped = true;
+    private MediaFile? currentMediaFile;
 
     public PlayerControls()
     {
@@ -39,18 +43,20 @@ public partial class PlayerControls
         _equalizerWindow.Hide();
         ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
-        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
-        {
-            OnActiveTrackChanged(m.Value);
-        });
+        //WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
+        //{
+        //    OnSelectedTrackChanged(m.Value);
+        //});
         WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (_, m) =>
         {
             OnDataGridPlay(m.Value);
         });
+
         WeakReferenceMessenger.Default.Register<IsMutedMessage>(this, (_, m) =>
         {
             OnMuteChanged(m.Value);
         });
+
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
         {
             OnPlaybackStateChanged(m.Value);
@@ -65,9 +71,12 @@ public partial class PlayerControls
 
         if (DataContext is PlayerControlsViewModel viewModel)
         {
-            _playerControlsViewModel = viewModel;
+            vm = viewModel;
+            vm.UpdateSelectedTrack += OnSelectedTrackChanged;
             Serilog.Log.Information("PlayerControlsViewModel set successfully");
         }
+
+        SetTrackStatus();
 
         LogCommandBinding(PlayButton, "PlayPauseCommand");
         LogCommandBinding(PrevButton, "PrevCommand");
@@ -87,18 +96,52 @@ public partial class PlayerControls
         }
     }
 
-    private void OnActiveTrackChanged(MediaFile? mediaFile)
+    private void OnSelectedTrackChanged()
     {
-        if (mediaFile == null) return;
-        SetTrackStatus(mediaFile);
+        //if (mediaFile == null) return;
+        SetTrackStatus();
     }
 
-    private void SetTrackStatus(MediaFile selectedTrack)
+    private void SetTrackStatus()
     {
-        CurrentTrackName.Text = selectedTrack.Title;
-        TimeSpan ts = selectedTrack.Duration;
-        TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-        CurrentTime.Text = "0:00";
+        if (vm.SelectedTrack == null)
+        {
+            //CurrentTrackName.Text = "";
+            TotalTime.Text = "0:00";
+            CurrentTime.Text = "0:00";
+            StatusText.Text = "Playback stopped.";
+            currentMediaFile = null;
+            return;
+        }
+
+        string extension = Path.GetExtension(vm.SelectedTrack.FileName).Substring(1).ToUpper();
+        string channels = GetChannelsString(vm.SelectedTrack.Channels);
+
+        if (vm.SelectedTrack == vm.ActiveTrack)
+        {
+            //CurrentTrackName.Text = selectedTrack.Title;
+            TimeSpan ts = vm.SelectedTrack.Duration;
+            TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
+            CurrentTime.Text = "0:00";
+        }
+
+        if (isStopped)
+        {
+            StatusText.Text = "Playback stopped";
+        }
+        else
+        {
+            StatusText.Text = $"{extension} | {vm.SelectedTrack.Bitrate} kbps | {vm.SelectedTrack.SampleRate} Hz | {channels}";
+        }
+    }
+
+    private string GetChannelsString(int channels)
+    {
+        if (channels == 1) return "Mono";
+        if (channels == 2) return "stereo";
+        if (channels > 2) return "multichannel";
+
+        return "";
     }
 
     private void OnPlaybackStateChanged(PlaybackState state)
@@ -107,24 +150,30 @@ public partial class PlayerControls
         {
             case PlaybackState.Playing:
                 _seekBarTimer.Start();
+                isStopped = false;
                 break;
             case PlaybackState.Paused:
                 _seekBarTimer.Stop();
+                isStopped = false;
                 break;
             case PlaybackState.Stopped:
                 _seekBarTimer.Stop();
                 SeekBar.Value = 0;
+                isStopped = true;
                 break;
         }
+
+        SetTrackStatus();
     }
 
     private void OnDataGridPlay(PlaybackState value)
     {
-        _playerControlsViewModel!.StopTrack();
+        vm!.StopTrack();
         _seekBarTimer.Stop();
         SeekBar.Value = 0;
         PlayButton.Command.Execute(value);
         _seekBarTimer.Start();
+        isStopped = false;
     }
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -149,13 +198,13 @@ public partial class PlayerControls
     {
         if (!(SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            SeekBar.Value = _playerControlsViewModel!.CurrentSeekbarPosition();
+            SeekBar.Value = vm!.CurrentSeekbarPosition();
         }
     }
 
     private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_playerControlsViewModel!.SelectedTrack == null) return;
+        if (vm!.SelectedTrack == null) return;
         double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
@@ -163,9 +212,9 @@ public partial class PlayerControls
 
     private void OnMuteChanged(bool isMuted)
     {
-        if (_playerControlsViewModel == null) return;
+        if (vm == null) return;
 
-        double targetValue = isMuted ? 0 : _playerControlsViewModel.GetVolumeBeforeMute();
+        double targetValue = isMuted ? 0 : vm.GetVolumeBeforeMute();
         AnimateVolumeSliderValue(VolumeSlider, targetValue, isMuted);
     }
 
@@ -184,7 +233,7 @@ public partial class PlayerControls
         // Update audio volume during animation
         animation.CurrentTimeInvalidated += (_, _) =>
         {
-            if (_playerControlsViewModel != null)
+            if (vm != null)
             {
                 double currentValue = slider.Value;
                 _audioEngine.MusicVolume = (float)currentValue / 100;
@@ -196,9 +245,9 @@ public partial class PlayerControls
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = position;
-            if (_playerControlsViewModel != null)
+            if (vm != null)
             {
-                _playerControlsViewModel.UpdateVolumeAfterAnimation(position, isMuted);
+                vm.UpdateVolumeAfterAnimation(position, isMuted);
             }
             //Serilog.Log.Information("VolumeSlider animation completed, Value={Value}, IsMuted={IsMuted}", position, isMuted);
         };
@@ -214,9 +263,9 @@ public partial class PlayerControls
 
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
     {
-        if (_playerControlsViewModel != null)
+        if (vm != null)
         {
-            _playerControlsViewModel.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
+            vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
         }
     }
 }

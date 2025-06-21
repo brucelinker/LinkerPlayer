@@ -7,7 +7,9 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Serilog;
+using System;
 using System.IO;
+using System.Windows;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -15,7 +17,7 @@ public partial class PlayerControlsViewModel : ObservableObject
 {
     private readonly AudioEngine _audioEngine;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;
-    private readonly EqualizerViewModel _equalizerViewModel;
+    //private readonly EqualizerViewModel _equalizerViewModel;
     private readonly SettingsManager _settingsManager;
     private readonly SharedDataModel _sharedDataModel;
     private double _volumeBeforeMute;
@@ -23,13 +25,13 @@ public partial class PlayerControlsViewModel : ObservableObject
     public PlayerControlsViewModel(
         AudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
-        EqualizerViewModel equalizerViewModel,
+        //EqualizerViewModel equalizerViewModel,
         SettingsManager settingsManager,
         SharedDataModel sharedDataModel)
     {
         _audioEngine = audioEngine;
         _playlistTabsViewModel = playlistTabsViewModel;
-        _equalizerViewModel = equalizerViewModel;
+        //_equalizerViewModel = equalizerViewModel;
         _settingsManager = settingsManager;
         _sharedDataModel = sharedDataModel;
 
@@ -42,6 +44,11 @@ public partial class PlayerControlsViewModel : ObservableObject
         {
             OnPlaybackStateChanged(m.Value);
         });
+
+        WeakReferenceMessenger.Default.Register<ProgressValueMessage>(this, (_, m) =>
+        {
+            OnProgressDataChanged(m.Value);
+        });
     }
 
     [ObservableProperty] private PlaybackState _state;
@@ -49,10 +56,21 @@ public partial class PlayerControlsViewModel : ObservableObject
     [ObservableProperty] private bool _isMuted;
     [ObservableProperty] private double _volumeSliderValue;
 
+    [ObservableProperty] private bool _isProcessing;
+    [ObservableProperty] private int _processedTracks;
+    [ObservableProperty] private int _totalTracks;
+    [ObservableProperty] private string _status = string.Empty;
+
+    public event Action? UpdateSelectedTrack;
+
     public MediaFile? SelectedTrack
     {
         get => _sharedDataModel.SelectedTrack;
-        set => _sharedDataModel.UpdateSelectedTrack(value!);
+        set
+        {
+            _sharedDataModel.UpdateSelectedTrack(value!);
+            UpdateSelectedTrack?.Invoke();
+        }
     }
 
     public MediaFile? ActiveTrack
@@ -111,6 +129,54 @@ public partial class PlayerControlsViewModel : ObservableObject
         //Log.Information("VolumeSliderValue changed to {Value}, IsMuted={IsMuted}", value, IsMuted);
     }
 
+    private void OnSettingsChanged(string propertyName)
+    {
+        if (propertyName == nameof(AppSettings.ShuffleMode))
+            ShuffleMode = _settingsManager.Settings.ShuffleMode;
+        if (propertyName == nameof(AppSettings.VolumeSliderValue))
+        {
+            VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
+            if (!IsMuted)
+            {
+                _volumeBeforeMute = VolumeSliderValue;
+            }
+        }
+    }
+
+    private void OnPlaybackStateChanged(PlaybackState playbackState)
+    {
+        State = playbackState;
+    }
+
+    private void OnProgressDataChanged(ProgressData progressData)
+    {
+        if (!Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(() => OnProgressDataChanged(progressData));
+            return;
+        }
+
+        IsProcessing = progressData.IsProcessing;
+
+        if (IsProcessing)
+        {
+            IsProcessing = true;
+            TotalTracks = progressData.TotalTracks;
+            ProcessedTracks = progressData.ProcessedTracks;
+            Status = progressData.Status;
+            Log.Information("Processing track: {Status} ({Processed}/{Total})", progressData.Status,
+                progressData.ProcessedTracks, progressData.TotalTracks);
+        }
+        else
+        {
+            IsProcessing = false;
+            TotalTracks = 1;
+            ProcessedTracks = 0;
+            Status = string.Empty;
+            Log.Information("Finished processing track: {Status}", progressData.Status);
+        }
+    }
+
     public double GetVolumeBeforeMute()
     {
         return _volumeBeforeMute > 0 ? _volumeBeforeMute : 50; // Fallback to 50 if 0
@@ -129,20 +195,6 @@ public partial class PlayerControlsViewModel : ObservableObject
             _audioEngine.MusicVolume = 0;
         }
         //Log.Information("Updated VolumeSliderValue={Value}, IsMuted={IsMuted}", value, isMuted);
-    }
-
-    private void OnSettingsChanged(string propertyName)
-    {
-        if (propertyName == nameof(AppSettings.ShuffleMode))
-            ShuffleMode = _settingsManager.Settings.ShuffleMode;
-        if (propertyName == nameof(AppSettings.VolumeSliderValue))
-        {
-            VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
-            if (!IsMuted)
-            {
-                _volumeBeforeMute = VolumeSliderValue;
-            }
-        }
     }
 
     public void SaveSettingsOnShutdown(double volumeValue, double seekBarValue)
@@ -292,11 +344,6 @@ public partial class PlayerControlsViewModel : ObservableObject
 
         ActiveTrack = nextMediaFile;
         PlayTrack();
-    }
-
-    private void OnPlaybackStateChanged(PlaybackState playbackState)
-    {
-        State = playbackState;
     }
 
     private bool CanPlayPause()

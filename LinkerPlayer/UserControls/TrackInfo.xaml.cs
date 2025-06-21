@@ -70,7 +70,7 @@ public partial class TrackInfo
 
     private void OnSelectedTrackChanged(MediaFile mediaFile)
     {
-        SetActiveMediaFile(mediaFile);
+        SetTrackInfo(mediaFile);
     }
 
     public static void ReloadDefaultAlbumImage()
@@ -78,12 +78,19 @@ public partial class TrackInfo
         _defaultAlbumImage = new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
     }
 
-    public void SetActiveMediaFile(MediaFile? mediaFile)
+    public void SetTrackInfo(MediaFile? mediaFile)
     {
         SelectedMediaFile = mediaFile;
 
         if (mediaFile == null)
         {
+            TrackName.Text = "No Selection";
+            TrackArtist.Text = "Artist:";
+            TrackAlbum.Text = "Album:";
+            TrackYear.Text = $"Year:  ";
+            TrackBitrate.Text = $"Bitrate:  ";
+            TrackGenre.Text = "Genres:  ";
+
             TrackImage.Source = DefaultAlbumImage;
             TrackImageText.Text = "[ No Selection ]";
             return;

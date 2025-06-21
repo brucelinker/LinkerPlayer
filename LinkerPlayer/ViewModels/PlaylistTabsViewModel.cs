@@ -33,11 +33,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
     [ObservableProperty] private PlaybackState _state;
     [ObservableProperty] private ObservableCollection<PlaylistTab> _tabList = [];
     [ObservableProperty] private bool _allowDrop;
-
-    [ObservableProperty] private bool _isProcessing;
-    [ObservableProperty] private int _totalTracks;
-    [ObservableProperty] private int _processedTracks;
-    [ObservableProperty] private string _currentTrack;
+    [ObservableProperty] private ProgressData _progressInfo = new()
+    {
+        IsProcessing = false,
+        ProcessedTracks = 0,
+        TotalTracks = 1,
+        Status = string.Empty
+    };
 
     private readonly SharedDataModel _sharedDataModel;
     private readonly SettingsManager _settingsManager;
@@ -71,337 +73,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             OnShuffleChanged(m.Value);
         });
-    }
-
-    private bool IsAudioFile(string path)
-    {
-        return _supportedAudioExtensions.Contains(Path.GetExtension(path).ToLower());
-    }
-
-    [RelayCommand]
-    private void DragOver(DragEventArgs args)
-    {
-        if (args.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            args.Effects = DragDropEffects.Copy;
-            args.Handled = true;
-        }
-        else
-        {
-            args.Effects = DragDropEffects.None;
-            args.Handled = true;
-        }
-        //Log.Information("DragOver triggered with effect: {Effect}", args.Effects);
-    }
-
-    [RelayCommand]
-    private async Task Drop(DragEventArgs args)
-    {
-        if (!args.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            args.Handled = true;
-            Log.Warning("Drop event triggered without FileDrop data");
-            return;
-        }
-
-        string[] droppedItems = (string[])args.Data.GetData(DataFormats.FileDrop);
-        bool isControlPressed = (args.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
-        Log.Information($"Drop triggered with {droppedItems.Length} items, Control pressed: {isControlPressed}, Items: {string.Join(", ", droppedItems)}");
-
-        foreach (var item in droppedItems)
-        {
-            try
-            {
-                if (File.Exists(item) && IsAudioFile(item))
-                {
-                    await AddFileToCurrentPlaylistAsync(item);
-                    Log.Information($"Added file {item} to current playlist");
-                }
-                else if (Directory.Exists(item))
-                {
-                    await HandleFolderDropAsync(item, isControlPressed);
-                    Log.Information($"Processed folder {item}");
-                }
-                else
-                {
-                    Log.Warning($"Invalid drop item: {item}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"Failed to process drop item: {item}");
-            }
-        }
-
-        args.Handled = true;
-    }
-
-    private async Task AddFileToCurrentPlaylistAsync(string filePath)
-    {
-        if (SelectedTab == null)
-        {
-            var newPlaylist = await MusicLibrary.AddNewPlaylistAsync("Default Playlist");
-            AddPlaylistTab(newPlaylist);
-            SelectedTab = TabList.Last();
-            SelectedTabIndex = TabList.Count - 1;
-        }
-
-        var mediaFile = new MediaFile { Path = filePath, Title = Path.GetFileNameWithoutExtension(filePath) };
-        var addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile);
-        if (addedTrack != null)
-        {
-            await MusicLibrary.AddTrackToPlaylistAsync(addedTrack.Id, SelectedTab.Name);
-            SelectedTab.Tracks.Add(addedTrack);
-            Log.Information($"Added track {addedTrack.Title} to playlist {SelectedTab.Name}");
-        }
-    }
-
-    private async Task HandleFolderDropAsync(string folderPath, bool createNewPlaylist)
-    {
-        if (createNewPlaylist)
-        {
-            await CreatePlaylistFromFolderAsync(folderPath);
-        }
-        else
-        {
-            await AddFolderToCurrentPlaylistAsync(folderPath);
-        }
-    }
-
-    private async Task AddFolderToCurrentPlaylistAsync(string folderPath)
-    {
-        await Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            IsProcessing = true;
-            TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
-            ProcessedTracks = 0;
-            Log.Information($"Started processing folder: TotalTracks={TotalTracks}");
-        });
-
-        try
-        {
-            if (SelectedTab == null)
-            {
-                var newPlaylist = await MusicLibrary.AddNewPlaylistAsync("Default Playlist");
-                AddPlaylistTab(newPlaylist);
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    SelectedTab = TabList.Last();
-                    SelectedTabIndex = TabList.Count - 1;
-                });
-            }
-
-            var playlist = MusicLibrary.Playlists.FirstOrDefault(p => p.Name == SelectedTab.Name);
-            if (playlist == null)
-            {
-                Log.Error($"Playlist {SelectedTab.Name} not found in MusicLibrary.Playlists");
-                return;
-            }
-            Log.Information($"Before adding tracks, playlist {SelectedTab.Name} TrackIds: {string.Join(", ", playlist.TrackIds)}");
-
-            var tracksToAdd = new List<MediaFile>();
-            foreach (var file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
-            {
-                if (IsAudioFile(file))
-                {
-                    var mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
-                    var addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
-                    if (addedTrack != null)
-                    {
-                        tracksToAdd.Add(addedTrack);
-                        Log.Information($"Prepared track {addedTrack.Title} for playlist {SelectedTab.Name}");
-                    }
-                    await Application.Current.Dispatcher.InvokeAsync(() => ProcessedTracks++);
-                }
-            }
-
-            await MusicLibrary.SaveTracksBatchAsync(tracksToAdd);
-
-            foreach (var track in tracksToAdd)
-            {
-                await MusicLibrary.AddTrackToPlaylistAsync(track.Id, SelectedTab.Name, saveImmediately: false);
-                await Application.Current.Dispatcher.InvokeAsync(() => SelectedTab.Tracks.Add(track));
-                Log.Information($"Added track {track.Title} to playlist {SelectedTab.Name} with TrackId {track.Id}");
-            }
-
-            // Set SelectedTrack to first track
-            if (playlist.TrackIds.Any() && playlist.SelectedTrack == null)
-            {
-                playlist.SelectedTrack = playlist.TrackIds.First();
-                Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {SelectedTab.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
-            }
-            else if (!playlist.TrackIds.Any())
-            {
-                Log.Warning($"No tracks in playlist {SelectedTab.Name}, cannot set SelectedTrack");
-            }
-
-            await MusicLibrary.SaveToDatabaseAsync();
-        }
-        finally
-        {
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                IsProcessing = false;
-                TotalTracks = 0;
-                ProcessedTracks = 0;
-                Log.Information("Finished processing folder");
-            });
-        }
-    }
-
-    private async Task CreatePlaylistFromFolderAsync(string folderPath)
-    {
-        await Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            IsProcessing = true;
-            TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
-            ProcessedTracks = 0;
-            CurrentTrack = "Starting import...";
-            Log.Information($"Started processing folder {folderPath}: TotalTracks={TotalTracks}");
-        });
-
-        const int maxRetries = 3;
-        int retryCount = 0;
-
-        while (retryCount < maxRetries)
-        {
-            try
-            {
-                var baseFolderName = Path.GetFileName(folderPath);
-                var folderName = baseFolderName;
-                int suffix = 1;
-                while (MusicLibrary.Playlists.Any(p => p.Name.Equals(folderName, StringComparison.OrdinalIgnoreCase)))
-                {
-                    folderName = $"{baseFolderName} ({suffix++})";
-                }
-
-                var playlist = await MusicLibrary.AddNewPlaylistAsync(folderName);
-
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    var existingTab = TabList.FirstOrDefault(t => t.Name == playlist.Name);
-                    if (existingTab != null)
-                    {
-                        SelectedTab = existingTab;
-                        SelectedTabIndex = TabList.IndexOf(existingTab);
-                        Log.Information($"Selected existing tab {playlist.Name} at index {SelectedTabIndex}");
-                    }
-                    else
-                    {
-                        AddPlaylistTab(playlist);
-                        SelectedTab = TabList.Last();
-                        SelectedTabIndex = TabList.Count - 1;
-                        Log.Information($"Added and selected new tab {playlist.Name} at index {SelectedTabIndex}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}");
-                    }
-                });
-
-                var tracksToAdd = new List<MediaFile>();
-                var files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Where(IsAudioFile).ToList();
-                int totalFiles = files.Count;
-                for (int i = 0; i < totalFiles; i++)
-                {
-                    var file = files[i];
-                    var mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
-                    if (i % 10 == 0 || i == totalFiles - 1)
-                    {
-                        await Application.Current.Dispatcher.InvokeAsync(() =>
-                        {
-                            CurrentTrack = $"Adding: {mediaFile.Title}";
-                            ProcessedTracks = i + 1;
-                        });
-                    }
-                    var addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
-                    if (addedTrack != null)
-                    {
-                        tracksToAdd.Add(addedTrack);
-                        Log.Information($"Prepared track {addedTrack.Title} for playlist {playlist.Name}");
-                    }
-                }
-
-                await MusicLibrary.SaveTracksBatchAsync(tracksToAdd);
-
-                MediaFile? firstTrack = tracksToAdd.FirstOrDefault();
-                await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    var batchSize = 50;
-                    for (int i = 0; i < tracksToAdd.Count; i += batchSize)
-                    {
-                        var batch = tracksToAdd.Skip(i).Take(batchSize).ToList();
-                        foreach (var track in batch)
-                        {
-                            SelectedTab.Tracks.Add(track);
-                        }
-                        Log.Information($"Added batch of {batch.Count} tracks to UI for playlist {playlist.Name}");
-                    }
-                    Log.Information($"Added {tracksToAdd.Count} tracks to UI for playlist {playlist.Name}");
-                });
-
-                foreach (var track in tracksToAdd)
-                {
-                    await MusicLibrary.AddTrackToPlaylistAsync(track.Id, playlist.Name, saveImmediately: false);
-                    Log.Information($"Added track {track.Title} to playlist {playlist.Name} with TrackId {track.Id}");
-                }
-
-                if (tracksToAdd.Any() && firstTrack != null)
-                {
-                    playlist.SelectedTrack = firstTrack.Id;
-                    Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
-                    await Application.Current.Dispatcher.InvokeAsync(async () =>
-                    {
-                        await SelectTrack(playlist, firstTrack);
-                    });
-                }
-                else
-                {
-                    Log.Warning($"No tracks in playlist {playlist.Name}, cannot set SelectedTrack");
-                }
-
-                await MusicLibrary.SaveToDatabaseAsync();
-                break; // Success, exit retry loop
-            }
-            catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
-            {
-                retryCount++;
-                if (retryCount >= maxRetries)
-                {
-                    Log.Error(ex, $"Failed to create playlist from folder {folderPath} after {maxRetries} retries");
-                    throw;
-                }
-                Log.Warning($"Database locked, retrying ({retryCount}/{maxRetries}) after delay");
-                await Task.Delay(1000 * retryCount); // Exponential backoff: 1s, 2s, 3s
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"Failed to create playlist from folder {folderPath}");
-                throw;
-            }
-        }
-
-        await Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            IsProcessing = false;
-            TotalTracks = 0;
-            ProcessedTracks = 0;
-            CurrentTrack = "Import complete.";
-            Log.Information($"Finished processing folder {folderPath}");
-        });
-    }
-
-    [RelayCommand]
-    public async Task RenamePlaylistAsync((PlaylistTab Tab, string? OldName) args)
-    {
-        if (args.Tab?.Name == null || args.OldName == null) return;
-
-        string oldName = args.OldName;
-        string newName = args.Tab.Name;
-        try
-        {
-            await ChangeSelectedPlaylistNameAsync(args.Tab, oldName, newName);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, $"RenamePlaylistAsync failed for '{oldName}' to '{newName}'");
-        }
     }
 
     public int SelectedTrackIndex
@@ -520,7 +191,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             //Log.Information("OnTrackSelectionChanged : ScrollIntoView");
             _dataGrid.ScrollIntoView(SelectedTrack!);
-            if (ActiveTrack == null || ActiveTrack == SelectedTrack)
+
+            if (ActiveTrack == null) // || ActiveTrack == SelectedTrack)
             {
                 WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
             }
@@ -529,7 +201,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             SelectedTab!.SelectedTrack = null;
             SelectedTab.SelectedIndex = -1;
-            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(null));
         }
     }
 
@@ -594,6 +266,353 @@ public partial class PlaylistTabsViewModel : ObservableObject
         MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack.Id;
         ActiveTrack = SelectedTrack;
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+    }
+
+    [RelayCommand]
+    private void DragOver(DragEventArgs args)
+    {
+        if (args.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            args.Effects = DragDropEffects.Copy;
+            args.Handled = true;
+        }
+        else
+        {
+            args.Effects = DragDropEffects.None;
+            args.Handled = true;
+        }
+        //Log.Information("DragOver triggered with effect: {Effect}", args.Effects);
+    }
+
+    [RelayCommand]
+    private async Task Drop(DragEventArgs args)
+    {
+        if (!args.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            args.Handled = true;
+            Log.Warning("Drop event triggered without FileDrop data");
+            return;
+        }
+
+        string[] droppedItems = (string[])args.Data.GetData(DataFormats.FileDrop);
+        bool isControlPressed = (args.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
+        Log.Information($"Drop triggered with {droppedItems.Length} items, Control pressed: {isControlPressed}, Items: {string.Join(", ", droppedItems)}");
+
+        foreach (string item in droppedItems)
+        {
+            try
+            {
+                if (File.Exists(item) && IsAudioFile(item))
+                {
+                    await AddFileToCurrentPlaylistAsync(item);
+                    Log.Information($"Added file {item} to current playlist");
+                }
+                else if (Directory.Exists(item))
+                {
+                    await HandleFolderDropAsync(item, isControlPressed);
+                    Log.Information($"Processed folder {item}");
+                }
+                else
+                {
+                    Log.Warning($"Invalid drop item: {item}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Failed to process drop item: {item}");
+            }
+        }
+
+        args.Handled = true;
+    }
+
+    private bool IsAudioFile(string path)
+    {
+        return _supportedAudioExtensions.Contains(Path.GetExtension(path).ToLower());
+    }
+
+    private async Task AddFileToCurrentPlaylistAsync(string filePath)
+    {
+        if (SelectedTab == null)
+        {
+            Playlist newPlaylist = await MusicLibrary.AddNewPlaylistAsync("Default Playlist");
+            AddPlaylistTab(newPlaylist);
+            SelectedTab = TabList.Last();
+            SelectedTabIndex = TabList.Count - 1;
+        }
+
+        MediaFile mediaFile = new MediaFile { Path = filePath, Title = Path.GetFileNameWithoutExtension(filePath) };
+        MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile);
+        if (addedTrack != null)
+        {
+            await MusicLibrary.AddTrackToPlaylistAsync(addedTrack.Id, SelectedTab.Name);
+            SelectedTab.Tracks.Add(addedTrack);
+            Log.Information($"Added track {addedTrack.Title} to playlist {SelectedTab.Name}");
+        }
+    }
+
+    private async Task HandleFolderDropAsync(string folderPath, bool createNewPlaylist)
+    {
+        if (createNewPlaylist)
+        {
+            await CreatePlaylistFromFolderAsync(folderPath);
+        }
+        else
+        {
+            await AddFolderToCurrentPlaylistAsync(folderPath);
+        }
+    }
+
+    private async Task AddFolderToCurrentPlaylistAsync(string folderPath)
+    {
+        await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            ProgressInfo.IsProcessing = true;
+            ProgressInfo.TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
+            ProgressInfo.ProcessedTracks = 0;
+            Log.Information($"Started processing folder: TotalTracks={ProgressInfo.TotalTracks}");
+            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(ProgressInfo));
+        });
+
+        try
+        {
+            if (SelectedTab == null)
+            {
+                Playlist newPlaylist = await MusicLibrary.AddNewPlaylistAsync("Default Playlist");
+                AddPlaylistTab(newPlaylist);
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    SelectedTab = TabList.Last();
+                    SelectedTabIndex = TabList.Count - 1;
+                });
+            }
+
+            Playlist? playlist = MusicLibrary.Playlists.FirstOrDefault(p => p.Name == SelectedTab!.Name);
+            if (playlist == null)
+            {
+                Log.Error($"Playlist {SelectedTab!.Name} not found in MusicLibrary.Playlists");
+                return;
+            }
+            Log.Information($"Before adding tracks, playlist {SelectedTab!.Name} TrackIds: {string.Join(", ", playlist.TrackIds)}");
+
+            List<MediaFile> tracksToAdd = new List<MediaFile>();
+            foreach (string file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
+            {
+                if (IsAudioFile(file))
+                {
+                    MediaFile mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
+                    MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
+                    if (addedTrack != null)
+                    {
+                        tracksToAdd.Add(addedTrack);
+                        
+                        Log.Information($"Prepared track {addedTrack.Title} for playlist {SelectedTab.Name}");
+                    }
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        ProgressInfo.ProcessedTracks++;
+                        WeakReferenceMessenger.Default.Send(new ProgressValueMessage(ProgressInfo));
+                        return ProgressInfo.ProcessedTracks;
+                    });
+                }
+            }
+
+            await MusicLibrary.SaveTracksBatchAsync(tracksToAdd);
+
+            foreach (MediaFile track in tracksToAdd)
+            {
+                await MusicLibrary.AddTrackToPlaylistAsync(track.Id, SelectedTab.Name!, saveImmediately: false);
+                await Application.Current.Dispatcher.InvokeAsync(() => SelectedTab.Tracks.Add(track));
+                Log.Information($"Added track {track.Title} to playlist {SelectedTab.Name} with TrackId {track.Id}");
+            }
+
+            // Set SelectedTrack to first track
+            if (playlist.TrackIds.Any() && playlist.SelectedTrack == null)
+            {
+                playlist.SelectedTrack = playlist.TrackIds.First();
+                Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {SelectedTab.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
+            }
+            else if (!playlist.TrackIds.Any())
+            {
+                Log.Warning($"No tracks in playlist {SelectedTab.Name}, cannot set SelectedTrack");
+            }
+
+            await MusicLibrary.SaveToDatabaseAsync();
+        }
+        finally
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                ProgressInfo.IsProcessing = false;
+                ProgressInfo.TotalTracks = 1;
+                ProgressInfo.ProcessedTracks = 0;
+                
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(ProgressInfo));
+                
+                Log.Information("Finished processing folder");
+            });
+        }
+    }
+
+    private async Task CreatePlaylistFromFolderAsync(string folderPath)
+    {
+        await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            ProgressInfo.IsProcessing = true;
+            ProgressInfo.TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
+            ProgressInfo.ProcessedTracks = 0;
+            ProgressInfo.Status = "Starting import...";
+
+            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(ProgressInfo));
+
+            Log.Information($"Started processing folder {folderPath}: TotalTracks={ProgressInfo.TotalTracks}");
+        });
+
+        const int maxRetries = 3;
+        int retryCount = 0;
+
+        while (retryCount < maxRetries)
+        {
+            try
+            {
+                string baseFolderName = Path.GetFileName(folderPath);
+                string folderName = baseFolderName;
+                int suffix = 1;
+                while (MusicLibrary.Playlists.Any(p => p.Name.Equals(folderName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    folderName = $"{baseFolderName} ({suffix++})";
+                }
+
+                Playlist playlist = await MusicLibrary.AddNewPlaylistAsync(folderName);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    PlaylistTab? existingTab = TabList.FirstOrDefault(t => t.Name == playlist.Name);
+                    if (existingTab != null)
+                    {
+                        SelectedTab = existingTab;
+                        SelectedTabIndex = TabList.IndexOf(existingTab);
+                        Log.Information($"Selected existing tab {playlist.Name} at index {SelectedTabIndex}");
+                    }
+                    else
+                    {
+                        AddPlaylistTab(playlist);
+                        SelectedTab = TabList.Last();
+                        SelectedTabIndex = TabList.Count - 1;
+                        Log.Information($"Added and selected new tab {playlist.Name} at index {SelectedTabIndex}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}");
+                    }
+                });
+
+                List<MediaFile> tracksToAdd = new List<MediaFile>();
+                List<string> files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Where(IsAudioFile).ToList();
+                int totalFiles = files.Count;
+                for (int i = 0; i < totalFiles; i++)
+                {
+                    string file = files[i];
+                    MediaFile mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
+                    //if (i % 10 == 0 || i == totalFiles - 1)
+                    //{
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            ProgressInfo.Status = $"Adding: {mediaFile.Title}";
+                            ProgressInfo.ProcessedTracks = i + 1;
+                            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(ProgressInfo));
+                        });
+                    //}
+                    MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
+                    if (addedTrack != null)
+                    {
+                        tracksToAdd.Add(addedTrack);
+                        Log.Information($"Prepared track {addedTrack.Title} for playlist {playlist.Name}");
+                    }
+                }
+
+                await MusicLibrary.SaveTracksBatchAsync(tracksToAdd);
+
+                MediaFile? firstTrack = tracksToAdd.FirstOrDefault();
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    int batchSize = 50;
+                    for (int i = 0; i < tracksToAdd.Count; i += batchSize)
+                    {
+                        List<MediaFile> batch = tracksToAdd.Skip(i).Take(batchSize).ToList();
+                        foreach (MediaFile track in batch)
+                        {
+                            SelectedTab.Tracks.Add(track);
+                        }
+                        Log.Information($"Added batch of {batch.Count} tracks to UI for playlist {playlist.Name}");
+                    }
+                    Log.Information($"Added {tracksToAdd.Count} tracks to UI for playlist {playlist.Name}");
+                });
+
+                foreach (MediaFile track in tracksToAdd)
+                {
+                    await MusicLibrary.AddTrackToPlaylistAsync(track.Id, playlist.Name, saveImmediately: false);
+                    Log.Information($"Added track {track.Title} to playlist {playlist.Name} with TrackId {track.Id}");
+                }
+
+                if (tracksToAdd.Any() && firstTrack != null)
+                {
+                    playlist.SelectedTrack = firstTrack.Id;
+                    Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
+                    await Application.Current.Dispatcher.InvokeAsync(async () =>
+                    {
+                        await SelectTrack(playlist, firstTrack);
+                    });
+                }
+                else
+                {
+                    Log.Warning($"No tracks in playlist {playlist.Name}, cannot set SelectedTrack");
+                }
+
+                await MusicLibrary.SaveToDatabaseAsync();
+                break; // Success, exit retry loop
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
+            {
+                retryCount++;
+                if (retryCount >= maxRetries)
+                {
+                    Log.Error(ex, $"Failed to create playlist from folder {folderPath} after {maxRetries} retries");
+                    throw;
+                }
+                Log.Warning($"Database locked, retrying ({retryCount}/{maxRetries}) after delay");
+                await Task.Delay(1000 * retryCount); // Exponential backoff: 1s, 2s, 3s
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"Failed to create playlist from folder {folderPath}");
+                throw;
+            }
+        }
+
+        await Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            ProgressInfo.IsProcessing = false;
+            ProgressInfo.TotalTracks = 1;
+            ProgressInfo.ProcessedTracks = 0;
+            ProgressInfo.Status = "Import complete.";
+            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(ProgressInfo));
+
+            Log.Information($"Finished processing folder {folderPath}");
+        });
+    }
+
+    [RelayCommand]
+    public async Task RenamePlaylistAsync((PlaylistTab Tab, string? OldName) args)
+    {
+        if (args.Tab?.Name == null || args.OldName == null) return;
+
+        string oldName = args.OldName;
+        string newName = args.Tab.Name;
+        try
+        {
+            await ChangeSelectedPlaylistNameAsync(args.Tab, oldName, newName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"RenamePlaylistAsync failed for '{oldName}' to '{newName}'");
+        }
     }
 
     public async Task NewPlaylistAsync()
@@ -804,7 +823,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         Log.Information($"Selecting track {track.Id} for playlist {playlist.Name}, SelectedTab: {SelectedTab.Name}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}, TabControl items: {_tabControl.Items.Count}");
 
         // Validate playlist exists
-        if (!MusicLibrary.Playlists.Any(p => p.Name == playlist.Name))
+        if (MusicLibrary.Playlists.All(p => p.Name != playlist.Name))
         {
             Log.Warning($"Playlist {playlist.Name} not found in MusicLibrary.Playlists; skipping selection");
             return;
@@ -813,7 +832,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         // Ensure correct tab is selected
         if (!playlist.Name.Equals(SelectedTab.Name))
         {
-            var targetTab = TabList.FirstOrDefault(x => x.Name == playlist.Name);
+            PlaylistTab? targetTab = TabList.FirstOrDefault(x => x.Name == playlist.Name);
             if (targetTab != null)
             {
                 int index = TabList.ToList().IndexOf(targetTab);
@@ -845,7 +864,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             if (SelectedTab.Tracks.Any(t => t.Id == track.Id))
             {
-                var items = _dataGrid.ItemsSource.Cast<MediaFile>().ToList();
+                List<MediaFile> items = _dataGrid.ItemsSource.Cast<MediaFile>().ToList();
                 SelectedTrackIndex = items.FindIndex(x => x.Id == track.Id);
                 if (SelectedTrackIndex >= 0)
                 {
@@ -853,10 +872,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = track.Id;
                     Log.Information($"Selected track {track.Title} with Id {track.Id} in playlist {SelectedTab.Name} at index {SelectedTrackIndex}");
 
-                    var musicFile = ActiveTrack ?? SelectedTrack;
+                    MediaFile? musicFile = ActiveTrack ?? SelectedTrack;
                     //if (musicFile != null)
                     //{
-                    WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
+                    //WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
                     //}
                     //else
                     //{
@@ -1283,11 +1302,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             // Update database
-            using (var context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
+            using (MusicLibraryDbContext context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
                 .UseSqlite($"Data Source={Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinkerPlayer", "music_library.db")}")
                 .Options))
             {
-                var dbPlaylist = await context.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
+                Playlist? dbPlaylist = await context.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
                 if (dbPlaylist == null)
                 {
                     Log.Warning($"ChangeSelectedPlaylistName: Playlist '{oldName}' not found in database");
@@ -1308,7 +1327,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             // Sync Playlists
-            var playlist = MusicLibrary.Playlists.FirstOrDefault(p => p.Name == oldName);
+            Playlist? playlist = MusicLibrary.Playlists.FirstOrDefault(p => p.Name == oldName);
             if (playlist == null)
             {
                 MusicLibrary.Playlists.Clear();
@@ -1324,7 +1343,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             else
             {
                 playlist.Name = newPlaylistName;
-                var playlistIndex = MusicLibrary.Playlists.IndexOf(playlist);
+                int playlistIndex = MusicLibrary.Playlists.IndexOf(playlist);
                 if (playlistIndex >= 0)
                 {
                     MusicLibrary.Playlists[playlistIndex] = playlist;
@@ -1333,7 +1352,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             // Update UI
             tab.Name = newPlaylistName;
-            var selectedTabIndex = TabList.IndexOf(tab);
+            int selectedTabIndex = TabList.IndexOf(tab);
             if (selectedTabIndex >= 0)
             {
                 TabList[selectedTabIndex].Name = newPlaylistName;
@@ -1352,7 +1371,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             Log.Error(ex, $"Failed to rename playlist from '{oldName}' to '{newPlaylistName}'");
             MessageBox.Show($"Failed to rename playlist to '{newPlaylistName}'. Please try again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             tab.Name = oldName;
-            var selectedTabIndex = TabList.IndexOf(tab);
+            int selectedTabIndex = TabList.IndexOf(tab);
             if (selectedTabIndex >= 0)
             {
                 TabList[selectedTabIndex].Name = oldName;
