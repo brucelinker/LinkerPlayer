@@ -44,11 +44,6 @@ public partial class PlayerControlsViewModel : ObservableObject
         {
             OnPlaybackStateChanged(m.Value);
         });
-
-        WeakReferenceMessenger.Default.Register<ProgressValueMessage>(this, (_, m) =>
-        {
-            OnProgressDataChanged(m.Value);
-        });
     }
 
     [ObservableProperty] private PlaybackState _state;
@@ -146,35 +141,6 @@ public partial class PlayerControlsViewModel : ObservableObject
     private void OnPlaybackStateChanged(PlaybackState playbackState)
     {
         State = playbackState;
-    }
-
-    private void OnProgressDataChanged(ProgressData progressData)
-    {
-        if (!Application.Current.Dispatcher.CheckAccess())
-        {
-            Application.Current.Dispatcher.Invoke(() => OnProgressDataChanged(progressData));
-            return;
-        }
-
-        IsProcessing = progressData.IsProcessing;
-
-        if (IsProcessing)
-        {
-            IsProcessing = true;
-            TotalTracks = progressData.TotalTracks;
-            ProcessedTracks = progressData.ProcessedTracks;
-            Status = progressData.Status;
-            Log.Information("Processing track: {Status} ({Processed}/{Total})", progressData.Status,
-                progressData.ProcessedTracks, progressData.TotalTracks);
-        }
-        else
-        {
-            IsProcessing = false;
-            TotalTracks = 1;
-            ProcessedTracks = 0;
-            Status = string.Empty;
-            Log.Information("Finished processing track: {Status}", progressData.Status);
-        }
     }
 
     public double GetVolumeBeforeMute()

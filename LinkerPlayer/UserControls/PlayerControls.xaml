@@ -7,6 +7,7 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:wave="clr-namespace:ManagedBass;assembly=ManagedBass"
+  x:Name="RootControl"
   d:DesignHeight="105"
   d:DesignWidth="1000"
   Background="{DynamicResource PlayerBackgroundBrush}"
@@ -312,66 +313,50 @@
         Grid.Column="0"
         Grid.ColumnSpan="4"
         VerticalAlignment="Bottom">
-        <StatusBar
+        <Grid
           Margin="6,2,6,0"
-          Background="Transparent"
-          Foreground="{DynamicResource ControlForegroundBrush}">
-          <StatusBar.ItemsPanel>
-            <ItemsPanelTemplate>
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="2*" />
-                  <ColumnDefinition Width="6*" />
-                  <ColumnDefinition Width="2*" />
-                </Grid.ColumnDefinitions>
-              </Grid>
-            </ItemsPanelTemplate>
-          </StatusBar.ItemsPanel>
-          <StatusBarItem BorderBrush="green" BorderThickness="1">
-            <TextBlock
-              Name="StatusText"
-              d:Text="MP3 | 160 kbps | 44100 Hz | stereo"
-              FontSize="13"
-              FontWeight="Light" />
-          </StatusBarItem>
-          <StatusBarItem
+          VerticalAlignment="Bottom"
+          Background="Transparent">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="5*" />
+            <ColumnDefinition Width="3*" />
+          </Grid.ColumnDefinitions>
+
+          <!--  Status text  -->
+          <TextBlock
+            Name="StatusText"
+            Grid.Column="0"
+            Width="Auto"
+            FontSize="13"
+            FontWeight="Light"
+            Text="{Binding Status}" />
+
+          <!--  Progress bar  -->
+          <ProgressBar
+            x:Name="TheProgressBar"
             Grid.Column="1"
-            BorderBrush="yellow"
-            BorderThickness="1">
-            <!--<ProgressBar
-              x:Name="ProgressBar"
-              Height="4"
-              Margin="-4,0,-4,0"
-              HorizontalAlignment="Stretch"
-              Background="{DynamicResource FirstItemBackground}"
-              BorderBrush="Gray"
-                Visibility="{Binding IsProcessing, Converter={StaticResource BooleanToVisibilityConverter}}"
-              BorderThickness="1"
-              Value="{Binding ElementName=This, Path=ProgressValue, UpdateSourceTrigger=PropertyChanged}" />-->
-            <ProgressBar
-              x:Name="TheProgressBar"
-              Width="500"
-              Height="10"
-              Margin="5,0"
-              Background="{DynamicResource ControlAccentDarkBrush}"
-              BorderBrush="White"
-              BorderThickness="1"
-              Foreground="{DynamicResource ControlDisabledBrush}"
-              Maximum="{Binding TotalTracks}"
-              Minimum="0"
-              Visibility="{Binding IsProcessing, Converter={StaticResource BooleanToVisibilityConverter}}"
-              Value="{Binding ProcessedTracks}" />
-          </StatusBarItem>
-          <StatusBarItem
+            Width="Auto"
+            Height="10"
+            Margin="5,0"
+            Background="Transparent"
+            BorderBrush="Transparent"
+            BorderThickness="0"
+            Foreground="{DynamicResource ControlAccentDarkBrush}"
+            Minimum="0"
+            Visibility="Visible" />
+
+          <!--  Another status text or whatever else you want  -->
+          <TextBlock
+            x:Name="Info"
             Grid.Column="2"
-            BorderBrush="blue"
-            BorderThickness="1">
-            <TextBlock
-              Margin="5,0"
-              VerticalAlignment="Center"
-              Text="{Binding Status}" />
-          </StatusBarItem>
-        </StatusBar>
+            Width="Auto"
+            Margin="5,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            FontSize="13"
+            FontWeight="Light" />
+        </Grid>
       </Grid>
     </Grid>
   </StackPanel>

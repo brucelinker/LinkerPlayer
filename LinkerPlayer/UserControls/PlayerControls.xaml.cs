@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -6,6 +7,7 @@ using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 using System;
 using System.IO;
 using System.Windows;
@@ -22,16 +24,27 @@ public partial class PlayerControls
     private readonly DispatcherTimer _seekBarTimer = new();
     private readonly AudioEngine _audioEngine;
     private readonly EqualizerWindow _equalizerWindow;
-    private PlayerControlsViewModel? vm;
+    private readonly PlayerControlsViewModel? _vm;
 
-    private bool isStopped = true;
-    private MediaFile? currentMediaFile;
+    private bool _isProcessing;
+    private int _processedTracks;
+    private int _totalTracks;
+    private string _status = string.Empty;
+
+    private bool _isStopped = true;
+    //private MediaFile? currentMediaFile;
 
     public PlayerControls()
     {
-        InitializeComponent();
-
         _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
+
+        _vm = App.AppHost.Services.GetRequiredService<PlayerControlsViewModel>();
+        DataContext = _vm;
+        Log.Information($"{DataContext} has been set to DataContext");
+
+        _vm.UpdateSelectedTrack += OnSelectedTrackChanged;
+
+        InitializeComponent();
 
         _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
         _seekBarTimer.Tick += timer_Tick!;
@@ -43,10 +56,8 @@ public partial class PlayerControls
         _equalizerWindow.Hide();
         ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
-        //WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
-        //{
-        //    OnSelectedTrackChanged(m.Value);
-        //});
+        SetTrackStatus();
+
         WeakReferenceMessenger.Default.Register<DataGridPlayMessage>(this, (_, m) =>
         {
             OnDataGridPlay(m.Value);
@@ -62,26 +73,12 @@ public partial class PlayerControls
             OnPlaybackStateChanged(m.Value);
         });
 
-        Loaded += PlayerControls_Loaded;
-    }
-
-    private void PlayerControls_Loaded(object sender, RoutedEventArgs e)
-    {
-        Serilog.Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
-
-        if (DataContext is PlayerControlsViewModel viewModel)
+        WeakReferenceMessenger.Default.Register<ProgressValueMessage>(this, (_, m) =>
         {
-            vm = viewModel;
-            vm.UpdateSelectedTrack += OnSelectedTrackChanged;
-            Serilog.Log.Information("PlayerControlsViewModel set successfully");
-        }
+            OnProgressDataChanged(m.Value);
+        });
 
-        SetTrackStatus();
-
-        LogCommandBinding(PlayButton, "PlayPauseCommand");
-        LogCommandBinding(PrevButton, "PrevCommand");
-        LogCommandBinding(NextButton, "NextCommand");
-        LogCommandBinding(StopButton, "StopCommand");
+        Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
     }
 
     private void LogCommandBinding(ButtonBase button, string commandName)
@@ -104,34 +101,31 @@ public partial class PlayerControls
 
     private void SetTrackStatus()
     {
-        if (vm.SelectedTrack == null)
+        if (_vm.SelectedTrack == null)
         {
-            //CurrentTrackName.Text = "";
             TotalTime.Text = "0:00";
             CurrentTime.Text = "0:00";
             StatusText.Text = "Playback stopped.";
-            currentMediaFile = null;
             return;
         }
 
-        string extension = Path.GetExtension(vm.SelectedTrack.FileName).Substring(1).ToUpper();
-        string channels = GetChannelsString(vm.SelectedTrack.Channels);
+        string extension = Path.GetExtension(_vm.SelectedTrack.FileName).Substring(1).ToUpper();
+        string channels = GetChannelsString(_vm.SelectedTrack.Channels);
 
-        if (vm.SelectedTrack == vm.ActiveTrack)
+        if (_vm.SelectedTrack == _vm.ActiveTrack)
         {
-            //CurrentTrackName.Text = selectedTrack.Title;
-            TimeSpan ts = vm.SelectedTrack.Duration;
+            TimeSpan ts = _vm.SelectedTrack.Duration;
             TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
             CurrentTime.Text = "0:00";
         }
 
-        if (isStopped)
+        if (_isStopped)
         {
             StatusText.Text = "Playback stopped";
         }
         else
         {
-            StatusText.Text = $"{extension} | {vm.SelectedTrack.Bitrate} kbps | {vm.SelectedTrack.SampleRate} Hz | {channels}";
+            StatusText.Text = $"{extension} | {_vm.SelectedTrack.Bitrate} kbps | {_vm.SelectedTrack.SampleRate} Hz | {channels}";
         }
     }
 
@@ -150,30 +144,55 @@ public partial class PlayerControls
         {
             case PlaybackState.Playing:
                 _seekBarTimer.Start();
-                isStopped = false;
+                _isStopped = false;
                 break;
             case PlaybackState.Paused:
                 _seekBarTimer.Stop();
-                isStopped = false;
+                _isStopped = false;
                 break;
             case PlaybackState.Stopped:
                 _seekBarTimer.Stop();
                 SeekBar.Value = 0;
-                isStopped = true;
+                _isStopped = true;
                 break;
         }
 
         SetTrackStatus();
     }
 
+    private void OnProgressDataChanged(ProgressData progressData)
+    {
+        if (!Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.Invoke(() => OnProgressDataChanged(progressData));
+            return;
+        }
+
+        // Update private fields
+        _isProcessing = progressData.IsProcessing;
+        _processedTracks = progressData.ProcessedTracks;
+        _totalTracks = progressData.TotalTracks;
+        _status = progressData.Status;
+
+        // Update UI elements
+        TheProgressBar.Maximum = progressData.TotalTracks > 0 ? progressData.TotalTracks : 1;
+        TheProgressBar.Value = progressData.ProcessedTracks;
+        Info.Text = progressData.IsProcessing
+            ? $"({progressData.ProcessedTracks}/{progressData.TotalTracks}) {progressData.Status}"
+            : progressData.Status;
+
+        Log.Debug("Progress Update: Processed={Processed}, Total={Total}, Status={Status}",
+            progressData.ProcessedTracks, progressData.TotalTracks, progressData.Status);
+    }
+
     private void OnDataGridPlay(PlaybackState value)
     {
-        vm!.StopTrack();
+        _vm!.StopTrack();
         _seekBarTimer.Stop();
         SeekBar.Value = 0;
         PlayButton.Command.Execute(value);
         _seekBarTimer.Start();
-        isStopped = false;
+        _isStopped = false;
     }
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -198,13 +217,13 @@ public partial class PlayerControls
     {
         if (!(SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            SeekBar.Value = vm!.CurrentSeekbarPosition();
+            SeekBar.Value = _vm!.CurrentSeekbarPosition();
         }
     }
 
     private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (vm!.SelectedTrack == null) return;
+        if (_vm!.SelectedTrack == null) return;
         double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
@@ -212,9 +231,9 @@ public partial class PlayerControls
 
     private void OnMuteChanged(bool isMuted)
     {
-        if (vm == null) return;
+        if (_vm == null) return;
 
-        double targetValue = isMuted ? 0 : vm.GetVolumeBeforeMute();
+        double targetValue = isMuted ? 0 : _vm.GetVolumeBeforeMute();
         AnimateVolumeSliderValue(VolumeSlider, targetValue, isMuted);
     }
 
@@ -233,7 +252,7 @@ public partial class PlayerControls
         // Update audio volume during animation
         animation.CurrentTimeInvalidated += (_, _) =>
         {
-            if (vm != null)
+            if (_vm != null)
             {
                 double currentValue = slider.Value;
                 _audioEngine.MusicVolume = (float)currentValue / 100;
@@ -245,9 +264,9 @@ public partial class PlayerControls
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = position;
-            if (vm != null)
+            if (_vm != null)
             {
-                vm.UpdateVolumeAfterAnimation(position, isMuted);
+                _vm.UpdateVolumeAfterAnimation(position, isMuted);
             }
             //Serilog.Log.Information("VolumeSlider animation completed, Value={Value}, IsMuted={IsMuted}", position, isMuted);
         };
@@ -263,9 +282,9 @@ public partial class PlayerControls
 
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
     {
-        if (vm != null)
+        if (_vm != null)
         {
-            vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
+            _vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
         }
     }
 }
