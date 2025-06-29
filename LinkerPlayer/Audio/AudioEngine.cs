@@ -2,6 +2,7 @@
 using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,7 @@ namespace LinkerPlayer.Audio;
 
 public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
 {
+    private readonly ILogger<AudioEngine> _logger;
     [ObservableProperty] private bool _isBassInitialized;
     [ObservableProperty] private int _currentStream;
     [ObservableProperty] private string _pathToMusic = string.Empty;
@@ -54,22 +56,39 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
 
-    public AudioEngine()
+    public AudioEngine(ILogger<AudioEngine> logger)
     {
-        Initialize();
+        _logger = logger;
 
-        // Load plugins
-        LoadBassPlugins();
+        try
+        {
+            _logger.Log(LogLevel.Information, "Initializing AudioEngine");
+            Initialize();
 
-        // Configure buffer and update period
-        Bass.Configure(Configuration.PlaybackBufferLength, 500);
-        Bass.Configure(Configuration.UpdatePeriod, 50);
+            // Load plugins
+            LoadBassPlugins();
 
-        _positionTimer = new System.Timers.Timer(50);
-        _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
-        _positionTimer.AutoReset = true;
+            // Configure buffer and update period
+            Bass.Configure(Configuration.PlaybackBufferLength, 500);
+            Bass.Configure(Configuration.UpdatePeriod, 50);
 
-        FftUpdate = new float[ExpectedFftSize];
+            _positionTimer = new System.Timers.Timer(50);
+            _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
+            _positionTimer.AutoReset = true;
+
+            FftUpdate = new float[ExpectedFftSize];
+            _logger.Log(LogLevel.Information, "AudioEngine initialized successfully");
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in AudioEngine constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in AudioEngine constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     public void Initialize()
@@ -93,14 +112,14 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         string basePath = AppDomain.CurrentDomain.BaseDirectory;
         string[] pluginFiles =
         [
-            "bassflac.dll",    // FLAC support
-            "bassalac.dll",    // Apple Lossless
-            "basswv.dll",      // WavPack
-            "basswma.dll",     // WMA
-            "bassmidi.dll",    // MIDI
             "bass_aac.dll",    // AAC
             "bass_ac3.dll",    // AC3
-            "bassape.dll"      // Monkey's Audio
+            "bassalac.dll",    // Apple Lossless
+            "bassflac.dll",    // FLAC support
+            "bassmidi.dll",    // MIDI
+            "bassape.dll",     // Monkey's Audio
+            "basswv.dll",      // WavPack
+            "basswma.dll",     // WMA
         ];
 
         foreach (string plugin in pluginFiles)
@@ -108,11 +127,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             string path = Path.Combine(basePath, plugin);
             if (File.Exists(path))
             {
-                int handle = Bass.PluginLoad(path);
-                if (handle != 0)
-                    Log.Information($"Loaded plugin: {plugin}");
-                else
-                    Log.Error($"Failed to load plugin: {plugin}, Error={Bass.LastError}");
+                try
+                {
+                    int handle = Bass.PluginLoad(path);
+                    if (handle != 0)
+                        Log.Information($"Loaded plugin: {plugin}");
+                    else
+                        Log.Error($"Failed to load plugin: {plugin}, Error={Bass.LastError}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"Error loading plugin {plugin}: {ex.Message}");
+                }
             }
             else
             {
@@ -166,7 +192,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void LoadAudioFile(string pathToMusic)
     {
-//        Log.Information($"Loading audio file: {pathToMusic} at position {position}");
+        //        Log.Information($"Loading audio file: {pathToMusic} at position {position}");
 
         CurrentStream = Bass.CreateStream(pathToMusic, Flags: BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
         if (CurrentStream == 0)
@@ -241,7 +267,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     SetBandGain(band.Frequency, band.Gain);
                 }
             }
-            
+
             if (CurrentStream != 0)
             {
                 long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
@@ -517,7 +543,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        PeakEQParameters eqParams = new() 
+        PeakEQParameters eqParams = new()
         {
             fCenter = frequency,
             fBandwidth = _equalizerBands[bandIndex].Bandwidth,

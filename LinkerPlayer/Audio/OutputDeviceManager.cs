@@ -1,7 +1,7 @@
 ﻿using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using ManagedBass;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.Collections.Generic;
@@ -12,15 +12,17 @@ public class OutputDeviceManager
 {
     private readonly AudioEngine _audioEngine;
     private readonly SettingsManager _settingsManager;
+    private readonly ILogger<OutputDeviceManager> _logger;
 
     private readonly List<string> Devices = new();
     private bool _isInitialized;
     private string _currentDeviceName = "Default";
     
-    public OutputDeviceManager(AudioEngine audioEngine, SettingsManager settingsManager)
+    public OutputDeviceManager(AudioEngine audioEngine, SettingsManager settingsManager, ILogger<OutputDeviceManager> logger)
     {
         _audioEngine = audioEngine;
         _settingsManager = settingsManager;
+        _logger = logger;
     }
 
     public void InitializeOutputDevice()

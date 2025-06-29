@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Serilog;
 using System;
@@ -12,18 +13,37 @@ namespace LinkerPlayer.ViewModels;
 public partial class EqualizerViewModel : ObservableObject
 {
     private readonly AudioEngine _audioEngine;
+    private readonly ILogger<EqualizerViewModel> _logger;
     private readonly string _jsonFilePath;
 
     [ObservableProperty] private static ObservableCollection<Preset> _eqPresets = [];
 
-    public EqualizerViewModel(AudioEngine audioEngine)
+    public EqualizerViewModel(AudioEngine audioEngine, ILogger<EqualizerViewModel> logger)
     {
         _audioEngine = audioEngine;
+        _logger = logger;
 
-        _jsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        try
+        {
+            _logger.Log(LogLevel.Information, "Initializing EqualizerViewModel");
+
+            _jsonFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "LinkerPlayer", "eqPresets.json");
 
-        LoadFromJson();
+            LoadFromJson();
+
+            _logger.Log(LogLevel.Information, "EqualizerViewModel initialized successfully");
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in EqualizerViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in EqualizerViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     [ObservableProperty] private float _band0;

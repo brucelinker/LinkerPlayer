@@ -2,6 +2,9 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using Microsoft.Extensions.Logging;
+using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace LinkerPlayer.ViewModels;
@@ -13,32 +16,49 @@ public class MainViewModel : ObservableObject
     private readonly PlayerControlsViewModel _playerControlsViewModel;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;
     private readonly OutputDeviceManager _outputDeviceManager;
+    private readonly ILogger<MainViewModel> _logger;
 
     public MainViewModel(
         SettingsManager settingsManager,
         PlayerControlsViewModel playerControlsViewModel,
         PlaylistTabsViewModel playlistTabsViewModel,
-        OutputDeviceManager outputDeviceManager)
+        OutputDeviceManager outputDeviceManager,
+        ILogger<MainViewModel> logger)
     {
-        Serilog.Log.Information("MainViewModel: Initializing");
-        _settingsManager = settingsManager;
-        _playerControlsViewModel = playerControlsViewModel;
-        _playlistTabsViewModel = playlistTabsViewModel;
-        _outputDeviceManager = outputDeviceManager;
+        _logger = logger;
 
-        ThemeColors selectedTheme;
-        _outputDeviceManager.InitializeOutputDevice();
-
-        if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedTheme))
+        try
         {
-            selectedTheme = ThemeMgr.StringToThemeColor(_settingsManager.Settings.SelectedTheme);
-        }
-        else
-        {
-            selectedTheme = ThemeColors.Dark;
-        }
+            _logger.Log(LogLevel.Information, "Initializing MainViewModel"); _settingsManager = settingsManager;
+            _playerControlsViewModel = playerControlsViewModel;
+            _playlistTabsViewModel = playlistTabsViewModel;
+            _outputDeviceManager = outputDeviceManager;
 
-        ThemeMgr.ModifyTheme(selectedTheme);
+            ThemeColors selectedTheme;
+            _outputDeviceManager.InitializeOutputDevice();
+
+            if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedTheme))
+            {
+                selectedTheme = ThemeMgr.StringToThemeColor(_settingsManager.Settings.SelectedTheme);
+            }
+            else
+            {
+                selectedTheme = ThemeColors.Dark;
+            }
+
+            ThemeMgr.ModifyTheme(selectedTheme);
+            _logger.Log(LogLevel.Information, "MainViewModel initialized successfully");
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in MainViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in MainViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     public PlayerControlsViewModel PlayerControlsViewModel => _playerControlsViewModel;

@@ -54,7 +54,7 @@ public partial class PlayerControls
 
         _equalizerWindow = App.AppHost.Services.GetRequiredService<EqualizerWindow>();
         _equalizerWindow.Hide();
-        ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
+        //((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
         SetTrackStatus();
 
@@ -168,21 +168,19 @@ public partial class PlayerControls
             return;
         }
 
-        // Update private fields
         _isProcessing = progressData.IsProcessing;
         _processedTracks = progressData.ProcessedTracks;
         _totalTracks = progressData.TotalTracks;
         _status = progressData.Status;
 
-        // Update UI elements
         TheProgressBar.Maximum = progressData.TotalTracks > 0 ? progressData.TotalTracks : 1;
         TheProgressBar.Value = progressData.ProcessedTracks;
         Info.Text = progressData.IsProcessing
-            ? $"({progressData.ProcessedTracks}/{progressData.TotalTracks}) {progressData.Status}"
+            ? $"{progressData.Phase}: {progressData.Status} ({progressData.ProcessedTracks}/{progressData.TotalTracks})"
             : progressData.Status;
 
-        Log.Debug("Progress Update: Processed={Processed}, Total={Total}, Status={Status}",
-            progressData.ProcessedTracks, progressData.TotalTracks, progressData.Status);
+        Log.Debug("Progress Update: Phase={Phase}, Processed={Processed}, Total={Total}, Status={Status}",
+            progressData.Phase, progressData.ProcessedTracks, progressData.TotalTracks, progressData.Status);
     }
 
     private void OnDataGridPlay(PlaybackState value)

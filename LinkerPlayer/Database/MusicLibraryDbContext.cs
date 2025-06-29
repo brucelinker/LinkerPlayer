@@ -8,6 +8,7 @@ public class MusicLibraryDbContext : DbContext
     public DbSet<MediaFile> Tracks { get; set; }
     public DbSet<Playlist> Playlists { get; set; }
     public DbSet<PlaylistTrack> PlaylistTracks { get; set; }
+    public DbSet<MetadataCache> MetadataCache { get; set; } // Added DbSet for MetadataCache
 
     public MusicLibraryDbContext(DbContextOptions<MusicLibraryDbContext> options)
         : base(options)
@@ -51,5 +52,17 @@ public class MusicLibraryDbContext : DbContext
         modelBuilder.Entity<Playlist>()
             .Property(p => p.SelectedTrack)
             .IsRequired(false);
+
+        // Configure MetadataCache entity
+        modelBuilder.Entity<MetadataCache>()
+            .HasKey(mc => mc.Path); // Set Path as the primary key
+
+        modelBuilder.Entity<MetadataCache>()
+            .Property(mc => mc.LastModified)
+            .IsRequired();
+
+        modelBuilder.Entity<MetadataCache>()
+            .Property(mc => mc.Metadata)
+            .IsRequired();
     }
 }

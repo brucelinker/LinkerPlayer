@@ -352,7 +352,7 @@
             Grid.Column="2"
             Width="Auto"
             Margin="5,0"
-            HorizontalAlignment="Right"
+            HorizontalAlignment="Center"
             VerticalAlignment="Center"
             FontSize="13"
             FontWeight="Light" />

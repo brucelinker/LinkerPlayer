@@ -6,10 +6,10 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
 using System.IO;
-using System.Windows;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -20,6 +20,8 @@ public partial class PlayerControlsViewModel : ObservableObject
     //private readonly EqualizerViewModel _equalizerViewModel;
     private readonly SettingsManager _settingsManager;
     private readonly SharedDataModel _sharedDataModel;
+    private readonly ILogger<PlayerControlsViewModel> _logger;
+
     private double _volumeBeforeMute;
 
     public PlayerControlsViewModel(
@@ -27,23 +29,40 @@ public partial class PlayerControlsViewModel : ObservableObject
         PlaylistTabsViewModel playlistTabsViewModel,
         //EqualizerViewModel equalizerViewModel,
         SettingsManager settingsManager,
-        SharedDataModel sharedDataModel)
+        SharedDataModel sharedDataModel,
+        ILogger<PlayerControlsViewModel> logger)
     {
         _audioEngine = audioEngine;
         _playlistTabsViewModel = playlistTabsViewModel;
         //_equalizerViewModel = equalizerViewModel;
         _settingsManager = settingsManager;
         _sharedDataModel = sharedDataModel;
+        _logger = logger;
 
-        ShuffleMode = _settingsManager.Settings.ShuffleMode;
-        VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
-        _volumeBeforeMute = VolumeSliderValue;
-
-        _settingsManager.SettingsChanged += OnSettingsChanged;
-        WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+        try
         {
-            OnPlaybackStateChanged(m.Value);
-        });
+            _logger.Log(LogLevel.Information, "Initializing PlayerControlsViewModel");
+            // Constructor logic        ShuffleMode = _settingsManager.Settings.ShuffleMode;
+            VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
+            _volumeBeforeMute = VolumeSliderValue;
+
+            _settingsManager.SettingsChanged += OnSettingsChanged;
+            WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+            {
+                OnPlaybackStateChanged(m.Value);
+            });
+            _logger.Log(LogLevel.Information, "PlayerControlsViewModel initialized successfully");
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in PlayerControlsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in PlayerControlsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     [ObservableProperty] private PlaybackState _state;

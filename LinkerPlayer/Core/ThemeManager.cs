@@ -18,7 +18,7 @@ public class ThemeManager
 
     public static void AddDict(ResourceDictionary resDict)
     {
-        TrackInfo.ReloadDefaultAlbumImage();
+//        TrackInfo.ReloadDefaultAlbumImage();
 
         if (MainWindow.Instance == null) return;
 

@@ -1,16 +1,16 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
-using LinkerPlayer.Database;
+﻿using LinkerPlayer.Database;
 using LinkerPlayer.Models;
 using ManagedBass;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Internal;
 using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace LinkerPlayer.Core;
@@ -20,23 +20,38 @@ public class MusicLibrary
     private static readonly string DbPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "LinkerPlayer", "music_library.db");
+
     private static readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
     public static ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public static ObservableCollection<Playlist> Playlists { get; } = new();
     private static readonly string[] SupportedAudioExtensions = [".mp3", ".flac", ".wav"];
+    private static readonly Dictionary<string, (DateTime LastModified, MediaFile Metadata)> MetadataCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static bool _isInitialized;
 
     static MusicLibrary()
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(DbPath)!);
-            var options = new DbContextOptionsBuilder<MusicLibraryDbContext>()
-                .UseSqlite($"Data Source={DbPath}")
+            DbContextOptions<MusicLibraryDbContext> options = new DbContextOptionsBuilder<MusicLibraryDbContext>()
+                .UseSqlite($"Data Source={DbPath};Pooling=True;")
                 .Options;
             _dbContextFactory = new PooledDbContextFactory<MusicLibraryDbContext>(options);
+
             using (var context = _dbContextFactory.CreateDbContext())
             {
+                Log.Information("Ensuring database is created");
                 context.Database.EnsureCreated();
+                Log.Information("Setting WAL mode");
+                context.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+                Log.Information("Creating index idx_tracks_path");
+                context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS idx_tracks_path ON Tracks(Path);");
+                Log.Information("Creating index idx_playlisttracks_playlistid");
+                context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS idx_playlisttracks_playlistid ON PlaylistTracks(PlaylistId);");
+                Log.Information("Creating MetadataCache table");
+                context.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS MetadataCache (Path TEXT PRIMARY KEY, LastModified INTEGER, Metadata TEXT NOT NULL);");
             }
             LoadFromDatabaseAsync().GetAwaiter().GetResult();
         }
@@ -47,20 +62,70 @@ public class MusicLibrary
         }
     }
 
-    //public static async Task ReloadLibraryAsync()
-    //{
-    //    try
-    //    {
-    //        await LoadFromDatabaseAsync();
-    //        WeakReferenceMessenger.Default.Send(new PlaylistsReloadedMessage());
-    //        Log.Information("Music library reloaded from database");
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Log.Error(ex, "Failed to reload music library");
-    //        throw;
-    //    }
-    //}
+    public static async Task SaveMetadataCacheAsync()
+    {
+        try
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+            foreach (var entry in MetadataCache)
+            {
+                await context.Database.ExecuteSqlRawAsync(
+                    "INSERT OR REPLACE INTO MetadataCache (Path, LastModified, Metadata) VALUES (@p0, @p1, @p2)",
+                    entry.Key, entry.Value.LastModified.Ticks, JsonSerializer.Serialize(entry.Value.Metadata));
+            }
+            await transaction.CommitAsync();
+            Log.Information("Saved MetadataCache with {Count} entries", MetadataCache.Count);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to save metadata cache");
+        }
+    }
+
+    public static async Task LoadMetadataCacheOnStartupAsync()
+    {
+        Log.Information("Loading MetadataCache from database");
+        await LoadMetadataCacheAsync();
+        Log.Information("Loaded MetadataCache with {Count} entries", MetadataCache.Count);
+    }
+
+    private static async Task LoadMetadataCacheAsync()
+    {
+        try
+        {
+            using var context = _dbContextFactory.CreateDbContext();
+
+            await context.Database.EnsureCreatedAsync(); // Creates database if it doesn’t exist
+            await context.MetadataCache.ToListAsync();
+
+
+            var entries = await context.MetadataCache.ToListAsync(); // Query MetadataCache entity
+            MetadataCache.Clear();
+            foreach (var entry in entries)
+            {
+                try
+                {
+                    MetadataCache[entry.Path] = (new DateTime(entry.LastModified),
+                        JsonSerializer.Deserialize<MediaFile>(entry.Metadata)!);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"Failed to deserialize metadata for {entry.Path}");
+                }
+            }
+            Log.Information("Loaded MetadataCache with {Count} entries", MetadataCache.Count);
+        }
+        catch (SqliteException ex)
+        {
+            Log.Error(ex, "SQLite error during metadata cache load");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to load metadata cache");
+        }
+    }
 
     public static async Task LoadFromDatabaseAsync()
     {
@@ -90,17 +155,20 @@ public class MusicLibrary
                     .Select(pt => pt!.TrackId!)
                     .ToList();
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
-                Log.Information($"Loaded playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
+                Log.Information(
+                    $"Loaded playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
 
                 if (playlist.SelectedTrack != null && MainLibrary.All(t => t.Id != playlist.SelectedTrack))
                 {
-                    Log.Warning($"Invalid SelectedTrack {playlist.SelectedTrack} in playlist {playlist.Name}, clearing");
+                    Log.Warning(
+                        $"Invalid SelectedTrack {playlist.SelectedTrack} in playlist {playlist.Name}, clearing");
                     playlist.SelectedTrack = null;
                 }
                 else if (playlist.SelectedTrack == null && playlist.TrackIds.Any())
                 {
                     playlist.SelectedTrack = playlist.TrackIds.First();
-                    Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlist.Name} during load");
+                    Log.Information(
+                        $"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlist.Name} during load");
                 }
 
                 Playlists.Add(playlist);
@@ -144,7 +212,8 @@ public class MusicLibrary
                     continue;
                 }
 
-                var existingTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Path == track.Path && t.Album == track.Album && t.Duration == track.Duration);
+                var existingTrack = await context.Tracks.FirstOrDefaultAsync(t =>
+                    t.Path == track.Path && t.Album == track.Album && t.Duration == track.Duration);
                 if (existingTrack == null)
                 {
                     context.Tracks.Add(track);
@@ -182,7 +251,6 @@ public class MusicLibrary
             throw;
         }
     }
-
     public static async Task SaveToDatabaseAsync()
     {
         using var context = _dbContextFactory.CreateDbContext();
@@ -201,7 +269,8 @@ public class MusicLibrary
                     continue;
                 }
 
-                var existingTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Path == track.Path && t.Album == track.Album && t.Duration == track.Duration);
+                var existingTrack = await context.Tracks.FirstOrDefaultAsync(t =>
+                    t.Path == track.Path && t.Album == track.Album && t.Duration == track.Duration);
                 if (existingTrack != null)
                 {
                     track.Id = existingTrack.Id;
@@ -210,7 +279,8 @@ public class MusicLibrary
 
             foreach (var playlist in Playlists)
             {
-                Log.Information($"Saving playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}, SelectedTrack: {playlist.SelectedTrack}");
+                Log.Information(
+                    $"Saving playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}, SelectedTrack: {playlist.SelectedTrack}");
                 var existingPlaylist = await context.Playlists
                     .Include(p => p.PlaylistTracks)
                     .FirstOrDefaultAsync(p => p.Id == playlist.Id || p.Name == playlist.Name);
@@ -220,7 +290,8 @@ public class MusicLibrary
                     var newPlaylist = new Playlist
                     {
                         Name = playlist.Name,
-                        SelectedTrack = playlist.SelectedTrack != null && MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
+                        SelectedTrack = playlist.SelectedTrack != null &&
+                                        MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
                             ? playlist.SelectedTrack
                             : null
                     };
@@ -228,20 +299,23 @@ public class MusicLibrary
                     await context.SaveChangesAsync();
                     playlistId = newPlaylist.Id;
                     playlist.Id = playlistId;
-                    Log.Information($"Created new playlist {newPlaylist.Name} with Id {playlistId}, SelectedTrack {newPlaylist.SelectedTrack}");
+                    Log.Information(
+                        $"Created new playlist {newPlaylist.Name} with Id {playlistId}, SelectedTrack {newPlaylist.SelectedTrack}");
                 }
                 else
                 {
                     playlistId = existingPlaylist.Id;
                     existingPlaylist.Name = playlist.Name;
-                    existingPlaylist.SelectedTrack = playlist.SelectedTrack != null && MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
+                    existingPlaylist.SelectedTrack = playlist.SelectedTrack != null &&
+                                                     MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
                         ? playlist.SelectedTrack
                         : null;
                     context.Entry(existingPlaylist).Property(p => p.SelectedTrack).IsModified = true;
                     context.Entry(existingPlaylist).State = EntityState.Modified;
                     context.PlaylistTracks.RemoveRange(existingPlaylist.PlaylistTracks);
                     playlist.Id = playlistId;
-                    Log.Information($"Updated playlist {existingPlaylist.Name} with Id {playlistId}, SelectedTrack {existingPlaylist.SelectedTrack}");
+                    Log.Information(
+                        $"Updated playlist {existingPlaylist.Name} with Id {playlistId}, SelectedTrack {existingPlaylist.SelectedTrack}");
                 }
 
                 var validTrackIds = playlist.TrackIds.Where(id => context.Tracks.Any(t => t.Id == id)).ToList();
@@ -256,7 +330,8 @@ public class MusicLibrary
                             Position = i
                         });
                     }
-                    Log.Information($"Saved {validTrackIds.Count} PlaylistTrack entries for playlist {playlist.Name}");
+                    Log.Information(
+                        $"Saved {validTrackIds.Count} PlaylistTrack entries for playlist {playlist.Name}");
                 }
                 else
                 {
@@ -276,7 +351,8 @@ public class MusicLibrary
                     .OrderBy(pt => pt.Position)
                     .Select(pt => pt.TrackId)
                     .ToListAsync();
-                Log.Information($"Database state for playlist {p.Name} (Id {p.Id}): SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
+                Log.Information(
+                    $"Database state for playlist {p.Name} (Id {p.Id}): SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
@@ -296,7 +372,8 @@ public class MusicLibrary
         using var context = _dbContextFactory.CreateDbContext();
         try
         {
-            var referencedTrackIds = await context.PlaylistTracks.Select(pt => pt!.TrackId!).Distinct().ToListAsync();
+            var referencedTrackIds =
+                await context.PlaylistTracks.Select(pt => pt!.TrackId!).Distinct().ToListAsync();
             var orphanedTracks = await context.Tracks
                 .Where(t => !referencedTrackIds.Contains(t.Id))
                 .ToListAsync();
@@ -317,42 +394,84 @@ public class MusicLibrary
     public static MediaFile? IsTrackInLibrary(MediaFile mediaFile)
     {
         return MainLibrary.FirstOrDefault(s =>
-            s.Path == mediaFile.Path &&
-            s.Album == mediaFile.Album &&
-            s.Duration == mediaFile.Duration);
+            s.Path.Equals(mediaFile.Path, StringComparison.OrdinalIgnoreCase));
     }
 
-    public static async Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true)
+    public static async Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true,
+        bool skipMetadata = false)
     {
-        var existingTrack = IsTrackInLibrary(mediaFile);
-        if (existingTrack != null)
+        Log.Debug($"Entering AddTrackToLibraryAsync for {mediaFile.Path}");
+        try
         {
-            return existingTrack;
-        }
+            var existingTrack = IsTrackInLibrary(mediaFile);
+            if (existingTrack != null)
+            {
+                Log.Debug($"Track already in library: {mediaFile.Path}");
+                return existingTrack;
+            }
 
-        if (!string.IsNullOrEmpty(mediaFile.Path) &&
-            SupportedAudioExtensions.Any(s => s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
+            if (!string.IsNullOrEmpty(mediaFile.Path) &&
+                SupportedAudioExtensions.Any(s =>
+                    s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
+            {
+                if (!skipMetadata)
+                {
+                    var fileInfo = new FileInfo(mediaFile.Path);
+                    if (MetadataCache.TryGetValue(mediaFile.Path, out var cached) &&
+                        cached.LastModified == fileInfo.LastWriteTime)
+                    {
+                        mediaFile.Duration = cached.Metadata.Duration;
+                        mediaFile.Title = cached.Metadata.Title;
+                        mediaFile.Album = cached.Metadata.Album;
+                        mediaFile.Artist = cached.Metadata.Artist;
+                        mediaFile.Bitrate = cached.Metadata.Bitrate;
+                        mediaFile.SampleRate = cached.Metadata.SampleRate;
+                        mediaFile.Channels = cached.Metadata.Channels;
+                        mediaFile.Performers = cached.Metadata.Performers;
+                        mediaFile.Composers = cached.Metadata.Composers;
+                        mediaFile.Genres = cached.Metadata.Genres;
+                        mediaFile.Track = cached.Metadata.Track;
+                        mediaFile.TrackCount = cached.Metadata.TrackCount;
+                        mediaFile.Disc = cached.Metadata.Disc;
+                        mediaFile.DiscCount = cached.Metadata.DiscCount;
+                        mediaFile.Year = cached.Metadata.Year;
+                        mediaFile.Copyright = cached.Metadata.Copyright;
+                        mediaFile.Comment = cached.Metadata.Comment;
+                        Log.Debug($"Metadata cache hit for {mediaFile.Path}");
+                    }
+                    else
+                    {
+                        try
+                        {
+                            mediaFile.UpdateFromFileMetadata(false, minimal: true);
+                            Log.Debug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
+                            MetadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
+                            Log.Debug($"Added {mediaFile.Path} to MetadataCache. Cache size: {MetadataCache.Count}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, $"Failed to extract metadata for {mediaFile.Path}");
+                            return null;
+                        }
+                    }
+                }
+                var clonedTrack = mediaFile.Clone();
+                MainLibrary.Add(clonedTrack);
+                if (saveImmediately)
+                {
+                    await SaveTracksBatchAsync(new[] { clonedTrack });
+                }
+                return clonedTrack;
+            }
+
+            Log.Warning($"Unsupported file format: {mediaFile.Path}");
+            return null;
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                mediaFile.UpdateFromFileMetadata();
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, $"Failed to extract metadata for {mediaFile.Path}");
-                return null;
-            }
-            var clonedTrack = mediaFile.Clone();
-            MainLibrary.Add(clonedTrack);
-            if (saveImmediately)
-            {
-                await SaveTracksBatchAsync(new[] { clonedTrack }); // Use batch save
-            }
-            return clonedTrack;
+            Log.Error(ex, $"Failed to add track to library: {mediaFile.Path}");
+            return null;
         }
-
-        Log.Warning($"Unsupported file format: {mediaFile.Path}");
-        return null;
     }
 
     public static async Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId)
@@ -398,8 +517,8 @@ public class MusicLibrary
             return false;
         }
 
-        // Validate playlist
-        newPlaylist.TrackIds = new ObservableCollection<string>(newPlaylist.TrackIds.Where(id => MainLibrary.Any(t => t.Id == id)));
+        newPlaylist.TrackIds =
+            new ObservableCollection<string>(newPlaylist.TrackIds.Where(id => MainLibrary.Any(t => t.Id == id)));
         if (newPlaylist.SelectedTrack != null && MainLibrary.All(t => t.Id != newPlaylist.SelectedTrack))
         {
             newPlaylist.SelectedTrack = null;
@@ -429,7 +548,8 @@ public class MusicLibrary
                     context.PlaylistTracks!.RemoveRange(dbPlaylist!.PlaylistTracks!);
                     context.Playlists!.Remove(dbPlaylist);
                     await context.SaveChangesAsync();
-                    Log.Information($"Removed playlist '{playlistName}' and {dbPlaylist!.PlaylistTracks!.Count} tracks from database");
+                    Log.Information(
+                        $"Removed playlist '{playlistName}' and {dbPlaylist!.PlaylistTracks!.Count} tracks from database");
                 }
                 await CleanOrphanedTracksAsync();
                 Log.Information($"Playlist '{playlistName}' removed");
@@ -442,7 +562,44 @@ public class MusicLibrary
         }
     }
 
-    public static async Task AddTrackToPlaylistAsync(string trackId, string playlistName, bool saveImmediately = true, int position = -1)
+    public static async Task AddTracksToPlaylistAsync(IList<string> trackIds, string playlistName,
+        bool saveImmediately = true)
+    {
+        var playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
+        if (playlist == null)
+        {
+            Log.Warning($"Playlist {playlistName} not found");
+            return;
+        }
+
+        var validTrackIds = trackIds
+            .Where(id => !playlist.TrackIds.Contains(id) && MainLibrary.Any(t => t.Id == id)).ToList();
+        if (!validTrackIds.Any())
+        {
+            Log.Information($"No new valid tracks to add to playlist {playlistName}");
+            return;
+        }
+
+        foreach (var trackId in validTrackIds)
+        {
+            playlist.TrackIds.Add(trackId);
+        }
+
+        if (playlist.SelectedTrack == null && playlist.TrackIds.Any())
+        {
+            playlist.SelectedTrack = playlist.TrackIds.First();
+            Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlistName}");
+        }
+
+        Log.Information($"Added {validTrackIds.Count} tracks to playlist {playlistName}");
+        if (saveImmediately)
+        {
+            await SaveToDatabaseAsync();
+        }
+    }
+
+    public static async Task AddTrackToPlaylistAsync(string trackId, string playlistName,
+        bool saveImmediately = true, int position = -1)
     {
         var playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
         if (playlist != null && !playlist.TrackIds.Contains(trackId) && MainLibrary.Any(t => t.Id == trackId))
@@ -458,9 +615,9 @@ public class MusicLibrary
             if (playlist.SelectedTrack == null && playlist.TrackIds.Any())
             {
                 playlist.SelectedTrack = playlist.TrackIds.First();
-                Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlistName} in AddTrackToPlaylistAsync");
+                Log.Information($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlistName}");
             }
-            Log.Information($"Track {trackId} added to playlist {playlistName} at position {position}, TrackIds: {string.Join(", ", playlist.TrackIds)}");
+            Log.Information($"Track {trackId} added to playlist {playlistName} at position {position}");
             if (saveImmediately)
             {
                 await SaveToDatabaseAsync();

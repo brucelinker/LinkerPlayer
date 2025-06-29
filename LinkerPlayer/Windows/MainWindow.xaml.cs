@@ -5,8 +5,10 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.ViewModels;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 
@@ -18,10 +20,14 @@ public partial class MainWindow
     private readonly MainViewModel _mainViewModel;
     private readonly AudioEngine _audioEngine;
     private readonly OutputDeviceManager _outputDeviceManager;
+    private readonly ILogger<MainWindow> _logger;
     private static int _count;
 
-    public MainWindow(IServiceProvider serviceProvider)
+    public MainWindow(IServiceProvider serviceProvider, ILogger<MainWindow> logger)
     {
+        _logger = logger;
+
+        try{
         Instance = this;
         InitializeComponent();
 
@@ -33,8 +39,19 @@ public partial class MainWindow
         Log.Information("App started");
         Log.Information($"MAINWINDOW - {++_count}");
 
-        ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
-        WinMax.DoSourceInitialized(this);
+            //((App)Application.Current).WindowPlace.Register(this, "MainWindow");
+            //WinMax.DoSourceInitialized(this);
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
 
         try
         {

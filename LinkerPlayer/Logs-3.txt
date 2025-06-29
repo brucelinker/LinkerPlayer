@@ -1,0 +1,129 @@
+Here is a truncated summary of the logs:
+```
+[11:11:12 DBG] Hosting starting
+[11:11:12 INF] Application started. Press Ctrl+C to shut down.
+[11:11:12 INF] Hosting environment: Production
+[11:11:12 INF] Content root path: D:\src\LinkerPlayer\LinkerPlayer\bin\Debug\net9.0-windows7.0
+[11:11:12 DBG] Hosting started
+'LinkerPlayer.exe' (CoreCLR: clrhost): Loaded 'D:\src\LinkerPlayer\LinkerPlayer\bin\Debug\net9.0-windows7.0\Microsoft.Xaml.Behaviors.dll'. Symbol loading disabled by Include/Exclude setting.
+'LinkerPlayer.exe' (CoreCLR: clrhost): Loaded 'C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\9.0.6\UIAutomationTypes.dll'. Symbol loading disabled by Include/Exclude setting.
+'LinkerPlayer.exe' (CoreCLR: clrhost): Loaded 'C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\9.0.6\PresentationFramework-SystemXml.dll'. Symbol loading disabled by Include/Exclude setting.
+[11:11:12 INF] BASS initialized
+Exception thrown: 'System.IO.IOException' in System.Private.CoreLib.dll
+'LinkerPlayer.exe' (CoreCLR: clrhost): Loaded 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.6\System.IO.FileSystem.dll'. Symbol loading disabled by Include/Exclude setting.
+[11:11:12 INF] Loaded plugin: bassflac.dll
+[11:11:12 INF] Loaded plugin: bassalac.dll
+[11:11:12 INF] Loaded plugin: basswv.dll
+[11:11:12 INF] Loaded plugin: basswma.dll
+[11:11:12 INF] Loaded plugin: bassmidi.dll
+[11:11:12 INF] Loaded plugin: bass_aac.dll
+[11:11:12 INF] Loaded plugin: bass_ac3.dll
+[11:11:12 INF] Loaded plugin: bassape.dll
+.
+.
+.
+[11:11:15 INF] Setting WAL mode
+[11:11:15 INF] Creating index idx_tracks_path
+[11:11:15 INF] Creating index idx_playlisttracks_playlistid
+[11:11:15 INF] Creating MetadataCache table
+'LinkerPlayer.exe' (CoreCLR: clrhost): Loaded 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.6\System.Linq.Queryable.dll'. Symbol loading disabled by Include/Exclude setting.
+[11:11:15 INF] Loaded playlist Beatles 1962 - 1970 with TrackIds: ...
+[11:11:15 INF] Loaded playlist Beatles with TrackIds: ...
+[11:11:15 INF] Loaded playlist Patriotic with TrackIds: ...
+[11:11:15 INF] Loaded playlist Adele with TrackIds: ...
+[11:11:15 INF] Data loaded from database
+[11:11:15 INF] MusicLibrary - GetTracksFromPlaylist
+[11:11:15 INF] LoadPlaylistTabs - added PlaylistTab Beatles 1962 - 1970
+[11:11:15 INF] MusicLibrary - GetTracksFromPlaylist
+[11:11:15 INF] LoadPlaylistTabs - added PlaylistTab Beatles
+[11:11:15 INF] MusicLibrary - GetTracksFromPlaylist
+[11:11:15 INF] LoadPlaylistTabs - added PlaylistTab Patriotic
+[11:11:15 INF] MusicLibrary - GetTracksFromPlaylist
+[11:11:15 INF] LoadPlaylistTabs - added PlaylistTab Adele
+[11:11:15 INF] Loaded 4 playlists in UI
+[11:11:15 INF] PlaylistTabs: Loaded 4 playlists
+[11:11:15 INF] PlaylistTabs: Set SelectedTabIndex to 0
+.
+.
+.
+[11:11:16 INF] Loading MetadataCache from database
+[11:11:16 INF] Loaded MetadataCache with 64 entries
+[11:11:16 INF] Loaded MetadataCache with 64 entries
+[11:11:16 INF] MusicLibrary - GetTracksFromPlaylist
+.
+.
+.
+[11:14:32 INF] Drop triggered with 1 items, Control pressed: True, Items: D:\Music\Anytime\Duran Duran
+[11:14:32 INF] Using database file: C:\Users\bruce\AppData\Roaming\LinkerPlayer\music_library.db
+[11:14:33 INF] Saving playlist Beatles 1962 - 1970 with TrackIds: ...
+[11:14:33 INF] Updated playlist Beatles 1962 - 1970 with Id 2, SelectedTrack 5d9f08be-c2e0-4ed6-a1ba-60da1deb4c05
+[11:14:33 INF] Saved 150 PlaylistTrack entries for playlist Beatles 1962 - 1970
+[11:14:33 INF] Saving playlist Beatles with TrackIds: ...
+[11:14:33 INF] Updated playlist Beatles with Id 3, SelectedTrack 03557bf5-04fd-405c-b334-d4bb5061384d
+[11:14:33 INF] Saved 507 PlaylistTrack entries for playlist Beatles
+[11:14:33 INF] Saving playlist Patriotic with TrackIds: ...
+[11:14:33 INF] Updated playlist Patriotic with Id 4, SelectedTrack 4a22a72f-1e84-4438-9b51-4b3586d7aea9
+[11:14:33 INF] Saved 49 PlaylistTrack entries for playlist Patriotic
+[11:14:33 INF] Saving playlist Adele with TrackIds: ...
+[11:14:33 INF] Updated playlist Adele with Id 7, SelectedTrack 
+[11:14:33 INF] Saved 13 PlaylistTrack entries for playlist Adele
+[11:14:33 INF] Saving playlist Duran Duran with TrackIds: , SelectedTrack: 
+[11:14:33 INF] Created new playlist Duran Duran with Id 8, SelectedTrack 
+[11:14:33 INF] Playlist 'Duran Duran' is empty, no PlaylistTracks to save
+[11:14:33 INF] Data saved to database
+[11:14:33 INF] Database state for playlist Beatles 1962 - 1970 (Id 2): ...
+[11:14:33 INF] Database state for playlist Beatles (Id 3): ...
+[11:14:33 INF] Database state for playlist Patriotic (Id 4): ...
+[11:14:33 INF] Database state for playlist Adele (Id 7): ...
+[11:14:33 INF] Database state for playlist Duran Duran (Id 8): SelectedTrack=, TrackIds=
+[11:14:33 INF] New playlist 'Duran Duran' added
+[11:14:33 INF] Created new playlist Duran Duran with Id 8
+[11:14:33 DBG] Progress Update: Phase=Idle, Processed=0, Total=13, Status=Starting import...
+[11:14:33 INF] MusicLibrary - GetTracksFromPlaylist
+[11:14:33 INF] MusicLibrary - GetTracksFromPlaylist
+[11:14:33 DBG] Processing file D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 01 - Planet Earth.mp3 for playlist Duran Duran
+[11:14:33 DBG] Entering AddTrackToLibraryAsync for D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 01 - Planet Earth.mp3
+[11:14:33 DBG] Extracted metadata for D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 01 - Planet Earth.mp3: Artist=, Title=Planet Earth
+[11:14:33 DBG] Added D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 01 - Planet Earth.mp3 to MetadataCache. Cache size: 65
+.
+.
+.
+[11:14:33 DBG] Processing file D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 14 - All She Wants Is.mp3 for playlist Duran Duran
+[11:14:33 DBG] Entering AddTrackToLibraryAsync for D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 14 - All She Wants Is.mp3
+[11:14:33 DBG] Progress Update: Phase=Idle, Processed=12, Total=13, Status=Adding: I Don't Want Your Love
+[11:14:33 DBG] Extracted metadata for D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 14 - All She Wants Is.mp3: Artist=, Title=All She Wants Is
+[11:14:33 DBG] Added D:\Music\Anytime\Duran Duran\Decade\Duran Duran - 14 - All She Wants Is.mp3 to MetadataCache. Cache size: 77
+[11:14:33 DBG] Progress Update: Phase=Idle, Processed=13, Total=13, Status=Adding: All She Wants Is
+[11:14:33 INF] Batch saved 13 tracks to database
+[11:14:33 INF] Track 0d3aaa85-0cc6-4ae1-b73d-38d29b2772f1 added to playlist Duran Duran at position -1
+[11:14:33 INF] Track 00ca9e95-2590-4887-b88f-109f3e23de19 added to playlist Duran Duran at position -1
+[11:14:33 INF] Track e4ea7009-da7c-415f-a6d2-f7a3bcf81505 added to playlist Duran Duran at position -1
+.
+.
+.
+[11:14:33 INF] Track 61a0c04d-988b-4e2e-82f5-e63954b64116 added to playlist Duran Duran at position -1
+[11:14:33 INF] Track 583f0acf-5635-4fc8-8735-7202797316b9 added to playlist Duran Duran at position -1
+[11:14:33 INF] Using database file: C:\Users\bruce\AppData\Roaming\LinkerPlayer\music_library.db
+[11:14:34 INF] Saving playlist Beatles 1962 - 1970 with TrackIds: ...
+[11:14:34 INF] Updated playlist Beatles 1962 - 1970 with Id 2, SelectedTrack 5d9f08be-c2e0-4ed6-a1ba-60da1deb4c05
+[11:14:34 INF] Saved 150 PlaylistTrack entries for playlist Beatles 1962 - 1970
+[11:14:34 INF] Saving playlist Beatles with TrackIds: ...
+[11:14:34 INF] Updated playlist Beatles with Id 3, SelectedTrack 03557bf5-04fd-405c-b334-d4bb5061384d
+[11:14:34 INF] Saved 507 PlaylistTrack entries for playlist Beatles
+[11:14:34 INF] Saving playlist Patriotic with TrackIds: ...
+[11:14:34 INF] Updated playlist Patriotic with Id 4, SelectedTrack 4a22a72f-1e84-4438-9b51-4b3586d7aea9
+[11:14:34 INF] Saved 49 PlaylistTrack entries for playlist Patriotic
+[11:14:34 INF] Saving playlist Adele with TrackIds: ...
+[11:14:34 INF] Updated playlist Adele with Id 7, SelectedTrack 
+[11:14:34 INF] Saved 13 PlaylistTrack entries for playlist Adele
+[11:14:34 INF] Saving playlist Duran Duran with TrackIds: ...
+[11:14:34 INF] Updated playlist Duran Duran with Id 8, SelectedTrack 0d3aaa85-0cc6-4ae1-b73d-38d29b2772f1
+[11:14:34 INF] Saved 13 PlaylistTrack entries for playlist Duran Duran
+[11:14:34 INF] Data saved to database
+[11:14:34 INF] Database state for playlist Beatles 1962 - 1970 (Id 2): ...
+[11:14:34 INF] Database state for playlist Beatles (Id 3): ...
+[11:14:34 INF] Database state for playlist Patriotic (Id 4): ...
+[11:14:34 INF] Database state for playlist Adele (Id 7): ...
+[11:14:34 INF] Database state for playlist Duran Duran (Id 8): ...
+[11:14:34 DBG] Progress Update: Phase=Idle, Processed=0, Total=1, Status=Finished
+[11:14:34 INF] Processed folder D:\Music\Anytime\Duran Duran

@@ -7,6 +7,7 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
@@ -33,7 +34,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
     [ObservableProperty] private PlaybackState _state;
     [ObservableProperty] private ObservableCollection<PlaylistTab> _tabList = [];
     [ObservableProperty] private bool _allowDrop;
-    [ObservableProperty] private ProgressData _progressInfo = new()
+    [ObservableProperty]
+    private ProgressData _progressInfo = new()
     {
         IsProcessing = false,
         ProcessedTracks = 0,
@@ -43,6 +45,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     private readonly SharedDataModel _sharedDataModel;
     private readonly SettingsManager _settingsManager;
+    private readonly ILogger<PlaylistTabsViewModel> _logger;
+
     private TabControl? _tabControl;
     private DataGrid? _dataGrid;
 
@@ -56,23 +60,43 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
     private static int _count;
 
-    public PlaylistTabsViewModel(SharedDataModel sharedDataModel, SettingsManager settingsManager)
+    public PlaylistTabsViewModel(
+        SharedDataModel sharedDataModel,
+        SettingsManager settingsManager,
+        ILogger<PlaylistTabsViewModel> logger)
     {
-        Log.Information($"PLAYLISTTABSVIEWMODEL - {++_count}");
-        _sharedDataModel = sharedDataModel;
-        _settingsManager = settingsManager;
-        _shuffleMode = _settingsManager.Settings.ShuffleMode;
-        AllowDrop = true;
+        _logger = logger;
 
-        WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+        try
         {
-            OnPlaybackStateChanged(m.Value);
-        });
+            _logger.Log(LogLevel.Information, "Initializing PlaylistTabsViewModel");
+            Log.Information($"PLAYLISTTABSVIEWMODEL - {++_count}");
+            _sharedDataModel = sharedDataModel;
+            _settingsManager = settingsManager;
+            _shuffleMode = _settingsManager.Settings.ShuffleMode;
+            AllowDrop = true;
 
-        WeakReferenceMessenger.Default.Register<ShuffleModeMessage>(this, (_, m) =>
+            WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
+            {
+                OnPlaybackStateChanged(m.Value);
+            });
+
+            WeakReferenceMessenger.Default.Register<ShuffleModeMessage>(this, (_, m) =>
+            {
+                OnShuffleChanged(m.Value);
+            });
+            _logger.Log(LogLevel.Information, "PlaylistTabsViewModel initialized successfully");
+        }
+        catch (IOException ex)
         {
-            OnShuffleChanged(m.Value);
-        });
+            _logger.Log(LogLevel.Error, ex, "IO error in PlaylistTabsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in PlaylistTabsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     public int SelectedTrackIndex
@@ -154,7 +178,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         SelectedPlaylist.SelectedTrack = SelectedPlaylist.TrackIds.FirstOrDefault();
         SelectedTrack = MusicLibrary.MainLibrary.FirstOrDefault(x => x.Id == SelectedPlaylist.SelectedTrack);
 
-        MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack!.Id;
+        if (SelectedTrack == null) return;
+        MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack.Id;
         if (_shuffleMode)
         {
             ShuffleTracks(_shuffleMode);
@@ -386,6 +411,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         ProgressInfo.IsProcessing = true;
         ProgressInfo.TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
         ProgressInfo.ProcessedTracks = 0;
+        ProgressInfo.Phase = "Adding";
         ProgressInfo.Status = "Starting import...";
         progress?.Report(ProgressInfo);
 
@@ -399,6 +425,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     SelectedTab = TabList.Last();
                     SelectedTabIndex = TabList.Count - 1;
+                    _dataGrid.ItemsSource = SelectedTab.Tracks;
+                    _dataGrid.Items.Refresh();
                 });
             }
 
@@ -406,63 +434,171 @@ public partial class PlaylistTabsViewModel : ObservableObject
             if (playlist == null)
             {
                 Log.Error($"Playlist {SelectedTab!.Name} not found in MusicLibrary.Playlists");
+                progress?.Report(new ProgressData { IsProcessing = false, Status = "Error: Playlist not found" });
                 return;
             }
 
             List<MediaFile> tracksToAdd = new List<MediaFile>();
-            int batchSize = Math.Max(1, ProgressInfo.TotalTracks / 100);
+            int batchSize = Math.Max(1, ProgressInfo.TotalTracks / 100); // ~5 for 507 tracks
             int processedCount = 0;
+            HashSet<string> addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-            foreach (string file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
+            await Task.Run(async () =>
             {
-                if (IsAudioFile(file))
+                List<MediaFile> batchTracks = new List<MediaFile>();
+                foreach (string file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
                 {
-                    MediaFile mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
-                    MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
-                    if (addedTrack != null)
+                    if (IsAudioFile(file) && addedPaths.Add(file))
                     {
-                        tracksToAdd.Add(addedTrack);
+                        MediaFile mediaFile = new MediaFile
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Path = file,
+                            Title = Path.GetFileNameWithoutExtension(file),
+                            FileName = Path.GetFileName(file),
+                            State = PlaybackState.Stopped,
+                            Duration = TimeSpan.FromSeconds(1),
+                            Album = "<Unknown>",
+                            Artist = null
+                        };
+
+                        MediaFile? existingTrack = MusicLibrary.IsTrackInLibrary(mediaFile);
+                        MediaFile clonedTrack;
+                        if (existingTrack != null)
+                        {
+                            clonedTrack = existingTrack.Clone();
+                            Log.Debug($"Using existing track: {file}");
+                        }
+                        else
+                        {
+                            clonedTrack = mediaFile.Clone();
+                            MusicLibrary.MainLibrary.Add(clonedTrack);
+                        }
+
+                        tracksToAdd.Add(clonedTrack);
+                        batchTracks.Add(clonedTrack);
                         processedCount++;
 
-                        if (processedCount % batchSize == 0 || processedCount == ProgressInfo.TotalTracks)
+                        if (batchTracks.Count >= batchSize || processedCount == ProgressInfo.TotalTracks)
                         {
-                            ProgressInfo.ProcessedTracks = processedCount;
-                            ProgressInfo.Status = $"Adding: {addedTrack.Title}";
-                            progress?.Report(ProgressInfo);
+                            await Application.Current.Dispatcher.InvokeAsync(() =>
+                            {
+                                foreach (var track in batchTracks)
+                                {
+                                    if (!SelectedTab.Tracks.Any(t => t.Id == track.Id))
+                                    {
+                                        SelectedTab.Tracks.Add(track);
+                                    }
+                                }
+                                _dataGrid.Items.Refresh();
+                                ProgressInfo.ProcessedTracks = processedCount;
+                                ProgressInfo.Status = $"Adding: {clonedTrack.Title}";
+                                progress?.Report(ProgressInfo);
+                            });
+                            batchTracks.Clear();
                         }
                     }
                 }
-            }
+            });
 
-            await MusicLibrary.SaveTracksBatchAsync(tracksToAdd);
+            Log.Information($"Added {tracksToAdd.Count} tracks to playlist {playlist.Name}");
 
-            ProgressInfo.ProcessedTracks = 0;
-            foreach (MediaFile track in tracksToAdd)
+            _ = Task.Run(async () =>
             {
-                await MusicLibrary.AddTrackToPlaylistAsync(track.Id, SelectedTab.Name!, saveImmediately: false);
-                await Application.Current.Dispatcher.InvokeAsync(() => SelectedTab.Tracks.Add(track));
-                ProgressInfo.ProcessedTracks++;
-                if (ProgressInfo.ProcessedTracks % batchSize == 0 || ProgressInfo.ProcessedTracks == tracksToAdd.Count)
+                try
                 {
-                    ProgressInfo.Status = $"Added: {track.Title}";
-                    progress?.Report(ProgressInfo);
+                    Task databaseTask = MusicLibrary.SaveTracksBatchAsync(tracksToAdd);
+
+                    ProgressInfo.Phase = "Metadata";
+                    ProgressInfo.ProcessedTracks = 0;
+                    await Parallel.ForEachAsync(tracksToAdd, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, async (track, ct) =>
+                    {
+                        try
+                        {
+                            track.UpdateFromFileMetadata(false, minimal: true);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, $"Failed to extract metadata for {track.Path}");
+                            track.Duration = TimeSpan.FromSeconds(1);
+                            track.Album = "<Unknown>";
+                            track.Title = Path.GetFileNameWithoutExtension(track.Path);
+                        }
+
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            int index = SelectedTab.Tracks.IndexOf(track);
+                            if (index >= 0)
+                            {
+                                SelectedTab.Tracks[index] = track;
+                            }
+                            ProgressInfo.ProcessedTracks++;
+                            if (ProgressInfo.ProcessedTracks % batchSize == 0 || ProgressInfo.ProcessedTracks == tracksToAdd.Count)
+                            {
+                                _dataGrid.Items.Refresh();
+                                ProgressInfo.Status = $"Metadata updated: {track.Title}";
+                                progress?.Report(ProgressInfo);
+                            }
+                        });
+                    });
+
+                    await databaseTask;
+
+                    ProgressInfo.Phase = "Saving";
+                    ProgressInfo.ProcessedTracks = 0;
+                    var trackIds = tracksToAdd.Select(t => t.Id).ToList();
+                    await MusicLibrary.AddTracksToPlaylistAsync(trackIds, SelectedTab.Name!, saveImmediately: false);
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        ProgressInfo.ProcessedTracks = trackIds.Count;
+                        ProgressInfo.Status = $"Saved {trackIds.Count} tracks to playlist";
+                        progress?.Report(ProgressInfo);
+                    });
+
+                    if (playlist.TrackIds.Any() && playlist.SelectedTrack == null)
+                    {
+                        playlist.SelectedTrack = playlist.TrackIds.First();
+                        await Application.Current.Dispatcher.InvokeAsync(() =>
+                        {
+                            if (_dataGrid.SelectedItem == null && SelectedTab.Tracks.Any())
+                            {
+                                _dataGrid.SelectedIndex = 0;
+                                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
+                            }
+                        });
+                    }
+
+                    await MusicLibrary.SaveToDatabaseAsync();
                 }
-            }
-
-            if (playlist.TrackIds.Any() && playlist.SelectedTrack == null)
-            {
-                playlist.SelectedTrack = playlist.TrackIds.First();
-            }
-
-            await MusicLibrary.SaveToDatabaseAsync();
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to save tracks or update metadata");
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        ProgressInfo.Status = "Error saving to database";
+                        progress?.Report(ProgressInfo);
+                    });
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"Failed to process folder: {folderPath}");
+            ProgressInfo.Status = "Error processing folder";
+            progress?.Report(ProgressInfo);
         }
         finally
         {
             ProgressInfo.IsProcessing = false;
             ProgressInfo.TotalTracks = 1;
             ProgressInfo.ProcessedTracks = 0;
+            ProgressInfo.Phase = "Idle";
             ProgressInfo.Status = "Finished";
-            progress?.Report(ProgressInfo);
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                progress?.Report(ProgressInfo);
+                _dataGrid.Items.Refresh();
+            });
         }
     }
 
@@ -505,6 +641,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     if (IsAudioFile(file))
                     {
+                        Log.Debug("Processing file {File} for playlist {PlaylistName}", file, playlist.Name);
                         MediaFile mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
                         MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
                         if (addedTrack != null)

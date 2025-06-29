@@ -85,10 +85,10 @@ public class MediaFile : ObservableObject, IMediaFile
     {
         Path = fileName;
         FileName = System.IO.Path.GetFileName(fileName);
-        UpdateFromFileMetadata(false);
+        UpdateFromFileMetadata(false, minimal: true);
     }
 
-    public void UpdateFromFileMetadata(bool raisePropertyChanged = true)
+    public void UpdateFromFileMetadata(bool raisePropertyChanged = true, bool minimal = false)
     {
         string fileName = Path;
         if (string.IsNullOrWhiteSpace(fileName))
@@ -104,56 +104,56 @@ public class MediaFile : ObservableObject, IMediaFile
             FileName = System.IO.Path.GetFileName(fileName);
 
             Title = file.Tag.Title ?? FileName;
-
             Album = file.Tag.Album ?? UnknownString;
 
-            List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Artist = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString;
-
-            List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Performers = performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(Artist))
+            if (!minimal)
             {
-                Artist = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
-            }
+                List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                Artist = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString;
 
-            AlbumCover = CoverManager.GetImageFromPictureTag(Path);
+                List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                Performers = performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty;
 
-            Comment = file.Tag.Comment ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(Artist))
+                {
+                    Artist = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
+                }
 
-            List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Composers = composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty;
+                Comment = file.Tag.Comment ?? string.Empty;
 
-            Copyright = file.Tag.Copyright ?? string.Empty;
+                List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+                Composers = composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty;
 
-            Genres = file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty;
+                Copyright = file.Tag.Copyright ?? string.Empty;
 
-            Track = file.Tag.Track == 0 ? string.Empty : $"{file.Tag.Track}";
-            TrackCount = file.Tag.TrackCount;
-            Disc = file.Tag.Disc;
-            DiscCount = file.Tag.DiscCount;
-            Year = file.Tag.Year;
+                Genres = file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty;
 
-            if (file.Properties.MediaTypes != MediaTypes.None)
-            {
-                Duration = file.Properties.Duration != TimeSpan.Zero ? file.Properties.Duration : TimeSpan.FromSeconds(1);
+                Track = file.Tag.Track == 0 ? string.Empty : $"{file.Tag.Track}";
+                TrackCount = file.Tag.TrackCount;
+                Disc = file.Tag.Disc;
+                DiscCount = file.Tag.DiscCount;
+                Year = file.Tag.Year;
+
                 Bitrate = file.Properties.AudioBitrate;
                 SampleRate = file.Properties.AudioSampleRate;
                 Channels = file.Properties.AudioChannels;
             }
+
+            if (file.Properties.MediaTypes != MediaTypes.None)
+            {
+                Duration = file.Properties.Duration != TimeSpan.Zero ? file.Properties.Duration : TimeSpan.FromSeconds(1);
+            }
             else
             {
-                Duration = TimeSpan.FromSeconds(1); // Default to prevent uniqueness constraint issues
+                Duration = TimeSpan.FromSeconds(1);
             }
         }
         catch (Exception e)
         {
             Log.Error("TagLib.File.Create failed for {FileName}: {Error}", fileName, e.Message);
-            // Set defaults to allow track addition
             Title = FileName;
             Album = UnknownString;
-            Artist = UnknownString;
+            Artist = null;
             Duration = TimeSpan.FromSeconds(1);
         }
 
@@ -161,6 +161,25 @@ public class MediaFile : ObservableObject, IMediaFile
         {
             OnPropertyChanged();
         }
+    }
+
+    public void LoadAlbumCover()
+    {
+        try
+        {
+            AlbumCover = CoverManager.GetImageFromPictureTag(Path);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, $"Failed to load album cover for {Path}");
+            AlbumCover = null;
+        }
+        OnPropertyChanged(nameof(AlbumCover));
+    }
+
+    public void UpdateFullMetadata()
+    {
+        UpdateFromFileMetadata(true, minimal: false);
     }
 
     public override string ToString()

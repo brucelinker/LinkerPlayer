@@ -2,8 +2,10 @@
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,22 +17,44 @@ public partial class SettingsWindow
     private readonly ThemeManager _themeManager = new();
     private readonly AudioEngine _audioEngine;
     private readonly OutputDeviceManager _outputDeviceManager;
+    private readonly ILogger _logger;
     private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
 
     private const string DefaultDevice = "Default";
 
-
-    public SettingsWindow(AudioEngine audioEngine, OutputDeviceManager outputDeviceManager)
+    public SettingsWindow(
+        AudioEngine audioEngine, 
+        OutputDeviceManager outputDeviceManager,
+        ILogger<SettingsWindow> logger)
     {
         _audioEngine = audioEngine;
         _outputDeviceManager = outputDeviceManager;
-        InitializeComponent();
+        _logger = logger;
 
-        DataContext = this;
+        try
+        {
+            _logger.Log(LogLevel.Information, "Initializing SettingsWindow");
+            InitializeComponent();
 
-        WinMax.DoSourceInitialized(this);
+            DataContext = this;
 
-        PreviewKeyDown += Window_PreviewKeyDown;
+            WinMax.DoSourceInitialized(this);
+
+            PreviewKeyDown += Window_PreviewKeyDown;
+            _logger.Log(LogLevel.Information, "SettingsWindow initialized successfully");
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in SettingsWindow constructor: {Message}\n{StackTrace}",
+                ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in SettingsWindow constructor: {Message}\n{StackTrace}",
+                ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)

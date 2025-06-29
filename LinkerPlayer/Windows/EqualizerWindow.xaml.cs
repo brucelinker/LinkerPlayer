@@ -5,8 +5,10 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -26,35 +28,57 @@ public partial class EqualizerWindow
     private readonly EqualizerViewModel _equalizerViewModel;
     private readonly AudioEngine _audioEngine;
     private readonly SettingsManager _settingsManager;
+    private readonly ILogger<EqualizerWindow> _logger;
 
-    public EqualizerWindow(EqualizerViewModel viewModel, AudioEngine audioEngine, SettingsManager settingsManager)
+    public EqualizerWindow(
+        EqualizerViewModel viewModel,
+        AudioEngine audioEngine,
+        SettingsManager settingsManager,
+        ILogger<EqualizerWindow> logger)
     {
-        InitializeComponent();
-        WinMax.DoSourceInitialized(this);
-        DataContext = _equalizerViewModel;
-
-        DataContext = viewModel;
-        _equalizerViewModel = viewModel;
-
-        _audioEngine = audioEngine;
-
-        _equalizerViewModel.LoadFromJson();
-
-        EqSwitch.Switched += OnEqSwitched;
-        this.Closed += Window_Closed!;
-
-        _settingsManager = settingsManager;
-        EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
-        UpdatePresetsComboBox(_settingsManager.Settings.EqualizerPresetName);
-        Preset? preset = _equalizerViewModel.EqPresets!
-            .FirstOrDefault(n => n.Name == _settingsManager.Settings.EqualizerPresetName);
-
-        ApplyPreset(preset ?? _equalizerViewModel.EqPresets[0]);
-
-        WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
+        _logger = logger;
+        try
         {
-            OnMainWindowClosing();
-        });
+            _logger.Log(LogLevel.Information, "Initializing EqualizerWindow");
+            InitializeComponent();
+            WinMax.DoSourceInitialized(this);
+            DataContext = _equalizerViewModel;
+
+            DataContext = viewModel;
+            _equalizerViewModel = viewModel;
+
+            _audioEngine = audioEngine;
+
+            _equalizerViewModel.LoadFromJson();
+
+            EqSwitch.Switched += OnEqSwitched;
+            this.Closed += Window_Closed!;
+
+            _settingsManager = settingsManager;
+            _logger = logger;
+            EqSwitch.IsOn = _settingsManager.Settings.EqualizerEnabled;
+            UpdatePresetsComboBox(_settingsManager.Settings.EqualizerPresetName);
+            Preset? preset = _equalizerViewModel.EqPresets!
+                .FirstOrDefault(n => n.Name == _settingsManager.Settings.EqualizerPresetName);
+
+            ApplyPreset(preset ?? _equalizerViewModel.EqPresets[0]);
+
+            WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
+            {
+                OnMainWindowClosing();
+            });
+            _logger.Log(LogLevel.Information, "EqualizerWindow initialized successfully");
+        }
+        catch (IOException ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "IO error in EqualizerWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Unexpected error in EqualizerWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            throw;
+        }
     }
 
     private void OnEqSwitched(object? sender, EventArgs e)
