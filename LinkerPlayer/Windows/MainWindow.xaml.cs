@@ -27,20 +27,18 @@ public partial class MainWindow
     {
         _logger = logger;
 
-        try{
-        Instance = this;
-        InitializeComponent();
+        try
+        {
+            Instance = this;
+            InitializeComponent();
 
-        _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
-        _audioEngine = serviceProvider.GetRequiredService<AudioEngine>();
-        _outputDeviceManager = serviceProvider.GetRequiredService<OutputDeviceManager>();
-        DataContext = _mainViewModel;
+            _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
+            _audioEngine = serviceProvider.GetRequiredService<AudioEngine>();
+            _outputDeviceManager = serviceProvider.GetRequiredService<OutputDeviceManager>();
+            DataContext = _mainViewModel;
 
-        Log.Information("App started");
-        Log.Information($"MAINWINDOW - {++_count}");
-
-            //((App)Application.Current).WindowPlace.Register(this, "MainWindow");
-            //WinMax.DoSourceInitialized(this);
+            ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
+            WinMax.DoSourceInitialized(this);
         }
         catch (IOException ex)
         {

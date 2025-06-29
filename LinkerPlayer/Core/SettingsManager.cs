@@ -10,27 +10,31 @@ namespace LinkerPlayer.Core;
 
 public class SettingsManager
 {
-    private readonly string _settingsPath;
+    private readonly string _settingsPath = string.Empty;
     private readonly ILogger<SettingsManager> _logger;
     public AppSettings Settings { get; private set; } = new();
-    private readonly Timer _saveTimer;
+    private readonly Timer _saveTimer = new();
     public event Action<string>? SettingsChanged;
     private readonly Guid _instanceId = Guid.NewGuid();
-    private bool _isInitialized;
+    private readonly bool _isInitialized;
 
     public SettingsManager(ILogger<SettingsManager> logger)
     {
         _logger = logger;
-        _logger.Log(LogLevel.Information,"Initializing SettingsManager, InstanceId: {InstanceId}", _instanceId);
+        _logger.Log(LogLevel.Information, "Initializing SettingsManager, InstanceId: {InstanceId}", _instanceId);
+
         try
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string appFolder = Path.Combine(appData, "LinkerPlayer");
+
             _logger.Log(LogLevel.Information, "Creating directory: {AppFolder}", appFolder);
+
             if (!Directory.Exists(appFolder))
             {
                 Directory.CreateDirectory(appFolder);
             }
+
             _settingsPath = Path.Combine(appFolder, "settings.json");
 
             _saveTimer = new Timer(1000) { AutoReset = false };
@@ -39,12 +43,8 @@ public class SettingsManager
             _logger.Log(LogLevel.Information, "Loading settings from: {SettingsPath}", _settingsPath);
             LoadSettings();
             _logger.Log(LogLevel.Information, "SettingsManager initialized successfully");
+
             _isInitialized = true;
-        }
-        catch (IOException ex)
-        {
-            _logger.Log(LogLevel.Error, ex, "IO error in SettingsManager constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
-            Settings = new AppSettings();
         }
         catch (Exception ex)
         {
@@ -88,23 +88,23 @@ public class SettingsManager
     }
 
     public void SaveSettings(string propertyName)
-{
-    _saveTimer.Stop();
-    _saveTimer.Start();
-    SettingsChanged?.Invoke(propertyName);
-}
+    {
+        _saveTimer.Stop();
+        _saveTimer.Start();
+        SettingsChanged?.Invoke(propertyName);
+    }
 
-private void SaveSettingsInternal()
-{
-    try
+    private void SaveSettingsInternal()
     {
-        JsonSerializerOptions options = new JsonSerializerOptions { WriteIndented = true };
-        string json = JsonSerializer.Serialize(Settings, options);
-        File.WriteAllText(_settingsPath, json);
+        try
+        {
+            JsonSerializerOptions options = new() { WriteIndented = true };
+            string json = JsonSerializer.Serialize(Settings, options);
+            File.WriteAllText(_settingsPath, json);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to save settings to {Path}", _settingsPath);
+        }
     }
-    catch (Exception ex)
-    {
-        Log.Error(ex, "Failed to save settings to {Path}", _settingsPath);
-    }
-}
 }

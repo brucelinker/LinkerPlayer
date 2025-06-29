@@ -406,8 +406,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
-    private async Task AddFolderToCurrentPlaylistAsync(string folderPath, IProgress<ProgressData> progress = null)
+    private async Task AddFolderToCurrentPlaylistAsync(string folderPath, IProgress<ProgressData>? progress = null)
     {
+        if(_dataGrid == null) 
+        {
+            Log.Error("DataGrid is null, cannot add folder to current playlist");
+            return;
+        }
+
         ProgressInfo.IsProcessing = true;
         ProgressInfo.TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
         ProgressInfo.ProcessedTracks = 0;
@@ -602,7 +608,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
-    private async Task CreatePlaylistFromFolderAsync(string folderPath, IProgress<ProgressData> progress = null)
+    private async Task CreatePlaylistFromFolderAsync(string folderPath, IProgress<ProgressData>? progress = null)
     {
         ProgressInfo.IsProcessing = true;
         ProgressInfo.TotalTracks = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories).Count(IsAudioFile);
@@ -621,10 +627,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             Playlist playlist = await MusicLibrary.AddNewPlaylistAsync(folderName);
-            PlaylistTab tab = null;
+
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                tab = AddPlaylistTab(playlist);
+                PlaylistTab tab = AddPlaylistTab(playlist);
                 SelectedTab = tab;
                 SelectedTabIndex = TabList.Count - 1;
                 _dataGrid.ItemsSource = SelectedTab.Tracks;
@@ -917,7 +923,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             return;
         }
 
-        Log.Information($"Selecting track {track.Id} for playlist {playlist.Name}, SelectedTab: {SelectedTab.Name}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}, TabControl items: {_tabControl.Items.Count}");
+        //Log.Information($"Selecting track {track.Id} for playlist {playlist.Name}, SelectedTab: {SelectedTab.Name}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}, TabControl items: {_tabControl.Items.Count}");
 
         // Validate playlist exists
         if (MusicLibrary.Playlists.All(p => p.Name != playlist.Name))

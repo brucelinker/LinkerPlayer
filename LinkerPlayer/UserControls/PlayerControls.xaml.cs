@@ -1,5 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Messaging;
+﻿using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -24,15 +23,9 @@ public partial class PlayerControls
     private readonly DispatcherTimer _seekBarTimer = new();
     private readonly AudioEngine _audioEngine;
     private readonly EqualizerWindow _equalizerWindow;
-    private readonly PlayerControlsViewModel? _vm;
-
-    private bool _isProcessing;
-    private int _processedTracks;
-    private int _totalTracks;
-    private string _status = string.Empty;
+    private readonly PlayerControlsViewModel _vm;
 
     private bool _isStopped = true;
-    //private MediaFile? currentMediaFile;
 
     public PlayerControls()
     {
@@ -54,7 +47,7 @@ public partial class PlayerControls
 
         _equalizerWindow = App.AppHost.Services.GetRequiredService<EqualizerWindow>();
         _equalizerWindow.Hide();
-        //((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
+        ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
         SetTrackStatus();
 
@@ -81,21 +74,8 @@ public partial class PlayerControls
         Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
     }
 
-    private void LogCommandBinding(ButtonBase button, string commandName)
-    {
-        if (button.Command == null)
-        {
-            Serilog.Log.Error("{ButtonName} Command is null for {CommandName}", button.Name, commandName);
-        }
-        else
-        {
-            Serilog.Log.Information("{ButtonName} Command bound to {CommandType}", button.Name, button.Command.GetType().FullName);
-        }
-    }
-
     private void OnSelectedTrackChanged()
     {
-        //if (mediaFile == null) return;
         SetTrackStatus();
     }
 
@@ -168,24 +148,16 @@ public partial class PlayerControls
             return;
         }
 
-        _isProcessing = progressData.IsProcessing;
-        _processedTracks = progressData.ProcessedTracks;
-        _totalTracks = progressData.TotalTracks;
-        _status = progressData.Status;
-
         TheProgressBar.Maximum = progressData.TotalTracks > 0 ? progressData.TotalTracks : 1;
         TheProgressBar.Value = progressData.ProcessedTracks;
         Info.Text = progressData.IsProcessing
             ? $"{progressData.Phase}: {progressData.Status} ({progressData.ProcessedTracks}/{progressData.TotalTracks})"
             : progressData.Status;
-
-        Log.Debug("Progress Update: Phase={Phase}, Processed={Processed}, Total={Total}, Status={Status}",
-            progressData.Phase, progressData.ProcessedTracks, progressData.TotalTracks, progressData.Status);
     }
 
     private void OnDataGridPlay(PlaybackState value)
     {
-        _vm!.StopTrack();
+        _vm.StopTrack();
         _seekBarTimer.Stop();
         SeekBar.Value = 0;
         PlayButton.Command.Execute(value);
@@ -207,7 +179,7 @@ public partial class PlayerControls
         }
         else
         {
-            Serilog.Log.Warning("Seek conditions not met: PathToMusic or position invalid");
+            Log.Warning("Seek conditions not met: PathToMusic or position invalid");
         }
     }
 
@@ -229,8 +201,6 @@ public partial class PlayerControls
 
     private void OnMuteChanged(bool isMuted)
     {
-        if (_vm == null) return;
-
         double targetValue = isMuted ? 0 : _vm.GetVolumeBeforeMute();
         AnimateVolumeSliderValue(VolumeSlider, targetValue, isMuted);
     }
@@ -250,23 +220,16 @@ public partial class PlayerControls
         // Update audio volume during animation
         animation.CurrentTimeInvalidated += (_, _) =>
         {
-            if (_vm != null)
-            {
-                double currentValue = slider.Value;
-                _audioEngine.MusicVolume = (float)currentValue / 100;
-                //Serilog.Log.Debug("Animation tick: Slider.Value={Value}, MusicVolume={Volume}", currentValue, _audioEngine.MusicVolume);
-            }
+            double currentValue = slider.Value;
+            _audioEngine.MusicVolume = (float)currentValue / 100;
         };
 
         animation.Completed += (_, _) =>
         {
             slider.BeginAnimation(RangeBase.ValueProperty, null);
             slider.Value = position;
-            if (_vm != null)
-            {
-                _vm.UpdateVolumeAfterAnimation(position, isMuted);
-            }
-            //Serilog.Log.Information("VolumeSlider animation completed, Value={Value}, IsMuted={IsMuted}", position, isMuted);
+
+            _vm.UpdateVolumeAfterAnimation(position, isMuted);
         };
 
         slider.BeginAnimation(RangeBase.ValueProperty, animation);
@@ -280,9 +243,6 @@ public partial class PlayerControls
 
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
     {
-        if (_vm != null)
-        {
-            _vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
-        }
+        _vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
     }
 }

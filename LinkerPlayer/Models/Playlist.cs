@@ -8,14 +8,16 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace LinkerPlayer.Models;
 
 [Index(nameof(Name), IsUnique = true)]
-public partial class Playlist : ObservableObject
+public partial class Playlist : ObservableValidator
 {
     [Key]
     public int Id { get; set; }
 
+    [StringLength(100, ErrorMessage = "Playlist name cannot exceed 100 characters")]
     [ObservableProperty]
     private string _name = "New Playlist";
 
+    [StringLength(36, ErrorMessage = "SelectedTrack must be a valid GUID (36 characters)")]
     [ObservableProperty]
     private string? _selectedTrack;
 

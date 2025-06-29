@@ -42,8 +42,16 @@ public class MusicLibrary
 
             using (var context = _dbContextFactory.CreateDbContext())
             {
-                Log.Information("Ensuring database is created");
-                context.Database.EnsureCreated();
+                try
+                {
+                    Log.Information("Ensuring database is created");
+                    context.Database.EnsureCreated();
+                }
+                catch (SqliteException ex)
+                {
+                    Log.Information($"Database not found. Creating a new one: {ex.Message}");
+                }
+
                 Log.Information("Setting WAL mode");
                 context.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
                 Log.Information("Creating index idx_tracks_path");
@@ -83,14 +91,7 @@ public class MusicLibrary
         }
     }
 
-    public static async Task LoadMetadataCacheOnStartupAsync()
-    {
-        Log.Information("Loading MetadataCache from database");
-        await LoadMetadataCacheAsync();
-        Log.Information("Loaded MetadataCache with {Count} entries", MetadataCache.Count);
-    }
-
-    private static async Task LoadMetadataCacheAsync()
+    public static async Task LoadMetadataCacheAsync()
     {
         try
         {
@@ -279,8 +280,7 @@ public class MusicLibrary
 
             foreach (var playlist in Playlists)
             {
-                Log.Information(
-                    $"Saving playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}, SelectedTrack: {playlist.SelectedTrack}");
+                Log.Information($"Saving playlist {playlist.Name}"); // with TrackIds: {string.Join(", ", playlist.TrackIds)}, SelectedTrack: {playlist.SelectedTrack}");
                 var existingPlaylist = await context.Playlists
                     .Include(p => p.PlaylistTracks)
                     .FirstOrDefaultAsync(p => p.Id == playlist.Id || p.Name == playlist.Name);
@@ -314,8 +314,7 @@ public class MusicLibrary
                     context.Entry(existingPlaylist).State = EntityState.Modified;
                     context.PlaylistTracks.RemoveRange(existingPlaylist.PlaylistTracks);
                     playlist.Id = playlistId;
-                    Log.Information(
-                        $"Updated playlist {existingPlaylist.Name} with Id {playlistId}, SelectedTrack {existingPlaylist.SelectedTrack}");
+                    Log.Information($"Updated playlist {existingPlaylist.Name}");
                 }
 
                 var validTrackIds = playlist.TrackIds.Where(id => context.Tracks.Any(t => t.Id == id)).ToList();
@@ -352,7 +351,7 @@ public class MusicLibrary
                     .Select(pt => pt.TrackId)
                     .ToListAsync();
                 Log.Information(
-                    $"Database state for playlist {p.Name} (Id {p.Id}): SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
+                    $"Database state for playlist {p.Name}"); // (Id {p.Id}): SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
@@ -443,7 +442,7 @@ public class MusicLibrary
                     {
                         try
                         {
-                            mediaFile.UpdateFromFileMetadata(false, minimal: true);
+                            mediaFile.UpdateFromFileMetadata(false, minimal: false);
                             Log.Debug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
                             MetadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
                             Log.Debug($"Added {mediaFile.Path} to MetadataCache. Cache size: {MetadataCache.Count}");

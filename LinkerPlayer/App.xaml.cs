@@ -34,7 +34,7 @@ public partial class App
             Log.CloseAndFlush();
         };
 
-        //WindowPlace = new WindowPlace("placement.config");
+        WindowPlace = new WindowPlace("placement.config");
 
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
@@ -94,7 +94,7 @@ public partial class App
             Log.Information("Showing MainWindow");
             mainWindow.Show();
             Log.Information("Loading MetadataCache");
-            await MusicLibrary.LoadMetadataCacheOnStartupAsync();
+            await MusicLibrary.LoadMetadataCacheAsync();
             Log.Information("MetadataCache loaded");
             base.OnStartup(e);
             ShutdownMode = ShutdownMode.OnMainWindowClose;
@@ -126,7 +126,7 @@ public partial class App
 
         await AppHost.StopAsync();
         AppHost.Dispose();
-        //WindowPlace.Save();
+        WindowPlace.Save();
         base.OnExit(e);
     }
 }
