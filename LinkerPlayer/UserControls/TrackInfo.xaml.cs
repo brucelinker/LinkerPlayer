@@ -58,9 +58,10 @@ public partial class TrackInfo
 
     private void OnSelectedTrackChanged(MediaFile? mediaFile)
     {
-        SelectedMediaFile = mediaFile;
         if (mediaFile != null)
         {
+            SelectedMediaFile = mediaFile;
+
             if (string.IsNullOrWhiteSpace(mediaFile.Artist) || mediaFile.Bitrate == 0)
             {
                 mediaFile.UpdateFullMetadata();

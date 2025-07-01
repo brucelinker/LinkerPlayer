@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PlaylistsNET.Content;
 using PlaylistsNET.Models;
-using Serilog;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -70,7 +69,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             _logger.Log(LogLevel.Information, "Initializing PlaylistTabsViewModel");
-            Log.Information($"PLAYLISTTABSVIEWMODEL - {++_count}");
+            _logger.LogInformation($"PLAYLISTTABSVIEWMODEL - {++_count}");
             _sharedDataModel = sharedDataModel;
             _settingsManager = settingsManager;
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
@@ -138,7 +137,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                 if (SelectedPlaylist == null || SelectedPlaylist.SelectedTrack == null) return;
 
-                Log.Information("OnDataGridLoaded : ScrollIntoView");
+                _logger.LogInformation("OnDataGridLoaded : ScrollIntoView");
                 _dataGrid.ScrollIntoView(SelectedPlaylist.SelectedTrack);
             }
         }
@@ -185,7 +184,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             ShuffleTracks(_shuffleMode);
         }
 
-        Log.Information("OnTabSelectionChanged: SelectedTabIndex={Index}, TabName={Name}", SelectedTabIndex, SelectedTab?.Name ?? "none");
+        _logger.LogInformation("OnTabSelectionChanged: SelectedTabIndex={Index}, TabName={Name}", SelectedTabIndex, SelectedTab?.Name ?? "none");
     }
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)
@@ -214,7 +213,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack!.Id;
             }
 
-            //Log.Information("OnTrackSelectionChanged : ScrollIntoView");
+            //_logger.LogInformation("OnTrackSelectionChanged : ScrollIntoView");
             _dataGrid.ScrollIntoView(SelectedTrack!);
 
             if (ActiveTrack == null) // || ActiveTrack == SelectedTrack)
@@ -259,7 +258,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             _dataGrid.Items.Refresh();
             _dataGrid.UpdateLayout();
-            _dataGrid.ScrollIntoView(_dataGrid.SelectedIndex >= 0 ? _dataGrid.SelectedItem : null);
+            _dataGrid.ScrollIntoView((_dataGrid.SelectedIndex >= 0 ? _dataGrid.SelectedItem : null) ?? SelectFirstTrack());
             SelectedTrackIndex = _dataGrid.SelectedIndex;
             SelectedTrack = _dataGrid.SelectedItem as MediaFile;
             MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack!.Id;
@@ -306,7 +305,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             args.Effects = DragDropEffects.None;
             args.Handled = true;
         }
-        //Log.Information("DragOver triggered with effect: {Effect}", args.Effects);
+        //_logger.LogInformation("DragOver triggered with effect: {Effect}", args.Effects);
     }
 
     [RelayCommand]
@@ -315,15 +314,15 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (!args.Data.GetDataPresent(DataFormats.FileDrop))
         {
             args.Handled = true;
-            Log.Warning("Drop event triggered without FileDrop data");
+            _logger.LogWarning("Drop event triggered without FileDrop data");
             return;
         }
 
-        string[] droppedItems = (string[])args.Data.GetData(DataFormats.FileDrop);
+        string[] droppedItems = (string[])args.Data.GetData(DataFormats.FileDrop)!;
         bool isControlPressed = (args.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
-        Log.Information($"Drop triggered with {droppedItems.Length} items, Control pressed: {isControlPressed}, Items: {string.Join(", ", droppedItems)}");
+        _logger.LogInformation($"Drop triggered with {droppedItems.Length} items, Control pressed: {isControlPressed}, Items: {string.Join(", ", droppedItems)}");
 
-        var progress = new Progress<ProgressData>(data =>
+        Progress<ProgressData> progress = new Progress<ProgressData>(data =>
         {
             // This runs on the UI thread
             WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
@@ -336,21 +335,21 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 if (File.Exists(item) && IsAudioFile(item))
                 {
                     await AddFileToCurrentPlaylistAsync(item);
-                    Log.Information($"Added file {item} to current playlist");
+                    _logger.LogInformation($"Added file {item} to current playlist");
                 }
                 else if (Directory.Exists(item))
                 {
                     await HandleFolderDropAsync(item, isControlPressed, progress);
-                    Log.Information($"Processed folder {item}");
+                    _logger.LogInformation($"Processed folder {item}");
                 }
                 else
                 {
-                    Log.Warning($"Invalid drop item: {item}");
+                    _logger.LogWarning($"Invalid drop item: {item}");
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to process drop item: {item}");
+                _logger.LogError(ex, $"Failed to process drop item: {item}");
             }
         }
 
@@ -384,25 +383,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedTabIndex = TabList.Count - 1;
         }
 
-        MediaFile mediaFile = new MediaFile { Path = filePath, Title = Path.GetFileNameWithoutExtension(filePath) };
+        MediaFile mediaFile = new() { Path = filePath, Title = Path.GetFileNameWithoutExtension(filePath) };
         MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile);
         if (addedTrack != null)
         {
             await MusicLibrary.AddTrackToPlaylistAsync(addedTrack.Id, SelectedTab.Name);
             SelectedTab.Tracks.Add(addedTrack);
-            Log.Information($"Added track {addedTrack.Title} to playlist {SelectedTab.Name}");
-        }
-    }
-
-    private async Task HandleFolderDropAsync(string folderPath, bool createNewPlaylist)
-    {
-        if (createNewPlaylist)
-        {
-            await CreatePlaylistFromFolderAsync(folderPath);
-        }
-        else
-        {
-            await AddFolderToCurrentPlaylistAsync(folderPath);
+            _logger.LogInformation($"Added track {addedTrack.Title} to playlist {SelectedTab.Name}");
         }
     }
 
@@ -410,7 +397,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         if(_dataGrid == null) 
         {
-            Log.Error("DataGrid is null, cannot add folder to current playlist");
+            _logger.LogError("DataGrid is null, cannot add folder to current playlist");
             return;
         }
 
@@ -439,24 +426,24 @@ public partial class PlaylistTabsViewModel : ObservableObject
             Playlist? playlist = MusicLibrary.Playlists.FirstOrDefault(p => p.Name == SelectedTab!.Name);
             if (playlist == null)
             {
-                Log.Error($"Playlist {SelectedTab!.Name} not found in MusicLibrary.Playlists");
+                _logger.LogError($"Playlist {SelectedTab!.Name} not found in MusicLibrary.Playlists");
                 progress?.Report(new ProgressData { IsProcessing = false, Status = "Error: Playlist not found" });
                 return;
             }
 
-            List<MediaFile> tracksToAdd = new List<MediaFile>();
+            List<MediaFile> tracksToAdd = new();
             int batchSize = Math.Max(1, ProgressInfo.TotalTracks / 100); // ~5 for 507 tracks
             int processedCount = 0;
-            HashSet<string> addedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> addedPaths = new(StringComparer.OrdinalIgnoreCase);
 
             await Task.Run(async () =>
             {
-                List<MediaFile> batchTracks = new List<MediaFile>();
+                List<MediaFile> batchTracks = new();
                 foreach (string file in Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories))
                 {
                     if (IsAudioFile(file) && addedPaths.Add(file))
                     {
-                        MediaFile mediaFile = new MediaFile
+                        MediaFile mediaFile = new()
                         {
                             Id = Guid.NewGuid().ToString(),
                             Path = file,
@@ -465,7 +452,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                             State = PlaybackState.Stopped,
                             Duration = TimeSpan.FromSeconds(1),
                             Album = "<Unknown>",
-                            Artist = null
+                            Artist = "<Unknown>"
                         };
 
                         MediaFile? existingTrack = MusicLibrary.IsTrackInLibrary(mediaFile);
@@ -473,7 +460,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         if (existingTrack != null)
                         {
                             clonedTrack = existingTrack.Clone();
-                            Log.Debug($"Using existing track: {file}");
+                            _logger.LogDebug($"Using existing track: {file}");
                         }
                         else
                         {
@@ -489,9 +476,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         {
                             await Application.Current.Dispatcher.InvokeAsync(() =>
                             {
-                                foreach (var track in batchTracks)
+                                foreach (MediaFile track in batchTracks)
                                 {
-                                    if (!SelectedTab.Tracks.Any(t => t.Id == track.Id))
+                                    if (SelectedTab!.Tracks.All(t => t.Id != track.Id))
                                     {
                                         SelectedTab.Tracks.Add(track);
                                     }
@@ -507,7 +494,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 }
             });
 
-            Log.Information($"Added {tracksToAdd.Count} tracks to playlist {playlist.Name}");
+            _logger.LogInformation($"Added {tracksToAdd.Count} tracks to playlist {playlist.Name}");
 
             _ = Task.Run(async () =>
             {
@@ -517,7 +504,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                     ProgressInfo.Phase = "Metadata";
                     ProgressInfo.ProcessedTracks = 0;
-                    await Parallel.ForEachAsync(tracksToAdd, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, async (track, ct) =>
+                    await Parallel.ForEachAsync(tracksToAdd, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount }, async (track, _) =>
                     {
                         try
                         {
@@ -525,7 +512,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         }
                         catch (Exception ex)
                         {
-                            Log.Error(ex, $"Failed to extract metadata for {track.Path}");
+                            _logger.LogError(ex, $"Failed to extract metadata for {track.Path}");
                             track.Duration = TimeSpan.FromSeconds(1);
                             track.Album = "<Unknown>";
                             track.Title = Path.GetFileNameWithoutExtension(track.Path);
@@ -533,7 +520,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                         await Application.Current.Dispatcher.InvokeAsync(() =>
                         {
-                            int index = SelectedTab.Tracks.IndexOf(track);
+                            int index = SelectedTab!.Tracks.IndexOf(track);
                             if (index >= 0)
                             {
                                 SelectedTab.Tracks[index] = track;
@@ -552,8 +539,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                     ProgressInfo.Phase = "Saving";
                     ProgressInfo.ProcessedTracks = 0;
-                    var trackIds = tracksToAdd.Select(t => t.Id).ToList();
-                    await MusicLibrary.AddTracksToPlaylistAsync(trackIds, SelectedTab.Name!, saveImmediately: false);
+                    List<string> trackIds = tracksToAdd.Select(t => t.Id).ToList();
+                    await MusicLibrary.AddTracksToPlaylistAsync(trackIds, SelectedTab!.Name!, saveImmediately: false);
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
                         ProgressInfo.ProcessedTracks = trackIds.Count;
@@ -569,7 +556,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                             if (_dataGrid.SelectedItem == null && SelectedTab.Tracks.Any())
                             {
                                 _dataGrid.SelectedIndex = 0;
-                                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
+                                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
                             }
                         });
                     }
@@ -578,7 +565,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "Failed to save tracks or update metadata");
+                    _logger.LogError(ex, "Failed to save tracks or update metadata");
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
                         ProgressInfo.Status = "Error saving to database";
@@ -589,7 +576,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to process folder: {folderPath}");
+            _logger.LogError(ex, $"Failed to process folder: {folderPath}");
             ProgressInfo.Status = "Error processing folder";
             progress?.Report(ProgressInfo);
         }
@@ -633,7 +620,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 PlaylistTab tab = AddPlaylistTab(playlist);
                 SelectedTab = tab;
                 SelectedTabIndex = TabList.Count - 1;
-                _dataGrid.ItemsSource = SelectedTab.Tracks;
+                _dataGrid!.ItemsSource = SelectedTab.Tracks;
                 _dataGrid.Items.Refresh();
             });
 
@@ -647,7 +634,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     if (IsAudioFile(file))
                     {
-                        Log.Debug("Processing file {File} for playlist {PlaylistName}", file, playlist.Name);
+                        _logger.LogDebug("Processing file {File} for playlist {PlaylistName}", file, playlist.Name);
                         MediaFile mediaFile = new MediaFile { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
                         MediaFile? addedTrack = await MusicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
                         if (addedTrack != null)
@@ -672,9 +659,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 foreach (MediaFile track in tracksToAdd)
                 {
-                    SelectedTab.Tracks.Add(track);
+                    SelectedTab!.Tracks.Add(track);
                 }
-                _dataGrid.Items.Refresh();
+                _dataGrid!.Items.Refresh();
             });
 
             await Task.Run(async () =>
@@ -714,7 +701,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"RenamePlaylistAsync failed for '{oldName}' to '{newName}'");
+            _logger.LogError(ex, $"RenamePlaylistAsync failed for '{oldName}' to '{newName}'");
         }
     }
 
@@ -793,7 +780,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             .Where(file => _supportedAudioExtensions.Any(ext => file.Extension.Equals(ext, StringComparison.OrdinalIgnoreCase))).ToList();
         string playlistName = dirInfo.Name;
 
-        Log.Information($"NewPlaylistFromFolderAsync: Selected folder {selectedFolderPath}, found {files.Count} files");
+        _logger.LogInformation($"NewPlaylistFromFolderAsync: Selected folder {selectedFolderPath}, found {files.Count} files");
 
         Playlist playlist = await MusicLibrary.AddNewPlaylistAsync(playlistName);
         PlaylistTab playlistTab = AddPlaylistTab(playlist);
@@ -816,7 +803,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         _dataGrid.UpdateLayout();
 
         timer.Stop();
-        Log.Information($"{playlistName} playlist took {timer.Elapsed.TotalSeconds} seconds to load, added {SelectedTab!.Tracks.Count} tracks");
+        _logger.LogInformation($"{playlistName} playlist took {timer.Elapsed.TotalSeconds} seconds to load, added {SelectedTab!.Tracks.Count} tracks");
     }
 
     public async Task AddFilesAsync()
@@ -845,16 +832,15 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public async Task RemovePlaylistAsync(object sender)
     {
-        if (sender is not MenuItem item || item.DataContext is not PlaylistTab playlistTab)
+        if (sender is not MenuItem { DataContext: PlaylistTab playlistTab })
         {
             return;
         }
 
         string playlistName = playlistTab.Name!;
         const int maxRetries = 3;
-        int retryCount = 0;
 
-        while (retryCount < maxRetries)
+        for (int retryCount = 0; retryCount < maxRetries; retryCount++)
         {
             try
             {
@@ -890,25 +876,24 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                     _settingsManager.Settings.SelectedTabIndex = SelectedTabIndex;
                     _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
-                    Log.Information($"Playlist '{playlistName}' removed from UI");
+                    _logger.LogInformation($"Playlist '{playlistName}' removed from UI");
                 });
-                break; // Success, exit retry loop
+                return;
             }
             catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 5)
             {
-                retryCount++;
-                if (retryCount >= maxRetries)
+                if (retryCount == maxRetries - 1)
                 {
-                    Log.Error(ex, $"Failed to remove playlist '{playlistName}' after {maxRetries} retries");
+                    _logger.LogError(ex, $"Failed to remove playlist '{playlistName}' after {maxRetries} retries");
                     MessageBox.Show($"Failed to remove playlist '{playlistName}'. Please try again later.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
-                Log.Warning($"Database locked, retrying ({retryCount}/{maxRetries}) after delay");
-                await Task.Delay(1000 * retryCount);
+                _logger.LogWarning($"Database locked, retrying ({retryCount + 1}/{maxRetries}) after delay");
+                await Task.Delay(1000 * (retryCount + 1));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Failed to remove playlist '{playlistName}'");
+                _logger.LogError(ex, $"Failed to remove playlist '{playlistName}'");
                 MessageBox.Show($"Failed to remove playlist '{playlistName}'. Please try again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
@@ -919,16 +904,16 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         if (_dataGrid == null || _dataGrid.ItemsSource == null || track == null || SelectedTab == null || _tabControl == null)
         {
-            Log.Warning($"Cannot select track {track?.Id ?? "null"}: Invalid DataGrid, ItemsSource, track, SelectedTab, or TabControl");
+            _logger.LogWarning($"Cannot select track {track?.Id ?? "null"}: Invalid DataGrid, ItemsSource, track, SelectedTab, or TabControl");
             return;
         }
 
-        //Log.Information($"Selecting track {track.Id} for playlist {playlist.Name}, SelectedTab: {SelectedTab.Name}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}, TabControl items: {_tabControl.Items.Count}");
+        //_logger.LogInformation($"Selecting track {track.Id} for playlist {playlist.Name}, SelectedTab: {SelectedTab.Name}, TabList count: {TabList.Count}, Playlists count: {MusicLibrary.Playlists.Count}, TabControl items: {_tabControl.Items.Count}");
 
         // Validate playlist exists
         if (MusicLibrary.Playlists.All(p => p.Name != playlist.Name))
         {
-            Log.Warning($"Playlist {playlist.Name} not found in MusicLibrary.Playlists; skipping selection");
+            _logger.LogWarning($"Playlist {playlist.Name} not found in MusicLibrary.Playlists; skipping selection");
             return;
         }
 
@@ -944,18 +929,18 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     _tabControl.SelectedIndex = index;
                     SelectedTab = targetTab;
                     SelectedTabIndex = index;
-                    Log.Information($"Switched to tab {playlist.Name} at index {index}");
+                    _logger.LogInformation($"Switched to tab {playlist.Name} at index {index}");
                     await Task.Delay(100);
                 }
                 else
                 {
-                    Log.Warning($"Tab for playlist {playlist.Name} not found in TabList");
+                    _logger.LogWarning($"Tab for playlist {playlist.Name} not found in TabList");
                     return;
                 }
             }
             else
             {
-                Log.Warning($"Tab for playlist {playlist.Name} not found in TabList");
+                _logger.LogWarning($"Tab for playlist {playlist.Name} not found in TabList");
                 return;
             }
         }
@@ -973,26 +958,17 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     SelectedTrack = track;
                     MusicLibrary.Playlists[SelectedTabIndex].SelectedTrack = track.Id;
-                    Log.Information($"Selected track {track.Title} with Id {track.Id} in playlist {SelectedTab.Name} at index {SelectedTrackIndex}");
+                    _logger.LogInformation($"Selected track {track.Title} with Id {track.Id} in playlist {SelectedTab.Name} at index {SelectedTrackIndex}");
 
-                    MediaFile? musicFile = ActiveTrack ?? SelectedTrack;
-                    //if (musicFile != null)
-                    //{
-                    //WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(musicFile));
-                    //}
-                    //else
-                    //{
-                    //    Log.Warning($"No valid music file for SelectedTrackChangedMessage in {SelectedTab.Name}");
-                    //}
                     return;
                 }
             }
-            Log.Debug($"Track {track.Id} not yet in {SelectedTab.Name} DataGrid; retrying ({retries} left)");
+            _logger.LogDebug($"Track {track.Id} not yet in {SelectedTab.Name} DataGrid; retrying ({retries} left)");
             await Task.Delay(delayMs);
             retries--;
         }
 
-        Log.Warning($"Failed to select track {track.Id} in {SelectedTab.Name} after {100 * delayMs}ms");
+        _logger.LogWarning($"Failed to select track {track.Id} in {SelectedTab.Name} after {100 * delayMs}ms");
     }
 
     public MediaFile SelectFirstTrack()
@@ -1103,7 +1079,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count || TabList.Count == 0)
         {
-            Log.Warning("GetSelectedPlaylist: Invalid SelectedTabIndex or empty TabList");
+            _logger.LogWarning("GetSelectedPlaylist: Invalid SelectedTabIndex or empty TabList");
             return null;
         }
 
@@ -1111,11 +1087,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
         SelectedPlaylist = MusicLibrary.Playlists.FirstOrDefault(x => x.Name == SelectedTab.Name);
         if (SelectedPlaylist == null)
         {
-            Log.Warning($"GetSelectedPlaylist: Playlist '{SelectedTab.Name}' not found in MusicLibrary.Playlists");
+            _logger.LogWarning($"GetSelectedPlaylist: Playlist '{SelectedTab.Name}' not found in MusicLibrary.Playlists");
             return null;
         }
 
-        SelectPlaylistByName(SelectedTab.Name!);
+        SelectPlaylistByName(SelectedTab.Name);
         SelectedTrack = MusicLibrary.GetTracksFromPlaylist(SelectedTab.Name)
             .FirstOrDefault(s => s.Id == SelectedPlaylist.SelectedTrack) ?? SelectFirstTrack();
 
@@ -1142,9 +1118,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(p.Name)) continue;
             PlaylistTab tab = AddPlaylistTab(p);
-            Log.Information($"LoadPlaylistTabs - added PlaylistTab {tab.Name}");
+            _logger.LogInformation($"LoadPlaylistTabs - added PlaylistTab {tab.Name}");
         }
-        Log.Information($"Loaded {TabList.Count} playlists in UI");
+        _logger.LogInformation($"Loaded {TabList.Count} playlists in UI");
     }
 
     private PlaylistTab AddPlaylistTab(Playlist p)
@@ -1218,7 +1194,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         int newIndex = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()
             .FindIndex(x => x.Id == _shuffleList[_shuffledIndex].Id);
-        Log.Information($"GetNextShuffledIndex: {newIndex}");
+        _logger.LogInformation($"GetNextShuffledIndex: {newIndex}");
 
         return newIndex;
     }
@@ -1234,7 +1210,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         int newIndex = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()
             .FindIndex(x => x.Id == _shuffleList[_shuffledIndex].Id);
-        Log.Information($"GetPreviousShuffledIndex: {newIndex}");
+        _logger.LogInformation($"GetPreviousShuffledIndex: {newIndex}");
 
         return newIndex;
     }
@@ -1265,21 +1241,21 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     await MusicLibrary.AddTrackToPlaylistAsync(addedTrack.Id, playlistName, saveImmediately: saveImmediately);
                     SelectedTab!.Tracks.Add(addedTrack);
                     _dataGrid!.Items.Refresh();
-                    //                    Log.Information($"Added track {fileName} to playlist {playlistName}");
+                    //                    _logger.LogInformation($"Added track {fileName} to playlist {playlistName}");
                 }
                 else
                 {
-                    Log.Warning($"Failed to add track {fileName} to library");
+                    _logger.LogWarning($"Failed to add track {fileName} to library");
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"Error loading audio file {fileName}");
+                _logger.LogError(ex, $"Error loading audio file {fileName}");
             }
         }
         else
         {
-            Log.Information($"File {fileName} does not exist.");
+            _logger.LogInformation($"File {fileName} does not exist.");
         }
     }
 
@@ -1334,7 +1310,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     string mediaFileDirectory = Path.GetDirectoryName(mediaFilePath)!;
                     if (!Directory.Exists(mediaFileDirectory))
                     {
-                        Log.Error("Directory not found: {0}", mediaFileDirectory);
+                        _logger.LogError("Directory not found: {0}", mediaFileDirectory);
                         continue;
                     }
 
@@ -1345,7 +1321,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     }
                     catch (Exception ex)
                     {
-                        Log.Error("Failed to load media file: {0} {1}", mediaFilePath, ex.Message);
+                        _logger.LogError("Failed to load media file: {0} {1}", mediaFilePath, ex.Message);
                     }
                 }
 
@@ -1391,14 +1367,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(newPlaylistName))
         {
-            Log.Warning("ChangeSelectedPlaylistName: New playlist name is empty or whitespace");
+            _logger.LogWarning("ChangeSelectedPlaylistName: New playlist name is empty or whitespace");
             tab.Name = oldName;
             return;
         }
 
         if (newPlaylistName == oldName)
         {
-            Log.Information($"ChangeSelectedPlaylistName: New name '{newPlaylistName}' is same as old name, no change needed");
+            _logger.LogInformation($"ChangeSelectedPlaylistName: New name '{newPlaylistName}' is same as old name, no change needed");
             return;
         }
 
@@ -1412,14 +1388,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 Playlist? dbPlaylist = await context.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
                 if (dbPlaylist == null)
                 {
-                    Log.Warning($"ChangeSelectedPlaylistName: Playlist '{oldName}' not found in database");
+                    _logger.LogWarning($"ChangeSelectedPlaylistName: Playlist '{oldName}' not found in database");
                     return;
                 }
 
                 // Check for duplicate name in database
                 if (await context.Playlists.AnyAsync(p => p.Name == newPlaylistName && p.Name != oldName))
                 {
-                    Log.Warning($"ChangeSelectedPlaylistName: Playlist name '{newPlaylistName}' already exists");
+                    _logger.LogWarning($"ChangeSelectedPlaylistName: Playlist name '{newPlaylistName}' already exists");
                     MessageBox.Show($"A playlist named '{newPlaylistName}' already exists.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     tab.Name = oldName;
                     return;
@@ -1438,7 +1414,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 playlist = MusicLibrary.Playlists.FirstOrDefault(p => p.Name == newPlaylistName);
                 if (playlist == null)
                 {
-                    Log.Error($"ChangeSelectedPlaylistName: Failed to find playlist '{newPlaylistName}' after reload");
+                    _logger.LogError($"ChangeSelectedPlaylistName: Failed to find playlist '{newPlaylistName}' after reload");
                     tab.Name = oldName;
                     return;
                 }
@@ -1467,11 +1443,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             await MusicLibrary.SaveToDatabaseAsync();
-            Log.Information($"Playlist renamed from '{oldName}' to '{newPlaylistName}' in database");
+            _logger.LogInformation($"Playlist renamed from '{oldName}' to '{newPlaylistName}' in database");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to rename playlist from '{oldName}' to '{newPlaylistName}'");
+            _logger.LogError(ex, $"Failed to rename playlist from '{oldName}' to '{newPlaylistName}'");
             MessageBox.Show($"Failed to rename playlist to '{newPlaylistName}'. Please try again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             tab.Name = oldName;
             int selectedTabIndex = TabList.IndexOf(tab);
