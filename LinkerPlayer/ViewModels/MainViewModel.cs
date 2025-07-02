@@ -13,8 +13,6 @@ public class MainViewModel : ObservableObject
 {
     private static readonly ThemeManager ThemeMgr = new();
     private readonly SettingsManager _settingsManager;
-    private readonly PlayerControlsViewModel _playerControlsViewModel;
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel;
     private readonly OutputDeviceManager _outputDeviceManager;
     private readonly ILogger<MainViewModel> _logger;
 
@@ -30,8 +28,8 @@ public class MainViewModel : ObservableObject
         try
         {
             _logger.Log(LogLevel.Information, "Initializing MainViewModel"); _settingsManager = settingsManager;
-            _playerControlsViewModel = playerControlsViewModel;
-            _playlistTabsViewModel = playlistTabsViewModel;
+            PlayerControlsViewModel = playerControlsViewModel;
+            PlaylistTabsViewModel = playlistTabsViewModel;
             _outputDeviceManager = outputDeviceManager;
 
             ThemeColors selectedTheme;
@@ -61,8 +59,9 @@ public class MainViewModel : ObservableObject
         }
     }
 
-    public PlayerControlsViewModel PlayerControlsViewModel => _playerControlsViewModel;
-    public PlaylistTabsViewModel PlaylistTabsViewModel => _playlistTabsViewModel;
+    public PlayerControlsViewModel PlayerControlsViewModel { get; }
+
+    public PlaylistTabsViewModel PlaylistTabsViewModel { get; }
 
     public void OnWindowLoaded()
     {

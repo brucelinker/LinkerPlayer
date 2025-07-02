@@ -4,7 +4,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
-using System.Threading;
 using System.Windows;
 
 namespace LinkerPlayer.UserControls;
@@ -25,12 +24,9 @@ public partial class TrackInfo
     public static readonly DependencyProperty SelectedMediaFileProperty =
         DependencyProperty.Register(nameof(SelectedMediaFile), typeof(MediaFile), typeof(TrackInfo), new PropertyMetadata(null));
 
-    private static int _count;
-
     public TrackInfo()
     {
         _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
-        Log.Information($"TRACKINFO - {Interlocked.Increment(ref _count)}");
 
         InitializeComponent();
         Loaded += TrackInfo_Loaded;

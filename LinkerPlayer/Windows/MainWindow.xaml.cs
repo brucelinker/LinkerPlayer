@@ -21,7 +21,6 @@ public partial class MainWindow
     private readonly AudioEngine _audioEngine;
     private readonly OutputDeviceManager _outputDeviceManager;
     private readonly ILogger<MainWindow> _logger;
-    private static int _count;
 
     public MainWindow(IServiceProvider serviceProvider, ILogger<MainWindow> logger)
     {

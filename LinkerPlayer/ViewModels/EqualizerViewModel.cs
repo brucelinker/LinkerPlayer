@@ -3,7 +3,6 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Serilog;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -59,7 +58,7 @@ public partial class EqualizerViewModel : ObservableObject
 
     partial void OnEqPresetsChanged(ObservableCollection<Preset> value)
     {
-        Log.Information($"OnEqPresetChanged: {value}");
+        _logger.LogInformation($"OnEqPresetChanged: {value}");
     }
 
     partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
@@ -79,7 +78,7 @@ public partial class EqualizerViewModel : ObservableObject
         string json = JsonConvert.SerializeObject(EqPresets, Formatting.Indented, settings);
         File.WriteAllText(_jsonFilePath, json);
 
-        Log.Information("Saved EqPresets to json");
+        _logger.LogInformation("Saved EqPresets to json");
     }
 
     public void LoadFromJson()
@@ -92,11 +91,11 @@ public partial class EqualizerViewModel : ObservableObject
 
             if (EqPresets == null)
             {
-                Log.Warning("eqPresets.json is empty");
+                _logger.LogWarning("eqPresets.json is empty");
                 return;
             }
 
-            Log.Information("Loaded EqPresets from json");
+            _logger.LogInformation("Loaded EqPresets from json");
         }
         else
         {

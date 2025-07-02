@@ -151,7 +151,6 @@
             FontFamily="Segoe UI"
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
-            ItemsSource="{Binding Path=Theme}"
             SelectionChanged="OnThemeSelectionChanged"
             Style="{StaticResource CustomComboBoxStyle}">
             <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
