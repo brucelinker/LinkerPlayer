@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -76,7 +77,7 @@ public class SpectrumAnalyzer : Control
             UpdateBarLayout();
             if (_soundPlayer.IsPlaying)
                 _animationTimer.Start();
-            Log.Information("SpectrumAnalyzer: Registered sound player");
+            _logger.LogInformation("SpectrumAnalyzer: Registered sound player");
         }
     }
 
@@ -881,6 +882,8 @@ public class SpectrumAnalyzer : Control
 
     #region Constructors
 
+    private readonly ILogger<SpectrumAnalyzer> _logger;
+
     static SpectrumAnalyzer()
     {
         //DefaultStyleKeyProperty.OverrideMetadata(typeof(SpectrumAnalyzer), new FrameworkPropertyMetadata(typeof(SpectrumAnalyzer)));
@@ -891,6 +894,8 @@ public class SpectrumAnalyzer : Control
     /// </summary>
     public SpectrumAnalyzer()
     {
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<SpectrumAnalyzer>>();
+
         _animationTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
         {
             Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
@@ -934,19 +939,19 @@ public class SpectrumAnalyzer : Control
     {
         if (_spectrumCanvas == null || _spectrumCanvas.RenderSize.Width < 1 || _spectrumCanvas.RenderSize.Height < 1)
         {
-            Log.Information("SpectrumAnalyzer: UpdateSpectrum skipped - canvas is null or invalid size");
+            _logger.LogInformation("SpectrumAnalyzer: UpdateSpectrum skipped - canvas is null or invalid size");
             return;
         }
 
         if (_soundPlayer == null)
         {
-            Log.Error("SpectrumAnalyzer: _soundPlayer is null, cannot fetch FFT data");
+            _logger.LogError("SpectrumAnalyzer: _soundPlayer is null, cannot fetch FFT data");
             return;
         }
 
         if (_soundPlayer.IsPlaying && !_soundPlayer.GetFftData(_channelData))
         {
-            Log.Information("SpectrumAnalyzer: GetFftData returned false, skipping update");
+            _logger.LogInformation("SpectrumAnalyzer: GetFftData returned false, skipping update");
             return;
         }
 
@@ -1121,11 +1126,11 @@ public class SpectrumAnalyzer : Control
         {
             Array.Copy(fftData, 0, _channelData, 0, fftData.Length);
             Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length); // Zero the rest
-            //Log.Information($"SpectrumAnalyzer: Received FFT data sample: {string.Join(", ", fftData.Take(10))}");
+            //_logger.LogInformation($"SpectrumAnalyzer: Received FFT data sample: {string.Join(", ", fftData.Take(10))}");
         }
         else
         {
-            Log.Warning(
+            _logger.LogWarning(
                 $"SpectrumAnalyzer: FFT data length mismatch, expected {_channelData.Length}, got {fftData.Length}");
         }
     }

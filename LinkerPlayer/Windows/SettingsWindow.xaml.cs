@@ -93,6 +93,7 @@ public partial class SettingsWindow
         ThemeColors selectedTheme = (ThemeColors)selectedItem.Tag;
 
         _themeManager.ModifyTheme(selectedTheme);
+        _logger.Log(LogLevel.Information, "Theme changed to {Theme}", selectedTheme);
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)

@@ -1,6 +1,5 @@
 ﻿using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using Serilog;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -21,14 +20,14 @@ public class SettingsManager
     public SettingsManager(ILogger<SettingsManager> logger)
     {
         _logger = logger;
-        _logger.Log(LogLevel.Information, "Initializing SettingsManager, InstanceId: {InstanceId}", _instanceId);
+        _logger.LogInformation("Initializing SettingsManager, InstanceId: {InstanceId}", _instanceId);
 
         try
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string appFolder = Path.Combine(appData, "LinkerPlayer");
 
-            _logger.Log(LogLevel.Information, "Creating directory: {AppFolder}", appFolder);
+            _logger.LogInformation("Creating directory: {AppFolder}", appFolder);
 
             if (!Directory.Exists(appFolder))
             {
@@ -40,15 +39,15 @@ public class SettingsManager
             _saveTimer = new Timer(1000) { AutoReset = false };
             _saveTimer.Elapsed += (_, _) => SaveSettingsInternal();
 
-            _logger.Log(LogLevel.Information, "Loading settings from: {SettingsPath}", _settingsPath);
+            _logger.LogInformation("Loading settings from: {SettingsPath}", _settingsPath);
             LoadSettings();
-            _logger.Log(LogLevel.Information, "SettingsManager initialized successfully");
+            _logger.LogInformation("SettingsManager initialized successfully");
 
             _isInitialized = true;
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Unexpected error in SettingsManager constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "Unexpected error in SettingsManager constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             Settings = new AppSettings();
         }
     }
@@ -57,7 +56,7 @@ public class SettingsManager
     {
         if (_isInitialized)
         {
-            _logger.Log(LogLevel.Information, "SettingsManager already initialized, skipping LoadSettings, InstanceId: {InstanceId}", _instanceId);
+            _logger.LogInformation("SettingsManager already initialized, skipping LoadSettings, InstanceId: {InstanceId}", _instanceId);
             return;
         }
 
@@ -65,24 +64,24 @@ public class SettingsManager
         {
             if (File.Exists(_settingsPath))
             {
-                _logger.Log(LogLevel.Information, "Reading settings file: {SettingsPath}", _settingsPath);
+                _logger.LogInformation("Reading settings file: {SettingsPath}", _settingsPath);
                 string json = File.ReadAllText(_settingsPath);
                 Settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
             else
             {
-                _logger.Log(LogLevel.Information, "Settings file not found, using defaults: {SettingsPath}", _settingsPath);
+                _logger.LogInformation("Settings file not found, using defaults: {SettingsPath}", _settingsPath);
                 Settings = new AppSettings();
             }
         }
         catch (IOException ex)
         {
-            _logger.Log(LogLevel.Error, ex, "IO error loading settings from {Path}: {Message}\n{StackTrace}", _settingsPath, ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "IO error loading settings from {Path}: {Message}\n{StackTrace}", _settingsPath, ex.Message, ex.StackTrace);
             Settings = new AppSettings();
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Unexpected error loading settings from {Path}: {Message}\n{StackTrace}", _settingsPath, ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "Unexpected error loading settings from {Path}: {Message}\n{StackTrace}", _settingsPath, ex.Message, ex.StackTrace);
             Settings = new AppSettings();
         }
     }
@@ -104,7 +103,7 @@ public class SettingsManager
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Failed to save settings to {Path}", _settingsPath);
+            _logger.LogError(ex, "Failed to save settings to {Path}", _settingsPath);
         }
     }
 }

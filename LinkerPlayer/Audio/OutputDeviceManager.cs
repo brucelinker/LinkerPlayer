@@ -2,7 +2,6 @@
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.Extensions.Logging;
-using Serilog;
 using System;
 using System.Collections.Generic;
 
@@ -17,7 +16,7 @@ public class OutputDeviceManager
     private readonly List<string> Devices = new();
     private bool _isInitialized;
     private string _currentDeviceName = "Default";
-    
+
     public OutputDeviceManager(AudioEngine audioEngine, SettingsManager settingsManager, ILogger<OutputDeviceManager> logger)
     {
         _audioEngine = audioEngine;
@@ -29,7 +28,7 @@ public class OutputDeviceManager
     {
         if (_isInitialized)
         {
-            Log.Information("OutputDeviceManager: Already initialized, skipping");
+            _logger.LogInformation("OutputDeviceManager: Already initialized, skipping");
             return;
         }
 
@@ -40,11 +39,11 @@ public class OutputDeviceManager
             GetOutputDevicesList();
             SetMainOutputDevice();
             _isInitialized = true;
-            Log.Information("OutputDeviceManager: Initialization complete");
+            _logger.LogInformation("OutputDeviceManager: Initialization complete");
         }
         catch (Exception ex)
         {
-            Log.Error($"OutputDeviceManager: Initialization failed: {ex.Message}");
+            _logger.LogError($"OutputDeviceManager: Initialization failed: {ex.Message}");
             throw;
         }
     }
@@ -54,7 +53,7 @@ public class OutputDeviceManager
         Devices.Clear();
         if (!_audioEngine.IsInitialized)
         {
-            Log.Warning("GetOutputDevicesList: BASS not initialized, initializing now");
+            _logger.LogWarning("GetOutputDevicesList: BASS not initialized, initializing now");
             _audioEngine.Initialize();
         }
 
@@ -66,11 +65,11 @@ public class OutputDeviceManager
                 {
                     DeviceInfo device = Bass.GetDeviceInfo(i);
 
-                    Log.Information($"Device {i}: {device.Name} - {device.Type}");
+                    _logger.LogInformation($"Device {i}: {device.Name} - {device.Type}");
 
                     if (string.IsNullOrEmpty(device.Name) || !device.IsEnabled)
                     {
-                        Log.Debug($"GetOutputDevicesList: Stopped at index {i} (empty name or disabled)");
+                        _logger.LogDebug($"GetOutputDevicesList: Stopped at index {i} (empty name or disabled)");
                         break;
                     }
 
@@ -78,17 +77,17 @@ public class OutputDeviceManager
                 }
                 catch (BassException ex)
                 {
-                    Log.Debug($"GetOutputDevicesList: Invalid device at index {i}: {ex.Message}");
+                    _logger.LogDebug($"GetOutputDevicesList: Invalid device at index {i}: {ex.Message}");
                     break;
                 }
             }
 
-            Log.Information($"GetOutputDevicesList: Found {Devices.Count} enabled devices");
+            _logger.LogInformation($"GetOutputDevicesList: Found {Devices.Count} enabled devices");
             return Devices;
         }
         catch (Exception ex)
         {
-            Log.Error($"GetOutputDevicesList: Failed: {ex.Message}");
+            _logger.LogError($"GetOutputDevicesList: Failed: {ex.Message}");
             return Devices;
         }
     }
@@ -101,14 +100,14 @@ public class OutputDeviceManager
             {
                 _audioEngine.ReselectOutputDevice(deviceName);
                 _currentDeviceName = deviceName;
-                Log.Information($"MainOutputDevice: {deviceName}");
+                _logger.LogInformation($"MainOutputDevice: {deviceName}");
             }
             else
             {
-                Log.Warning($"SetMainOutputDevice: Device '{deviceName}' not found, using default");
+                _logger.LogWarning($"SetMainOutputDevice: Device '{deviceName}' not found, using default");
                 _audioEngine.ReselectOutputDevice("Default");
                 _currentDeviceName = "Default";
-                Log.Information("MainOutputDevice: Default");
+                _logger.LogInformation("MainOutputDevice: Default");
             }
 
             _settingsManager.Settings.MainOutputDevice = deviceName;
@@ -116,7 +115,7 @@ public class OutputDeviceManager
         }
         catch (Exception ex)
         {
-            Log.Error($"SetMainOutputDevice: Failed: {ex.Message}");
+            _logger.LogError($"SetMainOutputDevice: Failed: {ex.Message}");
         }
     }
 
@@ -124,7 +123,7 @@ public class OutputDeviceManager
     {
         if (!_isInitialized || !_audioEngine.IsInitialized)
         {
-            Log.Debug("GetCurrentDeviceName: OutputDeviceManager or BASS not initialized, returning cached name");
+            _logger.LogDebug("GetCurrentDeviceName: OutputDeviceManager or BASS not initialized, returning cached name");
             return _currentDeviceName;
         }
 
@@ -135,16 +134,16 @@ public class OutputDeviceManager
             if (!string.IsNullOrEmpty(device.Name) && device.IsEnabled)
             {
                 _currentDeviceName = device.Name;
-                Log.Debug($"GetCurrentDeviceName: Returned {device.Name} (index {currentDevice})");
+                _logger.LogDebug($"GetCurrentDeviceName: Returned {device.Name} (index {currentDevice})");
                 return device.Name;
             }
 
-            Log.Warning("GetCurrentDeviceName: No valid device found, returning cached name");
+            _logger.LogWarning("GetCurrentDeviceName: No valid device found, returning cached name");
             return _currentDeviceName;
         }
         catch (Exception ex)
         {
-            Log.Error($"GetCurrentDeviceName: Failed: {ex.Message}");
+            _logger.LogError($"GetCurrentDeviceName: Failed: {ex.Message}");
             return _currentDeviceName;
         }
     }
@@ -154,6 +153,6 @@ public class OutputDeviceManager
         Devices.Clear();
         _isInitialized = false;
         _currentDeviceName = "Default";
-        Log.Information("OutputDeviceManager: Disposed");
+        _logger.LogInformation("OutputDeviceManager: Disposed");
     }
 }

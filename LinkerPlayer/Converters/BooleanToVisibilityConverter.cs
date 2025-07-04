@@ -1,5 +1,4 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -12,7 +11,6 @@ public class BooleanToVisibilityConverter : IValueConverter
     {
         if (value is bool isVisible)
         {
-            Log.Information($"BooleanToVisibilityConverter: value={isVisible}");
             return isVisible ? Visibility.Visible : Visibility.Collapsed;
         }
         return Visibility.Collapsed;

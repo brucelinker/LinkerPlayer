@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
@@ -11,10 +12,18 @@ namespace LinkerPlayer.Core;
 
 public class CoverManager
 {
-    private static readonly ConcurrentDictionary<int, BitmapImage> StoredImages = new();
+    private readonly ILogger<CoverManager> _logger;
 
-    public static BitmapImage GetImageFromPictureTag(string fileName)
+    public CoverManager()
     {
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<CoverManager>>();
+    }
+
+    private readonly ConcurrentDictionary<int, BitmapImage> StoredImages = new();
+
+    public BitmapImage GetImageFromPictureTag(string fileName)
+    {
+
         try
         {
             using File? file = File.Create(fileName);
@@ -46,7 +55,7 @@ public class CoverManager
         }
         catch (Exception e)
         {
-            Log.Error("Could not load the cover from picture tag for {0}! - {1}", fileName, e.Message);
+            _logger.LogError("Could not load the cover from picture tag for {0}! - {1}", fileName, e.Message);
         }
 
         return null!;

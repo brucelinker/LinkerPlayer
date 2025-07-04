@@ -3,7 +3,7 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using System.Windows;
 
 namespace LinkerPlayer.UserControls;
@@ -17,16 +17,19 @@ public partial class TrackInfo
         set
         {
             SetValue(SelectedMediaFileProperty, value);
-            Log.Information($"TrackInfo.SelectedMediaFile set to: {(value != null ? value.Title : "null")}");
+            _logger.LogInformation("TrackInfo.SelectedMediaFile set to: {ValueTitle}", value != null ? value.Title : "null");
         }
     }
 
     public static readonly DependencyProperty SelectedMediaFileProperty =
         DependencyProperty.Register(nameof(SelectedMediaFile), typeof(MediaFile), typeof(TrackInfo), new PropertyMetadata(null));
 
+    private readonly ILogger<TrackInfo> _logger;
+
     public TrackInfo()
     {
         _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>();
 
         InitializeComponent();
         Loaded += TrackInfo_Loaded;
@@ -44,11 +47,11 @@ public partial class TrackInfo
         if (FindName("Spectrum") is SpectrumAnalyzer spectrum)
         {
             spectrum.RegisterSoundPlayer(_audioEngine);
-            Log.Information("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
+            _logger.LogInformation("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
         }
         else
         {
-            Log.Error("TrackInfo: SpectrumAnalyzer control not found");
+            _logger.LogError("TrackInfo: SpectrumAnalyzer control not found");
         }
     }
 

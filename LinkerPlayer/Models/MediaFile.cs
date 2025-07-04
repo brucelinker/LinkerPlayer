@@ -40,6 +40,7 @@ public interface IMediaFile
 }
 
 [Index(nameof(Path), nameof(Album), nameof(Duration), IsUnique = true)]
+
 public class MediaFile : ObservableObject, IMediaFile
 {
     const string UnknownString = "<Unknown>";
@@ -107,6 +108,8 @@ public class MediaFile : ObservableObject, IMediaFile
     public List<PlaylistTrack> PlaylistTracks { get; set; } = new();
 
     public MediaFile() { }
+
+    CoverManager _coverManager = new();
 
     public MediaFile(string fileName)
     {
@@ -209,7 +212,7 @@ public class MediaFile : ObservableObject, IMediaFile
     {
         try
         {
-            AlbumCover = CoverManager.GetImageFromPictureTag(Path);
+            AlbumCover = _coverManager.GetImageFromPictureTag(Path);
         }
         catch (Exception ex)
         {

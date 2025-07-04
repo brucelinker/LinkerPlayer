@@ -6,7 +6,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.Logging;
-using Serilog;
 using System;
 using System.IO;
 using System.Linq;
@@ -39,7 +38,7 @@ public partial class EqualizerWindow
         _logger = logger;
         try
         {
-            _logger.Log(LogLevel.Information, "Initializing EqualizerWindow");
+            _logger.LogInformation("Initializing EqualizerWindow");
             InitializeComponent();
             WinMax.DoSourceInitialized(this);
             DataContext = _equalizerViewModel;
@@ -67,16 +66,16 @@ public partial class EqualizerWindow
             {
                 OnMainWindowClosing();
             });
-            _logger.Log(LogLevel.Information, "EqualizerWindow initialized successfully");
+            _logger.LogInformation("EqualizerWindow initialized successfully");
         }
         catch (IOException ex)
         {
-            _logger.Log(LogLevel.Error, ex, "IO error in EqualizerWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "IO error in EqualizerWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Unexpected error in EqualizerWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "Unexpected error in EqualizerWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
         }
     }
@@ -138,7 +137,7 @@ public partial class EqualizerWindow
                 _settingsManager.SaveSettings(nameof(AppSettings.EqualizerPresetName));
             }
 
-            Log.Information("Profile has been selected");
+            _logger.LogInformation("Profile has been selected");
         }
     }
 
@@ -198,7 +197,7 @@ public partial class EqualizerWindow
 
                     _equalizerViewModel.EqPresets!.Add(bandsSettings);
 
-                    Log.Information("New preset created");
+                    _logger.LogInformation("New preset created");
 
                     _equalizerViewModel.SaveEqPresets();
 
@@ -234,7 +233,7 @@ public partial class EqualizerWindow
 
                 _equalizerViewModel.EqPresets!.Add(preset);
 
-                Log.Information("New preset created");
+                _logger.LogInformation("New preset created");
 
                 _equalizerViewModel.SaveEqPresets();
 
@@ -273,7 +272,7 @@ public partial class EqualizerWindow
 
             _selectedPreset = null!;
 
-            Log.Information("Delete preset");
+            _logger.LogInformation("Delete preset");
 
             _equalizerViewModel.SaveEqPresets();
         }
@@ -350,7 +349,7 @@ public partial class EqualizerWindow
 
         EqSwitch.IsOn = Properties.Settings.Default.EqualizerOnStartEnabled;
 
-        Log.Information("Sliders was created");
+        _logger.LogInformation("Sliders was created");
     }
 
     private void Window_Closed(object sender, EventArgs e)

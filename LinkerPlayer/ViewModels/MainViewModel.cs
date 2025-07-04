@@ -14,6 +14,7 @@ public class MainViewModel : ObservableObject
     private static readonly ThemeManager ThemeMgr = new();
     private readonly SettingsManager _settingsManager;
     private readonly OutputDeviceManager _outputDeviceManager;
+    private readonly MusicLibrary _musicLibrary;
     private readonly ILogger<MainViewModel> _logger;
 
     public MainViewModel(
@@ -21,8 +22,10 @@ public class MainViewModel : ObservableObject
         PlayerControlsViewModel playerControlsViewModel,
         PlaylistTabsViewModel playlistTabsViewModel,
         OutputDeviceManager outputDeviceManager,
+        MusicLibrary musicLibrary,
         ILogger<MainViewModel> logger)
     {
+        _musicLibrary = musicLibrary;
         _logger = logger;
 
         try
@@ -69,10 +72,10 @@ public class MainViewModel : ObservableObject
 
     public void OnWindowClosing()
     {
-        MusicLibrary.ClearPlayState();
+        _musicLibrary.ClearPlayState();
         Task.Run(async () =>
         {
-            await MusicLibrary.SaveToDatabaseAsync();
+            await _musicLibrary.SaveToDatabaseAsync();
         }).Wait();
         _settingsManager.Settings.MainOutputDevice = _outputDeviceManager.GetCurrentDeviceName();
         _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));

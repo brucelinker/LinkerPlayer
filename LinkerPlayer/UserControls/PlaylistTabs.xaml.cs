@@ -4,6 +4,8 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using ManagedBass;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.ComponentModel;
 using System.Linq;
@@ -17,10 +19,15 @@ namespace LinkerPlayer.UserControls;
 public partial class PlaylistTabs
 {
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
+    private readonly ILogger<PlaylistTabs> _logger;
+
 
     public PlaylistTabs()
     {
         InitializeComponent();
+
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<PlaylistTabs>>();
+
         Loaded += PlaylistTabs_Loaded;
     }
 
@@ -33,16 +40,16 @@ public partial class PlaylistTabs
             if (viewModel.TabList.Any())
             {
                 viewModel.SelectedTabIndex = 0; // Force initial selection
-                Serilog.Log.Information("PlaylistTabs: Set SelectedTabIndex to 0");
+                _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to 0");
             }
             else
             {
-                Serilog.Log.Warning("PlaylistTabs: No playlists loaded");
+                _logger.LogWarning("PlaylistTabs: No playlists loaded");
             }
         }
         else
         {
-            Serilog.Log.Error("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
+            _logger.LogError("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
         }
     }
 
@@ -100,6 +107,7 @@ public partial class PlaylistTabs
                 viewModel.OnDoubleClickDataGrid();
             }
         }, null);
+
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
     }
 
@@ -206,28 +214,6 @@ public partial class PlaylistTabs
             }
         });
     }
-
-    //private void OnDragOver(object sender, DragEventArgs e)
-    //{
-    //    this.Dispatcher.BeginInvoke( () =>
-    //    {
-    //        if (DataContext is PlaylistTabsViewModel viewModel)
-    //        {
-    //            viewModel.DragOverCommand.Execute(e);
-    //        }
-    //    });
-    //}
-
-    //private void OnDrop(object sender, DragEventArgs e)
-    //{
-    //    this.Dispatcher.BeginInvoke( () =>
-    //    {
-    //        if (DataContext is PlaylistTabsViewModel viewModel)
-    //        {
-    //            viewModel.DropCommand.Execute(e);
-    //        }
-    //    });
-    //}
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

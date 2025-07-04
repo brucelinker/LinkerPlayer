@@ -6,7 +6,7 @@ using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Windows;
@@ -24,6 +24,8 @@ public partial class PlayerControls
     private readonly AudioEngine _audioEngine;
     private readonly EqualizerWindow _equalizerWindow;
     private readonly PlayerControlsViewModel _vm;
+    private readonly ILogger<PlayerControls> _logger;
+
 
     private bool _isStopped = true;
 
@@ -33,7 +35,10 @@ public partial class PlayerControls
 
         _vm = App.AppHost.Services.GetRequiredService<PlayerControlsViewModel>();
         DataContext = _vm;
-        Log.Information($"{DataContext} has been set to DataContext");
+
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<PlayerControls>>();
+
+        _logger.LogInformation($"{DataContext} has been set to DataContext");
 
         _vm.UpdateSelectedTrack += OnSelectedTrackChanged;
 
@@ -71,7 +76,7 @@ public partial class PlayerControls
             OnProgressDataChanged(m.Value);
         });
 
-        Log.Information("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
+        _logger.LogInformation("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
     }
 
     private void OnSelectedTrackChanged()
@@ -179,7 +184,7 @@ public partial class PlayerControls
         }
         else
         {
-            Log.Warning("Seek conditions not met: PathToMusic or position invalid");
+            _logger.LogWarning("Seek conditions not met: PathToMusic or position invalid");
         }
     }
 

@@ -6,7 +6,6 @@ using LinkerPlayer.ViewModels;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Serilog;
 using System;
 using System.IO;
 using System.Windows;
@@ -41,12 +40,12 @@ public partial class MainWindow
         }
         catch (IOException ex)
         {
-            _logger.Log(LogLevel.Error, ex, "IO error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "IO error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Unexpected error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError(ex, "Unexpected error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
         }
 
@@ -54,11 +53,11 @@ public partial class MainWindow
         {
             _audioEngine.Initialize();
             _outputDeviceManager.InitializeOutputDevice();
-            Log.Information("MainWindow: Audio initialization complete");
+            _logger.LogInformation("MainWindow: Audio initialization complete");
         }
         catch (Exception ex)
         {
-            Log.Error($"Failed to initialize audio: {ex.Message}");
+            _logger.LogError($"Failed to initialize audio: {ex.Message}");
             MessageBox.Show($"Audio initialization failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -80,13 +79,13 @@ public partial class MainWindow
     {
         try
         {
-            Log.Information("MainWindow: Shutting down application");
+            _logger.LogInformation("MainWindow: Shutting down application");
             _audioEngine.Dispose();
             _outputDeviceManager.Dispose();
         }
         catch (Exception ex)
         {
-            Log.Error($"Error during shutdown: {ex.Message}");
+            _logger.LogError($"Error during shutdown: {ex.Message}");
         }
         base.OnClosing(e);
     }

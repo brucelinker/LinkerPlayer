@@ -1,6 +1,7 @@
 ﻿using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using Serilog;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,14 +20,18 @@ public class EditableTabHeaderControl : ContentControl
     private DispatcherTimer? _timer;
     private bool _isShuttingDown;
     private delegate void FocusTextBox();
+    private readonly ILogger<EditableTabHeaderControl> _logger;
+
 
     public EditableTabHeaderControl()
     {
         // Subscribe to MainWindow.Closing
         if (Application.Current?.MainWindow != null)
         {
-            Application.Current.MainWindow.Closing += (s, e) => _isShuttingDown = true;
+            Application.Current.MainWindow.Closing += (_, _) => _isShuttingDown = true;
         }
+
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<EditableTabHeaderControl>>();
     }
 
     public override void OnApplyTemplate()
@@ -72,7 +77,7 @@ public class EditableTabHeaderControl : ContentControl
             }
             else
             {
-                Log.Warning("EditableTabHeaderControl: DataContext is not PlaylistTab in SetEditMode");
+                _logger.LogWarning("EditableTabHeaderControl: DataContext is not PlaylistTab in SetEditMode");
             }
             var viewModel = FindAncestorViewModel(this);
             if (viewModel != null)
@@ -81,7 +86,7 @@ public class EditableTabHeaderControl : ContentControl
             }
             else
             {
-                Log.Error("EditableTabHeaderControl: Could not find PlaylistTabsViewModel in SetEditMode");
+                _logger.LogError("EditableTabHeaderControl: Could not find PlaylistTabsViewModel in SetEditMode");
             }
         }
         IsInEditMode = value;
@@ -113,7 +118,7 @@ public class EditableTabHeaderControl : ContentControl
         }
     }
 
-    private async void TextBoxKeyDown(object sender, KeyEventArgs e)
+    private void TextBoxKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
@@ -125,12 +130,12 @@ public class EditableTabHeaderControl : ContentControl
             IsInEditMode = false;
             if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel)
             {
-                await viewModel.RenamePlaylistAsync((tab, _oldText));
+                viewModel.RenamePlaylistAsync((tab, _oldText)).GetAwaiter().GetResult();
             }
             else
             {
-                Log.Error("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxKeyDown, DataContext: {DataType}, Tag: {TagType}",
-                    DataContext?.GetType()?.FullName ?? "null", Tag?.GetType()?.FullName ?? "null");
+                _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxKeyDown, DataContext: {DataType}, Tag: {TagType}",
+                    DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
             }
         }
     }
@@ -139,7 +144,7 @@ public class EditableTabHeaderControl : ContentControl
     {
         if (_isShuttingDown)
         {
-            Log.Information("EditableTabHeaderControl: Skipping TextBoxLostFocus during app shutdown");
+            _logger.LogInformation("EditableTabHeaderControl: Skipping TextBoxLostFocus during app shutdown");
             IsInEditMode = false;
             return;
         }
@@ -151,8 +156,8 @@ public class EditableTabHeaderControl : ContentControl
         }
         else if (_textBox!.Text != _oldText)
         {
-            Log.Error("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxLostFocus, DataContext: {DataType}, Tag: {TagType}",
-                DataContext?.GetType()?.FullName ?? "null", Tag?.GetType()?.FullName ?? "null");
+            _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxLostFocus, DataContext: {DataType}, Tag: {TagType}",
+                DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
         }
     }
 
@@ -166,21 +171,23 @@ public class EditableTabHeaderControl : ContentControl
 
     private PlaylistTabsViewModel? FindAncestorViewModel(DependencyObject obj)
     {
-        while (obj != null)
+        while (obj != null!)
         {
-            if (obj is FrameworkElement element && element.DataContext is PlaylistTabsViewModel viewModel)
+            if (obj is FrameworkElement { DataContext: PlaylistTabsViewModel viewModel })
             {
                 return viewModel;
             }
+
             if (obj is FrameworkElement fe)
             {
-                obj = LogicalTreeHelper.GetParent(fe) ?? VisualTreeHelper.GetParent(fe);
+                obj = LogicalTreeHelper.GetParent(fe) ?? VisualTreeHelper.GetParent(fe)!;
             }
             else
             {
-                obj = VisualTreeHelper.GetParent(obj);
+                obj = VisualTreeHelper.GetParent(obj)!;
             }
         }
+
         return null;
     }
 }
