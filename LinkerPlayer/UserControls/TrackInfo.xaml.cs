@@ -5,6 +5,8 @@ using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Windows;
+using System.Windows.Input;
+using static LinkerPlayer.Audio.SpectrumAnalyzer;
 
 namespace LinkerPlayer.UserControls;
 
@@ -35,6 +37,8 @@ public partial class TrackInfo
         Loaded += TrackInfo_Loaded;
 
         Spectrum.RegisterSoundPlayer(_audioEngine);
+        SpectrumButton.Content = nameof(BarHeightScalingStyles.Decibel);
+        Spectrum.BarHeightScaling = BarHeightScalingStyles.Decibel;
 
         WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
         {
@@ -70,5 +74,26 @@ public partial class TrackInfo
                 mediaFile.LoadAlbumCover();
             }
         }
+    }
+
+    private void SpectrumButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (Spectrum.BarHeightScaling == BarHeightScalingStyles.Decibel)
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.Sqrt;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.Sqrt);
+        }
+        else if (Spectrum.BarHeightScaling == BarHeightScalingStyles.Sqrt)
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.Linear;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.Linear);
+        }
+        else
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.Decibel;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.Decibel);
+        }
+
+        Spectrum.UpdateLayout();
     }
 }

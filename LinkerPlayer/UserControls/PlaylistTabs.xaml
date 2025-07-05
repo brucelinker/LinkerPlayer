@@ -242,6 +242,7 @@
             SelectionMode="Single"
             SelectionUnit="FullRow"
             Sorting="TracksTable_OnSorting"
+            ToolTipService.IsEnabled="False"
             VerticalScrollBarVisibility="Visible"
             VirtualizingStackPanel.IsVirtualizing="True"
             VirtualizingStackPanel.VirtualizationMode="Recycling">

@@ -29,7 +29,7 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders(); // Clear default providers to avoid duplicate logs
-                logging.SetMinimumLevel(LogLevel.Debug);
+                logging.SetMinimumLevel(LogLevel.Trace);
                 logging.AddSimpleConsole(options =>
                 {
                     options.IncludeScopes = false;

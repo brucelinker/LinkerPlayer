@@ -148,17 +148,33 @@
 
     <Grid
       Grid.Row="2"
-      Margin="8,0,8,0"
+      Margin="8,5,8,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch">
       <audio:SpectrumAnalyzer
         x:Name="Spectrum"
         AveragePeaks="False"
+        BarDecaySpeed="2.0"
         BarHeightScaling="Decibel"
         MaximumFrequency="20000"
         MinimumFrequency="20"
         PeakFallDelay="10"
+        RefreshInterval="25"
         Style="{StaticResource SpectrumAnalyzerStyle}" />
+      <Button
+        Name="SpectrumButton"
+        Width="50"
+        Height="25"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Top"
+        HorizontalContentAlignment="Center"
+        d:Foreground="White"
+        Click="SpectrumButton_Click"
+        FontSize="{DynamicResource FontSizeButton}"
+        FontWeight="Normal"
+        Foreground="{DynamicResource ControlForegroundBrush}"
+        Style="{StaticResource LinkerRectangleButton}"
+        ToolTip="Spectrum Style" />
     </Grid>
   </Grid>
 </UserControl>

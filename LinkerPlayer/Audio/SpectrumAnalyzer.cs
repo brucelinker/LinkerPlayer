@@ -3,6 +3,8 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -12,37 +14,22 @@ using System.Windows.Threading;
 namespace LinkerPlayer.Audio;
 
 /// <summary>
-///     A spectrum analyzer control for visualizing audio level and frequency data.
+/// A spectrum analyzer control for visualizing audio level and frequency data.
 /// </summary>
 [DisplayName("Spectrum Analyzer")]
 [Description("Displays audio level and frequency data.")]
 [ToolboxItem(true)]
 [TemplatePart(Name = "PART_SpectrumCanvas", Type = typeof(Canvas))]
-public class SpectrumAnalyzer : Control
+public partial class SpectrumAnalyzer : Control
 {
+    #region Enums
     public enum BarHeightScalingStyles
     {
-        /// <summary>
-        ///     A decibel scale. Formula: 20 * Log10(FFTValue). Total bar height
-        ///     is scaled from -90 to 0 dB.
-        /// </summary>
-        Decibel,
-
-        /// <summary>
-        ///     A non-linear square root scale. Formula: Sqrt(FFTValue) * 2 * BarHeight.
-        /// </summary>
-        Sqrt,
-
-        /// <summary>
-        ///     A linear scale. Formula: 9 * FFTValue * BarHeight.
-        /// </summary>
-        Linear
+        Decibel, // 20 * Log10(FFTValue), scaled -90 to 0 dB
+        Sqrt,    // Sqrt(FFTValue) * 2 * BarHeight
+        Linear   // 9 * FFTValue * BarHeight
     }
 
-    /// <summary>
-    ///     The various FFT data set sizes that can be used for processing. Values represent
-    ///     the number of real values expected by the Spectrum Analyzer.
-    /// </summary>
     public enum FftDataSize
     {
         Fft256 = 256,
@@ -54,13 +41,271 @@ public class SpectrumAnalyzer : Control
         Fft16384 = 16384
     }
 
-    #region Public Methods
+    public enum ShapeType
+    {
+        Rectangle,
+        Ellipse,
+        Triangle
+    }
+    #endregion
 
-    /// <summary>
-    ///     Register a sound player from which the spectrum analyzer
-    ///     can get the necessary playback data.
-    /// </summary>
-    /// <param name="soundPlayer">A sound player that provides spectrum data through the ISpectrumPlayer interface methods.</param>
+    #region Fields
+    private readonly DispatcherTimer _animationTimer;
+    private Canvas? _spectrumCanvas;
+    private ISpectrumPlayer? _soundPlayer;
+    private readonly List<Shape> _barShapes = [];
+    private readonly List<Shape> _peakShapes = [];
+    private float[] _channelData = new float[2048];
+    private float[] _channelPeakData = [];
+    private readonly ILogger<SpectrumAnalyzer> _logger;
+    private int[] _barIndexMax = [];
+    private int[] _barLogScaleIndexMax = [];
+    #endregion
+
+    #region Constants
+    private const int ScaleFactorLinear = 9;
+    private const int ScaleFactorSqr = 2;
+    private const double MinDbValue = -90;
+    private const double MaxDbValue = 0;
+    private const double DbScale = MaxDbValue - MinDbValue;
+    private const int DefaultUpdateInterval = 25;
+    #endregion
+
+    #region Dependency Properties
+    public static readonly DependencyProperty MaximumFrequencyProperty =
+        DependencyProperty.Register(nameof(MaximumFrequency), typeof(int), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(20000, OnPropertyChanged, OnCoerceMaximumFrequency));
+
+    public int MaximumFrequency
+    {
+        get => (int)GetValue(MaximumFrequencyProperty);
+        set => SetValue(MaximumFrequencyProperty, value);
+    }
+
+    public static readonly DependencyProperty MinimumFrequencyProperty =
+        DependencyProperty.Register(nameof(MinimumFrequency), typeof(int), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(20, OnPropertyChanged, OnCoerceMinimumFrequency));
+
+    public int MinimumFrequency
+    {
+        get => (int)GetValue(MinimumFrequencyProperty);
+        set => SetValue(MinimumFrequencyProperty, value);
+    }
+
+    public static readonly DependencyProperty BarCountProperty =
+        DependencyProperty.Register(nameof(BarCount), typeof(int), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(32, OnPropertyChanged, OnCoerceBarCount));
+
+    public int BarCount
+    {
+        get => (int)GetValue(BarCountProperty);
+        set => SetValue(BarCountProperty, value);
+    }
+
+    public static readonly DependencyProperty BarSpacingProperty =
+        DependencyProperty.Register(nameof(BarSpacing), typeof(double), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(5.0d, OnPropertyChanged, OnCoerceBarSpacing));
+
+    public double BarSpacing
+    {
+        get => (double)GetValue(BarSpacingProperty);
+        set => SetValue(BarSpacingProperty, value);
+    }
+
+    public static readonly DependencyProperty PeakFallDelayProperty =
+        DependencyProperty.Register(nameof(PeakFallDelay), typeof(int), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(10, OnPropertyChanged, OnCoercePeakFallDelay));
+
+    public int PeakFallDelay
+    {
+        get => (int)GetValue(PeakFallDelayProperty);
+        set => SetValue(PeakFallDelayProperty, value);
+    }
+
+    public static readonly DependencyProperty BarDecaySpeedProperty =
+        DependencyProperty.Register(nameof(BarDecaySpeed), typeof(double), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(1.0, OnPropertyChanged, OnCoerceBarDecaySpeed));
+
+    public double BarDecaySpeed
+    {
+        get => (double)GetValue(BarDecaySpeedProperty);
+        set => SetValue(BarDecaySpeedProperty, value);
+    }
+
+    private static object OnCoerceBarDecaySpeed(DependencyObject d, object value)
+    {
+        return Math.Max((double)value, 0.1);
+    }
+
+    public static readonly DependencyProperty IsFrequencyScaleLinearProperty =
+        DependencyProperty.Register(nameof(IsFrequencyScaleLinear), typeof(bool), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(false, OnPropertyChanged));
+
+    public bool IsFrequencyScaleLinear
+    {
+        get => (bool)GetValue(IsFrequencyScaleLinearProperty);
+        set => SetValue(IsFrequencyScaleLinearProperty, value);
+    }
+
+    public static readonly DependencyProperty BarHeightScalingProperty =
+        DependencyProperty.Register(nameof(BarHeightScaling), typeof(BarHeightScalingStyles), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(BarHeightScalingStyles.Decibel, OnPropertyChanged));
+
+    public BarHeightScalingStyles BarHeightScaling
+    {
+        get => (BarHeightScalingStyles)GetValue(BarHeightScalingProperty);
+        set => SetValue(BarHeightScalingProperty, value);
+    }
+
+    public static readonly DependencyProperty AveragePeaksProperty =
+        DependencyProperty.Register(nameof(AveragePeaks), typeof(bool), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(false, OnPropertyChanged));
+
+    public bool AveragePeaks
+    {
+        get => (bool)GetValue(AveragePeaksProperty);
+        set => SetValue(AveragePeaksProperty, value);
+    }
+
+    public static readonly DependencyProperty BarStyleProperty =
+        DependencyProperty.Register(nameof(BarStyle), typeof(Style), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(null, OnPropertyChanged));
+
+    public Style BarStyle
+    {
+        get => (Style)GetValue(BarStyleProperty);
+        set => SetValue(BarStyleProperty, value);
+    }
+
+    public static readonly DependencyProperty PeakStyleProperty =
+        DependencyProperty.Register(nameof(PeakStyle), typeof(Style), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(null, OnPropertyChanged));
+
+    public Style PeakStyle
+    {
+        get => (Style)GetValue(PeakStyleProperty);
+        set => SetValue(PeakStyleProperty, value);
+    }
+
+    public static readonly DependencyProperty ActualBarWidthProperty =
+        DependencyProperty.Register(nameof(ActualBarWidth), typeof(double), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(0.0d));
+
+    public double ActualBarWidth
+    {
+        get => (double)GetValue(ActualBarWidthProperty);
+        set => SetValue(ActualBarWidthProperty, value);
+    }
+
+    public static readonly DependencyProperty RefreshIntervalProperty =
+        DependencyProperty.Register(nameof(RefreshInterval), typeof(int), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(DefaultUpdateInterval, OnRefreshIntervalChanged, OnCoerceRefreshInterval));
+
+    public int RefreshInterval
+    {
+        get => (int)GetValue(RefreshIntervalProperty);
+        set => SetValue(RefreshIntervalProperty, value);
+    }
+
+    public static readonly DependencyProperty FftComplexityProperty =
+        DependencyProperty.Register(nameof(FftComplexity), typeof(FftDataSize), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(FftDataSize.Fft2048, OnFftComplexityChanged, OnCoerceFftComplexity));
+
+    public FftDataSize FftComplexity
+    {
+        get => (FftDataSize)GetValue(FftComplexityProperty);
+        set => SetValue(FftComplexityProperty, value);
+    }
+
+    public static readonly DependencyProperty BarShapeTypeProperty =
+        DependencyProperty.Register(nameof(BarShapeType), typeof(ShapeType), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(ShapeType.Rectangle, OnPropertyChanged));
+
+    public ShapeType BarShapeType
+    {
+        get => (ShapeType)GetValue(BarShapeTypeProperty);
+        set => SetValue(BarShapeTypeProperty, value);
+    }
+
+    public static readonly DependencyProperty PeakShapeTypeProperty =
+        DependencyProperty.Register(nameof(PeakShapeType), typeof(ShapeType), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(ShapeType.Rectangle, OnPropertyChanged));
+
+    public ShapeType PeakShapeType
+    {
+        get => (ShapeType)GetValue(PeakShapeTypeProperty);
+        set => SetValue(PeakShapeTypeProperty, value);
+    }
+
+    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is SpectrumAnalyzer sa)
+            sa.UpdateBarLayout();
+    }
+
+    private static void OnRefreshIntervalChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is SpectrumAnalyzer sa)
+            sa._animationTimer.Interval = TimeSpan.FromMilliseconds((int)e.NewValue);
+    }
+
+    private static void OnFftComplexityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is SpectrumAnalyzer sa)
+            sa._channelData = new float[(int)(FftDataSize)e.NewValue];
+    }
+
+    private static object OnCoerceMaximumFrequency(DependencyObject d, object value)
+    {
+        if (d is SpectrumAnalyzer sa)
+            return Math.Max((int)value, sa.MinimumFrequency + 1);
+        return value;
+    }
+
+    private static object OnCoerceMinimumFrequency(DependencyObject d, object value)
+    {
+        return Math.Max((int)value, 0);
+    }
+
+    private static object OnCoerceBarCount(DependencyObject d, object value)
+    {
+        return Math.Max((int)value, 1);
+    }
+
+    private static object OnCoerceBarSpacing(DependencyObject d, object value)
+    {
+        return Math.Max((double)value, 0);
+    }
+
+    private static object OnCoercePeakFallDelay(DependencyObject d, object value)
+    {
+        return Math.Max((int)value, 0);
+    }
+
+    private static object OnCoerceRefreshInterval(DependencyObject d, object value)
+    {
+        return Math.Min(1000, Math.Max(10, (int)value));
+    }
+
+    private static object OnCoerceFftComplexity(DependencyObject d, object value)
+    {
+        return value;
+    }
+    #endregion
+
+    #region Constructor
+    public SpectrumAnalyzer()
+    {
+        _logger = App.AppHost.Services.GetRequiredService<ILogger<SpectrumAnalyzer>>();
+        _animationTimer = new DispatcherTimer(DispatcherPriority.Render)
+        {
+            Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
+        };
+        _animationTimer.Tick += AnimationTimer_Tick;
+    }
+    #endregion
+
+    #region Public Methods
     public void RegisterSoundPlayer(ISpectrumPlayer soundPlayer)
     {
         if (_soundPlayer != null)
@@ -74,6 +319,7 @@ public class SpectrumAnalyzer : Control
         {
             _soundPlayer.PropertyChanged += SoundPlayer_PropertyChanged;
             _soundPlayer.OnFftCalculated += SoundPlayer_OnFftCalculated;
+
             UpdateBarLayout();
             if (_soundPlayer.IsPlaying)
                 _animationTimer.Start();
@@ -81,964 +327,206 @@ public class SpectrumAnalyzer : Control
         }
     }
 
-    #endregion
-
-    #region Fields
-
-    private readonly DispatcherTimer _animationTimer;
-    private Canvas? _spectrumCanvas;
-    private ISpectrumPlayer? _soundPlayer;
-    private readonly List<Shape> _barShapes = [];
-    private readonly List<Shape> _peakShapes = [];
-    private float[] _channelData = new float[2048]; // Reverted to 2048 for working visuals
-    private float[] _channelPeakData = [];
-    private double _barWidth = 1;
-    private int _maximumFrequencyIndex = 2047; // Reverted to 2047
-    private int _minimumFrequencyIndex;
-    private int[] _barIndexMax = [];
-    private int[] _barLogScaleIndexMax = [];
-
-    #endregion
-
-    #region Constants
-
-    private const int ScaleFactorLinear = 9;
-    private const int ScaleFactorSqr = 2;
-    private const double MinDbValue = -90;
-    private const double MaxDbValue = 0;
-    private const double DbScale = MaxDbValue - MinDbValue;
-    private const int DefaultUpdateInterval = 25;
-
-    #endregion
-
-    #region Dependency Properties
-
-    #region MaximumFrequency
-
-    /// <summary>
-    ///     Identifies the <see cref="MaximumFrequency" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty MaximumFrequencyProperty =
-        DependencyProperty.Register(nameof(MaximumFrequency), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(20000, OnMaximumFrequencyChanged, OnCoerceMaximumFrequency));
-
-    private static object OnCoerceMaximumFrequency(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceMaximumFrequency((int)value);
-
-        return value;
-    }
-
-    private static void OnMaximumFrequencyChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnMaximumFrequencyChanged((int)e.OldValue, (int)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="MaximumFrequency" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="MaximumFrequency" /></param>
-    /// <returns>The adjusted value of <see cref="MaximumFrequency" /></returns>
-    protected virtual int OnCoerceMaximumFrequency(int value)
-    {
-        if (value < MinimumFrequency)
-            return MinimumFrequency + 1;
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="MaximumFrequency" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="MaximumFrequency" /></param>
-    /// <param name="newValue">The new value of <see cref="MaximumFrequency" /></param>
-    protected virtual void OnMaximumFrequencyChanged(int oldValue, int newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets the maximum display frequency (right side) for the spectrum analyzer.
-    /// </summary>
-    /// <remarks>
-    ///     In usual practice, this value should be somewhere between 0 and half of the maximum sample rate. If using
-    ///     the maximum sample rate, this would be roughly 22000.
-    /// </remarks>
-    [Category("Common")]
-    public int MaximumFrequency
-    {
-        get => (int)GetValue(MaximumFrequencyProperty);
-        set => SetValue(MaximumFrequencyProperty, value);
-    }
-
-    #endregion
-
-    #region Minimum Frequency
-
-    /// <summary>
-    ///     Identifies the <see cref="MinimumFrequency" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty MinimumFrequencyProperty =
-        DependencyProperty.Register(nameof(MinimumFrequency), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(20, OnMinimumFrequencyChanged, OnCoerceMinimumFrequency));
-
-    private static object OnCoerceMinimumFrequency(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceMinimumFrequency((int)value);
-
-        return value;
-    }
-
-    private static void OnMinimumFrequencyChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnMinimumFrequencyChanged((int)e.OldValue, (int)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="MinimumFrequency" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="MinimumFrequency" /></param>
-    /// <returns>The adjusted value of <see cref="MinimumFrequency" /></returns>
-    protected virtual int OnCoerceMinimumFrequency(int value)
-    {
-        if (value < 0)
-            return 0;
-        CoerceValue(MaximumFrequencyProperty);
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="MinimumFrequency" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="MinimumFrequency" /></param>
-    /// <param name="newValue">The new value of <see cref="MinimumFrequency" /></param>
-    protected virtual void OnMinimumFrequencyChanged(int oldValue, int newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets the minimum display frequency (left side) for the spectrum analyzer.
-    /// </summary>
-    [Category("Common")]
-    public int MinimumFrequency
-    {
-        get => (int)GetValue(MinimumFrequencyProperty);
-        set => SetValue(MinimumFrequencyProperty, value);
-    }
-
-    #endregion
-
-    #region BarCount
-
-    /// <summary>
-    ///     Identifies the <see cref="BarCount" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty BarCountProperty = DependencyProperty.Register(nameof(BarCount),
-        typeof(int), typeof(SpectrumAnalyzer), new UIPropertyMetadata(32, OnBarCountChanged, OnCoerceBarCount));
-
-    private static object OnCoerceBarCount(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceBarCount((int)value);
-
-        return value;
-    }
-
-    private static void OnBarCountChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnBarCountChanged((int)e.OldValue, (int)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="BarCount" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="BarCount" /></param>
-    /// <returns>The adjusted value of <see cref="BarCount" /></returns>
-    protected virtual int OnCoerceBarCount(int value)
-    {
-        value = Math.Max(value, 1);
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="BarCount" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="BarCount" /></param>
-    /// <param name="newValue">The new value of <see cref="BarCount" /></param>
-    protected virtual void OnBarCountChanged(int oldValue, int newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets the number of bars to show on the spectrum analyzer.
-    /// </summary>
-    /// <remarks>
-    ///     A bar's width can be a minimum of 1 pixel. If the BarSpacing and BarCount property result
-    ///     in the bars being wider than the chart itself, the BarCount will automatically scale down.
-    /// </remarks>
-    [Category("Common")]
-    public int BarCount
-    {
-        get => (int)GetValue(BarCountProperty);
-        set => SetValue(BarCountProperty, value);
-    }
-
-    #endregion
-
-    #region BarSpacing
-
-    /// <summary>
-    ///     Identifies the <see cref="BarSpacing" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty BarSpacingProperty = DependencyProperty.Register(nameof(BarSpacing),
-        typeof(double), typeof(SpectrumAnalyzer),
-        new UIPropertyMetadata(5.0d, OnBarSpacingChanged, OnCoerceBarSpacing));
-
-    private static object OnCoerceBarSpacing(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceBarSpacing((double)value);
-
-        return value;
-    }
-
-    private static void OnBarSpacingChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnBarSpacingChanged((double)e.OldValue, (double)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="BarSpacing" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="BarSpacing" /></param>
-    /// <returns>The adjusted value of <see cref="BarSpacing" /></returns>
-    protected virtual double OnCoerceBarSpacing(double value)
-    {
-        value = Math.Max(value, 0);
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="BarSpacing" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="BarSpacing" /></param>
-    /// <param name="newValue">The new value of <see cref="BarSpacing" /></param>
-    protected virtual void OnBarSpacingChanged(double oldValue, double newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets the spacing between the bars.
-    /// </summary>
-    [Category("Common")]
-    public double BarSpacing
-    {
-        get => (double)GetValue(BarSpacingProperty);
-        set => SetValue(BarSpacingProperty, value);
-    }
-
-    #endregion
-
-    #region PeakFallDelay
-
-    /// <summary>
-    ///     Identifies the <see cref="PeakFallDelay" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty PeakFallDelayProperty = DependencyProperty.Register(nameof(PeakFallDelay),
-        typeof(int), typeof(SpectrumAnalyzer),
-        new UIPropertyMetadata(10, OnPeakFallDelayChanged, OnCoercePeakFallDelay));
-
-    private static object OnCoercePeakFallDelay(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoercePeakFallDelay((int)value);
-
-        return value;
-    }
-
-    private static void OnPeakFallDelayChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnPeakFallDelayChanged((int)e.OldValue, (int)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="PeakFallDelay" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="PeakFallDelay" /></param>
-    /// <returns>The adjusted value of <see cref="PeakFallDelay" /></returns>
-    protected virtual int OnCoercePeakFallDelay(int value)
-    {
-        value = Math.Max(value, 0);
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="PeakFallDelay" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="PeakFallDelay" /></param>
-    /// <param name="newValue">The new value of <see cref="PeakFallDelay" /></param>
-    protected virtual void OnPeakFallDelayChanged(int oldValue, int newValue)
-    {
-    }
-
-    /// <summary>
-    ///     Gets or sets the delay factor for the peaks falling.
-    /// </summary>
-    /// <remarks>
-    ///     The delay is relative to the refresh rate of the chart.
-    /// </remarks>
-    [Category("Common")]
-    public int PeakFallDelay
-    {
-        get => (int)GetValue(PeakFallDelayProperty);
-        set => SetValue(PeakFallDelayProperty, value);
-    }
-
-    #endregion
-
-    #region IsFrequencyScaleLinear
-
-    /// <summary>
-    ///     Identifies the <see cref="IsFrequencyScaleLinear" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty IsFrequencyScaleLinearProperty =
-        DependencyProperty.Register(nameof(IsFrequencyScaleLinear), typeof(bool), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(false, OnIsFrequencyScaleLinearChanged, OnCoerceIsFrequencyScaleLinear));
-
-    private static object OnCoerceIsFrequencyScaleLinear(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceIsFrequencyScaleLinear((bool)value);
-
-        return value;
-    }
-
-    private static void OnIsFrequencyScaleLinearChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnIsFrequencyScaleLinearChanged((bool)e.OldValue, (bool)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="IsFrequencyScaleLinear" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="IsFrequencyScaleLinear" /></param>
-    /// <returns>The adjusted value of <see cref="IsFrequencyScaleLinear" /></returns>
-    protected virtual bool OnCoerceIsFrequencyScaleLinear(bool value)
-    {
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="IsFrequencyScaleLinear" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="IsFrequencyScaleLinear" /></param>
-    /// <param name="newValue">The new value of <see cref="IsFrequencyScaleLinear" /></param>
-    protected virtual void OnIsFrequencyScaleLinearChanged(bool oldValue, bool newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets a value indicating whether the bars are laid out on a linear scale horizontally.
-    /// </summary>
-    /// <remarks>
-    ///     If true, the bars will represent frequency buckets on a linear scale (making them all
-    ///     have equal band widths on the frequency scale). Otherwise, the bars will be laid out
-    ///     on a logarithmic scale, with each bar having a larger bandwidth than the one previous.
-    /// </remarks>
-    [Category("Common")]
-    public bool IsFrequencyScaleLinear
-    {
-        get => (bool)GetValue(IsFrequencyScaleLinearProperty);
-        set => SetValue(IsFrequencyScaleLinearProperty, value);
-    }
-
-    #endregion
-
-    #region BarHeightScaling
-
-    /// <summary>
-    ///     Identifies the <see cref="BarHeightScaling" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty BarHeightScalingProperty = DependencyProperty.Register(
-        nameof(BarHeightScaling), typeof(BarHeightScalingStyles), typeof(SpectrumAnalyzer),
-        new UIPropertyMetadata(BarHeightScalingStyles.Decibel, OnBarHeightScalingChanged, OnCoerceBarHeightScaling));
-
-    private static object OnCoerceBarHeightScaling(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceBarHeightScaling((BarHeightScalingStyles)value);
-
-        return value;
-    }
-
-    private static void OnBarHeightScalingChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnBarHeightScalingChanged((BarHeightScalingStyles)e.OldValue,
-                (BarHeightScalingStyles)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="BarHeightScaling" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="BarHeightScaling" /></param>
-    /// <returns>The adjusted value of <see cref="BarHeightScaling" /></returns>
-    protected virtual BarHeightScalingStyles OnCoerceBarHeightScaling(BarHeightScalingStyles value)
-    {
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="BarHeightScaling" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="BarHeightScaling" /></param>
-    /// <param name="newValue">The new value of <see cref="BarHeightScaling" /></param>
-    protected virtual void OnBarHeightScalingChanged(BarHeightScalingStyles oldValue, BarHeightScalingStyles newValue)
-    {
-    }
-
-    /// <summary>
-    ///     Gets or sets a value indicating to what scale the bar heights are drawn.
-    /// </summary>
-    [Category("Common")]
-    public BarHeightScalingStyles BarHeightScaling
-    {
-        get => (BarHeightScalingStyles)GetValue(BarHeightScalingProperty);
-        set => SetValue(BarHeightScalingProperty, value);
-    }
-
-    #endregion
-
-    #region AveragePeaks
-
-    /// <summary>
-    ///     Identifies the <see cref="AveragePeaks" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty AveragePeaksProperty = DependencyProperty.Register(nameof(AveragePeaks),
-        typeof(bool), typeof(SpectrumAnalyzer),
-        new UIPropertyMetadata(false, OnAveragePeaksChanged, OnCoerceAveragePeaks));
-
-    private static object OnCoerceAveragePeaks(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceAveragePeaks((bool)value);
-
-        return value;
-    }
-
-    private static void OnAveragePeaksChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnAveragePeaksChanged((bool)e.OldValue, (bool)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="AveragePeaks" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="AveragePeaks" /></param>
-    /// <returns>The adjusted value of <see cref="AveragePeaks" /></returns>
-    protected virtual bool OnCoerceAveragePeaks(bool value)
-    {
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="AveragePeaks" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="AveragePeaks" /></param>
-    /// <param name="newValue">The new value of <see cref="AveragePeaks" /></param>
-    protected virtual void OnAveragePeaksChanged(bool oldValue, bool newValue)
-    {
-    }
-
-    /// <summary>
-    ///     Gets or sets a value indicating whether each bar's peak
-    ///     value will be averaged with the previous bar's peak.
-    ///     This creates a smoothing effect on the bars.
-    /// </summary>
-    [Category("Common")]
-    public bool AveragePeaks
-    {
-        get => (bool)GetValue(AveragePeaksProperty);
-        set => SetValue(AveragePeaksProperty, value);
-    }
-
-    #endregion
-
-    #region BarStyle
-
-    /// <summary>
-    ///     Identifies the <see cref="BarStyle" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty BarStyleProperty = DependencyProperty.Register(nameof(BarStyle),
-        typeof(Style), typeof(SpectrumAnalyzer), new UIPropertyMetadata(null, OnBarStyleChanged, OnCoerceBarStyle));
-
-    private static object OnCoerceBarStyle(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceBarStyle((Style)value);
-
-        return value;
-    }
-
-    private static void OnBarStyleChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnBarStyleChanged((Style)e.OldValue, (Style)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="BarStyle" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="BarStyle" /></param>
-    /// <returns>The adjusted value of <see cref="BarStyle" /></returns>
-    protected virtual Style OnCoerceBarStyle(Style value)
-    {
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="BarStyle" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="BarStyle" /></param>
-    /// <param name="newValue">The new value of <see cref="BarStyle" /></param>
-    protected virtual void OnBarStyleChanged(Style oldValue, Style newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets a style with which to draw the bars on the spectrum analyzer.
-    /// </summary>
-    public Style BarStyle
-    {
-        get => (Style)GetValue(BarStyleProperty);
-        set => SetValue(BarStyleProperty, value);
-    }
-
-    #endregion
-
-    #region PeakStyle
-
-    /// <summary>
-    ///     Identifies the <see cref="PeakStyle" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty PeakStyleProperty = DependencyProperty.Register(nameof(PeakStyle),
-        typeof(Style), typeof(SpectrumAnalyzer), new UIPropertyMetadata(null, OnPeakStyleChanged, OnCoercePeakStyle));
-
-    private static object OnCoercePeakStyle(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoercePeakStyle((Style)value);
-
-        return value;
-    }
-
-    private static void OnPeakStyleChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnPeakStyleChanged((Style)e.OldValue, (Style)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="PeakStyle" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="PeakStyle" /></param>
-    /// <returns>The adjusted value of <see cref="PeakStyle" /></returns>
-    protected virtual Style OnCoercePeakStyle(Style value)
-    {
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="PeakStyle" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="PeakStyle" /></param>
-    /// <param name="newValue">The new value of <see cref="PeakStyle" /></param>
-    protected virtual void OnPeakStyleChanged(Style oldValue, Style newValue)
-    {
-        UpdateBarLayout();
-    }
-
-    /// <summary>
-    ///     Gets or sets a style with which to draw the falling peaks on the spectrum analyzer.
-    /// </summary>
-    [Category("Common")]
-    public Style PeakStyle
-    {
-        get => (Style)GetValue(PeakStyleProperty);
-        set => SetValue(PeakStyleProperty, value);
-    }
-
-    #endregion
-
-    #region ActualBarWidth
-
-    /// <summary>
-    ///     Identifies the <see cref="ActualBarWidth" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty ActualBarWidthProperty =
-        DependencyProperty.Register(nameof(ActualBarWidth), typeof(double), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(0.0d, OnActualBarWidthChanged, OnCoerceActualBarWidth));
-
-    private static object OnCoerceActualBarWidth(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceActualBarWidth((double)value);
-
-        return value;
-    }
-
-    private static void OnActualBarWidthChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnActualBarWidthChanged((double)e.OldValue, (double)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="ActualBarWidth" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="ActualBarWidth" /></param>
-    /// <returns>The adjusted value of <see cref="ActualBarWidth" /></returns>
-    protected virtual double OnCoerceActualBarWidth(double value)
-    {
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="ActualBarWidth" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="ActualBarWidth" /></param>
-    /// <param name="newValue">The new value of <see cref="ActualBarWidth" /></param>
-    protected virtual void OnActualBarWidthChanged(double oldValue, double newValue)
-    {
-    }
-
-    /// <summary>
-    ///     Gets the actual width that the bars will be drawn at.
-    /// </summary>
-    public double ActualBarWidth
-    {
-        get => (double)GetValue(ActualBarWidthProperty);
-        protected set => SetValue(ActualBarWidthProperty, value);
-    }
-
-    #endregion
-
-    #region RefreshRate
-
-    /// <summary>
-    ///     Identifies the <see cref="RefreshInterval" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty RefreshIntervalProperty =
-        DependencyProperty.Register(nameof(RefreshInterval), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(DefaultUpdateInterval, OnRefreshIntervalChanged, OnCoerceRefreshInterval));
-
-    private static object OnCoerceRefreshInterval(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceRefreshInterval((int)value);
-
-        return value;
-    }
-
-    private static void OnRefreshIntervalChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnRefreshIntervalChanged((int)e.OldValue, (int)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="RefreshInterval" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="RefreshInterval" /></param>
-    /// <returns>The adjusted value of <see cref="RefreshInterval" /></returns>
-    protected virtual int OnCoerceRefreshInterval(int value)
-    {
-        value = Math.Min(1000, Math.Max(10, value));
-        return value;
-    }
-
-    /// <summary>
-    ///     Called after the <see cref="RefreshInterval" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="RefreshInterval" /></param>
-    /// <param name="newValue">The new value of <see cref="RefreshInterval" /></param>
-    protected virtual void OnRefreshIntervalChanged(int oldValue, int newValue)
-    {
-        _animationTimer.Interval = TimeSpan.FromMilliseconds(newValue);
-    }
-
-    /// <summary>
-    ///     Gets or sets the refresh interval, in milliseconds, of the Spectrum Analyzer.
-    /// </summary>
-    /// <remarks>
-    ///     The valid range of the interval is 10 milliseconds to 1000 milliseconds.
-    /// </remarks>
-    [Category("Common")]
-    public int RefreshInterval
-    {
-        get => (int)GetValue(RefreshIntervalProperty);
-        set => SetValue(RefreshIntervalProperty, value);
-    }
-
-    #endregion
-
-    #region FFTComplexity
-
-    /// <summary>
-    ///     Identifies the <see cref="FftComplexity" /> dependency property.
-    /// </summary>
-    public static readonly DependencyProperty FftComplexityProperty = DependencyProperty.Register(nameof(FftComplexity),
-        typeof(FftDataSize), typeof(SpectrumAnalyzer),
-        new UIPropertyMetadata(FftDataSize.Fft2048, OnFFTComplexityChanged, OnCoerceFFTComplexity));
-
-    private static object OnCoerceFFTComplexity(DependencyObject o, object value)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            return spectrumAnalyzer.OnCoerceFFTComplexity((FftDataSize)value);
-
-        return value;
-    }
-
-    private static void OnFFTComplexityChanged(DependencyObject o, DependencyPropertyChangedEventArgs e)
-    {
-        if (o is SpectrumAnalyzer spectrumAnalyzer)
-            spectrumAnalyzer.OnFFTComplexityChanged((FftDataSize)e.OldValue, (FftDataSize)e.NewValue);
-    }
-
-    /// <summary>
-    ///     Coerces the value of <see cref="FftComplexity" /> when a new value is applied.
-    /// </summary>
-    /// <param name="value">The value that was set on <see cref="FftComplexity" /></param>
-    /// <returns>The adjusted value of <see cref="FftComplexity" /></returns>
-    protected virtual FftDataSize OnCoerceFFTComplexity(FftDataSize value)
-    {
-        return value;
+    public void UnregisterSoundPlayer()
+    {
+        if (_soundPlayer != null)
+        {
+            _soundPlayer.PropertyChanged -= SoundPlayer_PropertyChanged;
+            _soundPlayer.OnFftCalculated -= SoundPlayer_OnFftCalculated;
+            _soundPlayer = null;
+
+            if (_spectrumCanvas != null)
+                UpdateSpectrumShapes();
+            if (!_animationTimer.IsEnabled)
+                _animationTimer.Start();
+            _logger.LogInformation("SpectrumAnalyzer: Sound player unregistered");
+        }
     }
-
-    /// <summary>
-    ///     Called after the <see cref="FftComplexity" /> value has changed.
-    /// </summary>
-    /// <param name="oldValue">The previous value of <see cref="FftComplexity" /></param>
-    /// <param name="newValue">The new value of <see cref="FftComplexity" /></param>
-    protected virtual void OnFFTComplexityChanged(FftDataSize oldValue, FftDataSize newValue)
-    {
-        _channelData = new float[(int)newValue]; // Fixed: Expects full buffer size (2048 for Fft2048)
-    }
-
-    /// <summary>
-    ///     Gets or sets the complexity of FFT results the Spectrum Analyzer expects. Larger values
-    ///     will be more accurate at converting time domain data to frequency data, but slower.
-    /// </summary>
-    [Category("Common")]
-    public FftDataSize FftComplexity
-    {
-        get => (FftDataSize)GetValue(FftComplexityProperty);
-        set => SetValue(FftComplexityProperty, value);
-    }
-
-    #endregion
-
     #endregion
 
     #region Template Overrides
-
-    /// <summary>
-    ///     When overridden in a derived class, is invoked whenever application code
-    ///     or internal processes call System.Windows.FrameworkElement.ApplyTemplate().
-    /// </summary>
     public override void OnApplyTemplate()
     {
         _spectrumCanvas = GetTemplateChild("PART_SpectrumCanvas") as Canvas;
-        if (_spectrumCanvas != null) _spectrumCanvas.SizeChanged += SpectrumCanvas_SizeChanged;
+        if (_spectrumCanvas != null)
+            _spectrumCanvas.SizeChanged += SpectrumCanvas_SizeChanged;
         UpdateBarLayout();
     }
 
-    /// <summary>
-    ///     Called whenever the control's template changes.
-    /// </summary>
-    /// <param name="oldTemplate">The old template</param>
-    /// <param name="newTemplate">The new template</param>
     protected override void OnTemplateChanged(ControlTemplate oldTemplate, ControlTemplate newTemplate)
     {
         base.OnTemplateChanged(oldTemplate, newTemplate);
         if (_spectrumCanvas != null)
-            _spectrumCanvas.SizeChanged -= SpectrumCanvas_SizeChanged;
-    }
-
-    #endregion
-
-    #region Constructors
-
-    private readonly ILogger<SpectrumAnalyzer> _logger;
-
-    static SpectrumAnalyzer()
-    {
-        //DefaultStyleKeyProperty.OverrideMetadata(typeof(SpectrumAnalyzer), new FrameworkPropertyMetadata(typeof(SpectrumAnalyzer)));
-    }
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="SpectrumAnalyzer" /> class.
-    /// </summary>
-    public SpectrumAnalyzer()
-    {
-        _logger = App.AppHost.Services.GetRequiredService<ILogger<SpectrumAnalyzer>>();
-
-        _animationTimer = new DispatcherTimer(DispatcherPriority.ApplicationIdle)
         {
-            Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
-        };
-        _animationTimer.Tick += AnimationTimer_Tick;
+            _spectrumCanvas.SizeChanged -= SpectrumCanvas_SizeChanged;
+            _spectrumCanvas = null;
+        }
     }
 
+    protected override void OnVisualParentChanged(DependencyObject oldParent)
+    {
+        base.OnVisualParentChanged(oldParent);
+        if (oldParent != null && VisualParent == null)
+        {
+            _logger.LogInformation("SpectrumAnalyzer: OnVisualParentChanged called, stopping timer, oldParent={OldParent}, VisualParent={VisualParent}",
+                oldParent?.GetType().Name ?? "null", VisualParent?.GetType().Name ?? "null");
+            UnregisterSoundPlayer();
+        }
+    }
     #endregion
 
     #region Event Overrides
-
-    /// <summary>
-    ///     When overridden in a derived class, participates in rendering operations that are directed by the layout system.
-    ///     The rendering instructions for this element are not used directly when this method is invoked, and are
-    ///     instead preserved for later asynchronous use by layout and drawing.
-    /// </summary>
-    /// <param name="dc">The drawing instructions for a specific element. This context is provided to the layout system.</param>
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
         UpdateBarLayout();
-        UpdateSpectrum();
+        if (_soundPlayer != null && _soundPlayer.IsPlaying)
+            UpdateSpectrum();
     }
 
-    /// <summary>
-    ///     Raises the SizeChanged event, using the specified information as part of the eventual event data.
-    /// </summary>
-    /// <param name="sizeInfo">Details of the old and new size involved in the change.</param>
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
         base.OnRenderSizeChanged(sizeInfo);
         UpdateBarLayout();
-        UpdateSpectrum();
+        if (_soundPlayer != null && _soundPlayer.IsPlaying)
+            UpdateSpectrum();
     }
+    #endregion
 
+    #region Shape Creation
+    private Shape CreateShape(ShapeType type, double width, double height, Style? style, double x, double y)
+    {
+        Shape shape = type switch
+        {
+            ShapeType.Rectangle => new Rectangle { Width = width, Height = height },
+            ShapeType.Ellipse => new Ellipse { Width = width, Height = height },
+            ShapeType.Triangle => new Polygon
+            {
+                Points = new PointCollection(new[] { new Point(0, height), new Point(width / 2, 0), new Point(width, height) }),
+                Width = width,
+                Height = height
+            },
+            _ => new Rectangle { Width = width, Height = height }
+        };
+        shape.Style = style;
+        shape.Margin = new Thickness(x, y, 0, 0);
+        return shape;
+    }
     #endregion
 
     #region Private Drawing Methods
-
     private void UpdateSpectrum()
     {
         if (_spectrumCanvas == null || _spectrumCanvas.RenderSize.Width < 1 || _spectrumCanvas.RenderSize.Height < 1)
         {
-            _logger.LogInformation("SpectrumAnalyzer: UpdateSpectrum skipped - canvas is null or invalid size");
+            _logger.LogDebug("SpectrumAnalyzer: UpdateSpectrum skipped - canvas is null or invalid size");
             return;
         }
 
-        if (_soundPlayer == null)
+        if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f))
         {
-            _logger.LogError("SpectrumAnalyzer: _soundPlayer is null, cannot fetch FFT data");
+            _animationTimer.Stop();
+            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and peaks decayed");
             return;
         }
 
-        if (_soundPlayer.IsPlaying && !_soundPlayer.GetFftData(_channelData))
+        if (_soundPlayer != null && !_soundPlayer.IsPlaying)
         {
-            _logger.LogInformation("SpectrumAnalyzer: GetFftData returned false, skipping update");
+            UpdateSpectrumShapes();
+            return;
+        }
+
+        if (_soundPlayer != null && !_soundPlayer.GetFftData(_channelData))
+        {
+            _logger.LogDebug("SpectrumAnalyzer: Skipped update - no FFT data");
+            UpdateSpectrumShapes(); // Continue decay even if no FFT data
             return;
         }
 
         UpdateSpectrumShapes();
     }
 
+    public event EventHandler<float[]>? BarValuesChanged;
     private void UpdateSpectrumShapes()
     {
+        if (_spectrumCanvas == null)
+            return;
+
         bool allZero = true;
-        double fftBucketHeight = 0f;
-        double barHeight = 0f;
-        double lastPeakHeight = 0f;
-        if (_spectrumCanvas != null)
+        double fftBucketHeight = 0;
+        double barHeight = 0;
+        double lastPeakHeight = 0;
+        double height = _spectrumCanvas.RenderSize.Height;
+        int barIndex = 0;
+        double peakDotHeight = Math.Max(ActualBarWidth / 2.0, 1);
+        double barHeightScale = height - peakDotHeight;
+
+        int maxFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MaximumFrequency) + 1 ?? 2047;
+        int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ?? 0;
+        maxFreqIndex = Math.Min(maxFreqIndex, 2047);
+
+        double[] barHeights = new double[_barShapes.Count]; // Track current bar heights for decay
+
+        for (int i = minFreqIndex; i <= maxFreqIndex; i++)
         {
-            double height = _spectrumCanvas.RenderSize.Height * 1;
-            int barIndex = 0;
-            double peakDotHeight = Math.Max(_barWidth / 2.0f, 1);
-            double barHeightScale = height - peakDotHeight;
-
-            for (int i = _minimumFrequencyIndex; i <= _maximumFrequencyIndex; i++)
+            if (_soundPlayer == null || !_soundPlayer.IsPlaying)
             {
-                // If we're paused, keep drawing, but set the current height to 0 so the peaks fall.
-                if (!_soundPlayer!.IsPlaying)
+                // Decay bars gradually
+                barHeight = barHeights[barIndex] = (float)(barHeights[barIndex] + BarDecaySpeed * barHeights[barIndex]) / (BarDecaySpeed + 1);
+            }
+            else
+            {
+                switch (BarHeightScaling)
                 {
-                    barHeight = 0f;
+                    case BarHeightScalingStyles.Decibel:
+                        double dbValue = 20 * Math.Log10(_channelData[i] > 0 ? _channelData[i] : 1e-5);
+                        fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
+                        break;
+                    case BarHeightScalingStyles.Linear:
+                        fftBucketHeight = _channelData[i] * ScaleFactorLinear * barHeightScale;
+                        break;
+                    case BarHeightScalingStyles.Sqrt:
+                        fftBucketHeight = Math.Sqrt(_channelData[i]) * ScaleFactorSqr * barHeightScale;
+                        break;
                 }
-                else // Draw the maximum value for the bar's band
-                {
-                    switch (BarHeightScaling)
-                    {
-                        case BarHeightScalingStyles.Decibel:
-                            double dbValue = 20 * Math.Log10(_channelData[i]);
-                            fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
-                            break;
-                        case BarHeightScalingStyles.Linear:
-                            fftBucketHeight = _channelData[i] * ScaleFactorLinear * barHeightScale;
-                            break;
-                        case BarHeightScalingStyles.Sqrt:
-                            fftBucketHeight = Math.Sqrt(_channelData[i]) * ScaleFactorSqr * barHeightScale;
-                            break;
-                    }
+                barHeight = Math.Max(barHeight, fftBucketHeight);
+                barHeight = Math.Max(barHeight, 0);
+                barHeights[barIndex] = barHeight;
+            }
 
-                    if (barHeight < fftBucketHeight)
-                        barHeight = fftBucketHeight;
-                    if (barHeight < 0f)
-                        barHeight = 0f;
-                }
+            int currentIndexMax = IsFrequencyScaleLinear ? _barIndexMax[barIndex] : _barLogScaleIndexMax[barIndex];
+            if (i == currentIndexMax)
+            {
+                barHeight = Math.Min(barHeight, height);
+                if (AveragePeaks && barIndex > 0)
+                    barHeight = (lastPeakHeight + barHeight) / 2;
 
-                // If this is the last FFT bucket in the bar's group, draw the bar.
-                int currentIndexMax = IsFrequencyScaleLinear ? _barIndexMax[barIndex] : _barLogScaleIndexMax[barIndex];
-                if (i == currentIndexMax)
-                {
-                    // Peaks can't surpass the height of the control.
-                    if (barHeight > height)
-                        barHeight = height;
+                double peakYPos = barHeight;
+                _channelPeakData[barIndex] = (float)Math.Max(_channelPeakData[barIndex], peakYPos);
+                _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay + 1);
 
-                    if (AveragePeaks && barIndex > 0)
-                        barHeight = (lastPeakHeight + barHeight) / 2;
+                double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex + 1;
+                _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight, 0, 0);
+                _barShapes[barIndex].Height = barHeight;
+                _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight, 0, 0);
+                _peakShapes[barIndex].Height = peakDotHeight;
 
-                    double peakYPos = barHeight;
+                if (_channelPeakData[barIndex] > 0.05)
+                    allZero = false;
 
-                    if (_channelPeakData[barIndex] < peakYPos)
-                        _channelPeakData[barIndex] = (float)peakYPos;
-                    else
-                        _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) /
-                                                     (PeakFallDelay + 1);
-
-                    double xCoord = BarSpacing + _barWidth * barIndex + BarSpacing * barIndex + 1;
-
-                    _barShapes[barIndex].Margin = new Thickness(xCoord, height - 1 - barHeight, 0, 0);
-                    _barShapes[barIndex].Height = barHeight;
-                    _peakShapes[barIndex].Margin = new Thickness(xCoord,
-                        height - 1 - _channelPeakData[barIndex] - peakDotHeight, 0, 0);
-                    _peakShapes[barIndex].Height = peakDotHeight;
-
-                    if (_channelPeakData[barIndex] > 0.05)
-                        allZero = false;
-
-                    lastPeakHeight = barHeight;
-                    barHeight = 0f;
-                    barIndex++;
-                }
+                lastPeakHeight = barHeight;
+                barHeight = 0;
+                barIndex++;
             }
         }
 
-        if (allZero && !_soundPlayer!.IsPlaying)
+        if (allZero && (_soundPlayer == null || !_soundPlayer.IsPlaying))
+        {
             _animationTimer.Stop();
+            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrumShapes - all peaks zero");
+        }
+
+        BarValuesChanged?.Invoke(this, _channelPeakData);
     }
 
     private void UpdateBarLayout()
@@ -1046,108 +534,99 @@ public class SpectrumAnalyzer : Control
         if (_spectrumCanvas == null)
             return;
 
-        _barWidth = Math.Max((_spectrumCanvas.RenderSize.Width - BarSpacing * (BarCount + 1)) / BarCount, 1);
-        _maximumFrequencyIndex = _soundPlayer != null
-            ? Math.Min(_soundPlayer.GetFftFrequencyIndex(MaximumFrequency) + 1, 2047)
-            : 2047;
-        _minimumFrequencyIndex =
-            _soundPlayer != null ? Math.Min(_soundPlayer.GetFftFrequencyIndex(MinimumFrequency), 2047) : 0;
-
-        int actualBarCount;
-
-        if (_barWidth >= 1.0d)
-            actualBarCount = BarCount;
-        else
-            actualBarCount = Math.Max((int)((_spectrumCanvas.RenderSize.Width - BarSpacing) / (_barWidth + BarSpacing)),
-                1);
+        double barWidth = Math.Max((_spectrumCanvas.RenderSize.Width - BarSpacing * (BarCount + 1)) / BarCount, 1);
+        int actualBarCount = barWidth >= 1.0 ? BarCount : Math.Max((int)((_spectrumCanvas.RenderSize.Width - BarSpacing) / (barWidth + BarSpacing)), 1);
         _channelPeakData = new float[actualBarCount];
 
-        int indexCount = _maximumFrequencyIndex - _minimumFrequencyIndex;
+        int maxFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MaximumFrequency) + 1 ?? 2047;
+        int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ?? 0;
+        maxFreqIndex = Math.Min(maxFreqIndex, 2047);
+
+        int indexCount = maxFreqIndex - minFreqIndex;
         int linearIndexBucketSize = (int)Math.Round(indexCount / (double)actualBarCount, 0);
         List<int> maxIndexList = [];
         List<int> maxLogScaleIndexList = [];
         double maxLog = Math.Log(actualBarCount, actualBarCount);
+
         for (int i = 1; i < actualBarCount; i++)
         {
-            maxIndexList.Add(_minimumFrequencyIndex + i * linearIndexBucketSize);
-            int logIndex = (int)((maxLog - Math.Log(actualBarCount + 1 - i, actualBarCount + 1)) * indexCount) +
-                           _minimumFrequencyIndex;
+            maxIndexList.Add(minFreqIndex + i * linearIndexBucketSize);
+            int logIndex = (int)((maxLog - Math.Log(actualBarCount + 1 - i, actualBarCount + 1)) * indexCount) + minFreqIndex;
             maxLogScaleIndexList.Add(logIndex);
         }
 
-        maxIndexList.Add(_maximumFrequencyIndex);
-        maxLogScaleIndexList.Add(_maximumFrequencyIndex);
-        _barIndexMax = [.. maxIndexList];
-        _barLogScaleIndexMax = [.. maxLogScaleIndexList];
+        maxIndexList.Add(maxFreqIndex);
+        maxLogScaleIndexList.Add(maxFreqIndex);
+        _barIndexMax = maxIndexList.ToArray();
+        _barLogScaleIndexMax = maxLogScaleIndexList.ToArray();
 
         _spectrumCanvas.Children.Clear();
         _barShapes.Clear();
         _peakShapes.Clear();
 
         double height = _spectrumCanvas.RenderSize.Height;
-        double peakDotHeight = Math.Max(_barWidth / 2.0f, 1);
+        double peakDotHeight = Math.Max(barWidth / 2.0, 1);
+
         for (int i = 0; i < actualBarCount; i++)
         {
-            double xCoord = BarSpacing + _barWidth * i + BarSpacing * i + 1;
-            Rectangle barRectangle = new()
-            {
-                Margin = new Thickness(xCoord, height, 0, 0),
-                Width = _barWidth,
-                Height = 0,
-                Style = BarStyle
-            };
-            _barShapes.Add(barRectangle);
-            Rectangle peakRectangle = new()
-            {
-                Margin = new Thickness(xCoord, height - peakDotHeight, 0, 0),
-                Width = _barWidth,
-                Height = peakDotHeight,
-                Style = PeakStyle
-            };
-            _peakShapes.Add(peakRectangle);
+            double xCoord = BarSpacing + barWidth * i + BarSpacing * i + 1;
+            var barShape = CreateShape(BarShapeType, barWidth, 0, BarStyle, xCoord, height);
+            var peakShape = CreateShape(PeakShapeType, barWidth, peakDotHeight, PeakStyle, xCoord, height - peakDotHeight);
+            _barShapes.Add(barShape);
+            _peakShapes.Add(peakShape);
+            _spectrumCanvas.Children.Add(barShape);
+            _spectrumCanvas.Children.Add(peakShape);
         }
 
-        foreach (Shape shape in _barShapes)
-            _spectrumCanvas.Children.Add(shape);
-        foreach (Shape shape in _peakShapes)
-            _spectrumCanvas.Children.Add(shape);
-
-        ActualBarWidth = _barWidth;
+        ActualBarWidth = barWidth;
     }
-
     #endregion
 
     #region Event Handlers
-
     private void SoundPlayer_OnFftCalculated(float[] fftData)
     {
-        // AudioEngine provides 1024 real values, but SpectrumAnalyzer expects 2048
         if (fftData.Length == 1024 && _channelData.Length == 2048)
         {
             Array.Copy(fftData, 0, _channelData, 0, fftData.Length);
-            Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length); // Zero the rest
-            //_logger.LogInformation($"SpectrumAnalyzer: Received FFT data sample: {string.Join(", ", fftData.Take(10))}");
+            Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length);
         }
         else
         {
-            _logger.LogWarning(
-                $"SpectrumAnalyzer: FFT data length mismatch, expected {_channelData.Length}, got {fftData.Length}");
+            _logger.LogWarning("SpectrumAnalyzer: FFT data length mismatch, expected {Expected}, got {Actual}", _channelData.Length, fftData.Length);
         }
     }
 
     private void SoundPlayer_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        switch (e.PropertyName)
+        if (e.PropertyName == "IsPlaying" && _soundPlayer != null)
         {
-            case "IsPlaying":
-                if (_soundPlayer != null && _soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
-                    _animationTimer.Start();
-                break;
+            if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
+            {
+                _animationTimer.Start();
+                _logger.LogDebug("SpectrumAnalyzer: Timer started due to IsPlaying=true");
+            }
+            else if (!_soundPlayer.IsPlaying)
+            {
+                UpdateSpectrumShapes();
+                _logger.LogDebug("SpectrumAnalyzer: Update triggered due to IsPlaying=false");
+            }
         }
     }
 
-    private void AnimationTimer_Tick(object? sender, EventArgs e)
+    private async void AnimationTimer_Tick(object? sender, EventArgs e)
     {
+        if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f))
+        {
+            _animationTimer.Stop();
+            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in AnimationTimer_Tick - peaks decayed");
+            return;
+        }
+
+        if (_soundPlayer != null && _soundPlayer.IsPlaying && _soundPlayer.GetFftData(_channelData))
+        {
+            Array.Copy(_channelData, _channelData, _channelData.Length);
+        }
+
         UpdateSpectrum();
     }
 
@@ -1155,6 +634,5 @@ public class SpectrumAnalyzer : Control
     {
         UpdateBarLayout();
     }
-
     #endregion
 }

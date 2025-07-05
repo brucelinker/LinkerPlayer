@@ -560,6 +560,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         //_logger.LogInformation($"EQ gain set: {frequency} Hz → {eqParams.fGain} dB");
     }
 
+    #region SpectrumAnalyzer
+    
     public bool GetFftData(float[] fftDataBuffer)
     {
         if (fftDataBuffer.Length != ExpectedFftSize)
@@ -671,6 +673,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         OnFftCalculated!.Invoke(FftUpdate);
     }
+    
+    #endregion
 
     public void Dispose()
     {

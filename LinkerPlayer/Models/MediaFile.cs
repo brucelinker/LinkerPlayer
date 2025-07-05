@@ -2,7 +2,7 @@
 using LinkerPlayer.Core;
 using ManagedBass;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -35,73 +35,95 @@ public interface IMediaFile
     int Bitrate { get; }
     int SampleRate { get; }
     int Channels { get; }
+    string Copyright { get; }
     BitmapImage? AlbumCover { get; }
     PlaybackState State { get; set; }
 }
 
 [Index(nameof(Path), nameof(Album), nameof(Duration), IsUnique = true)]
-
-public class MediaFile : ObservableObject, IMediaFile
+public partial class MediaFile : ObservableValidator, IMediaFile
 {
-    const string UnknownString = "<Unknown>";
+    private const string UnknownString = "<Unknown>";
+    private readonly ILogger<MediaFile>? _logger;
+    private readonly CoverManager _coverManager = new();
 
     [Key]
     [StringLength(36, ErrorMessage = "Id must be a valid GUID (36 characters)")]
-    public string Id { get; set; } = Guid.NewGuid().ToString();
+    [ObservableProperty]
+    private string _id = Guid.NewGuid().ToString();
 
     [StringLength(256, ErrorMessage = "Path cannot exceed 256 characters")]
-    public string Path { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _path = string.Empty;
 
     [StringLength(255, ErrorMessage = "FileName cannot exceed 255 characters")]
-    public string FileName { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _fileName = string.Empty;
 
     [StringLength(128, ErrorMessage = "Title cannot exceed 128 characters")]
-    public string Title { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _title = string.Empty;
 
-    private string _artist = string.Empty;
     [StringLength(128, ErrorMessage = "Artist cannot exceed 128 characters")]
-    public string Artist
-    {
-        get => _artist;
-        set => SetProperty(ref _artist, value.Length > 128 ? value.Substring(0, 128) : value);
-    }
+    [ObservableProperty]
+    private string _artist = string.Empty;
 
     [StringLength(128, ErrorMessage = "Album cannot exceed 128 characters")]
-    public string Album { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _album = string.Empty;
 
     [StringLength(256, ErrorMessage = "Performers cannot exceed 256 characters")]
-    public string Performers { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _performers = string.Empty;
 
     [StringLength(256, ErrorMessage = "Composers cannot exceed 256 characters")]
-    public string Composers { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _composers = string.Empty;
 
     [StringLength(128, ErrorMessage = "Genres cannot exceed 128 characters")]
-    public string Genres { get; set; } = string.Empty;
-
-    public uint Track { get; set; }
-    public uint TrackCount { get; set; }
-    public uint Disc { get; set; }
-    public uint DiscCount { get; set; }
-    public uint Year { get; set; }
-    public TimeSpan Duration { get; set; }
-    public int Bitrate { get; set; }
-    public int SampleRate { get; set; }
-    public int Channels { get; set; }
+    [ObservableProperty]
+    private string _genres = string.Empty;
 
     [StringLength(128, ErrorMessage = "Copyright cannot exceed 128 characters")]
-    public string Copyright { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _copyright = string.Empty;
 
     [StringLength(256, ErrorMessage = "Comment cannot exceed 256 characters")]
-    public string Comment { get; set; } = string.Empty;
+    [ObservableProperty]
+    private string _comment = string.Empty;
+
+    [ObservableProperty]
+    private uint _track;
+
+    [ObservableProperty]
+    private uint _trackCount;
+
+    [ObservableProperty]
+    private uint _disc;
+
+    [ObservableProperty]
+    private uint _discCount;
+
+    [ObservableProperty]
+    private uint _year;
+
+    [ObservableProperty]
+    private TimeSpan _duration;
+
+    [ObservableProperty]
+    private int _bitrate;
+
+    [ObservableProperty]
+    private int _sampleRate;
+
+    [ObservableProperty]
+    private int _channels;
 
     [NotMapped]
-    public BitmapImage? AlbumCover { get; set; }
+    [ObservableProperty]
+    private BitmapImage? _albumCover;
 
-    public PlaybackState State
-    {
-        get => _state;
-        set => SetProperty(ref _state, value);
-    }
+    [ObservableProperty]
     private PlaybackState _state = PlaybackState.Stopped;
 
     [NotMapped]
@@ -109,10 +131,9 @@ public class MediaFile : ObservableObject, IMediaFile
 
     public MediaFile() { }
 
-    CoverManager _coverManager = new();
-
-    public MediaFile(string fileName)
+    public MediaFile(string fileName, ILogger<MediaFile>? logger = null)
     {
+        _logger = logger;
         Path = fileName;
         FileName = System.IO.Path.GetFileName(fileName);
         UpdateFromFileMetadata(false, minimal: true);
@@ -120,57 +141,55 @@ public class MediaFile : ObservableObject, IMediaFile
 
     public void UpdateFromFileMetadata(bool raisePropertyChanged = true, bool minimal = false)
     {
-        string fileName = Path;
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (string.IsNullOrWhiteSpace(Path))
         {
             return;
         }
 
         try
         {
-            using File? file = File.Create(fileName);
+            using File? file = File.Create(Path);
 
             Id = Guid.NewGuid().ToString();
-            if (Id.Length > 36) throw new ArgumentException("Id exceeds 36 characters");
+            ValidateStringLength(ref _id, 36, nameof(Id));
 
-            FileName = System.IO.Path.GetFileName(fileName);
-            if (FileName.Length > 255) FileName = FileName.Substring(0, 255);
-
+            FileName = System.IO.Path.GetFileName(Path);
+            ValidateStringLength(ref _fileName, 255, nameof(FileName));
 
             Title = file.Tag.Title ?? FileName;
-            if (Title.Length > 128) Title = Title.Substring(0, 128);
+            ValidateStringLength(ref _title, 128, nameof(Title));
 
             Album = file.Tag.Album ?? UnknownString;
-            if (Album.Length > 128) Album = Album.Substring(0, 128);
+            ValidateStringLength(ref _album, 128, nameof(Album));
 
             if (!minimal)
             {
                 List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                 Artist = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString;
-                if (Artist.Length > 128) Artist = Artist.Substring(0, 128);
+                ValidateStringLength(ref _artist, 128, nameof(Artist));
 
                 List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                 Performers = performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty;
-                if (Performers.Length > 256) Performers = Performers.Substring(0, 256);
+                ValidateStringLength(ref _performers, 256, nameof(Performers));
 
                 if (string.IsNullOrWhiteSpace(Artist))
                 {
                     Artist = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
-                    if (Artist.Length > 128) Artist = Artist.Substring(0, 128);
+                    ValidateStringLength(ref _artist, 128, nameof(Artist));
                 }
 
                 Comment = file.Tag.Comment ?? string.Empty;
-                if (Comment.Length > 256) Comment = Comment.Substring(0, 256);
+                ValidateStringLength(ref _comment, 256, nameof(Comment));
 
                 List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
                 Composers = composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty;
-                if (Composers.Length > 256) Composers = Composers.Substring(0, 256);
+                ValidateStringLength(ref _composers, 256, nameof(Composers));
 
                 Copyright = file.Tag.Copyright ?? string.Empty;
-                if (Copyright.Length > 128) Copyright = Copyright.Substring(0, 128);
+                ValidateStringLength(ref _copyright, 128, nameof(Copyright));
 
                 Genres = file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty;
-                if (Genres.Length > 128) Genres = Genres.Substring(0, 128);
+                ValidateStringLength(ref _genres, 128, nameof(Genres));
 
                 Track = file.Tag.Track;
                 TrackCount = file.Tag.TrackCount;
@@ -190,21 +209,26 @@ public class MediaFile : ObservableObject, IMediaFile
             {
                 Duration = TimeSpan.FromSeconds(1);
             }
+
+            // Validate properties for UI (if needed)
+            if (raisePropertyChanged)
+            {
+                ValidateAllProperties();
+            }
         }
         catch (Exception e)
         {
-            Log.Error("TagLib.File.Create failed for {FileName}: {Error}", fileName, e.Message);
+            _logger?.LogError(e, "TagLib.File.Create failed for {FileName}: {Message}", Path, e.Message);
             Title = FileName;
-            if (Title.Length > 128) Title = Title.Substring(0, 128);
+            ValidateStringLength(ref _title, 128, nameof(Title));
             Album = UnknownString;
-            if (Album.Length > 128) Album = Album.Substring(0, 128);
+            ValidateStringLength(ref _album, 128, nameof(Album));
             Artist = string.Empty;
             Duration = TimeSpan.FromSeconds(1);
-        }
-
-        if (raisePropertyChanged)
-        {
-            OnPropertyChanged();
+            if (raisePropertyChanged)
+            {
+                ValidateAllProperties();
+            }
         }
     }
 
@@ -216,10 +240,9 @@ public class MediaFile : ObservableObject, IMediaFile
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"Failed to load album cover for {Path}");
+            _logger?.LogError(ex, "Failed to load album cover for {Path}", Path);
             AlbumCover = null;
         }
-        OnPropertyChanged(nameof(AlbumCover));
     }
 
     public void UpdateFullMetadata()
@@ -236,28 +259,38 @@ public class MediaFile : ObservableObject, IMediaFile
     {
         return new MediaFile
         {
-            Id = this.Id,
-            Path = this.Path,
-            FileName = this.FileName,
-            Track = this.Track,
-            TrackCount = this.TrackCount,
-            Disc = this.Disc,
-            DiscCount = this.DiscCount,
-            Year = this.Year,
-            Title = this.Title,
-            Album = this.Album,
-            Artist = this.Artist,
-            Performers = this.Performers,
-            Composers = this.Composers,
-            Genres = this.Genres,
-            Comment = this.Comment,
-            Duration = this.Duration,
-            Bitrate = this.Bitrate,
-            SampleRate = this.SampleRate,
-            Channels = this.Channels,
-            Copyright = this.Copyright,
-            AlbumCover = this.AlbumCover,
-            State = this.State
+            Id = Id,
+            Path = Path,
+            FileName = FileName,
+            Track = Track,
+            TrackCount = TrackCount,
+            Disc = Disc,
+            DiscCount = DiscCount,
+            Year = Year,
+            Title = Title,
+            Album = Album,
+            Artist = Artist,
+            Performers = Performers,
+            Composers = Composers,
+            Genres = Genres,
+            Comment = Comment,
+            Duration = Duration,
+            Bitrate = Bitrate,
+            SampleRate = SampleRate,
+            Channels = Channels,
+            Copyright = Copyright,
+            AlbumCover = AlbumCover,
+            State = State
         };
+    }
+
+    private void ValidateStringLength(ref string value, int maxLength, string propertyName)
+    {
+        if (value.Length > maxLength)
+        {
+            _logger?.LogWarning("Property {PropertyName} exceeds maximum length of {MaxLength} characters. Truncating.",
+                propertyName, maxLength);
+            value = value.Substring(0, maxLength);
+        }
     }
 }

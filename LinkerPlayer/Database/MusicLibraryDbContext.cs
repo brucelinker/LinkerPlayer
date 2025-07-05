@@ -53,6 +53,7 @@ public class MusicLibraryDbContext : DbContext
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.Comment)
             .HasMaxLength(256); // Comment field
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);
 
         // Playlist
         modelBuilder.Entity<Playlist>()
