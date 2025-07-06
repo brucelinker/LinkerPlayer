@@ -112,15 +112,30 @@ public partial class SpectrumAnalyzer : Control
         DependencyProperty.Register(nameof(BarDecaySpeed), typeof(double), typeof(SpectrumAnalyzer),
             new UIPropertyMetadata(2.0, OnPropertyChanged, OnCoerceBarDecaySpeed));
 
+    private static object OnCoerceBarDecaySpeed(DependencyObject d, object value)
+    {
+        return Math.Max((double)value, 0.1);
+    }
+
     public double BarDecaySpeed
     {
         get => (double)GetValue(BarDecaySpeedProperty);
         set => SetValue(BarDecaySpeedProperty, value);
     }
 
-    private static object OnCoerceBarDecaySpeed(DependencyObject d, object value)
+    public static readonly DependencyProperty PeakHeightProperty =
+        DependencyProperty.Register(nameof(PeakHeight), typeof(double), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(3.0, OnPropertyChanged, OnCoercePeakHeight));
+
+    public double PeakHeight
     {
-        return Math.Max((double)value, 0.1);
+        get => (double)GetValue(PeakHeightProperty);
+        set => SetValue(PeakHeightProperty, value);
+    }
+
+    private static object OnCoercePeakHeight(DependencyObject d, object value)
+    {
+        return Math.Max((double)value, 1.0);
     }
 
     public static readonly DependencyProperty IsFrequencyScaleLinearProperty =
@@ -445,7 +460,7 @@ public partial class SpectrumAnalyzer : Control
         double lastPeakHeight = 0;
         double height = _spectrumCanvas.RenderSize.Height;
         int barIndex = 0;
-        double peakDotHeight = Math.Max(ActualBarWidth / 2.0, 1);
+        double peakDotHeight = Math.Max(PeakHeight, 1.0);
         double barHeightScale = height - peakDotHeight;
 
         double[] barHeights = new double[_barShapes.Count];
@@ -644,7 +659,7 @@ public partial class SpectrumAnalyzer : Control
         _peakShapes.Clear();
 
         double height = _spectrumCanvas.RenderSize.Height;
-        double peakDotHeight = Math.Max(barWidth / 2.0, 1);
+        double peakDotHeight = Math.Max(PeakHeight, 1.0);
 
         for (int i = 0; i < actualBarCount; i++)
         {
@@ -658,8 +673,8 @@ public partial class SpectrumAnalyzer : Control
         }
 
         ActualBarWidth = barWidth;
-        _logger.LogDebug("SpectrumAnalyzer: UpdateBarLayout, Mode={Mode}, BarCount={Count}, Indices={Indices}",
-            BarHeightScaling, actualBarCount, string.Join(",", _barIndexMax));
+        _logger.LogDebug("SpectrumAnalyzer: UpdateBarLayout, Mode={Mode}, BarCount={Count}, Indices={Indices}, PeakHeight={PeakHeight}",
+            BarHeightScaling, actualBarCount, string.Join(",", _barIndexMax), PeakHeight);
     }
 
     private double[] CalculateMelBins(double minFreq, double maxFreq, int binCount)

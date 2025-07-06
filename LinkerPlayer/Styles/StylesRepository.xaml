@@ -501,8 +501,6 @@
       <Setter.Value>
         <Style TargetType="{x:Type Rectangle}">
           <Setter Property="Fill" Value="{DynamicResource SpectrumBarBrush}" />
-          <Setter Property="RadiusX" Value="3" />
-          <Setter Property="RadiusY" Value="3" />
         </Style>
       </Setter.Value>
     </Setter>
@@ -510,8 +508,7 @@
       <Setter.Value>
         <Style TargetType="{x:Type Rectangle}">
           <Setter Property="Fill" Value="{DynamicResource SpectrumPeakBrush}" />
-          <Setter Property="RadiusX" Value="3" />
-          <Setter Property="RadiusY" Value="3" />
+          <Setter Property="Height" Value="13" />
         </Style>
       </Setter.Value>
     </Setter>

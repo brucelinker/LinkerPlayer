@@ -159,6 +159,7 @@
         MaximumFrequency="20000"
         MinimumFrequency="20"
         PeakFallDelay="10"
+        PeakHeight="2.0"
         RefreshInterval="25"
         Style="{StaticResource SpectrumAnalyzerStyle}" />
       <Button
@@ -167,7 +168,6 @@
         Height="25"
         HorizontalAlignment="Right"
         VerticalAlignment="Top"
-        HorizontalContentAlignment="Center"
         d:Foreground="White"
         Click="SpectrumButton_Click"
         FontSize="{DynamicResource FontSizeButton}"
