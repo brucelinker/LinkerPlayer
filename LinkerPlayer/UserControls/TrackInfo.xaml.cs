@@ -88,7 +88,27 @@ public partial class TrackInfo
             Spectrum.BarHeightScaling = BarHeightScalingStyles.Linear;
             SpectrumButton.Content = nameof(BarHeightScalingStyles.Linear);
         }
-        else
+        else if (Spectrum.BarHeightScaling == BarHeightScalingStyles.Linear)
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.Mel;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.Mel);
+        }
+        else if(Spectrum.BarHeightScaling == BarHeightScalingStyles.Mel)
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.Bark;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.Bark);
+        }
+        else if (Spectrum.BarHeightScaling == BarHeightScalingStyles.Bark)
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.Power;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.Power);
+        }
+        else if (Spectrum.BarHeightScaling == BarHeightScalingStyles.Power)
+        {
+            Spectrum.BarHeightScaling = BarHeightScalingStyles.LogFrequency;
+            SpectrumButton.Content = nameof(BarHeightScalingStyles.LogFrequency);
+        }
+        else if (Spectrum.BarHeightScaling == BarHeightScalingStyles.LogFrequency)
         {
             Spectrum.BarHeightScaling = BarHeightScalingStyles.Decibel;
             SpectrumButton.Content = nameof(BarHeightScalingStyles.Decibel);

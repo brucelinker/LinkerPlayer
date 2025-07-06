@@ -163,7 +163,7 @@
         Style="{StaticResource SpectrumAnalyzerStyle}" />
       <Button
         Name="SpectrumButton"
-        Width="50"
+        Width="86"
         Height="25"
         HorizontalAlignment="Right"
         VerticalAlignment="Top"
