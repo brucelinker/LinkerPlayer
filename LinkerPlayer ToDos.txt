@@ -1,6 +1,0 @@
-LinkerPlayer TODO
-
-- Fix OutputDevices - song plays, no sound.
-- Replace log.cs with Microsoft Logging
-	- https://blog.elmah.io/logging-and-global-error-handling-in-net-7-wpf-applications/
-
