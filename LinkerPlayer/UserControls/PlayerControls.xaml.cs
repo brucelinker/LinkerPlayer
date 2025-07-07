@@ -38,7 +38,7 @@ public partial class PlayerControls
 
         _logger = App.AppHost.Services.GetRequiredService<ILogger<PlayerControls>>();
 
-        _logger.LogInformation($"{DataContext} has been set to DataContext");
+        //_logger.LogInformation($"{DataContext} has been set to DataContext");
 
         _vm.UpdateSelectedTrack += OnSelectedTrackChanged;
 

@@ -20,14 +20,14 @@ public class SettingsManager
     public SettingsManager(ILogger<SettingsManager> logger)
     {
         _logger = logger;
-        _logger.LogInformation("Initializing SettingsManager, InstanceId: {InstanceId}", _instanceId);
+        _logger.LogInformation("Initializing SettingsManager");
 
         try
         {
             string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             string appFolder = Path.Combine(appData, "LinkerPlayer");
 
-            _logger.LogInformation("Creating directory: {AppFolder}", appFolder);
+            //_logger.LogInformation("Creating directory: {AppFolder}", appFolder);
 
             if (!Directory.Exists(appFolder))
             {
@@ -39,7 +39,7 @@ public class SettingsManager
             _saveTimer = new Timer(1000) { AutoReset = false };
             _saveTimer.Elapsed += (_, _) => SaveSettingsInternal();
 
-            _logger.LogInformation("Loading settings from: {SettingsPath}", _settingsPath);
+            //_logger.LogInformation("Loading settings from: {SettingsPath}", _settingsPath);
             LoadSettings();
             _logger.LogInformation("SettingsManager initialized successfully");
 

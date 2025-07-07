@@ -70,9 +70,9 @@
   <Color x:Key="ScrollBarArrowBackgroundColor">Transparent</Color>
   <Color x:Key="ScrollBarRepeatButtonColor">Transparent</Color>
 
-  <Color x:Key="SpectrumStartColor">#B18D00</Color>
-  <Color x:Key="SpectrumEndColor">#A7A084</Color>
-  <Color x:Key="SpectrumPeakColor">#CBB971</Color>
+  <Color x:Key="SpectrumStartColor">#c0b897</Color>
+  <Color x:Key="SpectrumEndColor">#d9d2c2</Color>
+  <Color x:Key="SpectrumPeakColor">#505050</Color>
 
   <Color x:Key="SpectrumLineColor">LightSteelBlue</Color>
   <Color x:Key="SpectrumBackgroundColor">#FFFFFF</Color>

@@ -138,7 +138,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                 if (SelectedPlaylist == null || SelectedPlaylist.SelectedTrack == null) return;
 
-                _logger.LogInformation("OnDataGridLoaded : ScrollIntoView");
                 _dataGrid.ScrollIntoView(SelectedPlaylist.SelectedTrack);
             }
         }

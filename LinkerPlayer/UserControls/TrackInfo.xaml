@@ -156,10 +156,11 @@
         AveragePeaks="False"
         BarDecaySpeed="2.0"
         BarHeightScaling="Decibel"
+        BarSmoothingFactor="2.0"
         MaximumFrequency="20000"
         MinimumFrequency="20"
         PeakFallDelay="10"
-        PeakHeight="2.0"
+        PeakHeight="3.0"
         RefreshInterval="25"
         Style="{StaticResource SpectrumAnalyzerStyle}" />
       <Button

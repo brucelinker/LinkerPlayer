@@ -36,7 +36,7 @@ public partial class PlaylistTabs
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
             viewModel.LoadPlaylistTabs();
-            Serilog.Log.Information("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
+            _logger.LogInformation("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
             if (viewModel.TabList.Any())
             {
                 viewModel.SelectedTabIndex = 0; // Force initial selection

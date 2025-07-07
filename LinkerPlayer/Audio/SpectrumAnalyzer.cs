@@ -112,11 +112,6 @@ public partial class SpectrumAnalyzer : Control
         DependencyProperty.Register(nameof(BarDecaySpeed), typeof(double), typeof(SpectrumAnalyzer),
             new UIPropertyMetadata(2.0, OnPropertyChanged, OnCoerceBarDecaySpeed));
 
-    private static object OnCoerceBarDecaySpeed(DependencyObject d, object value)
-    {
-        return Math.Max((double)value, 0.1);
-    }
-
     public double BarDecaySpeed
     {
         get => (double)GetValue(BarDecaySpeedProperty);
@@ -133,9 +128,29 @@ public partial class SpectrumAnalyzer : Control
         set => SetValue(PeakHeightProperty, value);
     }
 
+    public static readonly DependencyProperty BarSmoothingFactorProperty =
+        DependencyProperty.Register(nameof(BarSmoothingFactor), typeof(double), typeof(SpectrumAnalyzer),
+            new UIPropertyMetadata(2.0, OnPropertyChanged, OnCoerceBarSmoothingFactor));
+
+    public double BarSmoothingFactor
+    {
+        get => (double)GetValue(BarSmoothingFactorProperty);
+        set => SetValue(BarSmoothingFactorProperty, value);
+    }
+
+    private static object OnCoerceBarDecaySpeed(DependencyObject d, object value)
+    {
+        return Math.Max((double)value, 0.1);
+    }
+
     private static object OnCoercePeakHeight(DependencyObject d, object value)
     {
         return Math.Max((double)value, 1.0);
+    }
+
+    private static object OnCoerceBarSmoothingFactor(DependencyObject d, object value)
+    {
+        return Math.Max((double)value, 0.1);
     }
 
     public static readonly DependencyProperty IsFrequencyScaleLinearProperty =
@@ -528,9 +543,9 @@ public partial class SpectrumAnalyzer : Control
                         fftBucketHeight = _channelData[i] * ScaleFactorLinear * barHeightScale;
                         break;
                 }
+                fftBucketHeight = Math.Max(fftBucketHeight, 0);
+                fftBucketHeight = Math.Min(fftBucketHeight, height);
                 barHeight = Math.Max(barHeight, fftBucketHeight);
-                barHeight = Math.Max(barHeight, 0);
-                barHeights[barIndex] = barHeight;
 
                 int currentIndexMax = IsFrequencyScaleLinear ? _barIndexMax[barIndex] : _barLogScaleIndexMax[barIndex];
                 if (i >= currentIndexMax)
@@ -538,6 +553,10 @@ public partial class SpectrumAnalyzer : Control
                     barHeight = Math.Min(barHeight, height);
                     if (AveragePeaks && barIndex > 0)
                         barHeight = (lastPeakHeight + barHeight) / 2;
+
+                    // Apply smoothing to bar height
+                    barHeight = (barHeight + BarSmoothingFactor * barHeights[barIndex]) / (BarSmoothingFactor + 1);
+                    barHeights[barIndex] = barHeight;
 
                     double peakYPos = barHeight;
                     _channelPeakData[barIndex] = (float)Math.Max(_channelPeakData[barIndex], peakYPos);
@@ -673,8 +692,6 @@ public partial class SpectrumAnalyzer : Control
         }
 
         ActualBarWidth = barWidth;
-        _logger.LogDebug("SpectrumAnalyzer: UpdateBarLayout, Mode={Mode}, BarCount={Count}, Indices={Indices}, PeakHeight={PeakHeight}",
-            BarHeightScaling, actualBarCount, string.Join(",", _barIndexMax), PeakHeight);
     }
 
     private double[] CalculateMelBins(double minFreq, double maxFreq, int binCount)

@@ -150,46 +150,32 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             using File? file = File.Create(Path);
 
-            Id = Guid.NewGuid().ToString();
-            ValidateStringLength(ref _id, 36, nameof(Id));
-
-            FileName = System.IO.Path.GetFileName(Path);
-            ValidateStringLength(ref _fileName, 255, nameof(FileName));
-
-            Title = file.Tag.Title ?? FileName;
-            ValidateStringLength(ref _title, 128, nameof(Title));
-
-            Album = file.Tag.Album ?? UnknownString;
-            ValidateStringLength(ref _album, 128, nameof(Album));
+            Id = ValidateStringLength(Guid.NewGuid().ToString(), 36, nameof(Id));
+            FileName = ValidateStringLength(System.IO.Path.GetFileName(Path), 255, nameof(FileName));
+            Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
+            Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
 
             if (!minimal)
             {
                 List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                Artist = albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString;
-                ValidateStringLength(ref _artist, 128, nameof(Artist));
+                Artist = ValidateStringLength(albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString, 128, nameof(Artist));
 
                 List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                Performers = performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty;
-                ValidateStringLength(ref _performers, 256, nameof(Performers));
+                Performers = ValidateStringLength(performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
 
                 if (string.IsNullOrWhiteSpace(Artist))
                 {
-                    Artist = string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers;
-                    ValidateStringLength(ref _artist, 128, nameof(Artist));
+                    Artist = ValidateStringLength(string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers, 128, nameof(Artist));
                 }
 
-                Comment = file.Tag.Comment ?? string.Empty;
-                ValidateStringLength(ref _comment, 256, nameof(Comment));
+                Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
 
                 List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                Composers = composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty;
-                ValidateStringLength(ref _composers, 256, nameof(Composers));
+                Composers = ValidateStringLength(composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty, 256, nameof(Composers));
 
-                Copyright = file.Tag.Copyright ?? string.Empty;
-                ValidateStringLength(ref _copyright, 128, nameof(Copyright));
+                Copyright = ValidateStringLength(file.Tag.Copyright ?? string.Empty, 128, nameof(Copyright));
 
-                Genres = file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty;
-                ValidateStringLength(ref _genres, 128, nameof(Genres));
+                Genres = ValidateStringLength(file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty, 128, nameof(Genres));
 
                 Track = file.Tag.Track;
                 TrackCount = file.Tag.TrackCount;
@@ -210,7 +196,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 Duration = TimeSpan.FromSeconds(1);
             }
 
-            // Validate properties for UI (if needed)
             if (raisePropertyChanged)
             {
                 ValidateAllProperties();
@@ -219,10 +204,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         catch (Exception e)
         {
             _logger?.LogError(e, "TagLib.File.Create failed for {FileName}: {Message}", Path, e.Message);
-            Title = FileName;
-            ValidateStringLength(ref _title, 128, nameof(Title));
-            Album = UnknownString;
-            ValidateStringLength(ref _album, 128, nameof(Album));
+            Title = ValidateStringLength(FileName, 128, nameof(Title));
+            Album = ValidateStringLength(UnknownString, 128, nameof(Album));
             Artist = string.Empty;
             Duration = TimeSpan.FromSeconds(1);
             if (raisePropertyChanged)
@@ -284,13 +267,14 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         };
     }
 
-    private void ValidateStringLength(ref string value, int maxLength, string propertyName)
+    private string ValidateStringLength(string value, int maxLength, string propertyName)
     {
         if (value.Length > maxLength)
         {
             _logger?.LogWarning("Property {PropertyName} exceeds maximum length of {MaxLength} characters. Truncating.",
                 propertyName, maxLength);
-            value = value.Substring(0, maxLength);
+            return value.Substring(0, maxLength);
         }
+        return value;
     }
 }

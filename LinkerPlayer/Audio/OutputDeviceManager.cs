@@ -28,7 +28,7 @@ public class OutputDeviceManager
     {
         if (_isInitialized)
         {
-            _logger.LogInformation("OutputDeviceManager: Already initialized, skipping");
+            //_logger.LogInformation("OutputDeviceManager: Already initialized, skipping");
             return;
         }
 

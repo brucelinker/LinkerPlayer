@@ -159,7 +159,7 @@ public class MusicLibrary
                     .ToList();
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
                 _logger.LogInformation(
-                    $"Loaded playlist {playlist.Name} with TrackIds: {string.Join(", ", playlist.TrackIds)}");
+                    $"Loaded playlist {playlist.Name}");
 
                 if (playlist.SelectedTrack != null && MainLibrary.All(t => t.Id != playlist.SelectedTrack))
                 {
@@ -638,7 +638,7 @@ public class MusicLibrary
 
     public List<MediaFile> GetTracksFromPlaylist(string? playlistName)
     {
-        _logger.LogInformation("MusicLibrary - GetTracksFromPlaylist");
+        //_logger.LogInformation("MusicLibrary - GetTracksFromPlaylist");
         Playlist? playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
         if (playlist == null)
         {

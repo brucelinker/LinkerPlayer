@@ -455,7 +455,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         if (CurrentStream == 0)
         {
-            _logger.LogError("Cannot initialize equalizer: No stream loaded");
+            _logger.LogInformation("Equalizer deferred initialization : No stream loaded");
             return false;
         }
 

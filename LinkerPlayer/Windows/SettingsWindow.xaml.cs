@@ -125,7 +125,7 @@ public partial class SettingsWindow
         //Properties.Settings.Default.Save();
 
         Window? win = GetWindow(this);
-        win?.Close();
+        win?.Hide();
     }
 
     string _editedHotkey = "";
@@ -205,6 +205,6 @@ public partial class SettingsWindow
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Window? win = Window.GetWindow(this);
-        if (win != null) win.Close();
+        if (win != null) win.Hide();
     }
 }

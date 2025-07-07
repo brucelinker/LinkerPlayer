@@ -58,7 +58,7 @@ public partial class EqualizerViewModel : ObservableObject
 
     partial void OnEqPresetsChanged(ObservableCollection<Preset> value)
     {
-        _logger.LogInformation($"OnEqPresetChanged: {value}");
+        //_logger.LogInformation($"OnEqPresetChanged: {value}");
     }
 
     partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
