@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/LinkerPlayer.v3.ncrunchsolution
+/LinkerPlayer.sln.DotSettings
