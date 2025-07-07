@@ -4,8 +4,10 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Windows;
-using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Media.Imaging;
 using static LinkerPlayer.Audio.SpectrumAnalyzer;
 
 namespace LinkerPlayer.UserControls;
@@ -13,6 +15,9 @@ namespace LinkerPlayer.UserControls;
 public partial class TrackInfo
 {
     private readonly AudioEngine _audioEngine;
+    private readonly ILogger<TrackInfo> _logger;
+    private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
+
     public MediaFile? SelectedMediaFile
     {
         get => (MediaFile?)GetValue(SelectedMediaFileProperty);
@@ -25,8 +30,6 @@ public partial class TrackInfo
 
     public static readonly DependencyProperty SelectedMediaFileProperty =
         DependencyProperty.Register(nameof(SelectedMediaFile), typeof(MediaFile), typeof(TrackInfo), new PropertyMetadata(null));
-
-    private readonly ILogger<TrackInfo> _logger;
 
     public TrackInfo()
     {
@@ -69,10 +72,65 @@ public partial class TrackInfo
             {
                 mediaFile.UpdateFullMetadata();
             }
-            if (mediaFile.AlbumCover == null)
+
+            // Always attempt to load AlbumCover to ensure fresh state
+            mediaFile.LoadAlbumCover();
+
+            // Check if AlbumCover is null or invalid
+            bool isInvalidImage = mediaFile.AlbumCover == null;
+            if (mediaFile.AlbumCover is BitmapImage bitmap && !bitmap.IsDownloading)
             {
-                mediaFile.LoadAlbumCover();
+                try
+                {
+                    _ = bitmap.PixelWidth; // Force access to detect errors
+                    isInvalidImage = bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Invalid BitmapImage detected for {MediaFileTitle}", mediaFile.Title);
+                    isInvalidImage = true;
+                }
             }
+
+            if (isInvalidImage)
+            {
+                mediaFile.AlbumCover = GetDefaultAlbumImage();
+                _logger.LogInformation("TrackInfo: Set default album cover for {MediaFileTitle}", mediaFile.Title);
+                if (FindName("TrackImageText") is TextBlock trackImageText)
+                {
+                    trackImageText.Text = "[No Image]";
+                }
+            }
+            else if (FindName("TrackImageText") is TextBlock trackImageText)
+            {
+                trackImageText.Text = string.Empty; // Clear text for valid image
+            }
+        }
+        else
+        {
+            SelectedMediaFile = null;
+            if (FindName("TrackImage") is Image trackImage)
+            {
+                trackImage.Source = GetDefaultAlbumImage();
+            }
+            if (FindName("TrackImageText") is TextBlock trackImageText)
+            {
+                trackImageText.Text = "[ No Selection ]";
+            }
+        }
+    }
+
+    private static BitmapImage GetDefaultAlbumImage()
+    {
+        try
+        {
+            return new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
+        }
+        catch (Exception ex)
+        {
+            App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>()
+                .LogError(ex, "Failed to load default album image");
+            return new BitmapImage(); // Fallback to empty image
         }
     }
 
@@ -93,7 +151,7 @@ public partial class TrackInfo
             Spectrum.BarHeightScaling = BarHeightScalingStyles.Mel;
             SpectrumButton.Content = nameof(BarHeightScalingStyles.Mel);
         }
-        else if(Spectrum.BarHeightScaling == BarHeightScalingStyles.Mel)
+        else if (Spectrum.BarHeightScaling == BarHeightScalingStyles.Mel)
         {
             Spectrum.BarHeightScaling = BarHeightScalingStyles.Bark;
             SpectrumButton.Content = nameof(BarHeightScalingStyles.Bark);

@@ -585,8 +585,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
             ProgressInfo.IsProcessing = false;
             ProgressInfo.TotalTracks = 1;
             ProgressInfo.ProcessedTracks = 0;
-            ProgressInfo.Phase = "Idle";
-            ProgressInfo.Status = "Finished";
+            ProgressInfo.Phase = ""; // Idle
+            ProgressInfo.Status = ""; //"Finished";
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 progress?.Report(ProgressInfo);
@@ -683,7 +683,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             ProgressInfo.IsProcessing = false;
             ProgressInfo.TotalTracks = 1;
             ProgressInfo.ProcessedTracks = 0;
-            ProgressInfo.Status = "Finished";
+            ProgressInfo.Status = ""; //"Finished";
             progress?.Report(ProgressInfo);
         }
     }

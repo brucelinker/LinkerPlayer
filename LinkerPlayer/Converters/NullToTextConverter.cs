@@ -8,7 +8,7 @@ public class NullToTextConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        return value == null ? parameter?.ToString() ?? "" : "";
+        return value == null ? parameter?.ToString() ?? string.Empty : string.Empty;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

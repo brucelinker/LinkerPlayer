@@ -41,129 +41,104 @@
     </ResourceDictionary>
   </UserControl.Resources>
 
-  <StackPanel>
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="70" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Grid.ColumnDefinitions>
+      <!--  Playback buttons (fixed width)  -->
+      <ColumnDefinition Width="Auto" />
+      <!--  CurrentTrackName, CurrentTime, Progress Slider, TotalTime (scales with window width)  -->
+      <ColumnDefinition Width="*" />
+      <!--  Volume Mute and Volume Slider (fixed width)  -->
+      <ColumnDefinition Width="Auto" />
+      <!--  Shuffle and Equalizer buttons (fixed width)  -->
+      <!--<ColumnDefinition Width="Auto" />-->
+    </Grid.ColumnDefinitions>
+
     <Grid>
-      <Grid.RowDefinitions>
-        <RowDefinition Height="70" />
-        <RowDefinition Height="28" />
-      </Grid.RowDefinitions>
+      <Border BorderBrush="Transparent" BorderThickness="1">
+        <StackPanel
+          Margin="25,4,25,0"
+          VerticalAlignment="Center"
+          Orientation="Horizontal">
 
-      <Grid.ColumnDefinitions>
-        <!--  Playback buttons (fixed width)  -->
-        <ColumnDefinition Width="Auto" />
-        <!--  CurrentTrackName, CurrentTime, Progress Slider, TotalTime (scales with window width)  -->
-        <ColumnDefinition Width="*" />
-        <!--  Volume Mute and Volume Slider (fixed width)  -->
-        <ColumnDefinition Width="Auto" />
-        <!--  Shuffle and Equalizer buttons (fixed width)  -->
-        <ColumnDefinition Width="Auto" />
-      </Grid.ColumnDefinitions>
-
-      <Grid>
-        <Border>
-          <StackPanel
-            Margin="25,4,25,0"
+          <!--  Prev Button  -->
+          <Button
+            Name="PrevButton"
+            Width="36"
+            Height="36"
+            Margin="0,0,5,0"
+            HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Orientation="Horizontal">
+            d:Foreground="Transparent"
+            Command="{Binding PrevCommand}"
+            Content="{iconPacks:Material SkipPrevious,
+                                         Width=13,
+                                         Height=13}"
+            Foreground="{DynamicResource PlayerForegroundBrush}"
+            Style="{StaticResource LinkerCircleButton}"
+            ToolTip="Previous Track" />
 
-            <!--  Prev Button  -->
-            <Button
-              Name="PrevButton"
-              Width="36"
-              Height="36"
-              Margin="0,0,5,0"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              d:Foreground="White"
-              Command="{Binding PrevCommand}"
-              Content="{iconPacks:Material SkipPrevious,
-                                           Width=13,
-                                           Height=13}"
-              Foreground="{DynamicResource PlayerForegroundBrush}"
-              Style="{StaticResource LinkerCircleButton}"
-              ToolTip="Previous Track" />
+          <!--  Play Button  -->
+          <Button
+            x:Name="PlayButton"
+            Width="55"
+            Height="55"
+            Margin="5,0,5,0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            d:Content="{iconPacks:PackIconMaterial Kind=Play,
+                                                   Width=19,
+                                                   Height=19,
+                                                   Margin=4 0 0 0}"
+            d:Foreground="Transparent"
+            Command="{Binding PlayPauseCommand}"
+            Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
+            Foreground="{DynamicResource PlayerForegroundBrush}"
+            Style="{StaticResource LinkerCircleButton}" />
 
-            <!--  Play Button  -->
-            <Button
-              x:Name="PlayButton"
-              Width="55"
-              Height="55"
-              Margin="5,0,5,0"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              d:Content="{iconPacks:PackIconMaterial Kind=Play,
-                                                     Width=19,
-                                                     Height=19,
-                                                     Margin=4 0 0 0}"
-              d:Foreground="White"
-              Command="{Binding PlayPauseCommand}"
-              Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
-              Foreground="{DynamicResource PlayerForegroundBrush}"
-              Style="{StaticResource LinkerCircleButton}" />
+          <!--  Stop Button  -->
+          <Button
+            Name="StopButton"
+            Width="36"
+            Height="36"
+            Margin="5,0,5,0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            d:Foreground="Transparent"
+            Command="{Binding StopCommand}"
+            Content="{iconPacks:Material Stop,
+                                         Width=12,
+                                         Height=12}"
+            Foreground="{DynamicResource PlayerForegroundBrush}"
+            Style="{StaticResource LinkerCircleButton}"
+            ToolTip="Stop" />
 
-            <!--  Stop Button  -->
-            <Button
-              Name="StopButton"
-              Width="36"
-              Height="36"
-              Margin="5,0,5,0"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              d:Foreground="White"
-              Command="{Binding StopCommand}"
-              Content="{iconPacks:Material Stop,
-                                           Width=12,
-                                           Height=12}"
-              Foreground="{DynamicResource PlayerForegroundBrush}"
-              Style="{StaticResource LinkerCircleButton}"
-              ToolTip="Stop" />
+          <!--  Next Button  -->
+          <Button
+            Name="NextButton"
+            Width="36"
+            Height="36"
+            Margin="5,0,5,0"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            d:Foreground="Transparent"
+            Command="{Binding NextCommand}"
+            Content="{iconPacks:Material SkipNext,
+                                         Width=13,
+                                         Height=13}"
+            Foreground="{DynamicResource PlayerForegroundBrush}"
+            Style="{StaticResource LinkerCircleButton}"
+            ToolTip="Next File (j)" />
+        </StackPanel>
+      </Border>
+    </Grid>
 
-            <!--  Next Button  -->
-            <Button
-              Name="NextButton"
-              Width="36"
-              Height="36"
-              Margin="5,0,5,0"
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              d:Foreground="White"
-              Command="{Binding NextCommand}"
-              Content="{iconPacks:Material SkipNext,
-                                           Width=13,
-                                           Height=13}"
-              Foreground="{DynamicResource PlayerForegroundBrush}"
-              Style="{StaticResource LinkerCircleButton}"
-              ToolTip="Next File (j)" />
-          </StackPanel>
-        </Border>
-      </Grid>
-
-      <Grid Grid.Column="1">
-        <!--<Grid.RowDefinitions>
-        -->
-        <!--  CurrentTrackName  -->
-        <!--
-          <RowDefinition Height="Auto" />
-        -->
-        <!--  CurrentTime, Progress Slider, TotalTime  -->
-        <!--
-          <RowDefinition Height="*" />
-        </Grid.RowDefinitions>-->
-
-        <!--  Current Track Name (Row 0, spans all columns)  -->
-        <!--<TextBlock
-          Name="CurrentTrackName"
-          Grid.Row="0"
-          Grid.Column="0"
-          Margin="5,10,5,5"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Top"
-          d:Foreground="White"
-          FontSize="16"
-          FontWeight="Light"
-          Foreground="{DynamicResource PlayerForegroundBrush}"
-          Text="" />-->
-
+    <Grid Grid.Row="0" Grid.Column="1">
+      <Border BorderBrush="Transparent" BorderThickness="1">
         <Grid Margin="10,26,10,0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
@@ -179,7 +154,7 @@
             Name="CurrentTime"
             Grid.Column="0"
             Padding="0,0,10,0"
-            d:Foreground="White"
+            d:Foreground="Transparent"
             FontSize="16"
             FontWeight="Light"
             Foreground="{DynamicResource PlayerForegroundBrush}"
@@ -200,21 +175,19 @@
             Name="TotalTime"
             Grid.Column="2"
             Padding="10,0,0,0"
-            d:Foreground="White"
+            d:Foreground="Transparent"
             FontSize="16"
             FontWeight="Light"
             Foreground="{DynamicResource PlayerForegroundBrush}">
             0:00
           </TextBlock>
         </Grid>
-      </Grid>
+      </Border>
+    </Grid>
 
-      <!--  Volume Group  -->
-      <StackPanel
-        Grid.Row="0"
-        Grid.Column="2"
-        Margin="25,6,5,5"
-        Orientation="Horizontal">
+    <!--  Volume Group  -->
+    <Grid Grid.Row="0" Grid.Column="2">
+      <StackPanel Margin="20,8,5,5" Orientation="Horizontal">
 
         <!--  Mute Button  -->
         <ToggleButton
@@ -244,25 +217,14 @@
         <!--  Volume Slider  -->
         <Slider
           x:Name="VolumeSlider"
-          Margin="5,0,10,0"
+          Width="100"
+          Margin="5,0,20,0"
           VerticalAlignment="Center"
           Maximum="100"
           Minimum="0"
           Style="{StaticResource CustomHorizontalSlider}"
           Value="{Binding VolumeSliderValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
-      </StackPanel>
-
-      <!--  Other Settings  -->
-      <StackPanel
-        Grid.Row="0"
-        Grid.Column="3"
-        Margin="5,6,5,5"
-        Orientation="Horizontal">
-        <!--<Grid.ColumnDefinitions>
-            <ColumnDefinition />
-            <ColumnDefinition />
-          </Grid.ColumnDefinitions>-->
 
         <!--  Shuffle Mode Button  -->
         <ToggleButton
@@ -298,7 +260,7 @@
           Margin="5,0,25,0"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          d:Foreground="White"
+          d:Foreground="Transparent"
           Click="OnEqualizerButton_Click"
           Content="{iconPacks:Fontisto Equalizer,
                                        Width=18,
@@ -307,41 +269,68 @@
           Style="{StaticResource LinkerCircleButton}"
           ToolTip="Equalizer" />
       </StackPanel>
+    </Grid>
 
-      <Grid
-        Grid.Row="1"
-        Grid.Column="0"
-        Grid.ColumnSpan="4"
-        VerticalAlignment="Bottom">
+    <Grid
+      Grid.Row="1"
+      Grid.Column="0"
+      Grid.ColumnSpan="3"
+      VerticalAlignment="Bottom">
+      <Border BorderBrush="Transparent" BorderThickness="1">
         <Grid
-          Margin="6,2,6,0"
+          Margin="6,0,6,0"
           VerticalAlignment="Bottom"
           Background="Transparent">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="2*" />
-            <ColumnDefinition Width="5*" />
-            <ColumnDefinition Width="3*" />
+            <ColumnDefinition Width="4*" />
+            <ColumnDefinition Width="2*" />
           </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="1*" />
+          </Grid.RowDefinitions>
 
           <!--  Status text  -->
           <TextBlock
             Name="StatusText"
+            Grid.RowSpan="2"
             Grid.Column="0"
             Width="Auto"
+            Margin="5,5,0,0"
+            VerticalAlignment="Top"
             FontSize="13"
             FontWeight="Light"
             Text="{Binding Status}" />
 
+          <Border
+            Grid.Row="0"
+            Grid.Column="1"
+            BorderBrush="Transparent"
+            BorderThickness="1">
+            <TextBlock
+              x:Name="ProgressInfo"
+              Grid.Row="0"
+              Grid.Column="1"
+              Width="Auto"
+              Margin="5,0. 5, 0"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              FontSize="13"
+              FontWeight="Light" />
+          </Border>
+
           <!--  Progress bar  -->
           <ProgressBar
             x:Name="TheProgressBar"
+            Grid.Row="1"
             Grid.Column="1"
             Width="Auto"
-            Height="10"
+            Height="6"
             Margin="5,0"
             Background="Transparent"
             BorderBrush="Transparent"
-            BorderThickness="0"
+            BorderThickness="1"
             Foreground="{DynamicResource ControlAccentDarkBrush}"
             Minimum="0"
             Visibility="Visible" />
@@ -349,6 +338,8 @@
           <!--  Another status text or whatever else you want  -->
           <TextBlock
             x:Name="Info"
+            Grid.Row="0"
+            Grid.RowSpan="2"
             Grid.Column="2"
             Width="Auto"
             Margin="5,0"
@@ -356,8 +347,9 @@
             VerticalAlignment="Center"
             FontSize="13"
             FontWeight="Light" />
+
         </Grid>
-      </Grid>
+      </Border>
     </Grid>
-  </StackPanel>
+  </Grid>
 </UserControl>

@@ -8,5 +8,5 @@ public partial class ProgressData : ObservableObject
     [ObservableProperty] private int _processedTracks;
     [ObservableProperty] private int _totalTracks;
     [ObservableProperty] private string _status = string.Empty;
-    [ObservableProperty] private string _phase = "Idle"; // Adding, Metadata, Saving
+    [ObservableProperty] private string _phase = ""; // Adding, Metadata, Saving
 }

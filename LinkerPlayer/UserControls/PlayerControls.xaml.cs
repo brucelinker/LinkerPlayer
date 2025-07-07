@@ -155,8 +155,8 @@ public partial class PlayerControls
 
         TheProgressBar.Maximum = progressData.TotalTracks > 0 ? progressData.TotalTracks : 1;
         TheProgressBar.Value = progressData.ProcessedTracks;
-        Info.Text = progressData.IsProcessing
-            ? $"{progressData.Phase}: {progressData.Status} ({progressData.ProcessedTracks}/{progressData.TotalTracks})"
+        ProgressInfo.Text = progressData.IsProcessing
+            ? $"{progressData.Status} ({progressData.ProcessedTracks}/{progressData.TotalTracks})"
             : progressData.Status;
     }
 

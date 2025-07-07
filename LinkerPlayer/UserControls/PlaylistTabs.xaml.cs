@@ -141,7 +141,7 @@ public partial class PlaylistTabs
             {
                 _selectedEditableTabHeaderControl.SetEditMode(true);
                 // Pass PlaylistTab to enable command binding
-                if (_selectedEditableTabHeaderControl.DataContext is PlaylistTab tab && DataContext is PlaylistTabsViewModel viewModel)
+                if (_selectedEditableTabHeaderControl.DataContext is PlaylistTab && DataContext is PlaylistTabsViewModel viewModel)
                 {
                     _selectedEditableTabHeaderControl.Tag = viewModel; // Store view model for command access
                 }
