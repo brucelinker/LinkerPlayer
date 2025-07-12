@@ -1241,21 +1241,21 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     await _musicLibrary.AddTrackToPlaylistAsync(addedTrack.Id, playlistName, saveImmediately: saveImmediately);
                     SelectedTab!.Tracks.Add(addedTrack);
                     _dataGrid!.Items.Refresh();
-                    //                    _logger.LogInformation($"Added track {fileName} to playlist {playlistName}");
+                    // _logger.LogInformation($"Added track {fileName} to playlist {playlistName}");
                 }
                 else
                 {
-                    _logger.LogWarning($"Failed to add track {fileName} to library");
+                    _logger.LogWarning("Failed to add track {FileName} to library", fileName);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error loading audio file {fileName}");
+                _logger.LogError(ex, "Error loading audio file {FileName}", fileName);
             }
         }
         else
         {
-            _logger.LogInformation($"File {fileName} does not exist.");
+            _logger.LogInformation("File {FileName} does not exist.", fileName);
         }
     }
 
@@ -1310,7 +1310,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     string mediaFileDirectory = Path.GetDirectoryName(mediaFilePath)!;
                     if (!Directory.Exists(mediaFileDirectory))
                     {
-                        _logger.LogError("Directory not found: {0}", mediaFileDirectory);
+                        _logger.LogError("Directory not found: {Dir}", mediaFileDirectory);
                         continue;
                     }
 
@@ -1321,7 +1321,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("Failed to load media file: {0} {1}", mediaFilePath, ex.Message);
+                        _logger.LogError("Failed to load media file: {FilePath} {Message}", mediaFilePath, ex.Message);
                     }
                 }
 
@@ -1374,7 +1374,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         if (newPlaylistName == oldName)
         {
-            _logger.LogInformation($"ChangeSelectedPlaylistName: New name '{newPlaylistName}' is same as old name, no change needed");
+            _logger.LogInformation("ChangeSelectedPlaylistName: New name '{NewPlaylistName}' is same as old name, no change needed", newPlaylistName);
             return;
         }
 
@@ -1388,14 +1388,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 Playlist? dbPlaylist = await context.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
                 if (dbPlaylist == null)
                 {
-                    _logger.LogWarning($"ChangeSelectedPlaylistName: Playlist '{oldName}' not found in database");
+                    _logger.LogWarning("ChangeSelectedPlaylistName: Playlist '{OldName}' not found in database", oldName);
                     return;
                 }
 
                 // Check for duplicate name in database
                 if (await context.Playlists.AnyAsync(p => p.Name == newPlaylistName && p.Name != oldName))
                 {
-                    _logger.LogWarning($"ChangeSelectedPlaylistName: Playlist name '{newPlaylistName}' already exists");
+                    _logger.LogWarning("ChangeSelectedPlaylistName: Playlist name '{NewPlaylistName}' already exists", newPlaylistName);
                     MessageBox.Show($"A playlist named '{newPlaylistName}' already exists.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     tab.Name = oldName;
                     return;
@@ -1414,7 +1414,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 playlist = _musicLibrary.Playlists.FirstOrDefault(p => p.Name == newPlaylistName);
                 if (playlist == null)
                 {
-                    _logger.LogError($"ChangeSelectedPlaylistName: Failed to find playlist '{newPlaylistName}' after reload");
+                    _logger.LogError("ChangeSelectedPlaylistName: Failed to find playlist '{NewPlaylistName}' after reload", newPlaylistName);
                     tab.Name = oldName;
                     return;
                 }
@@ -1443,11 +1443,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             await _musicLibrary.SaveToDatabaseAsync();
-            _logger.LogInformation($"Playlist renamed from '{oldName}' to '{newPlaylistName}' in database");
+            _logger.LogInformation("Playlist renamed from '{OldName}' to '{NewPlaylistName}' in database", oldName, newPlaylistName);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to rename playlist from '{oldName}' to '{newPlaylistName}'");
+            _logger.LogError(ex, "Failed to rename playlist from '{OldName}' to '{NewPlaylistName}'", oldName, newPlaylistName);
             MessageBox.Show($"Failed to rename playlist to '{newPlaylistName}'. Please try again.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             tab.Name = oldName;
             int selectedTabIndex = TabList.IndexOf(tab);

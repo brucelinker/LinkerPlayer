@@ -1,5 +1,4 @@
 ﻿using LinkerPlayer.Models;
-using LinkerPlayer.UserControls;
 using LinkerPlayer.Windows;
 using System;
 using System.Windows;
@@ -18,8 +17,6 @@ public class ThemeManager
 
     public static void AddDict(ResourceDictionary resDict)
     {
-//        TrackInfo.ReloadDefaultAlbumImage();
-
         if (MainWindow.Instance == null) return;
 
         Application.Current.Resources.MergedDictionaries.Add(resDict);
@@ -49,7 +46,7 @@ public class ThemeManager
         AddTheme(themeColor);
 
         const string colors = @"Styles\SolidColorBrushes.xaml";
-        Uri colorsUri = new Uri(colors, UriKind.Relative);
+        Uri colorsUri = new(colors, UriKind.Relative);
         ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
 
         AddDict(brushesDict);
@@ -61,7 +58,7 @@ public class ThemeManager
         if (string.IsNullOrEmpty(uri))
             return;
 
-        Uri? langDictUri = new Uri(uri, UriKind.Relative);
+        Uri? langDictUri = new(uri, UriKind.Relative);
 
         if (langDictUri == null!)
             return;

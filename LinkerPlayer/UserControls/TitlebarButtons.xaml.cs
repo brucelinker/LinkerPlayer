@@ -25,10 +25,14 @@ public partial class TitlebarButtons
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_settingsWindow is { IsVisible: true }) return;
-
-        _settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        _settingsWindow.Show();
+        if (_settingsWindow is { IsVisible: true })
+        {
+            _settingsWindow.Hide();
+        }
+        else
+        {
+            _settingsWindow.Show();
+        }
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)

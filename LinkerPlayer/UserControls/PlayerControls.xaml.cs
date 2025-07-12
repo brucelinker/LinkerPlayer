@@ -52,7 +52,6 @@ public partial class PlayerControls
 
         _equalizerWindow = App.AppHost.Services.GetRequiredService<EqualizerWindow>();
         _equalizerWindow.Hide();
-        ((App)Application.Current).WindowPlace.Register(_equalizerWindow, "EqualizerWindow");
 
         SetTrackStatus();
 
@@ -242,8 +241,14 @@ public partial class PlayerControls
 
     private void OnEqualizerButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_equalizerWindow is { IsVisible: true }) return;
-        _equalizerWindow.Show();
+        if (_equalizerWindow is { IsVisible: true })
+        {
+            _equalizerWindow.Hide();
+        }
+        else
+        {
+            _equalizerWindow.Show();
+        }
     }
 
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)

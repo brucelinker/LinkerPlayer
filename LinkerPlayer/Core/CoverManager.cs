@@ -12,14 +12,9 @@ namespace LinkerPlayer.Core;
 
 public class CoverManager
 {
-    private readonly ILogger<CoverManager> _logger;
+    private readonly ILogger<CoverManager> _logger = App.AppHost.Services.GetRequiredService<ILogger<CoverManager>>();
 
-    public CoverManager()
-    {
-        _logger = App.AppHost.Services.GetRequiredService<ILogger<CoverManager>>();
-    }
-
-    private readonly ConcurrentDictionary<int, BitmapImage> StoredImages = new();
+    private readonly ConcurrentDictionary<int, BitmapImage> _storedImages = new();
 
     public BitmapImage GetImageFromPictureTag(string fileName)
     {
@@ -39,9 +34,9 @@ public class CoverManager
             if (pic != null)
             {
                 int hashCode = pic.Data.GetHashCode();
-                BitmapImage image = StoredImages.GetOrAdd(hashCode, _ =>
+                BitmapImage image = _storedImages.GetOrAdd(hashCode, _ =>
                 {
-                    BitmapImage bi = new BitmapImage();
+                    BitmapImage bi = new();
                     bi.BeginInit();
                     bi.CreateOptions = BitmapCreateOptions.DelayCreation;
                     bi.CacheOption = BitmapCacheOption.OnDemand;
@@ -55,7 +50,7 @@ public class CoverManager
         }
         catch (Exception e)
         {
-            _logger.LogError("Could not load the cover from picture tag for {0}! - {1}", fileName, e.Message);
+            _logger.LogError("Could not load the cover from picture tag for {Filename}! - {Message}", fileName, e.Message);
         }
 
         return null!;
@@ -63,6 +58,6 @@ public class CoverManager
 
     public override string ToString()
     {
-        return StoredImages.Count.ToString();
+        return _storedImages.Count.ToString();
     }
 }

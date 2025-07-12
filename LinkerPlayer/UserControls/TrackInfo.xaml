@@ -24,14 +24,14 @@
       <RowDefinition />
     </Grid.RowDefinitions>
 
-    <!-- AlbumCover -->
+    <!--  AlbumCover  -->
     <Grid
       x:Name="CoverGrid"
       Grid.Row="0"
+      MinHeight="250"
       Margin="0,1,0,0"
       HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch"
-      MinHeight="250">
+      VerticalAlignment="Stretch">
       <Grid
         x:Name="ImageGrid"
         RenderOptions.BitmapScalingMode="HighQuality"
@@ -40,8 +40,8 @@
           x:Name="TrackImage"
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
-          Source="{Binding SelectedMediaFile.AlbumCover, FallbackValue={StaticResource DefaultAlbumImage}}"
-          Panel.ZIndex="0">
+          Panel.ZIndex="0"
+          Source="{Binding SelectedMediaFile.AlbumCover, FallbackValue={StaticResource DefaultAlbumImage}}">
           <Image.Style>
             <Style TargetType="Image">
               <Setter Property="Opacity" Value="1" />
@@ -53,14 +53,14 @@
           Height="Auto"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
+          Panel.ZIndex="1"
           FontSize="20"
           Foreground="White"
-          Panel.ZIndex="1"
           Text="{Binding SelectedMediaFile.AlbumCover, Converter={StaticResource NullToTextConverter}, ConverterParameter='[No Image]'}" />
       </Grid>
     </Grid>
 
-    <!-- Rest of the XAML remains unchanged -->
+    <!--  Rest of the XAML remains unchanged  -->
     <Grid
       Grid.Row="1"
       Margin="0,0,0,0"

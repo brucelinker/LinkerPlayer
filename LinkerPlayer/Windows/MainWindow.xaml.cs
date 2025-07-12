@@ -36,7 +36,6 @@ public partial class MainWindow
             DataContext = _mainViewModel;
 
             ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
-            WinMax.DoSourceInitialized(this);
         }
         catch (IOException ex)
         {

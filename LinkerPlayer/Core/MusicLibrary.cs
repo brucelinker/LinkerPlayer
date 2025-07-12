@@ -20,15 +20,15 @@ public class MusicLibrary
 {
     private readonly ILogger<MusicLibrary> _logger;
 
-    private readonly string DbPath = Path.Combine(
+    private readonly string _dbPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "LinkerPlayer", "music_library.db");
 
-    private readonly IDbContextFactory<MusicLibraryDbContext> DbContextFactory;
+    private readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
     public ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
-    private readonly string[] SupportedAudioExtensions = [".mp3", ".flac", ".wav"];
-    private readonly Dictionary<string, (DateTime LastModified, MediaFile Metadata)> MetadataCache =
+    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wav"];
+    private readonly Dictionary<string, (DateTime LastModified, MediaFile Metadata)> _metadataCache =
         new(StringComparer.OrdinalIgnoreCase);
 
     public MusicLibrary(ILogger<MusicLibrary> logger)
@@ -37,13 +37,13 @@ public class MusicLibrary
 
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(DbPath)!);
+            Directory.CreateDirectory(Path.GetDirectoryName(_dbPath)!);
             DbContextOptions<MusicLibraryDbContext> options = new DbContextOptionsBuilder<MusicLibraryDbContext>()
-                .UseSqlite($"Data Source={DbPath};Pooling=True;")
+                .UseSqlite($"Data Source={_dbPath};Pooling=True;")
                 .Options;
-            DbContextFactory = new PooledDbContextFactory<MusicLibraryDbContext>(options);
+            _dbContextFactory = new PooledDbContextFactory<MusicLibraryDbContext>(options);
 
-            using (MusicLibraryDbContext context = DbContextFactory.CreateDbContext())
+            using (MusicLibraryDbContext context = _dbContextFactory.CreateDbContext())
             {
                 try
                 {
@@ -77,16 +77,16 @@ public class MusicLibrary
     {
         try
         {
-            await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
             await using IDbContextTransaction transaction = await context.Database.BeginTransactionAsync();
-            foreach (KeyValuePair<string, (DateTime LastModified, MediaFile Metadata)> entry in MetadataCache)
+            foreach (KeyValuePair<string, (DateTime LastModified, MediaFile Metadata)> entry in _metadataCache)
             {
                 await context.Database.ExecuteSqlRawAsync(
                     "INSERT OR REPLACE INTO MetadataCache (Path, LastModified, Metadata) VALUES (@p0, @p1, @p2)",
                     entry.Key, entry.Value.LastModified.Ticks, JsonSerializer.Serialize(entry.Value.Metadata));
             }
             await transaction.CommitAsync();
-            _logger.LogInformation("Saved MetadataCache with {Count} entries", MetadataCache.Count);
+            _logger.LogInformation("Saved MetadataCache with {Count} entries", _metadataCache.Count);
         }
         catch (Exception ex)
         {
@@ -98,18 +98,18 @@ public class MusicLibrary
     {
         try
         {
-            await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
 
             await context.Database.EnsureCreatedAsync(); // Creates database if it does not exist
             await context.MetadataCache.ToListAsync();
 
             List<MetadataCache> entries = await context.MetadataCache.ToListAsync(); // Query MetadataCache entity
-            MetadataCache.Clear();
+            _metadataCache.Clear();
             foreach (MetadataCache entry in entries)
             {
                 try
                 {
-                    MetadataCache[entry.Path] = (new DateTime(entry.LastModified),
+                    _metadataCache[entry.Path] = (new DateTime(entry.LastModified),
                         JsonSerializer.Deserialize<MediaFile>(entry.Metadata)!);
                 }
                 catch (Exception ex)
@@ -117,7 +117,7 @@ public class MusicLibrary
                     _logger.LogError(ex, $"Failed to deserialize metadata for {entry.Path}");
                 }
             }
-            _logger.LogInformation("Loaded MetadataCache with {Count} entries", MetadataCache.Count);
+            _logger.LogInformation("Loaded MetadataCache with {Count} entries", _metadataCache.Count);
         }
         catch (SqliteException ex)
         {
@@ -132,7 +132,7 @@ public class MusicLibrary
 
     public async Task LoadFromDatabaseAsync()
     {
-        await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             Playlists.Clear();
@@ -202,7 +202,7 @@ public class MusicLibrary
 
     public async Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks)
     {
-        await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             context.ChangeTracker.AutoDetectChangesEnabled = false;
@@ -257,10 +257,10 @@ public class MusicLibrary
     }
     public async Task SaveToDatabaseAsync()
     {
-        await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
-            _logger.LogInformation($"Using database file: {Path.GetFullPath(DbPath)}");
+            _logger.LogInformation($"Using database file: {Path.GetFullPath(_dbPath)}");
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
             ClearPlayState();
@@ -371,7 +371,7 @@ public class MusicLibrary
 
     public async Task CleanOrphanedTracksAsync()
     {
-        await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             List<string> referencedTrackIds =
@@ -413,13 +413,13 @@ public class MusicLibrary
             }
 
             if (!string.IsNullOrEmpty(mediaFile.Path) &&
-                SupportedAudioExtensions.Any(s =>
+                _supportedAudioExtensions.Any(s =>
                     s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
             {
                 if (!skipMetadata)
                 {
                     FileInfo fileInfo = new(mediaFile.Path);
-                    if (MetadataCache.TryGetValue(mediaFile.Path, out (DateTime LastModified, MediaFile Metadata) cached) &&
+                    if (_metadataCache.TryGetValue(mediaFile.Path, out (DateTime LastModified, MediaFile Metadata) cached) &&
                         cached.LastModified == fileInfo.LastWriteTime)
                     {
                         mediaFile.Duration = cached.Metadata.Duration;
@@ -447,8 +447,8 @@ public class MusicLibrary
                         {
                             mediaFile.UpdateFromFileMetadata(false, minimal: false);
                             _logger.LogDebug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
-                            MetadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
-                            _logger.LogDebug($"Added {mediaFile.Path} to MetadataCache. Cache size: {MetadataCache.Count}");
+                            _metadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
+                            _logger.LogDebug($"Added {mediaFile.Path} to MetadataCache. Cache size: {_metadataCache.Count}");
                         }
                         catch (Exception ex)
                         {
@@ -535,7 +535,7 @@ public class MusicLibrary
 
     public async Task RemovePlaylistAsync(string playlistName)
     {
-        await using MusicLibraryDbContext context = await DbContextFactory.CreateDbContextAsync();
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             Playlist? playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
@@ -617,9 +617,9 @@ public class MusicLibrary
             if (playlist.SelectedTrack == null && playlist.TrackIds.Any())
             {
                 playlist.SelectedTrack = playlist.TrackIds.First();
-                _logger.LogInformation($"Set SelectedTrack to {playlist.SelectedTrack} for playlist {playlistName}");
+                _logger.LogInformation("Set SelectedTrack to {PlaylistSelectedTrack} for playlist {PlaylistName}.", playlist.SelectedTrack, playlistName);
             }
-            _logger.LogInformation($"Track {trackId} added to playlist {playlistName} at position {position}");
+            _logger.LogInformation("Track {TrackId} added to playlist {PlaylistName} at position {Position}.", trackId, playlistName, position);
             if (saveImmediately)
             {
                 await SaveToDatabaseAsync();
@@ -627,7 +627,7 @@ public class MusicLibrary
         }
         else
         {
-            _logger.LogWarning($"Failed to add track {trackId} to playlist {playlistName}: Playlist or track not found");
+            _logger.LogWarning("Failed to add track {TrackId} to playlist {PlaylistName}: Playlist or track not found.", trackId, playlistName);
         }
     }
 
