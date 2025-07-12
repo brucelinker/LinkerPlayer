@@ -38,7 +38,7 @@ public partial class SettingsWindow
 
             DataContext = this;
 
-            WinMax.DoSourceInitialized(this);
+            ((App)Application.Current).WindowPlace.Register(this);
 
             PreviewKeyDown += Window_PreviewKeyDown;
             _logger.Log(LogLevel.Information, "SettingsWindow initialized successfully");
@@ -113,16 +113,6 @@ public partial class SettingsWindow
             SettingsManager.Settings.SelectedTheme = _themeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
             SettingsManager.SaveSettings(nameof(AppSettings.SelectedTheme));
         }
-
-        //foreach (KeyValuePair<string, string> prop in _tempHotkeys)
-        //{
-        //    if (prop.Key.EndsWith("Hotkey"))
-        //    {
-                //Properties.Settings.Default[prop.Key] = _tempHotkeys[prop.Key];
-        //    }
-        //}
-
-        //Properties.Settings.Default.Save();
 
         Window? win = GetWindow(this);
         win?.Hide();
