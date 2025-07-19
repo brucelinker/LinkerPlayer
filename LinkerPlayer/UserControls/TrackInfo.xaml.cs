@@ -105,6 +105,13 @@ public partial class TrackInfo
             {
                 trackImageText.Text = string.Empty; // Clear text for valid image
             }
+
+            // Force the TrackImage.Source to update directly
+            if (FindName("TrackImage") is Image trackImage)
+            {
+                trackImage.Source = mediaFile.AlbumCover ?? GetDefaultAlbumImage();
+                _logger.LogInformation("TrackInfo: Set TrackImage.Source to AlbumCover ({0})", mediaFile.AlbumCover != null ? "custom" : "default");
+            }
         }
         else
         {
