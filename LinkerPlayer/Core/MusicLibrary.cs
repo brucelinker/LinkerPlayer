@@ -210,14 +210,8 @@ public class MusicLibrary
             IEnumerable<MediaFile> mediaFiles = tracks.ToList();
             foreach (MediaFile track in mediaFiles)
             {
-                //if (track.Composers == null)
-                //{
-                //    _logger.LogWarning($"Skipping invalid track {track.Path}: Composers is null");
-                //    continue;
-                //}
-
-                MediaFile? existingTrack = await context.Tracks.FirstOrDefaultAsync(t =>
-                    t.Path == track.Path && t.Album == track.Album && t.Duration == track.Duration);
+                // Only check by Path for uniqueness
+                MediaFile? existingTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Path == track.Path);
                 if (existingTrack == null)
                 {
                     context.Tracks.Add(track);
@@ -225,23 +219,6 @@ public class MusicLibrary
                 }
                 else
                 {
-                    existingTrack.Title = track.Title;
-                    existingTrack.Artist = track.Artist;
-                    existingTrack.FileName = track.FileName;
-                    existingTrack.Track = track.Track;
-                    existingTrack.TrackCount = track.TrackCount;
-                    existingTrack.Performers = track.Performers;
-                    existingTrack.Genres = track.Genres;
-                    existingTrack.Composers = track.Composers;
-                    existingTrack.Bitrate = track.Bitrate;
-                    existingTrack.SampleRate = track.SampleRate;
-                    existingTrack.Channels = track.Channels;
-                    existingTrack.DiscCount = track.DiscCount;
-                    existingTrack.Disc = track.Disc;
-                    existingTrack.Year = track.Year;
-                    existingTrack.Copyright = track.Copyright;
-                    existingTrack.Comment = track.Comment;
-                    existingTrack.State = track.State;
                     track.Id = existingTrack.Id;
                 }
             }
@@ -255,6 +232,7 @@ public class MusicLibrary
             throw;
         }
     }
+
     public async Task SaveToDatabaseAsync()
     {
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
@@ -265,38 +243,46 @@ public class MusicLibrary
 
             ClearPlayState();
 
+            // Ensure all MainLibrary tracks have their database Id set
             foreach (MediaFile track in MainLibrary)
             {
-                //if (track.Composers == null)
-                //{
-                //    _logger.LogWarning($"Skipping invalid track {track.Path}: Composers is null");
-                //    continue;
-                //}
-
-                MediaFile? existingTrack = await context.Tracks.FirstOrDefaultAsync(t =>
-                    t.Path == track.Path && t.Album == track.Album && t.Duration == track.Duration);
+                MediaFile? existingTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Path == track.Path);
                 if (existingTrack != null)
                 {
                     track.Id = existingTrack.Id;
                 }
             }
 
+            // Get all valid track IDs from the database
+            var validTrackIdsSet = new HashSet<string>(
+                await context.Tracks.Select(t => t.Id).ToListAsync()
+            );
+
             foreach (Playlist playlist in Playlists)
             {
-                _logger.LogInformation($"Saving playlist {playlist.Name}"); // with TrackIds: {string.Join(", ", playlist.TrackIds)}, SelectedTrack: {playlist.SelectedTrack}");
+                // Validate SelectedTrack
+                if (playlist.SelectedTrack != null && !validTrackIdsSet.Contains(playlist.SelectedTrack))
+                {
+                    playlist.SelectedTrack = null;
+                }
+
+                // Validate TrackIds
+                var validTrackIds = playlist.TrackIds.Where(id => validTrackIdsSet.Contains(id)).ToList();
+                playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
+
+                _logger.LogInformation($"Saving playlist {playlist.Name}");
+
                 Playlist? existingPlaylist = await context.Playlists
                     .Include(p => p.PlaylistTracks)
                     .FirstOrDefaultAsync(p => p.Id == playlist.Id || p.Name == playlist.Name);
+
                 int playlistId;
                 if (existingPlaylist == null)
                 {
                     Playlist newPlaylist = new()
                     {
                         Name = playlist.Name,
-                        SelectedTrack = playlist.SelectedTrack != null &&
-                                        MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
-                            ? playlist.SelectedTrack
-                            : null
+                        SelectedTrack = playlist.SelectedTrack
                     };
                     context.Playlists.Add(newPlaylist);
                     await context.SaveChangesAsync();
@@ -309,10 +295,7 @@ public class MusicLibrary
                 {
                     playlistId = existingPlaylist.Id;
                     existingPlaylist.Name = playlist.Name;
-                    existingPlaylist.SelectedTrack = playlist.SelectedTrack != null &&
-                                                     MainLibrary.Any(t => t.Id == playlist.SelectedTrack)
-                        ? playlist.SelectedTrack
-                        : null;
+                    existingPlaylist.SelectedTrack = playlist.SelectedTrack;
                     context.Entry(existingPlaylist).Property(p => p.SelectedTrack).IsModified = true;
                     context.Entry(existingPlaylist).State = EntityState.Modified;
                     context.PlaylistTracks.RemoveRange(existingPlaylist.PlaylistTracks);
@@ -320,20 +303,20 @@ public class MusicLibrary
                     _logger.LogInformation($"Updated playlist {existingPlaylist.Name}");
                 }
 
-                List<string> validTrackIds = playlist.TrackIds.Where(id => context.Tracks.Any(t => t.Id == id)).ToList();
-                if (validTrackIds.Any())
+                // Add PlaylistTracks only for valid tracks
+                if (playlist.TrackIds.Any())
                 {
-                    for (int i = 0; i < validTrackIds.Count; i++)
+                    for (int i = 0; i < playlist.TrackIds.Count; i++)
                     {
                         context.PlaylistTracks.Add(new PlaylistTrack
                         {
                             PlaylistId = playlistId,
-                            TrackId = validTrackIds[i],
+                            TrackId = playlist.TrackIds[i],
                             Position = i
                         });
                     }
                     _logger.LogInformation(
-                        $"Saved {validTrackIds.Count} PlaylistTrack entries for playlist {playlist.Name}");
+                        $"Saved {playlist.TrackIds.Count} PlaylistTrack entries for playlist {playlist.Name}");
                 }
                 else
                 {
@@ -345,16 +328,17 @@ public class MusicLibrary
             context.ChangeTracker.AutoDetectChangesEnabled = true;
             _logger.LogInformation("Data saved to database");
 
+            // Log database state for debugging
             List<Playlist> savedPlaylists = await context.Playlists.ToListAsync();
             foreach (Playlist p in savedPlaylists)
             {
-                await context.PlaylistTracks
+                var trackIds = await context.PlaylistTracks
                     .Where(pt => pt.PlaylistId == p.Id)
                     .OrderBy(pt => pt.Position)
                     .Select(pt => pt.TrackId)
                     .ToListAsync();
                 _logger.LogInformation(
-                    $"Database state for playlist {p.Name}"); // (Id {p.Id}): SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
+                    $"Database state for playlist {p.Name}: SelectedTrack={p.SelectedTrack}, TrackIds={string.Join(", ", trackIds)}");
             }
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 5)
@@ -381,9 +365,13 @@ public class MusicLibrary
                 .ToListAsync();
             if (orphanedTracks.Any())
             {
+                // Remove MetadataCache entries for orphaned tracks
+                var orphanedPaths = orphanedTracks.Select(t => t.Path).ToList();
+                var orphanedCacheEntries = context.MetadataCache.Where(mc => orphanedPaths.Contains(mc.Path));
+                context.MetadataCache.RemoveRange(orphanedCacheEntries);
                 context.Tracks.RemoveRange(orphanedTracks);
                 await context.SaveChangesAsync();
-                _logger.LogInformation($"Removed {orphanedTracks.Count} orphaned tracks from database");
+                _logger.LogInformation($"Removed {orphanedTracks.Count} orphaned tracks and {orphanedPaths.Count} metadata cache entries from database");
             }
         }
         catch (Exception ex)
@@ -445,7 +433,7 @@ public class MusicLibrary
                     {
                         try
                         {
-                            mediaFile.UpdateFromFileMetadata(false, minimal: false);
+                            mediaFile.UpdateFromFileMetadata(false);
                             _logger.LogDebug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
                             _metadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
                             _logger.LogDebug($"Added {mediaFile.Path} to MetadataCache. Cache size: {_metadataCache.Count}");

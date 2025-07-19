@@ -8,7 +8,7 @@ public class MusicLibraryDbContext : DbContext
     public DbSet<MediaFile> Tracks { get; set; }
     public DbSet<Playlist> Playlists { get; set; }
     public DbSet<PlaylistTrack> PlaylistTracks { get; set; }
-    public DbSet<MetadataCache> MetadataCache { get; set; } // Added DbSet for MetadataCache
+    public DbSet<MetadataCache> MetadataCache { get; set; }
 
     public MusicLibraryDbContext(DbContextOptions<MusicLibraryDbContext> options)
         : base(options)
@@ -17,43 +17,41 @@ public class MusicLibraryDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // MediaFile: Only Id and Path are mapped
         modelBuilder.Entity<MediaFile>()
-            .HasIndex(t => new { t.Path, t.Album, t.Duration })
+            .HasKey(m => m.Id);
+        modelBuilder.Entity<MediaFile>()
+            .HasIndex(m => m.Path)
             .IsUnique();
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.Id)
-            .HasMaxLength(36); // GUID
+            .HasMaxLength(36);
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.Path)
-            .HasMaxLength(256); // File path
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.FileName)
-            .HasMaxLength(255); // File name (shorter than path)
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Title)
-            .HasMaxLength(128); // Song title
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Artist)
-            .HasMaxLength(128); // Artist name
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Album)
-            .HasMaxLength(128); // Album name
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Performers)
-            .HasMaxLength(256); // Joined performers
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Composers)
-            .HasMaxLength(256); // Joined composers
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Genres)
-            .HasMaxLength(128); // Joined genres
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Copyright)
-        .HasMaxLength(128); // Copyright notice
-        modelBuilder.Entity<MediaFile>()
-            .Property(m => m.Comment)
-            .HasMaxLength(256); // Comment field
+            .HasMaxLength(256)
+            .IsRequired();
+        // Ignore all other properties
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.FileName);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Title);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Artist);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Album);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Performers);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Composers);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Genres);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Copyright);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Comment);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Track);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.TrackCount);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Disc);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.DiscCount);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Year);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Duration);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Bitrate);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.SampleRate);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.Channels);
         modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.State);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.PlaylistTracks);
 
         // Playlist
         modelBuilder.Entity<Playlist>()
@@ -61,19 +59,28 @@ public class MusicLibraryDbContext : DbContext
             .IsUnique();
         modelBuilder.Entity<Playlist>()
             .Property(p => p.Name)
-            .HasMaxLength(100); // Playlist name
+            .HasMaxLength(100);
         modelBuilder.Entity<Playlist>()
             .Property(p => p.SelectedTrack)
-            .HasMaxLength(36); // GUID
+            .HasMaxLength(36);
         modelBuilder.Entity<Playlist>()
             .Ignore(p => p.TrackIds);
+        modelBuilder.Entity<Playlist>()
+            .HasOne(p => p.SelectedTrackNavigation)
+            .WithMany()
+            .HasForeignKey(p => p.SelectedTrack)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Playlist>()
+            .Property(p => p.SelectedTrack)
+            .IsRequired(false);
 
-        // PlaylistTrack
+        // PlaylistTrack: Many-to-many between Playlist and MediaFile
         modelBuilder.Entity<PlaylistTrack>()
             .HasKey(pt => new { pt.PlaylistId, pt.TrackId });
         modelBuilder.Entity<PlaylistTrack>()
             .Property(pt => pt.TrackId)
-            .HasMaxLength(36); // GUID
+            .HasMaxLength(36)
+            .IsRequired();
         modelBuilder.Entity<PlaylistTrack>()
             .HasOne(pt => pt.Playlist)
             .WithMany(p => p.PlaylistTracks)
@@ -85,23 +92,15 @@ public class MusicLibraryDbContext : DbContext
             .HasForeignKey(pt => pt.TrackId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder.Entity<Playlist>()
-            .HasOne(p => p.SelectedTrackNavigation)
-            .WithMany()
-            .HasForeignKey(p => p.SelectedTrack)
-            .OnDelete(DeleteBehavior.SetNull);
-        modelBuilder.Entity<Playlist>()
-            .Property(p => p.SelectedTrack)
-            .IsRequired(false);
-
+        // MetadataCache (optional)
         modelBuilder.Entity<MetadataCache>()
             .HasKey(mc => mc.Path);
         modelBuilder.Entity<MetadataCache>()
             .Property(mc => mc.Path)
-            .HasMaxLength(256); // File path
+            .HasMaxLength(256);
         modelBuilder.Entity<MetadataCache>()
             .Property(mc => mc.Metadata)
-            .HasMaxLength(4096); // JSON metadata
+            .HasMaxLength(4096);
         modelBuilder.Entity<MetadataCache>()
             .Property(mc => mc.LastModified)
             .IsRequired();

@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /LinkerPlayer.v3.ncrunchsolution
 /LinkerPlayer.sln.DotSettings
+/mcp.json

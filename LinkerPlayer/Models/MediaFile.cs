@@ -40,7 +40,7 @@ public interface IMediaFile
     PlaybackState State { get; set; }
 }
 
-[Index(nameof(Path), nameof(Album), nameof(Duration), IsUnique = true)]
+[Index(nameof(Id), nameof(Path), IsUnique = true)]
 public partial class MediaFile : ObservableValidator, IMediaFile
 {
     private const string UnknownString = "<Unknown>";
@@ -56,66 +56,84 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private string _path = string.Empty;
 
+    [NotMapped]
     [StringLength(255, ErrorMessage = "FileName cannot exceed 255 characters")]
     [ObservableProperty]
     private string _fileName = string.Empty;
 
+    [NotMapped]
     [StringLength(128, ErrorMessage = "Title cannot exceed 128 characters")]
     [ObservableProperty]
     private string _title = string.Empty;
 
+    [NotMapped]
     [StringLength(128, ErrorMessage = "Artist cannot exceed 128 characters")]
     [ObservableProperty]
     private string _artist = string.Empty;
 
+    [NotMapped]
     [StringLength(128, ErrorMessage = "Album cannot exceed 128 characters")]
     [ObservableProperty]
     private string _album = string.Empty;
 
+    [NotMapped]
     [StringLength(256, ErrorMessage = "Performers cannot exceed 256 characters")]
     [ObservableProperty]
     private string _performers = string.Empty;
 
+    [NotMapped]
     [StringLength(256, ErrorMessage = "Composers cannot exceed 256 characters")]
     [ObservableProperty]
     private string _composers = string.Empty;
 
+    [NotMapped]
     [StringLength(128, ErrorMessage = "Genres cannot exceed 128 characters")]
     [ObservableProperty]
     private string _genres = string.Empty;
 
+    [NotMapped]
     [StringLength(128, ErrorMessage = "Copyright cannot exceed 128 characters")]
     [ObservableProperty]
     private string _copyright = string.Empty;
 
+    [NotMapped]
     [StringLength(256, ErrorMessage = "Comment cannot exceed 256 characters")]
     [ObservableProperty]
     private string _comment = string.Empty;
 
+    [NotMapped]
     [ObservableProperty]
     private uint _track;
 
+    [NotMapped]
     [ObservableProperty]
     private uint _trackCount;
 
+    [NotMapped]
     [ObservableProperty]
     private uint _disc;
 
+    [NotMapped]
     [ObservableProperty]
     private uint _discCount;
 
+    [NotMapped]
     [ObservableProperty]
     private uint _year;
 
+    [NotMapped]
     [ObservableProperty]
     private TimeSpan _duration;
 
+    [NotMapped]
     [ObservableProperty]
     private int _bitrate;
 
+    [NotMapped]
     [ObservableProperty]
     private int _sampleRate;
 
+    [NotMapped]
     [ObservableProperty]
     private int _channels;
 
@@ -123,6 +141,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private BitmapImage? _albumCover;
 
+    [NotMapped]
     [ObservableProperty]
     private PlaybackState _state = PlaybackState.Stopped;
 
@@ -136,10 +155,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         _logger = logger;
         Path = fileName;
         FileName = System.IO.Path.GetFileName(fileName);
-        UpdateFromFileMetadata(false, minimal: true);
+        UpdateFromFileMetadata(false);
     }
 
-    public void UpdateFromFileMetadata(bool raisePropertyChanged = true, bool minimal = false)
+    public void UpdateFromFileMetadata(bool raisePropertyChanged = true)
     {
         if (string.IsNullOrWhiteSpace(Path))
         {
@@ -155,37 +174,34 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
             Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
 
-            if (!minimal)
+            List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+            Artist = ValidateStringLength(albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString, 128, nameof(Artist));
+
+            List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+            Performers = ValidateStringLength(performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
+
+            if (string.IsNullOrWhiteSpace(Artist))
             {
-                List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                Artist = ValidateStringLength(albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString, 128, nameof(Artist));
-
-                List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                Performers = ValidateStringLength(performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
-
-                if (string.IsNullOrWhiteSpace(Artist))
-                {
-                    Artist = ValidateStringLength(string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers, 128, nameof(Artist));
-                }
-
-                Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
-
-                List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                Composers = ValidateStringLength(composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty, 256, nameof(Composers));
-
-                Copyright = ValidateStringLength(file.Tag.Copyright ?? string.Empty, 128, nameof(Copyright));
-
-                Genres = ValidateStringLength(file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty, 128, nameof(Genres));
-
-                Track = file.Tag.Track;
-                TrackCount = file.Tag.TrackCount;
-                Disc = file.Tag.Disc;
-                DiscCount = file.Tag.DiscCount;
-                Year = file.Tag.Year;
-                Bitrate = file.Properties.AudioBitrate;
-                SampleRate = file.Properties.AudioSampleRate;
-                Channels = file.Properties.AudioChannels;
+                Artist = ValidateStringLength(string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers, 128, nameof(Artist));
             }
+
+            Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
+
+            List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+            Composers = ValidateStringLength(composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty, 256, nameof(Composers));
+
+            Copyright = ValidateStringLength(file.Tag.Copyright ?? string.Empty, 128, nameof(Copyright));
+
+            Genres = ValidateStringLength(file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty, 128, nameof(Genres));
+
+            Track = file.Tag.Track;
+            TrackCount = file.Tag.TrackCount;
+            Disc = file.Tag.Disc;
+            DiscCount = file.Tag.DiscCount;
+            Year = file.Tag.Year;
+            Bitrate = file.Properties.AudioBitrate;
+            SampleRate = file.Properties.AudioSampleRate;
+            Channels = file.Properties.AudioChannels;
 
             if (file.Properties.MediaTypes != MediaTypes.None)
             {
@@ -219,7 +235,29 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         try
         {
-            AlbumCover = _coverManager.GetImageFromPictureTag(Path);
+            var image = _coverManager.GetImageFromPictureTag(Path);
+            if (image != null)
+            {
+                // Force reload from file, not cache
+                if (image.UriSource != null)
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.UriSource = image.UriSource;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    AlbumCover = bitmap;
+                }
+                else
+                {
+                    AlbumCover = image;
+                }
+            }
+            else
+            {
+                AlbumCover = null;
+            }
         }
         catch (Exception ex)
         {

@@ -177,6 +177,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
         SelectedPlaylist.SelectedTrack = SelectedPlaylist.TrackIds.FirstOrDefault();
         SelectedTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == SelectedPlaylist.SelectedTrack);
 
+        // Always refresh metadata and album cover
+        if (SelectedTrack != null)
+        {
+            SelectedTrack.UpdateFromFileMetadata();
+            SelectedTrack.LoadAlbumCover();
+        }
+
         if (SelectedTrack == null) return;
         _musicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack.Id;
         if (_shuffleMode)
@@ -208,6 +215,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedTab!.SelectedTrack = SelectedTrack;
             SelectedTab.SelectedIndex = SelectedTrackIndex;
 
+            // Always refresh metadata and album cover
+            SelectedTrack.UpdateFromFileMetadata();
+            SelectedTrack.LoadAlbumCover();
+
+            // Remember the last selected track ID for the playlist
             if (_musicLibrary.Playlists.Count > 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
             {
                 _musicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack!.Id;
@@ -216,7 +228,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             //_logger.LogInformation("OnTrackSelectionChanged : ScrollIntoView");
             _dataGrid.ScrollIntoView(SelectedTrack!);
 
-            if (ActiveTrack == null) // || ActiveTrack == SelectedTrack)
+            if (ActiveTrack == null)
             {
                 WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
             }
@@ -285,6 +297,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public void OnDoubleClickDataGrid()
     {
         SelectedTrack = (MediaFile)_dataGrid!.SelectedItem;
+        SelectedTrack.UpdateFromFileMetadata();
         SelectedTrack.State = PlaybackState.Playing;
         _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == SelectedTrack.Id)!.State = PlaybackState.Playing;
         _musicLibrary.Playlists[SelectedTabIndex].SelectedTrack = SelectedTrack.Id;
@@ -322,7 +335,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         bool isControlPressed = (args.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
         _logger.LogInformation($"Drop triggered with {droppedItems.Length} items, Control pressed: {isControlPressed}, Items: {string.Join(", ", droppedItems)}");
 
-        Progress<ProgressData> progress = new (data =>
+        Progress<ProgressData> progress = new(data =>
         {
             // This runs on the UI thread
             WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
@@ -383,7 +396,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
             SelectedTabIndex = TabList.Count - 1;
         }
 
-        MediaFile mediaFile = new() { Path = filePath, Title = Path.GetFileNameWithoutExtension(filePath) };
+        MediaFile mediaFile = new() { Path = filePath };
+        mediaFile.UpdateFromFileMetadata();
         MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile);
         if (addedTrack != null)
         {
@@ -395,7 +409,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     private async Task AddFolderToCurrentPlaylistAsync(string folderPath, IProgress<ProgressData>? progress = null)
     {
-        if(_dataGrid == null) 
+        if (_dataGrid == null)
         {
             _logger.LogError("DataGrid is null, cannot add folder to current playlist");
             return;
@@ -446,15 +460,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         MediaFile mediaFile = new()
                         {
                             Id = Guid.NewGuid().ToString(),
-                            Path = file,
-                            Title = Path.GetFileNameWithoutExtension(file),
-                            FileName = Path.GetFileName(file),
-                            State = PlaybackState.Stopped,
-                            Duration = TimeSpan.FromSeconds(1),
-                            Album = "<Unknown>",
-                            Artist = "<Unknown>"
+                            Path = file
                         };
-
+                        mediaFile.UpdateFromFileMetadata();
                         MediaFile? existingTrack = _musicLibrary.IsTrackInLibrary(mediaFile);
                         MediaFile clonedTrack;
                         if (existingTrack != null)
@@ -508,14 +516,15 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     {
                         try
                         {
-                            track.UpdateFromFileMetadata(false, minimal: true);
+                            track.UpdateFromFileMetadata();
                         }
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, $"Failed to extract metadata for {track.Path}");
-                            track.Duration = TimeSpan.FromSeconds(1);
-                            track.Album = "<Unknown>";
+                            track.FileName = Path.GetFileName(track.Path);
                             track.Title = Path.GetFileNameWithoutExtension(track.Path);
+                            track.Album = "<Unknown>";
+                            track.Duration = TimeSpan.FromSeconds(1);
                         }
 
                         await Application.Current.Dispatcher.InvokeAsync(() =>
@@ -624,7 +633,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 _dataGrid.Items.Refresh();
             });
 
-            List<MediaFile> tracksToAdd = new ();
+            List<MediaFile> tracksToAdd = new();
             int batchSize = Math.Max(1, ProgressInfo.TotalTracks / 100);
             int processedCount = 0;
 
@@ -635,7 +644,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     if (IsAudioFile(file))
                     {
                         _logger.LogDebug("Processing file {File} for playlist {PlaylistName}", file, playlist.Name);
-                        MediaFile mediaFile = new () { Path = file, Title = Path.GetFileNameWithoutExtension(file) };
+                        MediaFile mediaFile = new() { Path = file };
+                        mediaFile.UpdateFromFileMetadata();
                         MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
                         if (addedTrack != null)
                         {
@@ -1018,6 +1028,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             SelectedTrack = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()[newIndex];
+            SelectedTrack.UpdateFromFileMetadata();
             SelectedTrack.State = PlaybackState.Playing;
             SelectedTrackIndex = newIndex;
 
@@ -1061,6 +1072,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             SelectedTrack = _dataGrid.ItemsSource.Cast<MediaFile>().ToList()[newIndex];
+            SelectedTrack.UpdateFromFileMetadata();
             SelectedTrack.State = PlaybackState.Playing;
             SelectedTrackIndex = newIndex;
 
@@ -1222,6 +1234,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         foreach (MediaFile song in songs)
         {
+            song.UpdateFromFileMetadata();
             tracks.Add(song);
         }
 
@@ -1235,6 +1248,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             try
             {
                 MediaFile track = new(fileName);
+                track.UpdateFromFileMetadata();
                 MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(track, saveImmediately);
                 if (addedTrack != null)
                 {
@@ -1381,7 +1395,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             // Update database
-            await using (MusicLibraryDbContext context = new (new DbContextOptionsBuilder<MusicLibraryDbContext>()
+            await using (MusicLibraryDbContext context = new(new DbContextOptionsBuilder<MusicLibraryDbContext>()
                              .UseSqlite($"Data Source={Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "LinkerPlayer", "music_library.db")}")
                              .Options))
             {
