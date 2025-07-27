@@ -492,6 +492,7 @@
               <ContextMenu>
                 <MenuItem Click="MenuItem_PlayTrack" Header="Play" />
                 <MenuItem Click="MenuItem_RemoveTrack" Header="Remove" />
+                <MenuItem Click="MenuItem_Properties" Header="Properties" />
               </ContextMenu>
             </DataGrid.ContextMenu>
           </DataGrid>

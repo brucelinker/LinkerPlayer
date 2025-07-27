@@ -315,4 +315,48 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         return value;
     }
+
+    public static string GetTagLibFileJson(string filePath)
+    {
+        using var file = File.Create(filePath);
+        var tagInfo = new
+        {
+            FileName = file.Name,
+            Tag = new
+            {
+                file.Tag.Title,
+                file.Tag.Album,
+                AlbumArtists = file.Tag.AlbumArtists,
+                file.Tag.FirstAlbumArtist,
+                file.Tag.Performers,
+                file.Tag.FirstPerformer,
+                file.Tag.Composers,
+                file.Tag.FirstComposer,
+                file.Tag.Genres,
+                file.Tag.FirstGenre,
+                file.Tag.Year,
+                file.Tag.Track,
+                file.Tag.TrackCount,
+                file.Tag.Disc,
+                file.Tag.DiscCount,
+                file.Tag.Comment,
+                file.Tag.Copyright,
+                file.Tag.Lyrics,
+                file.Tag.BeatsPerMinute,
+                file.Tag.Conductor,
+                file.Tag.Grouping,
+                file.Tag.Pictures
+            },
+            Properties = new
+            {
+                file.Properties.AudioBitrate,
+                file.Properties.AudioSampleRate,
+                file.Properties.AudioChannels,
+                file.Properties.Duration,
+                file.Properties.MediaTypes,
+                file.Properties.Description
+            }
+        };
+        return System.Text.Json.JsonSerializer.Serialize(tagInfo, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+    }
 }

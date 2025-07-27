@@ -42,7 +42,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         Status = string.Empty
     };
 
-    private readonly SharedDataModel _sharedDataModel;
+    public readonly SharedDataModel SharedDataModel;
     private readonly SettingsManager _settingsManager;
     private readonly MusicLibrary _musicLibrary;
     private readonly ILogger<PlaylistTabsViewModel> _logger;
@@ -71,7 +71,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             _logger.LogInformation("Initializing PlaylistTabsViewModel");
-            _sharedDataModel = sharedDataModel;
+            SharedDataModel = sharedDataModel;
             _settingsManager = settingsManager;
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
             AllowDrop = true;
@@ -101,20 +101,20 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public int SelectedTrackIndex
     {
-        get => _sharedDataModel.SelectedTrackIndex;
-        set => _sharedDataModel.UpdateSelectedTrackIndex(value);
+        get => SharedDataModel.SelectedTrackIndex;
+        set => SharedDataModel.UpdateSelectedTrackIndex(value);
     }
 
     public MediaFile? SelectedTrack
     {
-        get => _sharedDataModel.SelectedTrack;
-        set => _sharedDataModel.UpdateSelectedTrack(value!);
+        get => SharedDataModel.SelectedTrack;
+        set => SharedDataModel.UpdateSelectedTrack(value!);
     }
 
     public MediaFile? ActiveTrack
     {
-        get => _sharedDataModel.ActiveTrack;
-        set => _sharedDataModel.UpdateActiveTrack(value!);
+        get => SharedDataModel.ActiveTrack;
+        set => SharedDataModel.UpdateActiveTrack(value!);
     }
 
     public void OnDataGridLoaded(object sender, RoutedEventArgs _)
@@ -214,6 +214,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             SelectedTab!.SelectedTrack = SelectedTrack;
             SelectedTab.SelectedIndex = SelectedTrackIndex;
+
+            string tagLibFileJson = MediaFile.GetTagLibFileJson(SelectedTrack.Path);
 
             // Always refresh metadata and album cover
             SelectedTrack.UpdateFromFileMetadata();

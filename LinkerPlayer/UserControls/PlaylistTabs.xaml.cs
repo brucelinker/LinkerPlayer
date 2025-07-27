@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -213,6 +214,20 @@ public partial class PlaylistTabs
                 await viewModel.NewPlaylistFromFolderAsync();
             }
         });
+    }
+
+    private void MenuItem_Properties(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is PlaylistTabsViewModel playlistTabsViewModel)
+        {
+            var sharedDataModel = playlistTabsViewModel.SharedDataModel;
+            var propertiesViewModel = new PropertiesViewModel(sharedDataModel); // Inject here
+            var dialog = new PropertiesWindow
+            {
+                DataContext = propertiesViewModel
+            };
+            dialog.Show();
+        }
     }
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
