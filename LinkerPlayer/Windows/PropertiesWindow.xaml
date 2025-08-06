@@ -4,115 +4,352 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:conv="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:local="clr-namespace:LinkerPlayer.Windows"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   Title="PropertiesWindow"
-  Width="800"
-  Height="450"
+  Width="500"
+  Height="800"
+  WindowStyle="None"
   mc:Ignorable="d">
-  <DockPanel>
-    <StackPanel
-      Margin="10,10,10,10"
-      HorizontalAlignment="Right"
-      DockPanel.Dock="Bottom"
-      Orientation="Horizontal">
-      <Button
-        Width="75"
-        Margin="0,0,5,0"
-        Command="{Binding SaveCommand}"
-        Content="Save" />
-      <Button
-        Width="75"
-        Command="{Binding CancelCommand}"
-        Content="Cancel" />
-    </StackPanel>
-    <ScrollViewer
-      x:Name="WindowScrollViewer"
-      HorizontalScrollBarVisibility="Disabled"
-      VerticalScrollBarVisibility="Auto">
-      <Grid Margin="10">
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <TextBlock
-          Margin="0,0,0,5"
-          FontWeight="Bold"
-          Text="Metadata" />
-        <DataGrid
-          Grid.Row="1"
-          Height="Auto"
-          MinWidth="400"
-          MaxHeight="Infinity"
-          Margin="0,0,0,10"
-          AutoGenerateColumns="False"
-          CanUserAddRows="False"
-          CanUserResizeRows="False"
-          ItemsSource="{Binding MetadataItems}"
-          PreviewMouseWheel="DataGrid_PreviewMouseWheel"
-          VerticalScrollBarVisibility="Disabled">
-          <DataGrid.Columns>
-            <DataGridTextColumn
-              Width="200"
-              MinWidth="100"
-              Binding="{Binding Name}"
-              CanUserResize="True"
-              Header="Name"
-              IsReadOnly="True" />
-            <DataGridTemplateColumn
-              Width="*"
-              MinWidth="100"
-              CanUserResize="True"
-              Header="Value">
-              <DataGridTemplateColumn.CellTemplate>
-                <DataTemplate>
-                  <TextBlock IsEnabled="{Binding IsEditable}" Text="{Binding Value}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellTemplate>
-              <DataGridTemplateColumn.CellEditingTemplate>
-                <DataTemplate>
-                  <TextBox IsEnabled="{Binding IsEditable}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
-                </DataTemplate>
-              </DataGridTemplateColumn.CellEditingTemplate>
-            </DataGridTemplateColumn>
-          </DataGrid.Columns>
-        </DataGrid>
-        <TextBlock
-          Grid.Row="2"
-          Margin="0,0,0,5"
-          FontWeight="Bold"
-          Text="Properties" />
-        <DataGrid
-          Grid.Row="3"
-          Height="Auto"
-          MinWidth="400"
-          MaxHeight="Infinity"
-          AutoGenerateColumns="False"
-          CanUserAddRows="False"
-          CanUserResizeRows="False"
-          ItemsSource="{Binding PropertyItems}"
-          PreviewMouseWheel="DataGrid_PreviewMouseWheel"
-          VerticalScrollBarVisibility="Disabled">
-          <DataGrid.Columns>
-            <DataGridTextColumn
-              Width="200"
-              MinWidth="100"
-              Binding="{Binding Name}"
-              CanUserResize="True"
-              Header="Name"
-              IsReadOnly="True" />
-            <DataGridTextColumn
-              Width="*"
-              MinWidth="100"
-              Binding="{Binding Value}"
-              CanUserResize="True"
-              Header="Value"
-              IsReadOnly="True" />
-          </DataGrid.Columns>
-        </DataGrid>
-      </Grid>
-    </ScrollViewer>
-  </DockPanel>
+
+  <WindowChrome.WindowChrome>
+    <WindowChrome CaptionHeight="25" />
+  </WindowChrome.WindowChrome>
+
+  <Window.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Window.Resources>
+
+  <Grid Focusable="True">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="45" />
+      <RowDefinition />
+    </Grid.RowDefinitions>
+
+    <Grid.Background>
+      <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="{DynamicResource MainWindowGradientStartColor}" />
+        <GradientStop Offset=".1" Color="{DynamicResource MainWindowGradientStartColor}" />
+        <GradientStop Offset="1" Color="{DynamicResource MainWindowGradientStartColor}" />
+      </LinearGradientBrush>
+    </Grid.Background>
+
+    <Grid Grid.Row="0">
+      <TextBlock
+        Margin="12,2,0,0"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        d:Foreground=" White"
+        FontSize="{DynamicResource FontSizeTitle}"
+        FontWeight="Light"
+        Foreground="{DynamicResource TitleBarForegroundBrush}"
+        Text="Properties" />
+
+      <StackPanel
+        HorizontalAlignment="Right"
+        VerticalAlignment="Top"
+        Background="{DynamicResource TitleBarBackgroundBrush}"
+        Orientation="Horizontal"
+        WindowChrome.IsHitTestVisibleInChrome="True">
+
+        <Button
+          Name="CloseButton"
+          Background="{DynamicResource TitleBarBackgroundBrush}"
+          Click="CloseButton_Click"
+          Content="{iconPacks:Material Close,
+                                       Width=14,
+                                       Height=14}"
+          Style="{DynamicResource CloseButton}" />
+
+      </StackPanel>
+    </Grid>
+    <Grid Grid.Row="1">
+      <DockPanel>
+        <StackPanel
+          Margin="10,10,10,10"
+          HorizontalAlignment="Right"
+          DockPanel.Dock="Bottom"
+          Orientation="Horizontal">
+          <Button
+            Width="75"
+            Margin="0,0,5,0"
+            Command="{Binding OkCommand}"
+            Content="OK" />
+          <Button
+            Width="75"
+            Margin="0,0,5,0"
+            Command="{Binding ApplyCommand}"
+            Content="Apply"
+            IsEnabled="{Binding HasUnsavedChanges}" />
+          <Button
+            Width="75"
+            Command="{Binding CancelCommand}"
+            Content="Cancel" />
+        </StackPanel>
+        <ScrollViewer
+          x:Name="WindowScrollViewer"
+          HorizontalScrollBarVisibility="Disabled"
+          VerticalScrollBarVisibility="Auto">
+          <ScrollViewer.Resources>
+            <Style BasedOn="{StaticResource CustomScrollBarStyle}" TargetType="ScrollBar" />
+          </ScrollViewer.Resources>
+          <Grid Margin="10">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!--  Metadata Title with Bar  -->
+            <Grid Grid.Row="0" Margin="0,0,0,5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock
+                VerticalAlignment="Center"
+                FontSize="{DynamicResource FontSizeHeading}"
+                FontWeight="Normal"
+                Foreground="{DynamicResource ControlAccentLightBrush}"
+                Text="Metadata" />
+              <Rectangle
+                Grid.Column="1"
+                Height="1.5"
+                Margin="8,3,0,0"
+                VerticalAlignment="Center"
+                Fill="{DynamicResource ControlAccentLightBrush}" />
+            </Grid>
+
+            <DataGrid
+              Grid.Row="1"
+              Height="Auto"
+              MinWidth="400"
+              MaxHeight="Infinity"
+              Margin="0,0,0,10"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserResizeRows="False"
+              CellStyle="{StaticResource SharedDataGridCellStyle}"
+              ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              ItemsSource="{Binding MetadataItems}"
+              PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+              RowStyle="{StaticResource SharedDataGridRowStyle}"
+              Style="{StaticResource SharedDataGridStyle}"
+              VerticalScrollBarVisibility="Disabled">
+
+              <DataGrid.Columns>
+                <DataGridTextColumn
+                  Width="200"
+                  MinWidth="100"
+                  Binding="{Binding Name}"
+                  CanUserResize="True"
+                  Header="Name"
+                  IsReadOnly="True" />
+                <DataGridTemplateColumn
+                  Width="*"
+                  MinWidth="100"
+                  CanUserResize="True"
+                  Header="Value">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <TextBlock IsEnabled="{Binding IsEditable}" Text="{Binding Value}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                  <DataGridTemplateColumn.CellEditingTemplate>
+                    <DataTemplate>
+                      <TextBox IsEnabled="{Binding IsEditable}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
+            </DataGrid>
+
+            <!--  Properties Title with Bar  -->
+            <Grid Grid.Row="2" Margin="0,0,0,5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock
+                VerticalAlignment="Center"
+                FontSize="{DynamicResource FontSizeHeading}"
+                FontWeight="Normal"
+                Foreground="{DynamicResource SpectrumPeakBrush}"
+                Text="Properties" />
+              <Rectangle
+                Grid.Column="1"
+                Height="1.5"
+                Margin="8,3,0,0"
+                VerticalAlignment="Center"
+                Fill="{DynamicResource SpectrumPeakBrush}" />
+            </Grid>
+
+            <DataGrid
+              Grid.Row="3"
+              Height="Auto"
+              MinWidth="400"
+              MaxHeight="Infinity"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserResizeRows="False"
+              CellStyle="{StaticResource SharedDataGridCellStyle}"
+              ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              ItemsSource="{Binding PropertyItems}"
+              PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+              RowStyle="{StaticResource SharedDataGridRowStyle}"
+              Style="{StaticResource SharedDataGridStyle}"
+              VerticalScrollBarVisibility="Disabled">
+
+              <DataGrid.Columns>
+                <DataGridTextColumn
+                  Width="200"
+                  MinWidth="100"
+                  Binding="{Binding Name}"
+                  CanUserResize="True"
+                  Header="Name"
+                  IsReadOnly="True" />
+                <DataGridTextColumn
+                  Width="*"
+                  MinWidth="100"
+                  Binding="{Binding Value}"
+                  CanUserResize="True"
+                  Header="Value"
+                  IsReadOnly="True" />
+              </DataGrid.Columns>
+            </DataGrid>
+
+            <!--  ReplyGain Title with Bar  -->
+            <Grid Grid.Row="4" Margin="0,0,0,5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock
+                VerticalAlignment="Center"
+                FontSize="{DynamicResource FontSizeHeading}"
+                FontWeight="Normal"
+                Foreground="{DynamicResource ControlAccentLightBrush}"
+                Text="ReplayGain" />
+              <Rectangle
+                Grid.Column="1"
+                Height="1.5"
+                Margin="8,3,0,0"
+                VerticalAlignment="Center"
+                Fill="{DynamicResource ControlAccentLightBrush}" />
+            </Grid>
+
+            <DataGrid
+              Grid.Row="5"
+              Height="Auto"
+              MinWidth="400"
+              MaxHeight="Infinity"
+              Margin="0,0,0,10"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserResizeRows="False"
+              CellStyle="{StaticResource SharedDataGridCellStyle}"
+              ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              ItemsSource="{Binding ReplayGainItems}"
+              PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+              RowStyle="{StaticResource SharedDataGridRowStyle}"
+              Style="{StaticResource SharedDataGridStyle}"
+              VerticalScrollBarVisibility="Disabled">
+
+              <DataGrid.Columns>
+                <DataGridTextColumn
+                  Width="200"
+                  MinWidth="100"
+                  Binding="{Binding Name}"
+                  CanUserResize="True"
+                  Header="Name"
+                  IsReadOnly="True" />
+                <DataGridTemplateColumn
+                  Width="*"
+                  MinWidth="100"
+                  CanUserResize="True"
+                  Header="Value">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <TextBlock IsEnabled="{Binding IsEditable}" Text="{Binding Value}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                  <DataGridTemplateColumn.CellEditingTemplate>
+                    <DataTemplate>
+                      <TextBox IsEnabled="{Binding IsEditable}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
+              </DataGrid.Columns>
+            </DataGrid>
+
+            <!--  Picture Title with Bar  -->
+            <Grid Grid.Row="6" Margin="0,0,0,5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock
+                VerticalAlignment="Center"
+                FontSize="{DynamicResource FontSizeHeading}"
+                FontWeight="Normal"
+                Foreground="{DynamicResource SpectrumPeakBrush}"
+                Text="Picture" />
+              <Rectangle
+                Grid.Column="1"
+                Height="1.5"
+                Margin="8,3,0,0"
+                VerticalAlignment="Center"
+                Fill="{DynamicResource SpectrumPeakBrush}" />
+            </Grid>
+
+            <DataGrid
+              Grid.Row="7"
+              Height="Auto"
+              MinWidth="400"
+              MaxHeight="Infinity"
+              AutoGenerateColumns="False"
+              CanUserAddRows="False"
+              CanUserResizeRows="False"
+              CellStyle="{StaticResource SharedDataGridCellStyle}"
+              ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              ItemsSource="{Binding PictureInfoItems}"
+              PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+              RowStyle="{StaticResource SharedDataGridRowStyle}"
+              Style="{StaticResource SharedDataGridStyle}"
+              VerticalScrollBarVisibility="Disabled">
+
+              <DataGrid.Columns>
+                <DataGridTextColumn
+                  Width="200"
+                  MinWidth="100"
+                  Binding="{Binding Name}"
+                  CanUserResize="True"
+                  Header="Name"
+                  IsReadOnly="True" />
+                <DataGridTextColumn
+                  Width="*"
+                  MinWidth="100"
+                  Binding="{Binding Value}"
+                  CanUserResize="True"
+                  Header="Value"
+                  IsReadOnly="True" />
+              </DataGrid.Columns>
+            </DataGrid>
+          </Grid>
+
+        </ScrollViewer>
+      </DockPanel>
+    </Grid>
+  </Grid>
+
 </Window>

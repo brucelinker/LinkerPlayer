@@ -22,7 +22,7 @@
   mc:Ignorable="d">
 
   <WindowChrome.WindowChrome>
-    <WindowChrome CaptionHeight="35" />
+    <WindowChrome CaptionHeight="25" />
   </WindowChrome.WindowChrome>
 
   <Window.Resources>

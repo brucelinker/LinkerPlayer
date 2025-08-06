@@ -17,6 +17,10 @@
 
   <UserControl.Resources>
     <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
       <converters:IndexConverter x:Key="IndexConverter" />
@@ -227,6 +231,8 @@
             CanUserAddRows="False"
             CanUserDeleteRows="False"
             CanUserReorderColumns="True"
+            CellStyle="{StaticResource SharedDataGridCellStyle}"
+            ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
             EnableColumnVirtualization="False"
             EnableRowVirtualization="True"
             GridLinesVisibility="None"
@@ -236,16 +242,19 @@
             Loaded="DataGrid_Loaded"
             RowHeaderWidth="0"
             RowHeight="20"
+            RowStyle="{StaticResource SharedDataGridRowStyle}"
             ScrollViewer.CanContentScroll="False"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Single"
             SelectionUnit="FullRow"
             Sorting="TracksTable_OnSorting"
+            Style="{StaticResource SharedDataGridStyle}"
             ToolTipService.IsEnabled="False"
             VerticalScrollBarVisibility="Visible"
             VirtualizingStackPanel.IsVirtualizing="True"
             VirtualizingStackPanel.VirtualizationMode="Recycling">
+
             <b:Interaction.Triggers>
               <b:EventTrigger EventName="DragOver">
                 <b:InvokeCommandAction Command="{Binding DataContext.DragOverCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
@@ -254,13 +263,6 @@
                 <b:InvokeCommandAction Command="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
               </b:EventTrigger>
             </b:Interaction.Triggers>
-            <DataGrid.Resources>
-              <ResourceDictionary>
-                <ResourceDictionary.MergedDictionaries>
-                  <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
-                </ResourceDictionary.MergedDictionaries>
-              </ResourceDictionary>
-            </DataGrid.Resources>
             <DataGrid.Template>
               <ControlTemplate TargetType="{x:Type DataGrid}">
                 <Border
@@ -311,63 +313,6 @@
                 </Border>
               </ControlTemplate>
             </DataGrid.Template>
-            <DataGrid.ColumnHeaderStyle>
-              <Style TargetType="DataGridColumnHeader">
-                <Style.Setters>
-                  <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
-                  <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
-                  <Setter Property="Padding" Value="6,4" />
-                  <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
-                  <Setter Property="FontStyle" Value="Normal" />
-                  <Setter Property="FontWeight" Value="Normal" />
-                  <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
-                  <Setter Property="BorderThickness" Value="1" />
-                </Style.Setters>
-              </Style>
-            </DataGrid.ColumnHeaderStyle>
-            <DataGrid.CellStyle>
-              <Style TargetType="DataGridCell">
-                <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
-                <Setter Property="FontStyle" Value="Normal" />
-                <Setter Property="FontWeight" Value="Normal" />
-                <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundBrush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
-                <Style.Triggers>
-                  <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
-                    <Setter Property="Foreground" Value="{DynamicResource TrackListSelectedItemForegroundBrush}" />
-                    <Setter Property="FontWeight" Value="Normal" />
-                  </Trigger>
-                </Style.Triggers>
-              </Style>
-            </DataGrid.CellStyle>
-            <DataGrid.RowStyle>
-              <Style TargetType="DataGridRow">
-                <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
-                <Setter Property="FontStyle" Value="Normal" />
-                <Setter Property="FontWeight" Value="Normal" />
-                <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
-                <Setter Property="BorderThickness" Value="0" />
-                <Setter Property="VerticalAlignment" Value="Center" />
-                <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
-                <EventSetter Event="MouseDoubleClick" Handler="PlaylistRow_MouseDoubleClick" />
-                <Style.Triggers>
-                  <Trigger Property="ItemsControl.AlternationIndex" Value="1">
-                    <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
-                  </Trigger>
-                  <Trigger Property="ItemsControl.AlternationIndex" Value="0">
-                    <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt2Brush}" />
-                  </Trigger>
-                  <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
-                    <Setter Property="FontWeight" Value="Normal" />
-                  </Trigger>
-
-                </Style.Triggers>
-              </Style>
-            </DataGrid.RowStyle>
             <DataGrid.Columns>
               <DataGridTextColumn
                 Width="40"

@@ -5,9 +5,9 @@ namespace LinkerPlayer.Models;
 
 public class TagItem : INotifyPropertyChanged
 {
-    private string _value;
+    private string _value = string.Empty;
 
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     public string Value
     {
@@ -23,9 +23,9 @@ public class TagItem : INotifyPropertyChanged
     }
 
     public bool IsEditable { get; set; }
-    public Action<string> UpdateAction { get; set; }
+    public Action<string>? UpdateAction { get; set; }
 
-    public event PropertyChangedEventHandler PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged(string propertyName)
     {

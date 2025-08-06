@@ -1,18 +1,6 @@
 ﻿using LinkerPlayer.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace LinkerPlayer.Windows;
 /// <summary>
@@ -23,6 +11,22 @@ public partial class PropertiesWindow : Window
     public PropertiesWindow()
     {
         InitializeComponent();
+
+        ((App)Application.Current).WindowPlace.Register(this);
+        this.Loaded += PropertiesWindow_Loaded;
+    }
+
+    private void PropertiesWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is PropertiesViewModel vm)
+        {
+            vm.CloseRequested += PropertiesViewModel_CloseRequested;
+        }
+    }
+
+    private void PropertiesViewModel_CloseRequested(object? sender, bool result)
+    {
+        ClosePropertiesWindow();
     }
 
     private void DataGrid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -38,5 +42,16 @@ public partial class PropertiesWindow : Window
             WindowScrollViewer.RaiseEvent(eventArgs);
             e.Handled = true;
         }
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        ClosePropertiesWindow();
+    }
+
+    private void ClosePropertiesWindow()
+    {
+        Window? win = GetWindow(this);
+        if (win != null) win.Close();
     }
 }

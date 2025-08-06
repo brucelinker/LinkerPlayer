@@ -8,6 +8,7 @@
   mc:Ignorable="d">
 
   <system:Double x:Key="FontSizeTitle">22</system:Double>
+  <system:Double x:Key="FontSizeHeading">16</system:Double>
   <system:Double x:Key="FontSizeNormal">14</system:Double>
   <system:Double x:Key="FontSizeButton">14</system:Double>
 
@@ -523,6 +524,89 @@
         </ControlTemplate>
       </Setter.Value>
     </Setter>
+  </Style>
+
+  <!--
+    ************************
+    DataGrid Styles
+    ************************
+  -->
+  <!--  Shared DataGrid Visual Style  -->
+  <Style x:Key="SharedDataGridStyle" TargetType="DataGrid">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="GridLinesVisibility" Value="None" />
+    <Setter Property="RowHeaderWidth" Value="0" />
+    <Setter Property="RowHeight" Value="20" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="{x:Type DataGrid}">
+          <Border
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}">
+            <ScrollViewer x:Name="DG_ScrollViewer" Focusable="False">
+              <ItemsPresenter />
+            </ScrollViewer>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--  Shared DataGridColumnHeader Style  -->
+  <Style x:Key="SharedDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+    <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
+    <Setter Property="Padding" Value="6,4" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+    <Setter Property="FontStyle" Value="Normal" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <!--  Shared DataGridCell Style  -->
+  <Style x:Key="SharedDataGridCellStyle" TargetType="DataGridCell">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+    <Setter Property="FontStyle" Value="Normal" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+    <Style.Triggers>
+      <Trigger Property="IsSelected" Value="True">
+        <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource TrackListSelectedItemForegroundBrush}" />
+        <Setter Property="FontWeight" Value="Normal" />
+      </Trigger>
+    </Style.Triggers>
+  </Style>
+
+  <!--  Shared DataGridRow Style  -->
+  <Style x:Key="SharedDataGridRowStyle" TargetType="DataGridRow">
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+    <Setter Property="FontStyle" Value="Normal" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+    <Style.Triggers>
+      <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+        <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt1Brush}" />
+      </Trigger>
+      <Trigger Property="ItemsControl.AlternationIndex" Value="0">
+        <Setter Property="Background" Value="{DynamicResource TrackListItemBackgroundAlt2Brush}" />
+      </Trigger>
+      <Trigger Property="IsSelected" Value="True">
+        <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
+        <Setter Property="FontWeight" Value="Normal" />
+      </Trigger>
+    </Style.Triggers>
   </Style>
 
 </ResourceDictionary>

@@ -7,7 +7,7 @@
   <Color x:Key="MainWindowGradientEndColor">#525252</Color>
   <Color x:Key="MainWindowBorderColor">#B0B0B0</Color>
 
-  <Color x:Key="ControlAccentLightColor">#186868</Color>
+  <Color x:Key="ControlAccentLightColor">#29b4b4</Color>
   <Color x:Key="ControlAccentDarkColor">#186868</Color>
   <Color x:Key="ControlForegroundColor">White</Color>
   <Color x:Key="ControlBackgroundColor">Transparent</Color>
