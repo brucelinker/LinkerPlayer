@@ -2,6 +2,8 @@
 using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
+using ManagedBass.Mix;
+using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -23,8 +25,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
-
-
+    
     private readonly List<EqualizerBandSettings> _equalizerBands =
     [
         new(32.0f, 0f, 1.0f),
@@ -97,13 +98,36 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        IsBassInitialized = Bass.Init(1, 48000);
-        _logger.LogInformation("BASS initialized");
+        for (int i = 0; i < BassWasapi.DeviceCount; i++)
+        {
+            var info = BassWasapi.GetDeviceInfo(i);
+            _logger.LogInformation($"WASAPI Device {i}: {info.Name}, Enabled={info.IsEnabled}, Loopback={info.IsLoopback}, Default={info.IsDefault}");
+        }
+
+        IsBassInitialized = BassWasapi.Init(-1, 48000, 2, WasapiInitFlags.AutoFormat | WasapiInitFlags.Buffer);
 
         if (!IsBassInitialized)
         {
-            _logger.LogError("BASS failed to initialize.");
+            _logger.LogWarning("BASS WASAPI initialization failed, falling back to standard BASS. Error={Error}", Bass.LastError);
+
+            IsBassInitialized = Bass.Init(1, 48000);
         }
+        else
+        {
+            _logger.LogInformation("BASS WASAPI initialized");
+
+            BassWasapi.Start();
+            return;
+        }
+
+        if (!IsBassInitialized)
+        {
+            _logger.LogWarning("BASS failed to initialize. Error={Error}", Bass.LastError);
+            return;
+        }
+
+        _logger.LogInformation("BASS initialized");
+
     }
 
     private void LoadBassPlugins()
@@ -191,19 +215,25 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void LoadAudioFile(string pathToMusic)
     {
-        //        _logger.LogInformation($"Loading audio file: {pathToMusic} at position {position}");
+        // Detect file extension
+        string ext = Path.GetExtension(pathToMusic).ToLowerInvariant();
 
-        CurrentStream = Bass.CreateStream(pathToMusic, Flags: BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
-        if (CurrentStream == 0)
+        BassFlags flags = BassFlags.Default;
+
+        // For WMA, do not use Decode/Float/Tempo
+        if (ext == ".wma")
         {
-            _logger.LogError($"Failed to create decode stream: {Bass.LastError}");
-            return;
+            flags = BassFlags.Default; // Only default flags
+        }
+        else
+        {
+            flags = BassFlags.Decode | BassFlags.Float | BassFlags.Prescan;
         }
 
-        CurrentStream = BassFx.TempoCreate(CurrentStream, BassFlags.Default);
+        CurrentStream = Bass.CreateStream(pathToMusic, Flags: flags);
         if (CurrentStream == 0)
         {
-            _logger.LogError($"Failed to create tempo stream: {Bass.LastError}");
+            _logger.LogError($"Failed to create stream: {Bass.LastError}");
             return;
         }
 
@@ -221,8 +251,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         _logger.LogInformation($"Track length set to {CurrentTrackLength} seconds");
 
         CurrentTrackPosition = 0;
-
-        //_logger.LogInformation($"Successfully loaded audio file: {pathToMusic}");
     }
 
     public void Play()
@@ -679,6 +707,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public void Dispose()
     {
         Stop();
+        BassWasapi.Free();
         Bass.Free();
         _positionTimer.Dispose();
         GC.SuppressFinalize(this);

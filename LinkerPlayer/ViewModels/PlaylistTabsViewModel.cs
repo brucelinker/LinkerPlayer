@@ -54,8 +54,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private readonly List<MediaFile> _shuffleList = [];
     private int _shuffledIndex;
 
-    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wav"];
-    private const string SupportedAudioFilter = "(*.mp3; *.flac)|*.mp3;*.flac";
+    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
+    private const string SupportedAudioFilter = "(*.mp3; *.flac; *.wma; *.ape)|*.mp3;*.flac;*.wma;*.ape";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
 
@@ -832,7 +832,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         foreach (string fileName in openFileDialog.FileNames)
         {
             string extension = Path.GetExtension(fileName);
-            if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
+            //            if (string.Equals(".mp3", extension, StringComparison.OrdinalIgnoreCase))
+            if (_supportedAudioExtensions.Contains(extension))
             {
                 await LoadAudioFileAsync(fileName, SelectedPlaylist!.Name);
             }

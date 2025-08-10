@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "LinkerPlayer": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

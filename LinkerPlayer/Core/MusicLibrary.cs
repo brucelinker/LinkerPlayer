@@ -27,7 +27,7 @@ public class MusicLibrary
     private readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
     public ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
-    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wav"];
+    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
     private readonly Dictionary<string, (DateTime LastModified, MediaFile Metadata)> _metadataCache =
         new(StringComparer.OrdinalIgnoreCase);
 
