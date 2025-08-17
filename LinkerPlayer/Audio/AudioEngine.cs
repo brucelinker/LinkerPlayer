@@ -56,6 +56,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
 
+    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetDllDirectory(string? lpPathName);
+
     public AudioEngine(ILogger<AudioEngine> logger)
     {
         _logger = logger;
@@ -64,7 +67,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             _logger.LogInformation("Initializing AudioEngine");
             Initialize();
-
+            
             // Load plugins
             LoadBassPlugins();
 
@@ -132,7 +135,21 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private void LoadBassPlugins()
     {
-        string basePath = AppDomain.CurrentDomain.BaseDirectory;
+        string basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BassLibs");
+        _logger.LogInformation($"Looking for Bass plugins in: {basePath}");
+
+        if (!Directory.Exists(basePath))
+        {
+            _logger.LogError($"Bass plugins directory does not exist: {basePath}");
+            return;
+        }
+
+        // Set DLL directory to help Windows find dependencies
+        if (!SetDllDirectory(basePath))
+        {
+            _logger.LogWarning("Failed to set DLL directory");
+        }
+
         string[] pluginFiles =
         [
             "bass_aac.dll",    // AAC
@@ -142,7 +159,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             "bassmidi.dll",    // MIDI
             "bassape.dll",     // Monkey's Audio
             "basswv.dll",      // WavPack
-            "basswma.dll",     // WMA
+            "basswma.dll"      // WMA - DISABLED due to WMADMOD.DLL crashes
         ];
 
         foreach (string plugin in pluginFiles)
@@ -165,9 +182,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             }
             else
             {
-                _logger.LogError($"Plugin not found: {path}");
+                _logger.LogWarning($"Plugin not found: {path}");
             }
         }
+
+        // Reset DLL directory
+        SetDllDirectory(null);
     }
 
     public double GetDecibelLevel()
