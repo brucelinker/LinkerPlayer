@@ -2,8 +2,6 @@
 using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
-using ManagedBass.Mix;
-using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -25,7 +23,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
-    
+
+
     private readonly List<EqualizerBandSettings> _equalizerBands =
     [
         new(32.0f, 0f, 1.0f),
@@ -56,9 +55,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
 
-    [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool SetDllDirectory(string? lpPathName);
-
     public AudioEngine(ILogger<AudioEngine> logger)
     {
         _logger = logger;
@@ -67,7 +63,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             _logger.LogInformation("Initializing AudioEngine");
             Initialize();
-            
+
             // Load plugins
             LoadBassPlugins();
 
@@ -101,55 +97,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        for (int i = 0; i < BassWasapi.DeviceCount; i++)
-        {
-            var info = BassWasapi.GetDeviceInfo(i);
-            _logger.LogInformation($"WASAPI Device {i}: {info.Name}, Enabled={info.IsEnabled}, Loopback={info.IsLoopback}, Default={info.IsDefault}");
-        }
-
-        IsBassInitialized = BassWasapi.Init(-1, 48000, 2, WasapiInitFlags.AutoFormat | WasapiInitFlags.Buffer);
-
-        if (!IsBassInitialized)
-        {
-            _logger.LogWarning("BASS WASAPI initialization failed, falling back to standard BASS. Error={Error}", Bass.LastError);
-
-            IsBassInitialized = Bass.Init(1, 48000);
-        }
-        else
-        {
-            _logger.LogInformation("BASS WASAPI initialized");
-
-            BassWasapi.Start();
-            return;
-        }
-
-        if (!IsBassInitialized)
-        {
-            _logger.LogWarning("BASS failed to initialize. Error={Error}", Bass.LastError);
-            return;
-        }
-
+        IsBassInitialized = Bass.Init(1, 48000);
         _logger.LogInformation("BASS initialized");
 
+        if (!IsBassInitialized)
+        {
+            _logger.LogError("BASS failed to initialize.");
+        }
     }
 
     private void LoadBassPlugins()
     {
-        string basePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BassLibs");
-        _logger.LogInformation($"Looking for Bass plugins in: {basePath}");
-
-        if (!Directory.Exists(basePath))
-        {
-            _logger.LogError($"Bass plugins directory does not exist: {basePath}");
-            return;
-        }
-
-        // Set DLL directory to help Windows find dependencies
-        if (!SetDllDirectory(basePath))
-        {
-            _logger.LogWarning("Failed to set DLL directory");
-        }
-
+        string basePath = AppDomain.CurrentDomain.BaseDirectory;
         string[] pluginFiles =
         [
             "bass_aac.dll",    // AAC
@@ -159,7 +118,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             "bassmidi.dll",    // MIDI
             "bassape.dll",     // Monkey's Audio
             "basswv.dll",      // WavPack
-            "basswma.dll"      // WMA - DISABLED due to WMADMOD.DLL crashes
+            "basswma.dll",     // WMA
         ];
 
         foreach (string plugin in pluginFiles)
@@ -182,12 +141,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             }
             else
             {
-                _logger.LogWarning($"Plugin not found: {path}");
+                _logger.LogError($"Plugin not found: {path}");
             }
         }
-
-        // Reset DLL directory
-        SetDllDirectory(null);
     }
 
     public double GetDecibelLevel()
@@ -235,25 +191,19 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void LoadAudioFile(string pathToMusic)
     {
-        // Detect file extension
-        string ext = Path.GetExtension(pathToMusic).ToLowerInvariant();
+        //        _logger.LogInformation($"Loading audio file: {pathToMusic} at position {position}");
 
-        BassFlags flags = BassFlags.Default;
-
-        // For WMA, do not use Decode/Float/Tempo
-        if (ext == ".wma")
-        {
-            flags = BassFlags.Default; // Only default flags
-        }
-        else
-        {
-            flags = BassFlags.Decode | BassFlags.Float | BassFlags.Prescan;
-        }
-
-        CurrentStream = Bass.CreateStream(pathToMusic, Flags: flags);
+        CurrentStream = Bass.CreateStream(pathToMusic, Flags: BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
         if (CurrentStream == 0)
         {
-            _logger.LogError($"Failed to create stream: {Bass.LastError}");
+            _logger.LogError($"Failed to create decode stream: {Bass.LastError}");
+            return;
+        }
+
+        CurrentStream = BassFx.TempoCreate(CurrentStream, BassFlags.Default);
+        if (CurrentStream == 0)
+        {
+            _logger.LogError($"Failed to create tempo stream: {Bass.LastError}");
             return;
         }
 
@@ -271,6 +221,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         _logger.LogInformation($"Track length set to {CurrentTrackLength} seconds");
 
         CurrentTrackPosition = 0;
+
+        //_logger.LogInformation($"Successfully loaded audio file: {pathToMusic}");
     }
 
     public void Play()
@@ -609,7 +561,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     }
 
     #region SpectrumAnalyzer
-    
+
     public bool GetFftData(float[] fftDataBuffer)
     {
         if (fftDataBuffer.Length != ExpectedFftSize)
@@ -721,13 +673,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         OnFftCalculated!.Invoke(FftUpdate);
     }
-    
+
     #endregion
 
     public void Dispose()
     {
         Stop();
-        BassWasapi.Free();
         Bass.Free();
         _positionTimer.Dispose();
         GC.SuppressFinalize(this);
