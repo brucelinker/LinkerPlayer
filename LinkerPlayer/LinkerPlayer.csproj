@@ -12,9 +12,11 @@
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="ControlzEx" Version="7.0.1" />
-		<PackageReference Include="MahApps.Metro.IconPacks" Version="5.1.0" />
-		<PackageReference Include="ManagedBass" Version="3.1.1" />
-		<PackageReference Include="ManagedBass.Fx" Version="3.1.1" />
+		<PackageReference Include="MahApps.Metro.IconPacks" Version="6.1.0" />
+		<PackageReference Include="ManagedBass" Version="3.1.4" />
+		<PackageReference Include="ManagedBass.Fx" Version="3.1.4" />
+		<PackageReference Include="ManagedBass.Mix" Version="3.1.4" />
+		<PackageReference Include="ManagedBass.Wasapi" Version="3.1.4" />
 		<PackageReference Include="MaterialDesignThemes" Version="5.2.2-ci942" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.8">
@@ -32,6 +34,10 @@
 		<PackageReference Include="System.Net.Http" Version="4.3.4" />
 		<PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
 		<PackageReference Include="TagLibSharp" Version="2.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\LinkerPlayer.BassLibs\LinkerPlayer.BassLibs.csproj" />
 	</ItemGroup>
 
 
@@ -59,53 +65,6 @@
 			<AutoGen>True</AutoGen>
 			<DependentUpon>Settings.settings</DependentUpon>
 		</Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Update="bassalac.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bassape.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bassmidi.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="basswma.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="basswv.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bass_aac.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bass_ac3.dll">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="Properties\Settings.settings">
-			<Generator>SettingsSingleFileGenerator</Generator>
-			<LastGenOutput>Settings.Designer.cs</LastGenOutput>
-		</None>
-		<None Update="bass.dll">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bassflac.dll">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bass_fx.dll">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="bassmix.dll">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="basswasapi.dll">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="BassLibs\" />
 	</ItemGroup>
 
 </Project>

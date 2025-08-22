@@ -1,11 +1,16 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.BassLibs;
 using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
+using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Windows;
 // ReSharper disable InconsistentNaming
 
 namespace LinkerPlayer.Audio;
@@ -24,7 +29,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
 
-
     private readonly List<EqualizerBandSettings> _equalizerBands =
     [
         new(32.0f, 0f, 1.0f),
@@ -42,18 +46,32 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     private bool _eqInitialized;
     private int[] _eqFxHandles = [];
     private int _endSyncHandle;
+    private IntPtr _bassFxHandle = IntPtr.Zero; // Handle to explicitly loaded bass_fx.dll
 
     public bool IsInitialized => IsBassInitialized;
 
     public event Action? OnPlaybackStopped;
     public event Action<float[]>? OnFftCalculated;
 
-    public bool EqEnabled;
+    [ObservableProperty] private bool _eqEnabled = true;
+
     public bool IsEqualizerInitialized => _eqInitialized;
 
     public float[] FftUpdate { get; private set; }
     public double NoiseFloorDb { get; set; } = -60;
     public int ExpectedFftSize => 2048;
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool SetDllDirectory(string? lpPathName);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern IntPtr LoadLibrary(string lpFileName);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool FreeLibrary(IntPtr hModule);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern uint GetLastError();
 
     public AudioEngine(ILogger<AudioEngine> logger)
     {
@@ -62,14 +80,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         try
         {
             _logger.LogInformation("Initializing AudioEngine");
-            Initialize();
 
-            // Load plugins
+            // Initialize BASS Native Library Manager first
+            BassNativeLibraryManager.Initialize(_logger);
+
+            // Initialize BASS
+            InitializeBass();
+
+            // Load plugins after BASS is initialized
             LoadBassPlugins();
 
-            // Configure buffer and update period
-            Bass.Configure(Configuration.PlaybackBufferLength, 500);
-            Bass.Configure(Configuration.UpdatePeriod, 50);
+            // Explicitly load bass_fx.dll
+            LoadBassFxLibrary();
 
             _positionTimer = new System.Timers.Timer(50);
             _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
@@ -90,59 +112,140 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    public void Initialize()
+    private void LoadBassFxLibrary()
+    {
+        try
+        {
+            if (!BassNativeLibraryManager.IsDllAvailable("bass_fx.dll"))
+            {
+                _logger.LogError("bass_fx.dll not available for explicit loading");
+                return;
+            }
+
+            string bassFxPath = BassNativeLibraryManager.GetDllPath("bass_fx.dll");
+            _bassFxHandle = LoadLibrary(bassFxPath);
+
+            if (_bassFxHandle == IntPtr.Zero)
+            {
+                uint error = GetLastError();
+                _logger.LogError($"Failed to load bass_fx.dll. Error code: {error}");
+            }
+            else
+            {
+                _logger.LogInformation("Successfully loaded bass_fx.dll");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while loading bass_fx.dll");
+        }
+    }
+
+    public void InitializeBass()
     {
         if (IsBassInitialized)
         {
             return;
         }
 
-        IsBassInitialized = Bass.Init(1, 48000);
-        _logger.LogInformation("BASS initialized");
-
-        if (!IsBassInitialized)
+        try
         {
-            _logger.LogError("BASS failed to initialize.");
+            // Set DLL directory to the extracted BASS libraries
+            string bassLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
+            _logger.LogInformation($"Setting DLL directory to: {bassLibPath}");
+
+            if (!SetDllDirectory(bassLibPath))
+            {
+                _logger.LogWarning("Failed to set DLL directory for BASS libraries");
+            }
+
+            // Initialize BASS with simple approach like the working player
+            if (!Bass.Init(-1, 44100, DeviceInitFlags.Default))
+            {
+                _logger.LogError("Failed to initialize BASS: " + Bass.LastError);
+                return;
+            }
+
+            // Initialize WASAPI directly like the simple player
+            try
+            {
+                if (BassNativeLibraryManager.IsDllAvailable("basswasapi.dll"))
+                {
+                    BassWasapi.Init(-1, 44100, 2, WasapiInitFlags.Shared);
+                    _logger.LogInformation("WASAPI initialized successfully");
+                }
+                else
+                {
+                    _logger.LogWarning("WASAPI DLL not available, skipping WASAPI initialization");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"WASAPI initialization failed: {ex.Message}");
+                // Continue without WASAPI
+            }
+
+            // Minimal configuration like the simple player
+            Bass.UpdatePeriod = 10;
+
+            // Log device info for debugging
+            var deviceInfo = Bass.GetDeviceInfo(Bass.CurrentDevice);
+            _logger.LogInformation($"Using audio device: {deviceInfo.Name}");
+
+            IsBassInitialized = true;
+            _logger.LogInformation("BASS initialized successfully!");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error initializing BASS: {ex.Message}");
         }
     }
 
     private void LoadBassPlugins()
     {
-        string basePath = AppDomain.CurrentDomain.BaseDirectory;
-        string[] pluginFiles =
-        [
-            "bass_aac.dll",    // AAC
-            "bass_ac3.dll",    // AC3
-            "bassalac.dll",    // Apple Lossless
-            "bassflac.dll",    // FLAC support
-            "bassmidi.dll",    // MIDI
-            "bassape.dll",     // Monkey's Audio
-            "basswv.dll",      // WavPack
-            "basswma.dll",     // WMA
-        ];
-
-        foreach (string plugin in pluginFiles)
+        try
         {
-            string path = Path.Combine(basePath, plugin);
-            if (File.Exists(path))
+            // Load essential plugins that require explicit loading
+            string[] essentialPluginFiles =
+            [
+                "bassape.dll",     // Monkey's Audio - requires explicit loading
+                "bassflac.dll",    // FLAC support - may need explicit loading
+                "bassalac.dll",    // Apple Lossless - requires explicit loading
+                "basswv.dll",      // WavPack - requires explicit loading
+                "bass_aac.dll",    // AAC - may need explicit loading
+                "bass_ac3.dll"     // AC3 - may need explicit loading
+            ];
+
+            int loadedCount = 0;
+            foreach (string plugin in essentialPluginFiles)
             {
-                try
+                if (BassNativeLibraryManager.IsDllAvailable(plugin))
                 {
-                    int handle = Bass.PluginLoad(path);
-                    if (handle != 0)
-                        _logger.LogInformation($"Loaded plugin: {plugin}");
-                    else
-                        _logger.LogError($"Failed to load plugin: {plugin}, Error={Bass.LastError}");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"Error loading plugin {plugin}: {ex.Message}");
+                    try
+                    {
+                        string path = BassNativeLibraryManager.GetDllPath(plugin);
+                        int handle = Bass.PluginLoad(path);
+                        if (handle != 0)
+                        {
+                            loadedCount++;
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Failed to load plugin: {plugin}, Error={Bass.LastError}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Exception loading plugin {plugin}: {ex.Message}");
+                    }
                 }
             }
-            else
-            {
-                _logger.LogError($"Plugin not found: {path}");
-            }
+
+            _logger.LogInformation($"Loaded {loadedCount}/{essentialPluginFiles.Length} BASS plugins");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LoadBassPlugins");
         }
     }
 
@@ -151,7 +254,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         int level = Bass.ChannelGetLevel(CurrentStream);
         if (level == -1)
         {
-            //_logger.LogInformation("Decibel Level: Unknown (no level data)");
             return double.NaN;
         }
 
@@ -161,13 +263,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         double leftDb = 20 * Math.Log10(left / 32768.0);
         double rightDb = 20 * Math.Log10(right / 32768.0);
         double avgDb = (leftDb + rightDb) / 2.0;
-        _logger.LogInformation($"Decibel Level: {avgDb}");
         return avgDb;
     }
 
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
     {
-        _logger.LogInformation("EndTrackSyncProc: Track ended, invoking OnPlaybackStopped");
+        _logger.LogInformation("Track ended");
         Stop();
     }
 
@@ -176,9 +277,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         if (CurrentStream != 0)
         {
             Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, value);
-            //_logger.LogInformation($"Volume set to: {_musicVolume}");
         }
-
     }
 
     partial void OnIsPlayingChanged(bool value)
@@ -191,38 +290,63 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void LoadAudioFile(string pathToMusic)
     {
-        //        _logger.LogInformation($"Loading audio file: {pathToMusic} at position {position}");
-
-        CurrentStream = Bass.CreateStream(pathToMusic, Flags: BassFlags.Decode | BassFlags.Prescan | BassFlags.Float);
-        if (CurrentStream == 0)
+        try
         {
-            _logger.LogError($"Failed to create decode stream: {Bass.LastError}");
-            return;
-        }
+            // Free previous stream and clean up EQ
+            if (CurrentStream != 0)
+            {
+                CleanupEqualizer();
+                Bass.StreamFree(CurrentStream);
+                CurrentStream = 0;
+            }
 
-        CurrentStream = BassFx.TempoCreate(CurrentStream, BassFlags.Default);
-        if (CurrentStream == 0)
+            // Create stream from file
+            CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, BassFlags.Default);
+
+            if (CurrentStream == 0)
+            {
+                _logger.LogError($"Failed to load file: {Bass.LastError}. File: {pathToMusic}");
+                return;
+            }
+
+            long lengthBytes = Bass.ChannelGetLength(CurrentStream);
+
+            if (lengthBytes < 0)
+            {
+                _logger.LogError($"Failed to get track length: {Bass.LastError}");
+                Bass.StreamFree(CurrentStream);
+                CurrentStream = 0;
+                return;
+            }
+
+            CurrentTrackLength = Bass.ChannelBytes2Seconds(CurrentStream, lengthBytes);
+            CurrentTrackPosition = 0;
+
+            // Initialize equalizer for the new stream
+            if (EqEnabled)
+            {
+                InitializeEqualizer();
+            }
+
+            _logger.LogInformation($"Successfully loaded audio file: {Path.GetFileName(pathToMusic)}");
+        }
+        catch (Exception ex)
         {
-            _logger.LogError($"Failed to create tempo stream: {Bass.LastError}");
-            return;
+            _logger.LogError($"Error loading file: {ex.Message}");
+            // Ensure we clean up if there's an exception
+            if (CurrentStream != 0)
+            {
+                try
+                {
+                    Bass.StreamFree(CurrentStream);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+                CurrentStream = 0;
+            }
         }
-
-        long lengthBytes = Bass.ChannelGetLength(CurrentStream);
-        if (lengthBytes < 0)
-        {
-            _logger.LogError($"Failed to get track length: {Bass.LastError}");
-            Bass.StreamFree(CurrentStream);
-            CurrentStream = 0;
-            _eqFxHandles = [];
-            _eqInitialized = false;
-            return;
-        }
-        CurrentTrackLength = Bass.ChannelBytes2Seconds(CurrentStream, lengthBytes);
-        _logger.LogInformation($"Track length set to {CurrentTrackLength} seconds");
-
-        CurrentTrackPosition = 0;
-
-        //_logger.LogInformation($"Successfully loaded audio file: {pathToMusic}");
     }
 
     public void Play()
@@ -237,9 +361,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Play(string pathToMusic, double position = 0)
     {
-        //_logger.LogInformation($"Play method called for {pathToMusic} at position {position}");
-
         PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
+
         if (!string.IsNullOrEmpty(pathToMusic) && playbackState == PlaybackState.Paused)
         {
             ResumePlay();
@@ -247,47 +370,41 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
 
         Stop();
-
         LoadAudioFile(pathToMusic);
 
         if (CurrentStream != 0)
         {
+            // Set end-of-track sync
             _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
             if (_endSyncHandle == 0)
             {
-                _logger.LogError($"Failed to set end-of-track sync: {Bass.LastError}");
+                _logger.LogWarning($"Failed to set end-of-track sync: {Bass.LastError}");
             }
 
-            if (EqEnabled)
-            {
-                InitializeEqualizer();
-                foreach (EqualizerBandSettings band in _equalizerBands)
-                {
-                    SetBandGain(band.Frequency, band.Gain);
-                }
-            }
-
-            if (CurrentStream != 0)
+            // Set position if specified
+            if (position > 0)
             {
                 long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
-                if (Bass.ChannelSetPosition(CurrentStream, bytePosition))
+                if (!Bass.ChannelSetPosition(CurrentStream, bytePosition))
                 {
-                    Bass.ChannelPlay(CurrentStream);
+                    _logger.LogWarning($"Failed to set initial position: {Bass.LastError}");
                 }
             }
 
-            if (!Bass.ChannelPlay(CurrentStream))
+            // Set volume
+            Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, MusicVolume);
+
+            // Start playback
+            if (Bass.ChannelPlay(CurrentStream))
+            {
+                IsPlaying = true;
+                PathToMusic = pathToMusic;
+            }
+            else
             {
                 _logger.LogError($"Failed to play stream: {Bass.LastError}");
                 return;
             }
-            //_logger.LogInformation($"Playing stream: {CurrentStream}");
-            //var state = Bass.ChannelIsActive(CurrentStream);
-            //_logger.LogInformation($"Stream state after play: {state}");
-            IsPlaying = true;
-            //_logger.LogInformation("Playback started successfully");
-
-            Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, MusicVolume);
         }
         else
         {
@@ -306,15 +423,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             }
 
             Bass.ChannelStop(CurrentStream);
-            Bass.StreamFree(CurrentStream);
-            CurrentStream = 0;
-            _eqFxHandles = [];
-            _eqInitialized = false;
-            //_logger.LogInformation("Stream stopped and freed");
+            Bass.ChannelSetPosition(CurrentStream, 0);
+
+            IsPlaying = false;
+            CurrentTrackPosition = 0;
         }
-        IsPlaying = false;
-        CurrentTrackPosition = 0;
-        //_logger.LogInformation("Stop: Invoking OnPlaybackStopped");
+
         OnPlaybackStopped?.Invoke();
     }
 
@@ -328,7 +442,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 return;
             }
             IsPlaying = false;
-            _logger.LogInformation("Stream paused");
         }
     }
 
@@ -341,15 +454,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 _logger.LogError($"Failed to resume stream: {Bass.LastError}");
                 return;
             }
-            _logger.LogInformation("Stream resumed");
-            PlaybackState state = Bass.ChannelIsActive(CurrentStream);
-            _logger.LogInformation($"Stream state after resume: {state}");
             IsPlaying = true;
 
             _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
             if (_endSyncHandle == 0)
             {
-                _logger.LogError($"Failed to set end-of-track sync: {Bass.LastError}");
+                _logger.LogWarning($"Failed to set end-of-track sync: {Bass.LastError}");
             }
         }
     }
@@ -401,13 +511,10 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
 
         double actualPosition = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
-        if (double.IsNaN(actualPosition) || actualPosition < 0)
+        if (!double.IsNaN(actualPosition) && actualPosition >= 0)
         {
-            _logger.LogError($"Invalid position after seek: {actualPosition}");
-            return;
+            CurrentTrackPosition = actualPosition;
         }
-
-        CurrentTrackPosition = actualPosition;
 
         if (wasPlaying)
         {
@@ -433,7 +540,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
 
         Bass.Free();
-        if (!Bass.Init(deviceId)) // Default args 44100, DeviceInitFlags.Default))
+        if (!Bass.Init(deviceId))
         {
             _logger.LogError($"Failed to initialize BASS with device {deviceName}: {Bass.LastError}");
             return;
@@ -449,17 +556,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    public bool InitializeEqualizer()
+    private void CleanupEqualizer()
     {
-        _eqInitialized = false;
-
-        if (CurrentStream == 0)
-        {
-            _logger.LogInformation("Equalizer deferred initialization : No stream loaded");
-            return false;
-        }
-
-        if (_eqFxHandles.Length > 0)
+        if (_eqFxHandles.Length > 0 && CurrentStream != 0)
         {
             foreach (int fxHandle in _eqFxHandles)
             {
@@ -467,19 +566,39 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     Bass.ChannelRemoveFX(CurrentStream, fxHandle);
             }
         }
+        _eqFxHandles = [];
+        _eqInitialized = false;
+    }
+
+    public bool InitializeEqualizer()
+    {
+        CleanupEqualizer();
+
+        if (CurrentStream == 0)
+        {
+            _logger.LogWarning("Cannot initialize equalizer: No stream loaded");
+            return false;
+        }
+
+        if (_bassFxHandle == IntPtr.Zero)
+        {
+            _logger.LogError("Cannot initialize equalizer: bass_fx.dll not loaded");
+            return false;
+        }
 
         _eqFxHandles = new int[_equalizerBands.Count];
+        int successCount = 0;
+
         for (int i = 0; i < _equalizerBands.Count; i++)
         {
             float freq = _equalizerBands[i].Frequency;
             int fxHandle = Bass.ChannelSetFX(CurrentStream, EffectType.PeakEQ, 0);
+
             if (fxHandle == 0)
             {
                 _logger.LogError($"Failed to set FX for {freq}Hz: {Bass.LastError}");
                 continue;
             }
-
-            _eqFxHandles[i] = fxHandle;
 
             PeakEQParameters eqParams = new()
             {
@@ -495,69 +614,127 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 Bass.ChannelRemoveFX(CurrentStream, fxHandle);
                 _eqFxHandles[i] = 0;
             }
-
-            //_logger.LogInformation($"EQ band {freq} Hz initialized (gain={eqParams.fGain} dB)");
+            else
+            {
+                _eqFxHandles[i] = fxHandle;
+                successCount++;
+            }
         }
 
-        _eqInitialized = true;
+        _eqInitialized = successCount > 0;
+        if (_eqInitialized)
+        {
+            _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
+        }
 
-        return true;
+        return _eqInitialized;
+    }
+
+    public void SetEqualizerEnabled(bool enabled)
+    {
+        EqEnabled = enabled;
+
+        if (enabled)
+        {
+            if (CurrentStream != 0)
+            {
+                InitializeEqualizer();
+            }
+        }
+        else
+        {
+            CleanupEqualizer();
+            _logger.LogInformation("Equalizer disabled");
+        }
     }
 
     public List<EqualizerBandSettings> GetBandsList()
     {
-        return new List<EqualizerBandSettings>(_equalizerBands);
+        // Return a COPY of the bands, not the original reference
+        return _equalizerBands.Select(band => new EqualizerBandSettings(
+            band.Frequency,
+            band.Gain,
+            band.Bandwidth
+        )).ToList();
     }
 
     public void SetBandsList(List<EqualizerBandSettings> bands)
     {
         _equalizerBands.Clear();
-        _equalizerBands.AddRange(bands);
-        InitializeEqualizer();
+
+        // Create NEW band objects from the input, don't store references
+        foreach (var band in bands)
+        {
+            _equalizerBands.Add(new EqualizerBandSettings(
+                band.Frequency,
+                band.Gain,
+                band.Bandwidth
+            ));
+        }
+
+        // Re-initialize EQ if it's already set up
+        if (EqEnabled && CurrentStream != 0)
+        {
+            InitializeEqualizer();
+        }
     }
 
     public float GetBandGain(int index)
     {
-        EqualizerBandSettings band = _equalizerBands[index];
-        return band.Gain;
+        if (index >= 0 && index < _equalizerBands.Count)
+        {
+            return _equalizerBands[index].Gain;
+        }
+        return 0f;
     }
 
     public void SetBandGainByIndex(int index, float gain)
     {
-        SetBandGain(_equalizerBands[index].Frequency, gain);
+        if (index >= 0 && index < _equalizerBands.Count)
+        {
+            SetBandGain(_equalizerBands[index].Frequency, gain);
+        }
     }
 
     public void SetBandGain(float frequency, float gain)
     {
-        if (!_eqInitialized || _eqFxHandles.Length == 0 || CurrentStream == 0)
+        // Store the gain setting regardless of EQ state
+        int bandIndex = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < 0.1f);
+        if (bandIndex != -1)
         {
-            _logger.LogWarning("SetBandGain skipped: EQ not initialized or stream invalid.");
+            _equalizerBands[bandIndex].Gain = Math.Clamp(gain, -12f, 12f);
+        }
+
+        // Only apply to actual EQ if it's enabled and initialized
+        if (!EqEnabled || !_eqInitialized || _eqFxHandles.Length == 0 || CurrentStream == 0)
+        {
             return;
         }
 
-        int bandIndex = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < .1);
-        if (bandIndex == -1 || bandIndex >= _eqFxHandles.Length || _eqFxHandles[bandIndex] == 0)
+        int bandIdx = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < 0.1f);
+        if (bandIdx == -1 || bandIdx >= _eqFxHandles.Length || _eqFxHandles[bandIdx] == 0)
         {
-            _logger.LogWarning($"SetBandGain skipped: FX handle invalid for {frequency} Hz");
             return;
         }
+
+        float clampedGain = Math.Clamp(gain, -12f, 12f);
 
         PeakEQParameters eqParams = new()
         {
             fCenter = frequency,
-            fBandwidth = _equalizerBands[bandIndex].Bandwidth,
-            fGain = Math.Clamp(gain, -12f, 12f),
+            fBandwidth = _equalizerBands[bandIdx].Bandwidth,
+            fGain = clampedGain,
             lChannel = FXChannelFlags.All
         };
 
-        if (!Bass.FXSetParameters(_eqFxHandles[bandIndex], eqParams))
+        if (Bass.FXSetParameters(_eqFxHandles[bandIdx], eqParams))
+        {
+            _equalizerBands[bandIdx].Gain = clampedGain;
+        }
+        else
         {
             _logger.LogError($"Failed to update EQ gain for {frequency} Hz: {Bass.LastError}");
-            return;
         }
-
-        _equalizerBands[bandIndex].Gain = eqParams.fGain;
-        //_logger.LogInformation($"EQ gain set: {frequency} Hz → {eqParams.fGain} dB");
     }
 
     #region SpectrumAnalyzer
@@ -566,7 +743,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (fftDataBuffer.Length != ExpectedFftSize)
         {
-            _logger.LogError($"GetFftData: Buffer size {fftDataBuffer.Length} does not match expected {ExpectedFftSize}");
             return false;
         }
 
@@ -585,7 +761,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         int bytesRead = Bass.ChannelGetData(CurrentStream, fftDataBuffer, (int)DataFlags.FFT2048);
         if (bytesRead < 0)
         {
-            _logger.LogError($"GetFftData: Failed to get FFT data: {Bass.LastError}");
             Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
             return false;
         }
@@ -597,7 +772,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         const int fftSize = 2048;
         const int sampleRate = 44100;
-        float binWidth = sampleRate / (float)fftSize;
+        const float binWidth = sampleRate / (float)fftSize;
         int index = (int)(frequency / binWidth);
         return Math.Clamp(index, 0, fftSize / 2 - 1);
     }
@@ -615,22 +790,19 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             PlaybackState state = Bass.ChannelIsActive(CurrentStream);
             if (state != PlaybackState.Playing)
             {
-                _logger.LogInformation("HandleFftCalculated: Stream not playing, skipping FFT");
                 return;
             }
         }
         else
         {
-            _logger.LogInformation("HandleFftCalculated: No stream, skipping FFT");
             return;
         }
 
         int bytesRead = Bass.ChannelGetData(CurrentStream, _fftBuffer, (int)DataFlags.FFT2048);
         if (bytesRead < 0)
         {
-            _logger.LogError($"HandleFftCalculated: Failed to get FFT data: {Bass.LastError}");
             FftUpdate = new float[ExpectedFftSize];
-            OnFftCalculated!.Invoke(FftUpdate);
+            OnFftCalculated?.Invoke(FftUpdate);
             return;
         }
 
@@ -669,9 +841,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
         FftUpdate = fftResult;
 
-        //_logger.LogInformation($"FFT data sample: {string.Join(", ", fftResult.Take(10))}");
-
-        OnFftCalculated!.Invoke(FftUpdate);
+        OnFftCalculated?.Invoke(FftUpdate);
     }
 
     #endregion
@@ -679,8 +849,36 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public void Dispose()
     {
         Stop();
+
+        // Clean up equalizer
+        CleanupEqualizer();
+
+        // Free explicitly loaded bass_fx.dll
+        if (_bassFxHandle != IntPtr.Zero)
+        {
+            FreeLibrary(_bassFxHandle);
+            _bassFxHandle = IntPtr.Zero;
+        }
+
+        // Only call BassWasapi.Free() if WASAPI was successfully initialized
+        try
+        {
+            if (BassNativeLibraryManager.IsDllAvailable("basswasapi.dll"))
+            {
+                BassWasapi.Free();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Error freeing WASAPI: {ex.Message}");
+        }
+
         Bass.Free();
         _positionTimer.Dispose();
+
+        // Reset DLL directory
+        SetDllDirectory(null);
+
         GC.SuppressFinalize(this);
     }
 }

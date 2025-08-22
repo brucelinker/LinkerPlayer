@@ -50,7 +50,7 @@ public partial class MainWindow
 
         try
         {
-            _audioEngine.Initialize();
+            _audioEngine.InitializeBass();
             _outputDeviceManager.InitializeOutputDevice();
             _logger.LogInformation("MainWindow: Audio initialization complete");
         }

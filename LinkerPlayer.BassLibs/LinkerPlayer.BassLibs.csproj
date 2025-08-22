@@ -1,0 +1,57 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<PlatformTarget>x64</PlatformTarget>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<Title>LinkerPlayer BASS Audio Library</Title>
+		<Description>BASS audio engine and plugin management for LinkerPlayer</Description>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ManagedBass" Version="3.1.4" />
+		<PackageReference Include="ManagedBass.Fx" Version="3.1.4" />
+		<PackageReference Include="ManagedBass.Mix" Version="3.1.4" />
+		<PackageReference Include="ManagedBass.Wasapi" Version="3.1.4" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
+	</ItemGroup>
+
+	<!-- Embed BASS DLLs as resources -->
+	<ItemGroup>
+		<EmbeddedResource Include="Native\bass.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bass.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassalac.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bassalac.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassape.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bassape.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassflac.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bassflac.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassmix.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bassmix.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\basswasapi.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.basswasapi.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\basswma.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.basswma.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\basswv.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.basswv.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bass_aac.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bass_aac.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bass_ac3.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bass_ac3.dll</LogicalName>
+		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bass_fx.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bass_fx.dll</LogicalName>
+		</EmbeddedResource>
+	</ItemGroup>
+
+</Project>

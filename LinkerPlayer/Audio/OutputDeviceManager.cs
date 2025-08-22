@@ -34,7 +34,7 @@ public class OutputDeviceManager
 
         try
         {
-            _audioEngine.Initialize();
+            _audioEngine.InitializeBass();
             Devices.Clear();
             GetOutputDevicesList();
             SetMainOutputDevice();
@@ -54,7 +54,7 @@ public class OutputDeviceManager
         if (!_audioEngine.IsInitialized)
         {
             _logger.LogWarning("GetOutputDevicesList: BASS not initialized, initializing now");
-            _audioEngine.Initialize();
+            _audioEngine.InitializeBass();
         }
 
         try
