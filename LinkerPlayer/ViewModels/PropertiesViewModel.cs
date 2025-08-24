@@ -6,9 +6,13 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
+using TagLib.Id3v2;
+using TagLib.Mpeg4;
+using TagLib.Ogg;
 using File = TagLib.File;
 using Tag = TagLib.Tag;
 // ReSharper disable InconsistentNaming
@@ -105,7 +109,7 @@ public partial class PropertiesViewModel : ObservableObject
     {
         try
         {
-            // Dispose previous file if exists
+            // Dispose of previous file if exists
             _audioFile?.Dispose();
             _audioFile = null;
 
@@ -116,7 +120,7 @@ public partial class PropertiesViewModel : ObservableObject
                 return;
             }
 
-            var fileInfo = new System.IO.FileInfo(path);
+            FileInfo fileInfo = new(path);
             if (fileInfo.Length == 0)
             {
                 _logger.LogError("File is empty: {Path}", path);
@@ -124,8 +128,8 @@ public partial class PropertiesViewModel : ObservableObject
             }
 
             // Check if file extension is supported by TagLib
-            string extension = System.IO.Path.GetExtension(path).ToLowerInvariant();
-            string[] supportedExtensions = { ".mp3", ".flac", ".ogg", ".opus", ".m4a", ".mp4", ".aac", ".wma", ".wav", ".aiff", ".ape", ".wv" };
+            string extension = Path.GetExtension(path).ToLowerInvariant();
+            string[] supportedExtensions = [".mp3", ".flac", ".ogg", ".opus", ".m4a", ".mp4", ".aac", ".wma", ".wav", ".aiff", ".ape", ".wv"];
             
             if (!supportedExtensions.Contains(extension))
             {
@@ -137,7 +141,7 @@ public partial class PropertiesViewModel : ObservableObject
             try
             {
                 _audioFile = File.Create(path);
-                _logger.LogDebug("Successfully created TagLib file for: {Path}", path);
+                //_logger.LogDebug("Successfully created TagLib file for: {Path}", path);
             }
             catch (TagLib.CorruptFileException ex)
             {
@@ -267,7 +271,7 @@ public partial class PropertiesViewModel : ObservableObject
             AddMetadataItem("ISRC", tag.ISRC, true, v => { tag.ISRC = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         }
 
-        _logger.LogDebug("Successfully loaded {Count} core metadata items", MetadataItems.Count);
+        //_logger.LogDebug("Successfully loaded {Count} core metadata items", MetadataItems.Count);
     }
 
     private void LoadCustomMetadata()
@@ -286,26 +290,27 @@ public partial class PropertiesViewModel : ObservableObject
             "TOTALDISCS", "DISCCOUNT", "COMMENT", "COPYRIGHT", "LYRICS", "BPM", 
             "BEATSPERMINUTE", "CONDUCTOR", "GROUPING", "PUBLISHER", "ISRC",
             // Also filter out technical fields that belong in Properties
-            "ENCODER", "ENCODED-BY", "ENCODEDBY", "TOOL", "SOFTWARE", "ENCODING_TOOL"
+            "ENCODER", "ENCODED-BY", "ENCODEDBY", "TOOL", "SOFTWARE", "ENCODING_TOOL",
+            // ReplayGain fields (handled in separate ReplayGain section)
+            "REPLAYGAIN_TRACK_GAIN", "REPLAYGAIN_TRACK_PEAK", "REPLAYGAIN_ALBUM_GAIN", "REPLAYGAIN_ALBUM_PEAK"
         };
 
         // Use a dictionary to collect all custom fields with their values
         Dictionary<string, List<string>> customFields = new(StringComparer.OrdinalIgnoreCase);
         
-        _logger.LogInformation("Main tag type: {TagType}, Available tag types: {TagTypes}", 
-            _audioFile.Tag.GetType().Name, _audioFile.TagTypes);
+        //_logger.LogInformation("Main tag type: {TagType}, Available tag types: {TagTypes}", 
+            //_audioFile.Tag.GetType().Name, _audioFile.TagTypes);
 
         try
         {
             // FLAC/OGG/Opus (Vorbis Comments) - get the specific tag directly
-            TagLib.Ogg.XiphComment? xiphTag = _audioFile.GetTag(TagLib.TagTypes.Xiph, false) as TagLib.Ogg.XiphComment;
-            if (xiphTag != null)
+            if (_audioFile.GetTag(TagLib.TagTypes.Xiph, false) is XiphComment xiphTag)
             {
-                _logger.LogDebug("Found Xiph tag with {Count} fields", xiphTag.FieldCount);
+                //_logger.LogDebug("Found Xiph tag with {Count} fields", xiphTag.FieldCount);
                 foreach (string field in xiphTag)
                 {
                     string value = xiphTag.GetFirstField(field) ?? "";
-                    _logger.LogDebug("Found Vorbis field: {Field} = {Value}", field, value);
+                    //_logger.LogDebug("Found Vorbis field: {Field} = {Value}", field, value);
                     
                     if (!string.IsNullOrWhiteSpace(value) && !standardFields.Contains(field))
                     {
@@ -314,7 +319,7 @@ public partial class PropertiesViewModel : ObservableObject
                             customFields[field] = new List<string>();
                         }
                         customFields[field].Add(value);
-                        _logger.LogDebug("Collected custom Vorbis field: {Field} = {Value}", field, value);
+                        //_logger.LogDebug("Collected custom Vorbis field: {Field} = {Value}", field, value);
                     }
                     else if (standardFields.Contains(field))
                     {
@@ -335,24 +340,23 @@ public partial class PropertiesViewModel : ObservableObject
         try
         {
             // MP4/M4A/AAC (iTunes-style tags) - get the specific tag directly
-            TagLib.Mpeg4.AppleTag? mp4Tag = _audioFile.GetTag(TagLib.TagTypes.Apple, false) as TagLib.Mpeg4.AppleTag;
-            if (mp4Tag != null)
+            if (_audioFile.GetTag(TagLib.TagTypes.Apple, false) is AppleTag mp4Tag)
             {
-                _logger.LogDebug("Found Apple tag");
+                //_logger.LogDebug("Found Apple tag");
                 
                 // Use reflection to find the internal text dictionary
-                var textFields = mp4Tag.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+                IEnumerable<FieldInfo> textFields = mp4Tag.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
                     .Where(f => f.FieldType == typeof(Dictionary<string, string[]>));
                 
-                foreach (var field in textFields)
+                foreach (FieldInfo field in textFields)
                 {
                     if (field.GetValue(mp4Tag) is Dictionary<string, string[]> dict)
                     {
-                        _logger.LogDebug("Found MP4 dictionary with {Count} fields", dict.Count);
-                        foreach (var kvp in dict)
+                        //_logger.LogDebug("Found MP4 dictionary with {Count} fields", dict.Count);
+                        foreach (KeyValuePair<string, string[]> kvp in dict)
                         {
-                            string value = kvp.Value?.FirstOrDefault() ?? "";
-                            _logger.LogDebug("Found MP4 field: {Field} = {Value}", kvp.Key, value);
+                            string value = kvp.Value.FirstOrDefault() ?? "";
+                            //_logger.LogDebug("Found MP4 field: {Field} = {Value}", kvp.Key, value);
                             
                             if (!string.IsNullOrWhiteSpace(value))
                             {
@@ -365,7 +369,7 @@ public partial class PropertiesViewModel : ObservableObject
                                         customFields[fieldName] = new List<string>();
                                     }
                                     customFields[fieldName].Add(value);
-                                    _logger.LogDebug("Collected custom MP4 field: {Field} = {Value}", fieldName, value);
+                                    //_logger.LogDebug("Collected custom MP4 field: {Field} = {Value}", fieldName, value);
                                 }
                                 else
                                 {
@@ -389,33 +393,32 @@ public partial class PropertiesViewModel : ObservableObject
         try
         {
             // MP3 (ID3v2) - get the specific tag directly
-            TagLib.Id3v2.Tag? id3v2Tag = _audioFile.GetTag(TagLib.TagTypes.Id3v2, false) as TagLib.Id3v2.Tag;
-            if (id3v2Tag != null)
+            if (_audioFile.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3v2Tag)
             {
-                _logger.LogDebug("Found ID3v2 tag, loading custom fields (enhanced safe mode)");
+                //_logger.LogDebug("Found ID3v2 tag, loading custom fields (enhanced safe mode)");
                 
                 try
                 {
                     // Try to safely enumerate through all frames
-                    var frames = id3v2Tag.GetFrames().ToArray();
-                    _logger.LogDebug("Found {Count} ID3v2 frames", frames.Length);
+                    Frame[] frames = id3v2Tag.GetFrames().ToArray();
+                    //_logger.LogDebug("Found {Count} ID3v2 frames", frames.Length);
                     
-                    foreach (var frame in frames)
+                    foreach (Frame frame in frames)
                     {
                         try
                         {
                             string frameId = frame.FrameId.ToString();
-                            _logger.LogDebug("Processing ID3v2 frame: {FrameId}", frameId);
+                            //_logger.LogDebug("Processing ID3v2 frame: {FrameId}", frameId);
                             
                             // Skip standard frames that we handle in core metadata
                             if (IsStandardId3v2Frame(frameId))
                             {
-                                _logger.LogDebug("Skipped standard ID3v2 frame: {FrameId}", frameId);
+                                //_logger.LogDebug("Skipped standard ID3v2 frame: {FrameId}", frameId);
                                 continue;
                             }
                             
                             // Get both display name and value from the frame
-                            var (displayName, frameValue) = GetId3v2FrameInfo(frame);
+                            (string displayName, string frameValue) = GetId3v2FrameInfo(frame);
                             if (!string.IsNullOrWhiteSpace(frameValue))
                             {
                                 // Use the actual field description for TXXX frames, fallback to converted frame ID
@@ -423,12 +426,19 @@ public partial class PropertiesViewModel : ObservableObject
                                     ? frameId // This shouldn't happen with new logic, but keep as fallback
                                     : displayName;
                                 
+                                // Additional check: filter out standard fields by name (important for TXXX frames)
+                                if (standardFields.Contains(fieldName))
+                                {
+                                    //_logger.LogDebug("Skipped standard ID3v2 field by name: {Field}", fieldName);
+                                    continue;
+                                }
+                                
                                 if (!customFields.ContainsKey(fieldName))
                                 {
                                     customFields[fieldName] = new List<string>();
                                 }
                                 customFields[fieldName].Add(frameValue);
-                                _logger.LogDebug("Collected custom ID3v2 field: {Field} = {Value}", fieldName, frameValue);
+                                //_logger.LogDebug("Collected custom ID3v2 field: {Field} = {Value}", fieldName, frameValue);
                             }
                         }
                         catch (Exception ex)
@@ -453,8 +463,8 @@ public partial class PropertiesViewModel : ObservableObject
         }
 
         // Now add the collected custom fields to the UI, combining multiple values with semicolons
-        int customFieldsAdded = 0;
-        foreach (var kvp in customFields.OrderBy(x => x.Key))
+        //int customFieldsAdded = 0;
+        foreach (KeyValuePair<string, List<string>> kvp in customFields.OrderBy(x => x.Key))
         {
             string fieldName = kvp.Key;
             List<string> values = kvp.Value;
@@ -465,13 +475,13 @@ public partial class PropertiesViewModel : ObservableObject
             if (!string.IsNullOrWhiteSpace(combinedValue))
             {
                 AddMetadataItem($"<{fieldName}>", combinedValue, false, null);
-                customFieldsAdded++;
-                _logger.LogInformation("Added combined custom field: <{Field}> = {Value}", fieldName, combinedValue);
+                //customFieldsAdded++;
+                //_logger.LogInformation("Added combined custom field: <{Field}> = {Value}", fieldName, combinedValue);
             }
         }
 
-        _logger.LogInformation("Successfully loaded {Count} custom metadata fields (combined from {TotalValues} individual values). Available tag types: {TagTypes}", 
-            customFieldsAdded, customFields.Values.Sum(v => v.Count), _audioFile.TagTypes);
+        //_logger.LogInformation("Successfully loaded {Count} custom metadata fields (combined from {TotalValues} individual values). Available tag types: {TagTypes}", 
+            //customFieldsAdded, customFields.Values.Sum(v => v.Count), _audioFile.TagTypes);
     }
 
     private void LoadFileProperties()
@@ -483,7 +493,7 @@ public partial class PropertiesViewModel : ObservableObject
         }
 
         // EXPLICIT FILE PROPERTIES - Technical information about the file
-        var props = _audioFile.Properties;
+        TagLib.Properties? props = _audioFile.Properties;
         AddPropertyItem("Duration", props.Duration.ToString(@"mm\:ss"), false);
         AddPropertyItem("Bitrate", props.AudioBitrate > 0 ? props.AudioBitrate.ToString() + " kbps" : "", false);
         AddPropertyItem("Sample Rate", props.AudioSampleRate > 0 ? props.AudioSampleRate.ToString() + " Hz" : "", false);
@@ -522,7 +532,7 @@ public partial class PropertiesViewModel : ObservableObject
             _logger.LogDebug(ex, "Error reading encoder info: {Message}", ex.Message);
         }
 
-        _logger.LogDebug("Successfully loaded {Count} file properties", PropertyItems.Count);
+        //_logger.LogDebug("Successfully loaded {Count} file properties", PropertyItems.Count);
     }
 
     private void LoadReplayGain()
@@ -538,15 +548,15 @@ public partial class PropertiesViewModel : ObservableObject
         // Format-specific ReplayGain handling
         if (_audioFile.Tag is TagLib.Id3v2.Tag)
         {
-            _logger.LogDebug("Loading ReplayGain from ID3v2 tag");
+            //_logger.LogDebug("Loading ReplayGain from ID3v2 tag");
             // For now, skip the problematic ID3v2 ReplayGain reading
             AddReplayGainItem("ReplayGain Track Gain", "", false, null);
             AddReplayGainItem("ReplayGain Track Peak", "", false, null);
-            _logger.LogDebug("Skipped ID3v2 ReplayGain reading to avoid corruption issues");
+            //_logger.LogDebug("Skipped ID3v2 ReplayGain reading to avoid corruption issues");
         }
-        else if (_audioFile.Tag is TagLib.Ogg.XiphComment xiphComment)
+        else if (_audioFile.Tag is XiphComment xiphComment)
         {
-            _logger.LogDebug("Loading ReplayGain from Vorbis comments");
+            //_logger.LogDebug("Loading ReplayGain from Vorbis comments");
             AddReplayGainItem("ReplayGain Track Gain", xiphComment.GetFirstField("REPLAYGAIN_TRACK_GAIN") ?? "", true, 
                 v => { xiphComment.SetField("REPLAYGAIN_TRACK_GAIN", string.IsNullOrEmpty(v) ? null : v); HasUnsavedChanges = true; });
             AddReplayGainItem("ReplayGain Track Peak", xiphComment.GetFirstField("REPLAYGAIN_TRACK_PEAK") ?? "", false, null);
@@ -554,9 +564,9 @@ public partial class PropertiesViewModel : ObservableObject
                 v => { xiphComment.SetField("REPLAYGAIN_ALBUM_GAIN", string.IsNullOrEmpty(v) ? null : v); HasUnsavedChanges = true; });
             AddReplayGainItem("ReplayGain Album Peak", xiphComment.GetFirstField("REPLAYGAIN_ALBUM_PEAK") ?? "", false, null);
         }
-        else if (_audioFile.Tag is TagLib.Mpeg4.AppleTag mp4Tag)
+        else if (_audioFile.Tag is AppleTag mp4Tag)
         {
-            _logger.LogDebug("Loading ReplayGain from iTunes tags");
+            //_logger.LogDebug("Loading ReplayGain from iTunes tags");
             AddReplayGainItem("ReplayGain Track Gain", mp4Tag.GetText("----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN")?.FirstOrDefault() ?? "", true,
                 v => { mp4Tag.SetText("----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN", string.IsNullOrEmpty(v) ? null : [v]); HasUnsavedChanges = true; });
             AddReplayGainItem("ReplayGain Track Peak", mp4Tag.GetText("----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK")?.FirstOrDefault() ?? "", false, null);
@@ -566,7 +576,7 @@ public partial class PropertiesViewModel : ObservableObject
         }
         else
         {
-            _logger.LogDebug("Loading ReplayGain from generic tag format");
+            //_logger.LogDebug("Loading ReplayGain from generic tag format");
             // Fallback for other formats
             AddReplayGainItem("Track Gain", FormatGainToString(tag.ReplayGainTrackGain), false, null);
             AddReplayGainItem("Track Peak", FormatPeakToString(tag.ReplayGainTrackPeak), false, null);
@@ -574,7 +584,7 @@ public partial class PropertiesViewModel : ObservableObject
             AddReplayGainItem("Album Peak", FormatPeakToString(tag.ReplayGainAlbumPeak), false, null);
         }
         
-        _logger.LogDebug("Successfully loaded {Count} ReplayGain items", ReplayGainItems.Count);
+        //_logger.LogDebug("Successfully loaded {Count} ReplayGain items", ReplayGainItems.Count);
     }
 
     private static string FormatPeakToString(double peak)
@@ -601,7 +611,7 @@ public partial class PropertiesViewModel : ObservableObject
 
         if (tag.Pictures is { Length: > 0 })
         {
-            _logger.LogDebug("Loading picture information, found {Count} pictures", tag.Pictures.Length);
+            //_logger.LogDebug("Loading picture information, found {Count} pictures", tag.Pictures.Length);
             AddPictureInfoItem("Picture Count", tag.Pictures.Length.ToString(), false, null);
             AddPictureInfoItem("Picture Mime Type", tag.Pictures[0].MimeType ?? "", false, null);
             AddPictureInfoItem("Picture Type", tag.Pictures[0].Type.ToString(), false, null);
@@ -613,7 +623,7 @@ public partial class PropertiesViewModel : ObservableObject
             _logger.LogDebug("No pictures found in tag data");
         }
         
-        _logger.LogDebug("Successfully loaded {Count} picture info items", PictureInfoItems.Count);
+        //_logger.LogDebug("Successfully loaded {Count} picture info items", PictureInfoItems.Count);
     }
 
     private void AddMetadataItem(string name, string value, bool isEditable, Action<string>? updateAction)
@@ -682,7 +692,7 @@ public partial class PropertiesViewModel : ObservableObject
     {
         try
         {
-            _logger.LogDebug("Applying changes to metadata");
+            //_logger.LogDebug("Applying changes to metadata");
             
             foreach (TagItem item in MetadataItems.Where(i => i.IsEditable))
             {
@@ -704,7 +714,7 @@ public partial class PropertiesViewModel : ObservableObject
             
             _audioFile!.Save();
             HasUnsavedChanges = false;
-            _logger.LogInformation("Successfully applied metadata changes to file");
+            //_logger.LogInformation("Successfully applied metadata changes to file");
             return true;
         }
         catch (Exception ex)
@@ -731,17 +741,17 @@ public partial class PropertiesViewModel : ObservableObject
     private string? GetEncoderInfo(Tag tag)
     {
         // List of possible encoder field names (case-insensitive)
-        string[] possibleKeys = new[]
-        {
+        string[] possibleKeys =
+        [
             "ENCODED_BY", "ENCODEDBY", "ENCODER", "TOOL", "SOFTWARE", 
             "WRITING_LIBRARY", "WRITINGLIBRARY", "ENCODING_TOOL"
-        };
+        ];
 
         // Try different tag formats
         try
         {
             // Vorbis Comments (FLAC, OGG)
-            if (tag is TagLib.Ogg.XiphComment xiphTag)
+            if (tag is XiphComment xiphTag)
             {
                 foreach (string key in possibleKeys)
                 {
@@ -752,7 +762,7 @@ public partial class PropertiesViewModel : ObservableObject
             }
 
             // iTunes tags (MP4, M4A)
-            if (tag is TagLib.Mpeg4.AppleTag mp4Tag)
+            if (tag is AppleTag mp4Tag)
             {
                 foreach (string key in possibleKeys)
                 {
@@ -768,7 +778,7 @@ public partial class PropertiesViewModel : ObservableObject
                 try
                 {
                     // Try TENC frame (safer than general text search)
-                    var tencFrames = id3v2Tag.GetFrames("TENC");
+                    IEnumerable<Frame> tencFrames = id3v2Tag.GetFrames("TENC").ToList();
                     if (tencFrames.Any())
                     {
                         return tencFrames.First().ToString();
@@ -793,7 +803,7 @@ public partial class PropertiesViewModel : ObservableObject
         // Try multiple artist fields in order of preference
         
         // 1. Try Performers array (most common)
-        if (tag.Performers != null && tag.Performers.Length > 0 && !string.IsNullOrWhiteSpace(tag.Performers[0]))
+        if (tag.Performers is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.Performers[0]))
         {
             return string.Join(", ", tag.Performers);
         }
@@ -807,8 +817,8 @@ public partial class PropertiesViewModel : ObservableObject
         // 3. Search for any other artist-related fields via reflection
         try
         {
-            var tagProps = tag.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var prop in tagProps)
+            PropertyInfo[] tagProps = tag.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (PropertyInfo prop in tagProps)
             {
                 if ((prop.Name.Contains("Artist", StringComparison.OrdinalIgnoreCase) || 
                      prop.Name.Contains("Performer", StringComparison.OrdinalIgnoreCase)) &&
@@ -816,17 +826,17 @@ public partial class PropertiesViewModel : ObservableObject
                 {
                     try
                     {
-                        var value = prop.GetValue(tag);
+                        object? value = prop.GetValue(tag);
                         string stringValue = value switch
                         {
                             string s when !string.IsNullOrWhiteSpace(s) => s,
-                            string[] arr when arr.Length > 0 && !string.IsNullOrWhiteSpace(arr[0]) => string.Join(", ", arr),
+                            string[] { Length: > 0 } arr when !string.IsNullOrWhiteSpace(arr[0]) => string.Join(", ", arr),
                             _ => ""
                         };
                         
                         if (!string.IsNullOrWhiteSpace(stringValue))
                         {
-                            _logger.LogDebug("Using artist field {PropertyName}: {Value}", prop.Name, stringValue);
+                            //_logger.LogDebug("Using artist field {PropertyName}: {Value}", prop.Name, stringValue);
                             return stringValue;
                         }
                     }
@@ -850,7 +860,7 @@ public partial class PropertiesViewModel : ObservableObject
         // Try multiple album artist fields in order of preference
         
         // 1. Try AlbumArtists array
-        if (tag.AlbumArtists != null && tag.AlbumArtists.Length > 0 && !string.IsNullOrWhiteSpace(tag.AlbumArtists[0]))
+        if (tag.AlbumArtists is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.AlbumArtists[0]))
         {
             return string.Join(", ", tag.AlbumArtists);
         }
@@ -865,7 +875,7 @@ public partial class PropertiesViewModel : ObservableObject
         string artistField = GetBestArtistField(tag);
         if (!string.IsNullOrWhiteSpace(artistField))
         {
-            _logger.LogDebug("Using artist field as album artist fallback: {Value}", artistField);
+            //_logger.LogDebug("Using artist field as album artist fallback: {Value}", artistField);
             return artistField;
         }
         
@@ -875,8 +885,8 @@ public partial class PropertiesViewModel : ObservableObject
     private bool IsStandardId3v2Frame(string frameId)
     {
         // Standard frames that we handle in core metadata - don't show as custom
-        string[] standardFrames = new[]
-        {
+        string[] standardFrames =
+        [
             "TIT2", // Title
             "TPE1", // Artist/Performer
             "TALB", // Album
@@ -897,12 +907,12 @@ public partial class PropertiesViewModel : ObservableObject
             "APIC", // Picture
             "TENC", // Encoder (handled in Properties)
             "TSSE"  // Software/Encoder settings (handled in Properties)
-        };
+        ];
         
         return standardFrames.Contains(frameId);
     }
 
-    private string ExtractMeaningfulFieldName(string description, string text)
+    private string ExtractMeaningfulFieldName(string description)
     {
         // If description looks like a specific field name, use it
         if (!string.IsNullOrWhiteSpace(description) && 
@@ -946,21 +956,21 @@ public partial class PropertiesViewModel : ObservableObject
         return "USER_TEXT";
     }
 
-    private (string displayName, string value) GetId3v2FrameInfo(TagLib.Id3v2.Frame frame)
+    private (string displayName, string value) GetId3v2FrameInfo(Frame frame)
     {
         try
         {
             // Handle UserTextInformationFrame (TXXX) specially
-            if (frame is TagLib.Id3v2.UserTextInformationFrame userTextFrame)
+            if (frame is UserTextInformationFrame userTextFrame)
             {
                 string description = userTextFrame.Description ?? "USER_TEXT";
                 string text = userTextFrame.Text?.FirstOrDefault() ?? "";
                 
                 // Log detailed info for debugging
-                _logger.LogDebug("TXXX Frame - Description: '{Description}', Text: '{Text}'", description, text);
+                //_logger.LogDebug("TXXX Frame - Description: '{Description}', Text: '{Text}'", description, text);
                 
                 // Try to extract more meaningful field names from the description or text
-                string fieldName = ExtractMeaningfulFieldName(description, text);
+                string fieldName = ExtractMeaningfulFieldName(description);
                 
                 return (fieldName, text);
             }
@@ -968,11 +978,11 @@ public partial class PropertiesViewModel : ObservableObject
             // Handle other frame types
             return frame switch
             {
-                TagLib.Id3v2.TextInformationFrame textFrame => 
+                TextInformationFrame textFrame => 
                     (GetId3v2FrameDisplayName(frame.FrameId.ToString()), textFrame.Text?.FirstOrDefault() ?? ""),
-                TagLib.Id3v2.CommentsFrame commentFrame => 
+                CommentsFrame commentFrame => 
                     (GetId3v2FrameDisplayName(frame.FrameId.ToString()), commentFrame.Text ?? ""),
-                TagLib.Id3v2.UnsynchronisedLyricsFrame lyricsFrame => 
+                UnsynchronisedLyricsFrame lyricsFrame => 
                     (GetId3v2FrameDisplayName(frame.FrameId.ToString()), lyricsFrame.Text ?? ""),
                 _ => (GetId3v2FrameDisplayName(frame.FrameId.ToString()), frame.ToString() ?? "")
             };
