@@ -15,7 +15,24 @@ public partial class EqualizerViewModel : ObservableObject
     private readonly ILogger<EqualizerViewModel> _logger;
     private readonly string _jsonFilePath;
 
-    [ObservableProperty] private static ObservableCollection<Preset> _eqPresets = [];
+//    [ObservableProperty] private static ObservableCollection<Preset> _eqPresets = [];
+    [ObservableProperty] private ObservableCollection<Preset> _eqPresets = [];
+    [ObservableProperty] private Preset? _selectedPreset;
+    [ObservableProperty] private bool _isEqualizerEnabled;
+    [ObservableProperty] private bool _isNewPopupOpen;
+    [ObservableProperty] private string _newPresetName = string.Empty;
+
+    // Band properties
+    [ObservableProperty] private float _band0;
+    [ObservableProperty] private float _band1;
+    [ObservableProperty] private float _band2;
+    [ObservableProperty] private float _band3;
+    [ObservableProperty] private float _band4;
+    [ObservableProperty] private float _band5;
+    [ObservableProperty] private float _band6;
+    [ObservableProperty] private float _band7;
+    [ObservableProperty] private float _band8;
+    [ObservableProperty] private float _band9;
 
     public EqualizerViewModel(AudioEngine audioEngine, ILogger<EqualizerViewModel> logger)
     {
@@ -45,21 +62,10 @@ public partial class EqualizerViewModel : ObservableObject
         }
     }
 
-    [ObservableProperty] private float _band0;
-    [ObservableProperty] private float _band1;
-    [ObservableProperty] private float _band2;
-    [ObservableProperty] private float _band3;
-    [ObservableProperty] private float _band4;
-    [ObservableProperty] private float _band5;
-    [ObservableProperty] private float _band6;
-    [ObservableProperty] private float _band7;
-    [ObservableProperty] private float _band8;
-    [ObservableProperty] private float _band9;
-
-    partial void OnEqPresetsChanged(ObservableCollection<Preset> value)
-    {
-        //_logger.LogInformation($"OnEqPresetChanged: {value}");
-    }
+    //partial void OnEqPresetsChanged(ObservableCollection<Preset> value)
+    //{
+    //    //_logger.LogInformation($"OnEqPresetChanged: {value}");
+    //}
 
     partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
     partial void OnBand1Changed(float value) { _audioEngine.SetBandGain(64.0f, value); }

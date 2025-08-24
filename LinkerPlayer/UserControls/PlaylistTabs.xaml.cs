@@ -221,7 +221,8 @@ public partial class PlaylistTabs
         if (DataContext is PlaylistTabsViewModel playlistTabsViewModel)
         {
             var sharedDataModel = playlistTabsViewModel.SharedDataModel;
-            var propertiesViewModel = new PropertiesViewModel(sharedDataModel); // Inject here
+            var logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
+            var propertiesViewModel = new PropertiesViewModel(sharedDataModel, logger);
             var dialog = new PropertiesWindow
             {
                 DataContext = propertiesViewModel

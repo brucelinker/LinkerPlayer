@@ -217,17 +217,51 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 ValidateAllProperties();
             }
         }
+        catch (TagLib.CorruptFileException ex)
+        {
+            _logger?.LogError(ex, "Corrupted file {FileName}: {Message}", Path, ex.Message);
+            SetFallbackMetadata(raisePropertyChanged);
+        }
+        catch (TagLib.UnsupportedFormatException ex)
+        {
+            _logger?.LogError(ex, "Unsupported format for {FileName}: {Message}", Path, ex.Message);
+            SetFallbackMetadata(raisePropertyChanged);
+        }
+        catch (ArgumentException ex) when (ex.ParamName == "ident" && ex.Message.Contains("identifier must be four bytes long"))
+        {
+            _logger?.LogError(ex, "Invalid metadata identifiers in {FileName}: {Message}", Path, ex.Message);
+            SetFallbackMetadata(raisePropertyChanged);
+        }
         catch (Exception e)
         {
             _logger?.LogError(e, "TagLib.File.Create failed for {FileName}: {Message}", Path, e.Message);
-            Title = ValidateStringLength(FileName, 128, nameof(Title));
-            Album = ValidateStringLength(UnknownString, 128, nameof(Album));
-            Artist = string.Empty;
-            Duration = TimeSpan.FromSeconds(1);
-            if (raisePropertyChanged)
-            {
-                ValidateAllProperties();
-            }
+            SetFallbackMetadata(raisePropertyChanged);
+        }
+    }
+
+    private void SetFallbackMetadata(bool raisePropertyChanged)
+    {
+        Title = ValidateStringLength(FileName, 128, nameof(Title));
+        Album = ValidateStringLength(UnknownString, 128, nameof(Album));
+        Artist = ValidateStringLength(UnknownString, 128, nameof(Artist));
+        Performers = string.Empty;
+        Composers = string.Empty;
+        Copyright = string.Empty;
+        Genres = string.Empty;
+        Comment = string.Empty;
+        Track = 0;
+        TrackCount = 0;
+        Disc = 0;
+        DiscCount = 0;
+        Year = 0;
+        Bitrate = 0;
+        SampleRate = 0;
+        Channels = 0;
+        Duration = TimeSpan.FromSeconds(1);
+        
+        if (raisePropertyChanged)
+        {
+            ValidateAllProperties();
         }
     }
 
@@ -318,45 +352,64 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     public static string GetTagLibFileJson(string filePath)
     {
-        using var file = File.Create(filePath);
-        var tagInfo = new
+        try
         {
-            FileName = file.Name,
-            Tag = new
+            using var file = File.Create(filePath);
+            var tagInfo = new
             {
-                file.Tag.Title,
-                file.Tag.Album,
-                AlbumArtists = file.Tag.AlbumArtists,
-                file.Tag.FirstAlbumArtist,
-                file.Tag.Performers,
-                file.Tag.FirstPerformer,
-                file.Tag.Composers,
-                file.Tag.FirstComposer,
-                file.Tag.Genres,
-                file.Tag.FirstGenre,
-                file.Tag.Year,
-                file.Tag.Track,
-                file.Tag.TrackCount,
-                file.Tag.Disc,
-                file.Tag.DiscCount,
-                file.Tag.Comment,
-                file.Tag.Copyright,
-                file.Tag.Lyrics,
-                file.Tag.BeatsPerMinute,
-                file.Tag.Conductor,
-                file.Tag.Grouping,
-                file.Tag.Pictures
-            },
-            Properties = new
-            {
-                file.Properties.AudioBitrate,
-                file.Properties.AudioSampleRate,
-                file.Properties.AudioChannels,
-                file.Properties.Duration,
-                file.Properties.MediaTypes,
-                file.Properties.Description
-            }
-        };
-        return System.Text.Json.JsonSerializer.Serialize(tagInfo, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                FileName = file.Name,
+                Tag = new
+                {
+                    file.Tag.Title,
+                    file.Tag.Album,
+                    AlbumArtists = file.Tag.AlbumArtists,
+                    file.Tag.FirstAlbumArtist,
+                    file.Tag.Performers,
+                    file.Tag.FirstPerformer,
+                    file.Tag.Composers,
+                    file.Tag.FirstComposer,
+                    file.Tag.Genres,
+                    file.Tag.FirstGenre,
+                    file.Tag.Year,
+                    file.Tag.Track,
+                    file.Tag.TrackCount,
+                    file.Tag.Disc,
+                    file.Tag.DiscCount,
+                    file.Tag.Comment,
+                    file.Tag.Copyright,
+                    file.Tag.Lyrics,
+                    file.Tag.BeatsPerMinute,
+                    file.Tag.Conductor,
+                    file.Tag.Grouping,
+                    file.Tag.Pictures
+                },
+                Properties = new
+                {
+                    file.Properties.AudioBitrate,
+                    file.Properties.AudioSampleRate,
+                    file.Properties.AudioChannels,
+                    file.Properties.Duration,
+                    file.Properties.MediaTypes,
+                    file.Properties.Description
+                }
+            };
+            return System.Text.Json.JsonSerializer.Serialize(tagInfo, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (TagLib.CorruptFileException ex)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Corrupted file: {ex.Message}" });
+        }
+        catch (TagLib.UnsupportedFormatException ex)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Unsupported format: {ex.Message}" });
+        }
+        catch (ArgumentException ex) when (ex.ParamName == "ident" && ex.Message.Contains("identifier must be four bytes long"))
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Invalid metadata identifiers: {ex.Message}" });
+        }
+        catch (Exception ex)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Error reading file: {ex.Message}" });
+        }
     }
 }
