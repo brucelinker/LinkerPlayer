@@ -30,6 +30,7 @@ public partial class PropertiesViewModel : ObservableObject
     public ObservableCollection<TagItem> PropertyItems { get; } = [];
     public ObservableCollection<TagItem> ReplayGainItems { get; } = [];
     public ObservableCollection<TagItem> PictureInfoItems { get; } = [];
+    [ObservableProperty] private TagItem _lyricsItem = new();
 
     public event EventHandler<bool>? CloseRequested;
 
@@ -130,7 +131,7 @@ public partial class PropertiesViewModel : ObservableObject
             // Check if file extension is supported by TagLib
             string extension = Path.GetExtension(path).ToLowerInvariant();
             string[] supportedExtensions = [".mp3", ".flac", ".ogg", ".opus", ".m4a", ".mp4", ".aac", ".wma", ".wav", ".aiff", ".ape", ".wv"];
-            
+
             if (!supportedExtensions.Contains(extension))
             {
                 _logger.LogWarning("Unsupported file format: {Extension} for file: {Path}", extension, path);
@@ -141,7 +142,6 @@ public partial class PropertiesViewModel : ObservableObject
             try
             {
                 _audioFile = File.Create(path);
-                //_logger.LogDebug("Successfully created TagLib file for: {Path}", path);
             }
             catch (TagLib.CorruptFileException ex)
             {
@@ -164,6 +164,7 @@ public partial class PropertiesViewModel : ObservableObject
             PropertyItems.Clear();
             ReplayGainItems.Clear();
             PictureInfoItems.Clear();
+            LyricsItem.Value = "[ No lyrics available. ]";
 
             // Load data with clean separation of concerns
             try
@@ -211,6 +212,15 @@ public partial class PropertiesViewModel : ObservableObject
                 _logger.LogError(ex, "Error loading picture information for file: {Path} - {Message}", path, ex.Message);
             }
 
+            try
+            {
+                LoadLyricsItem();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading lyrics for file: {Path} - {Message}", path, ex.Message);
+            }
+
             HasUnsavedChanges = false;
             _logger.LogInformation("Successfully loaded track data for: {Path}", path);
         }
@@ -229,49 +239,49 @@ public partial class PropertiesViewModel : ObservableObject
         }
 
         Tag tag = _audioFile.Tag;
-        
-        // EXPLICIT STANDARD METADATA FIELDS - Foobar2000 style
-        // These are the core tags that every audio file can have
+
         AddMetadataItem("Title", tag.Title ?? "", true, v => { tag.Title = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
-        
+
         // Smart artist field selection - use the first non-empty field
         string artistValue = GetBestArtistField(tag);
-        AddMetadataItem("Artist", artistValue, true, v => { 
+        AddMetadataItem("Artist", artistValue, true, v =>
+        {
             tag.Performers = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
-            HasUnsavedChanges = true; 
+            HasUnsavedChanges = true;
         });
-        
+
         AddMetadataItem("Album", tag.Album ?? "", true, v => { tag.Album = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
-        
+
         // Smart album artist field selection
         string albumArtistValue = GetBestAlbumArtistField(tag);
-        AddMetadataItem("Album Artist", albumArtistValue, true, v => { 
+        AddMetadataItem("Album Artist", albumArtistValue, true, v =>
+        {
             tag.AlbumArtists = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
-            HasUnsavedChanges = true; 
+            HasUnsavedChanges = true;
         });
-        
-        AddMetadataItem("Year", tag.Year > 0 ? tag.Year.ToString() : "", true, v => { tag.Year = uint.TryParse(v, out uint year) ? year : 0; HasUnsavedChanges = true; });
-        AddMetadataItem("Genre", tag.FirstGenre ?? string.Join(", ", tag.Genres ?? []), true, v => { tag.Genres = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
-        AddMetadataItem("Composer", tag.FirstComposer ?? string.Join(", ", tag.Composers ?? []), true, v => { tag.Composers = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
+
         AddMetadataItem("Track Number", tag.Track > 0 ? tag.Track.ToString() : "", true, v => { tag.Track = uint.TryParse(v, out uint track) ? track : 0; HasUnsavedChanges = true; });
         AddMetadataItem("Total Tracks", tag.TrackCount > 0 ? tag.TrackCount.ToString() : "", true, v => { tag.TrackCount = uint.TryParse(v, out uint count) ? count : 0; HasUnsavedChanges = true; });
         AddMetadataItem("Disc Number", tag.Disc > 0 ? tag.Disc.ToString() : "", true, v => { tag.Disc = uint.TryParse(v, out uint disc) ? disc : 0; HasUnsavedChanges = true; });
         AddMetadataItem("Total Discs", tag.DiscCount > 0 ? tag.DiscCount.ToString() : "", true, v => { tag.DiscCount = uint.TryParse(v, out uint count) ? count : 0; HasUnsavedChanges = true; });
+
+        AddMetadataItem("Year", tag.Year > 0 ? tag.Year.ToString() : "", true, v => { tag.Year = uint.TryParse(v, out uint year) ? year : 0; HasUnsavedChanges = true; });
+        AddMetadataItem("Genre", tag.FirstGenre ?? string.Join(", ", tag.Genres ?? []), true, v => { tag.Genres = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
         AddMetadataItem("Comment", tag.Comment ?? "", true, v => { tag.Comment = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
+
+        AddMetadataItem("Composer", tag.FirstComposer ?? string.Join(", ", tag.Composers ?? []), true, v => { tag.Composers = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
         AddMetadataItem("Copyright", tag.Copyright ?? "", true, v => { tag.Copyright = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         AddMetadataItem("Lyrics", tag.Lyrics ?? "", true, v => { tag.Lyrics = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         AddMetadataItem("Beats Per Minute", tag.BeatsPerMinute > 0 ? tag.BeatsPerMinute.ToString() : "", true, v => { tag.BeatsPerMinute = uint.TryParse(v, out uint bpm) ? bpm : 0; HasUnsavedChanges = true; });
         AddMetadataItem("Conductor", tag.Conductor ?? "", true, v => { tag.Conductor = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         AddMetadataItem("Grouping", tag.Grouping ?? "", true, v => { tag.Grouping = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         AddMetadataItem("Publisher", tag.Publisher ?? "", true, v => { tag.Publisher = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
-        
+
         // Only show ISRC if it has a value (most files don't have this)
         if (!string.IsNullOrWhiteSpace(tag.ISRC))
         {
             AddMetadataItem("ISRC", tag.ISRC, true, v => { tag.ISRC = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         }
-
-        //_logger.LogDebug("Successfully loaded {Count} core metadata items", MetadataItems.Count);
     }
 
     private void LoadCustomMetadata()
@@ -286,8 +296,8 @@ public partial class PropertiesViewModel : ObservableObject
         HashSet<string> standardFields = new(StringComparer.OrdinalIgnoreCase)
         {
             "TITLE", "ARTIST", "ALBUM", "ALBUMARTIST", "DATE", "YEAR", "GENRE", "COMPOSER",
-            "TRACKNUMBER", "TRACK", "TOTALTRACKS", "TRACKCOUNT", "DISCNUMBER", "DISC", 
-            "TOTALDISCS", "DISCCOUNT", "COMMENT", "COPYRIGHT", "LYRICS", "BPM", 
+            "TRACKNUMBER", "TRACK", "TOTALTRACKS", "TRACKCOUNT", "DISCNUMBER", "DISC",
+            "TOTALDISCS", "DISCCOUNT", "COMMENT", "COPYRIGHT", "LYRICS", "BPM",
             "BEATSPERMINUTE", "CONDUCTOR", "GROUPING", "PUBLISHER", "ISRC",
             // Also filter out technical fields that belong in Properties
             "ENCODER", "ENCODED-BY", "ENCODEDBY", "TOOL", "SOFTWARE", "ENCODING_TOOL",
@@ -297,9 +307,9 @@ public partial class PropertiesViewModel : ObservableObject
 
         // Use a dictionary to collect all custom fields with their values
         Dictionary<string, List<string>> customFields = new(StringComparer.OrdinalIgnoreCase);
-        
+
         //_logger.LogInformation("Main tag type: {TagType}, Available tag types: {TagTypes}", 
-            //_audioFile.Tag.GetType().Name, _audioFile.TagTypes);
+        //_audioFile.Tag.GetType().Name, _audioFile.TagTypes);
 
         try
         {
@@ -311,7 +321,7 @@ public partial class PropertiesViewModel : ObservableObject
                 {
                     string value = xiphTag.GetFirstField(field) ?? "";
                     //_logger.LogDebug("Found Vorbis field: {Field} = {Value}", field, value);
-                    
+
                     if (!string.IsNullOrWhiteSpace(value) && !standardFields.Contains(field))
                     {
                         if (!customFields.ContainsKey(field))
@@ -319,7 +329,6 @@ public partial class PropertiesViewModel : ObservableObject
                             customFields[field] = new List<string>();
                         }
                         customFields[field].Add(value);
-                        //_logger.LogDebug("Collected custom Vorbis field: {Field} = {Value}", field, value);
                     }
                     else if (standardFields.Contains(field))
                     {
@@ -342,22 +351,18 @@ public partial class PropertiesViewModel : ObservableObject
             // MP4/M4A/AAC (iTunes-style tags) - get the specific tag directly
             if (_audioFile.GetTag(TagLib.TagTypes.Apple, false) is AppleTag mp4Tag)
             {
-                //_logger.LogDebug("Found Apple tag");
-                
                 // Use reflection to find the internal text dictionary
                 IEnumerable<FieldInfo> textFields = mp4Tag.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
                     .Where(f => f.FieldType == typeof(Dictionary<string, string[]>));
-                
+
                 foreach (FieldInfo field in textFields)
                 {
                     if (field.GetValue(mp4Tag) is Dictionary<string, string[]> dict)
                     {
-                        //_logger.LogDebug("Found MP4 dictionary with {Count} fields", dict.Count);
                         foreach (KeyValuePair<string, string[]> kvp in dict)
                         {
                             string value = kvp.Value.FirstOrDefault() ?? "";
-                            //_logger.LogDebug("Found MP4 field: {Field} = {Value}", kvp.Key, value);
-                            
+                         
                             if (!string.IsNullOrWhiteSpace(value))
                             {
                                 // Clean up iTunes field names and check if it's standard
@@ -369,7 +374,6 @@ public partial class PropertiesViewModel : ObservableObject
                                         customFields[fieldName] = new List<string>();
                                     }
                                     customFields[fieldName].Add(value);
-                                    //_logger.LogDebug("Collected custom MP4 field: {Field} = {Value}", fieldName, value);
                                 }
                                 else
                                 {
@@ -395,50 +399,43 @@ public partial class PropertiesViewModel : ObservableObject
             // MP3 (ID3v2) - get the specific tag directly
             if (_audioFile.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3v2Tag)
             {
-                //_logger.LogDebug("Found ID3v2 tag, loading custom fields (enhanced safe mode)");
-                
                 try
                 {
                     // Try to safely enumerate through all frames
                     Frame[] frames = id3v2Tag.GetFrames().ToArray();
-                    //_logger.LogDebug("Found {Count} ID3v2 frames", frames.Length);
-                    
+
                     foreach (Frame frame in frames)
                     {
                         try
                         {
                             string frameId = frame.FrameId.ToString();
-                            //_logger.LogDebug("Processing ID3v2 frame: {FrameId}", frameId);
-                            
+
                             // Skip standard frames that we handle in core metadata
                             if (IsStandardId3v2Frame(frameId))
                             {
-                                //_logger.LogDebug("Skipped standard ID3v2 frame: {FrameId}", frameId);
                                 continue;
                             }
-                            
+
                             // Get both display name and value from the frame
                             (string displayName, string frameValue) = GetId3v2FrameInfo(frame);
                             if (!string.IsNullOrWhiteSpace(frameValue))
                             {
                                 // Use the actual field description for TXXX frames, fallback to converted frame ID
-                                string fieldName = displayName.Equals("USER_TEXT", StringComparison.OrdinalIgnoreCase) 
+                                string fieldName = displayName.Equals("USER_TEXT", StringComparison.OrdinalIgnoreCase)
                                     ? frameId // This shouldn't happen with new logic, but keep as fallback
                                     : displayName;
-                                
+
                                 // Additional check: filter out standard fields by name (important for TXXX frames)
                                 if (standardFields.Contains(fieldName))
                                 {
-                                    //_logger.LogDebug("Skipped standard ID3v2 field by name: {Field}", fieldName);
                                     continue;
                                 }
-                                
+
                                 if (!customFields.ContainsKey(fieldName))
                                 {
                                     customFields[fieldName] = new List<string>();
                                 }
                                 customFields[fieldName].Add(frameValue);
-                                //_logger.LogDebug("Collected custom ID3v2 field: {Field} = {Value}", fieldName, frameValue);
                             }
                         }
                         catch (Exception ex)
@@ -463,25 +460,19 @@ public partial class PropertiesViewModel : ObservableObject
         }
 
         // Now add the collected custom fields to the UI, combining multiple values with semicolons
-        //int customFieldsAdded = 0;
         foreach (KeyValuePair<string, List<string>> kvp in customFields.OrderBy(x => x.Key))
         {
             string fieldName = kvp.Key;
             List<string> values = kvp.Value;
-            
+
             // Remove duplicates and combine with semicolons
             string combinedValue = string.Join("; ", values.Distinct().Where(v => !string.IsNullOrWhiteSpace(v)));
-            
+
             if (!string.IsNullOrWhiteSpace(combinedValue))
             {
                 AddMetadataItem($"<{fieldName}>", combinedValue, false, null);
-                //customFieldsAdded++;
-                //_logger.LogInformation("Added combined custom field: <{Field}> = {Value}", fieldName, combinedValue);
             }
         }
-
-        //_logger.LogInformation("Successfully loaded {Count} custom metadata fields (combined from {TotalValues} individual values). Available tag types: {TagTypes}", 
-            //customFieldsAdded, customFields.Values.Sum(v => v.Count), _audioFile.TagTypes);
     }
 
     private void LoadFileProperties()
@@ -531,8 +522,6 @@ public partial class PropertiesViewModel : ObservableObject
         {
             _logger.LogDebug(ex, "Error reading encoder info: {Message}", ex.Message);
         }
-
-        //_logger.LogDebug("Successfully loaded {Count} file properties", PropertyItems.Count);
     }
 
     private void LoadReplayGain()
@@ -548,16 +537,12 @@ public partial class PropertiesViewModel : ObservableObject
         // Format-specific ReplayGain handling
         if (_audioFile.Tag is TagLib.Id3v2.Tag)
         {
-            //_logger.LogDebug("Loading ReplayGain from ID3v2 tag");
-            // For now, skip the problematic ID3v2 ReplayGain reading
             AddReplayGainItem("ReplayGain Track Gain", "", false, null);
             AddReplayGainItem("ReplayGain Track Peak", "", false, null);
-            //_logger.LogDebug("Skipped ID3v2 ReplayGain reading to avoid corruption issues");
         }
         else if (_audioFile.Tag is XiphComment xiphComment)
         {
-            //_logger.LogDebug("Loading ReplayGain from Vorbis comments");
-            AddReplayGainItem("ReplayGain Track Gain", xiphComment.GetFirstField("REPLAYGAIN_TRACK_GAIN") ?? "", true, 
+            AddReplayGainItem("ReplayGain Track Gain", xiphComment.GetFirstField("REPLAYGAIN_TRACK_GAIN") ?? "", true,
                 v => { xiphComment.SetField("REPLAYGAIN_TRACK_GAIN", string.IsNullOrEmpty(v) ? null : v); HasUnsavedChanges = true; });
             AddReplayGainItem("ReplayGain Track Peak", xiphComment.GetFirstField("REPLAYGAIN_TRACK_PEAK") ?? "", false, null);
             AddReplayGainItem("ReplayGain Album Gain", xiphComment.GetFirstField("REPLAYGAIN_ALBUM_GAIN") ?? "", true,
@@ -566,7 +551,6 @@ public partial class PropertiesViewModel : ObservableObject
         }
         else if (_audioFile.Tag is AppleTag mp4Tag)
         {
-            //_logger.LogDebug("Loading ReplayGain from iTunes tags");
             AddReplayGainItem("ReplayGain Track Gain", mp4Tag.GetText("----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN")?.FirstOrDefault() ?? "", true,
                 v => { mp4Tag.SetText("----:com.apple.iTunes:REPLAYGAIN_TRACK_GAIN", string.IsNullOrEmpty(v) ? null : [v]); HasUnsavedChanges = true; });
             AddReplayGainItem("ReplayGain Track Peak", mp4Tag.GetText("----:com.apple.iTunes:REPLAYGAIN_TRACK_PEAK")?.FirstOrDefault() ?? "", false, null);
@@ -576,15 +560,11 @@ public partial class PropertiesViewModel : ObservableObject
         }
         else
         {
-            //_logger.LogDebug("Loading ReplayGain from generic tag format");
-            // Fallback for other formats
             AddReplayGainItem("Track Gain", FormatGainToString(tag.ReplayGainTrackGain), false, null);
             AddReplayGainItem("Track Peak", FormatPeakToString(tag.ReplayGainTrackPeak), false, null);
             AddReplayGainItem("Album Gain", FormatGainToString(tag.ReplayGainAlbumGain), false, null);
             AddReplayGainItem("Album Peak", FormatPeakToString(tag.ReplayGainAlbumPeak), false, null);
         }
-        
-        //_logger.LogDebug("Successfully loaded {Count} ReplayGain items", ReplayGainItems.Count);
     }
 
     private static string FormatPeakToString(double peak)
@@ -611,7 +591,6 @@ public partial class PropertiesViewModel : ObservableObject
 
         if (tag.Pictures is { Length: > 0 })
         {
-            //_logger.LogDebug("Loading picture information, found {Count} pictures", tag.Pictures.Length);
             AddPictureInfoItem("Picture Count", tag.Pictures.Length.ToString(), false, null);
             AddPictureInfoItem("Picture Mime Type", tag.Pictures[0].MimeType ?? "", false, null);
             AddPictureInfoItem("Picture Type", tag.Pictures[0].Type.ToString(), false, null);
@@ -622,8 +601,46 @@ public partial class PropertiesViewModel : ObservableObject
         {
             _logger.LogDebug("No pictures found in tag data");
         }
-        
-        //_logger.LogDebug("Successfully loaded {Count} picture info items", PictureInfoItems.Count);
+    }
+
+    private void LoadLyricsItem()
+    {
+        if (_audioFile?.Tag == null)
+        {
+            _logger.LogWarning("No tag data found for lyrics information");
+            return;
+        }
+
+        Tag? tag = _audioFile.Tag;
+        string lyricsValue = tag.Lyrics ?? "[ No lyrics available. ]";
+
+        AddLyricsItem("Lyrics", lyricsValue, true, v => 
+        { 
+            // Don't update if the value is the placeholder text
+            if (v == "[ No lyrics available. ]")
+                tag.Lyrics = null;
+            else
+                tag.Lyrics = string.IsNullOrEmpty(v) ? null : v; 
+            HasUnsavedChanges = true; 
+        });
+    }
+
+    private void AddLyricsItem(string name, string value, bool isEditable, Action<string>? updateAction)
+    {
+        TagItem item = new()
+        {
+            Name = name,
+            Value = value,
+            IsEditable = isEditable,
+            UpdateAction = isEditable ? updateAction : null
+        };
+
+        if (isEditable)
+        {
+            item.PropertyChanged += TagItem_PropertyChanged!;
+        }
+
+        LyricsItem = item;
     }
 
     private void AddMetadataItem(string name, string value, bool isEditable, Action<string>? updateAction)
@@ -692,8 +709,6 @@ public partial class PropertiesViewModel : ObservableObject
     {
         try
         {
-            //_logger.LogDebug("Applying changes to metadata");
-            
             foreach (TagItem item in MetadataItems.Where(i => i.IsEditable))
             {
                 if (string.IsNullOrWhiteSpace(item.Value) &&
@@ -705,16 +720,22 @@ public partial class PropertiesViewModel : ObservableObject
                 }
                 item.UpdateAction?.Invoke(item.Value);
             }
-            
+
             // Apply ReplayGain changes too
             foreach (TagItem item in ReplayGainItems.Where(i => i.IsEditable))
             {
                 item.UpdateAction?.Invoke(item.Value);
             }
-            
+
+            // Apply lyrics changes
+            if (LyricsItem.IsEditable)
+            {
+                LyricsItem.UpdateAction?.Invoke(LyricsItem.Value);
+            }
+
             _audioFile!.Save();
             HasUnsavedChanges = false;
-            //_logger.LogInformation("Successfully applied metadata changes to file");
+
             return true;
         }
         catch (Exception ex)
@@ -743,7 +764,7 @@ public partial class PropertiesViewModel : ObservableObject
         // List of possible encoder field names (case-insensitive)
         string[] possibleKeys =
         [
-            "ENCODED_BY", "ENCODEDBY", "ENCODER", "TOOL", "SOFTWARE", 
+            "ENCODED_BY", "ENCODEDBY", "ENCODER", "TOOL", "SOFTWARE",
             "WRITING_LIBRARY", "WRITINGLIBRARY", "ENCODING_TOOL"
         ];
 
@@ -801,26 +822,26 @@ public partial class PropertiesViewModel : ObservableObject
     private string GetBestArtistField(Tag tag)
     {
         // Try multiple artist fields in order of preference
-        
+
         // 1. Try Performers array (most common)
         if (tag.Performers is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.Performers[0]))
         {
             return string.Join(", ", tag.Performers);
         }
-        
+
         // 2. Try FirstPerformer
         if (!string.IsNullOrWhiteSpace(tag.FirstPerformer))
         {
             return tag.FirstPerformer;
         }
-        
+
         // 3. Search for any other artist-related fields via reflection
         try
         {
             PropertyInfo[] tagProps = tag.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
             foreach (PropertyInfo prop in tagProps)
             {
-                if ((prop.Name.Contains("Artist", StringComparison.OrdinalIgnoreCase) || 
+                if ((prop.Name.Contains("Artist", StringComparison.OrdinalIgnoreCase) ||
                      prop.Name.Contains("Performer", StringComparison.OrdinalIgnoreCase)) &&
                     !prop.Name.StartsWith("First") && !prop.Name.StartsWith("Joined"))
                 {
@@ -833,10 +854,9 @@ public partial class PropertiesViewModel : ObservableObject
                             string[] { Length: > 0 } arr when !string.IsNullOrWhiteSpace(arr[0]) => string.Join(", ", arr),
                             _ => ""
                         };
-                        
+
                         if (!string.IsNullOrWhiteSpace(stringValue))
                         {
-                            //_logger.LogDebug("Using artist field {PropertyName}: {Value}", prop.Name, stringValue);
                             return stringValue;
                         }
                     }
@@ -851,34 +871,33 @@ public partial class PropertiesViewModel : ObservableObject
         {
             _logger.LogDebug(ex, "Error searching for artist fields: {Message}", ex.Message);
         }
-        
+
         return "";
     }
 
     private string GetBestAlbumArtistField(Tag tag)
     {
         // Try multiple album artist fields in order of preference
-        
+
         // 1. Try AlbumArtists array
         if (tag.AlbumArtists is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.AlbumArtists[0]))
         {
             return string.Join(", ", tag.AlbumArtists);
         }
-        
+
         // 2. Try FirstAlbumArtist
         if (!string.IsNullOrWhiteSpace(tag.FirstAlbumArtist))
         {
             return tag.FirstAlbumArtist;
         }
-        
+
         // 3. Fall back to regular artist if no album artist is specified
         string artistField = GetBestArtistField(tag);
         if (!string.IsNullOrWhiteSpace(artistField))
         {
-            //_logger.LogDebug("Using artist field as album artist fallback: {Value}", artistField);
             return artistField;
         }
-        
+
         return "";
     }
 
@@ -908,14 +927,14 @@ public partial class PropertiesViewModel : ObservableObject
             "TENC", // Encoder (handled in Properties)
             "TSSE"  // Software/Encoder settings (handled in Properties)
         ];
-        
+
         return standardFrames.Contains(frameId);
     }
 
     private string ExtractMeaningfulFieldName(string description)
     {
         // If description looks like a specific field name, use it
-        if (!string.IsNullOrWhiteSpace(description) && 
+        if (!string.IsNullOrWhiteSpace(description) &&
             !description.Equals("USER_TEXT", StringComparison.OrdinalIgnoreCase))
         {
             // Handle common ID3v2 patterns
@@ -923,19 +942,19 @@ public partial class PropertiesViewModel : ObservableObject
             {
                 // Instrument/role mappings - try to match what FLAC shows
                 var d when d.Contains("BASS", StringComparison.OrdinalIgnoreCase) => "BASS GUITAR",
-                var d when d.Contains("DRUM", StringComparison.OrdinalIgnoreCase) => "DRUMS", 
+                var d when d.Contains("DRUM", StringComparison.OrdinalIgnoreCase) => "DRUMS",
                 var d when d.Contains("GUITAR", StringComparison.OrdinalIgnoreCase) => "GUITAR",
                 var d when d.Contains("VOCAL", StringComparison.OrdinalIgnoreCase) => "VOCALS",
                 var d when d.Contains("SYNTHESIZER", StringComparison.OrdinalIgnoreCase) => "SYNTHESIZER",
                 var d when d.Contains("CLAP", StringComparison.OrdinalIgnoreCase) => "CLAPPING",
-                
+
                 // Role mappings
                 var d when d.Contains("ENGINEER", StringComparison.OrdinalIgnoreCase) => "ENGINEER",
-                var d when d.Contains("PRODUCER", StringComparison.OrdinalIgnoreCase) => "PRODUCER", 
+                var d when d.Contains("PRODUCER", StringComparison.OrdinalIgnoreCase) => "PRODUCER",
                 var d when d.Contains("MIXER", StringComparison.OrdinalIgnoreCase) => "MIX ENGINEER",
                 var d when d.Contains("MASTERING", StringComparison.OrdinalIgnoreCase) => "MASTERING ENGINEER",
                 var d when d.Contains("ASSISTANT", StringComparison.OrdinalIgnoreCase) => "ASSISTANT MIXER",
-                
+
                 // Other common fields
                 var d when d.Contains("LYRICIST", StringComparison.OrdinalIgnoreCase) => "LYRICIST",
                 var d when d.Contains("COMPOSER", StringComparison.OrdinalIgnoreCase) => "COMPOSER",
@@ -946,12 +965,12 @@ public partial class PropertiesViewModel : ObservableObject
                 var d when d.Contains("WORK", StringComparison.OrdinalIgnoreCase) => "WORK",
                 var d when d.Contains("ENCODER", StringComparison.OrdinalIgnoreCase) => "ENCODERSETTINGS",
                 var d when d.Contains("REPLAYGAIN", StringComparison.OrdinalIgnoreCase) => description.ToUpper(),
-                
+
                 // Default: clean up the description
                 _ => description.ToUpper().Replace(" ", "_")
             };
         }
-        
+
         // Fallback to generic name
         return "USER_TEXT";
     }
@@ -965,24 +984,21 @@ public partial class PropertiesViewModel : ObservableObject
             {
                 string description = userTextFrame.Description ?? "USER_TEXT";
                 string text = userTextFrame.Text?.FirstOrDefault() ?? "";
-                
-                // Log detailed info for debugging
-                //_logger.LogDebug("TXXX Frame - Description: '{Description}', Text: '{Text}'", description, text);
-                
+
                 // Try to extract more meaningful field names from the description or text
                 string fieldName = ExtractMeaningfulFieldName(description);
-                
+
                 return (fieldName, text);
             }
-            
+
             // Handle other frame types
             return frame switch
             {
-                TextInformationFrame textFrame => 
+                TextInformationFrame textFrame =>
                     (GetId3v2FrameDisplayName(frame.FrameId.ToString()), textFrame.Text?.FirstOrDefault() ?? ""),
-                CommentsFrame commentFrame => 
+                CommentsFrame commentFrame =>
                     (GetId3v2FrameDisplayName(frame.FrameId.ToString()), commentFrame.Text ?? ""),
-                UnsynchronisedLyricsFrame lyricsFrame => 
+                UnsynchronisedLyricsFrame lyricsFrame =>
                     (GetId3v2FrameDisplayName(frame.FrameId.ToString()), lyricsFrame.Text ?? ""),
                 _ => (GetId3v2FrameDisplayName(frame.FrameId.ToString()), frame.ToString() ?? "")
             };
@@ -1000,7 +1016,7 @@ public partial class PropertiesViewModel : ObservableObject
         return frameId switch
         {
             "TXXX" => "USER_TEXT",
-            "TPE4" => "MODIFIER", 
+            "TPE4" => "MODIFIER",
             "TOPE" => "ORIGINAL_PERFORMER",
             "TIT3" => "SUBTITLE",
             "TKEY" => "INITIAL_KEY",
