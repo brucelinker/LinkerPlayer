@@ -240,6 +240,7 @@
             IsReadOnly="True"
             ItemsSource="{Binding Tracks}"
             Loaded="DataGrid_Loaded"
+            MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             RowHeaderWidth="0"
             RowHeight="20"
             RowStyle="{StaticResource SharedDataGridRowStyle}"
