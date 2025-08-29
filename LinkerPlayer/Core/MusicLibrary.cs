@@ -363,6 +363,10 @@ public class MusicLibrary
             List<MediaFile> orphanedTracks = await context.Tracks
                 .Where(t => !referencedTrackIds.Contains(t.Id))
                 .ToListAsync();
+            
+            // Check if there are any tracks left in the database
+            var totalTracksCount = await context.Tracks.CountAsync();
+            
             if (orphanedTracks.Any())
             {
                 // Remove MetadataCache entries for orphaned tracks
@@ -372,6 +376,18 @@ public class MusicLibrary
                 context.Tracks.RemoveRange(orphanedTracks);
                 await context.SaveChangesAsync();
                 _logger.LogInformation($"Removed {orphanedTracks.Count} orphaned tracks and {orphanedPaths.Count} metadata cache entries from database");
+            }
+            
+            // If no tracks exist at all, clean up all metadata cache entries
+            if (totalTracksCount == 0)
+            {
+                var allCacheEntries = await context.MetadataCache.ToListAsync();
+                if (allCacheEntries.Any())
+                {
+                    context.MetadataCache.RemoveRange(allCacheEntries);
+                    await context.SaveChangesAsync();
+                    _logger.LogInformation($"Removed all {allCacheEntries.Count} metadata cache entries since no tracks exist in database");
+                }
             }
         }
         catch (Exception ex)
@@ -638,6 +654,31 @@ public class MusicLibrary
             .Where(t => t != null)
             .Select(t => t!)
             .ToList();
+    }
+
+    public async Task ClearAllMetadataCacheAsync()
+    {
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            var allCacheEntries = await context.MetadataCache.ToListAsync();
+            if (allCacheEntries.Any())
+            {
+                context.MetadataCache.RemoveRange(allCacheEntries);
+                await context.SaveChangesAsync();
+                _metadataCache.Clear(); // Also clear the in-memory cache
+                _logger.LogInformation($"Cleared all {allCacheEntries.Count} metadata cache entries from database and memory");
+            }
+            else
+            {
+                _logger.LogInformation("No metadata cache entries to clear");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear metadata cache");
+            throw;
+        }
     }
 
     public void ClearPlayState()

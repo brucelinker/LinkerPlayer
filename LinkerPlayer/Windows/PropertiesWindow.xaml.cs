@@ -8,7 +8,7 @@ namespace LinkerPlayer.Windows;
 /// <summary>
 /// Interaction logic for PropertiesWindow.xaml
 /// </summary>
-public partial class PropertiesWindow : Window
+public partial class PropertiesWindow
 {
     public PropertiesWindow()
     {
@@ -18,7 +18,7 @@ public partial class PropertiesWindow : Window
         this.Loaded += PropertiesWindow_Loaded;
     }
 
-    private const int SCROLL_AMOUNT = 20; // At the top of the class
+    private const int ScrollAmount = 20; // At the top of the class
 
     private void PropertiesWindow_Loaded(object sender, RoutedEventArgs e)
     {
@@ -112,12 +112,12 @@ public partial class PropertiesWindow : Window
                 if (e.Delta > 0)
                 {
                     // Scroll up
-                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - SCROLL_AMOUNT);
+                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - ScrollAmount);
                 }
                 else
                 {
                     // Scroll down
-                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset + SCROLL_AMOUNT);
+                    scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset + ScrollAmount);
                 }
             }
         }
