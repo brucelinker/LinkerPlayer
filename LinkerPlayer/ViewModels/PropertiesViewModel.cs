@@ -22,6 +22,7 @@ namespace LinkerPlayer.ViewModels;
 public partial class PropertiesViewModel : ObservableObject
 {
     private readonly SharedDataModel _sharedDataModel;
+    private readonly IMediaFileHelper _mediaFileHelper;
     private readonly ILogger<PropertiesViewModel> _logger;
     private File? _audioFile;
     [ObservableProperty] private bool hasUnsavedChanges;
@@ -34,9 +35,10 @@ public partial class PropertiesViewModel : ObservableObject
 
     public event EventHandler<bool>? CloseRequested;
 
-    public PropertiesViewModel(SharedDataModel sharedDataModel, ILogger<PropertiesViewModel> logger)
+    public PropertiesViewModel(SharedDataModel sharedDataModel, IMediaFileHelper mediaFileHelper, ILogger<PropertiesViewModel> logger)
     {
         _sharedDataModel = sharedDataModel;
+        _mediaFileHelper = mediaFileHelper;
         _logger = logger;
 
         _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
@@ -243,7 +245,7 @@ public partial class PropertiesViewModel : ObservableObject
         AddMetadataItem("Title", tag.Title ?? "", true, v => { tag.Title = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
 
         // Smart artist field selection - use the first non-empty field
-        string artistValue = GetBestArtistField(tag);
+        string artistValue = _mediaFileHelper.GetBestArtistField(tag);
         AddMetadataItem("Artist", artistValue, true, v =>
         {
             tag.Performers = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
@@ -253,7 +255,7 @@ public partial class PropertiesViewModel : ObservableObject
         AddMetadataItem("Album", tag.Album ?? "", true, v => { tag.Album = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
 
         // Smart album artist field selection
-        string albumArtistValue = GetBestAlbumArtistField(tag);
+        string albumArtistValue = _mediaFileHelper.GetBestAlbumArtistField(tag);
         AddMetadataItem("Album Artist", albumArtistValue, true, v =>
         {
             tag.AlbumArtists = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
@@ -819,87 +821,87 @@ public partial class PropertiesViewModel : ObservableObject
         return null;
     }
 
-    private string GetBestArtistField(Tag tag)
-    {
-        // Try multiple artist fields in order of preference
+    //private string GetBestArtistField(Tag tag)
+    //{
+    //    // Try multiple artist fields in order of preference
 
-        // 1. Try Performers array (most common)
-        if (tag.Performers is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.Performers[0]))
-        {
-            return string.Join(", ", tag.Performers);
-        }
+    //    // 1. Try Performers array (most common)
+    //    if (tag.Performers is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.Performers[0]))
+    //    {
+    //        return string.Join(", ", tag.Performers);
+    //    }
 
-        // 2. Try FirstPerformer
-        if (!string.IsNullOrWhiteSpace(tag.FirstPerformer))
-        {
-            return tag.FirstPerformer;
-        }
+    //    // 2. Try FirstPerformer
+    //    if (!string.IsNullOrWhiteSpace(tag.FirstPerformer))
+    //    {
+    //        return tag.FirstPerformer;
+    //    }
 
-        // 3. Search for any other artist-related fields via reflection
-        try
-        {
-            PropertyInfo[] tagProps = tag.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (PropertyInfo prop in tagProps)
-            {
-                if ((prop.Name.Contains("Artist", StringComparison.OrdinalIgnoreCase) ||
-                     prop.Name.Contains("Performer", StringComparison.OrdinalIgnoreCase)) &&
-                    !prop.Name.StartsWith("First") && !prop.Name.StartsWith("Joined"))
-                {
-                    try
-                    {
-                        object? value = prop.GetValue(tag);
-                        string stringValue = value switch
-                        {
-                            string s when !string.IsNullOrWhiteSpace(s) => s,
-                            string[] { Length: > 0 } arr when !string.IsNullOrWhiteSpace(arr[0]) => string.Join(", ", arr),
-                            _ => ""
-                        };
+    //    // 3. Search for any other artist-related fields via reflection
+    //    try
+    //    {
+    //        PropertyInfo[] tagProps = tag.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+    //        foreach (PropertyInfo prop in tagProps)
+    //        {
+    //            if ((prop.Name.Contains("Artist", StringComparison.OrdinalIgnoreCase) ||
+    //                 prop.Name.Contains("Performer", StringComparison.OrdinalIgnoreCase)) &&
+    //                !prop.Name.StartsWith("First") && !prop.Name.StartsWith("Joined"))
+    //            {
+    //                try
+    //                {
+    //                    object? value = prop.GetValue(tag);
+    //                    string stringValue = value switch
+    //                    {
+    //                        string s when !string.IsNullOrWhiteSpace(s) => s,
+    //                        string[] { Length: > 0 } arr when !string.IsNullOrWhiteSpace(arr[0]) => string.Join(", ", arr),
+    //                        _ => ""
+    //                    };
 
-                        if (!string.IsNullOrWhiteSpace(stringValue))
-                        {
-                            return stringValue;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "Error reading artist property {PropertyName}: {Message}", prop.Name, ex.Message);
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Error searching for artist fields: {Message}", ex.Message);
-        }
+    //                    if (!string.IsNullOrWhiteSpace(stringValue))
+    //                    {
+    //                        return stringValue;
+    //                    }
+    //                }
+    //                catch (Exception ex)
+    //                {
+    //                    _logger.LogDebug(ex, "Error reading artist property {PropertyName}: {Message}", prop.Name, ex.Message);
+    //                }
+    //            }
+    //        }
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        _logger.LogDebug(ex, "Error searching for artist fields: {Message}", ex.Message);
+    //    }
 
-        return "";
-    }
+    //    return "";
+    //}
 
-    private string GetBestAlbumArtistField(Tag tag)
-    {
-        // Try multiple album artist fields in order of preference
+    //private string GetBestAlbumArtistField(Tag tag)
+    //{
+    //    // Try multiple album artist fields in order of preference
 
-        // 1. Try AlbumArtists array
-        if (tag.AlbumArtists is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.AlbumArtists[0]))
-        {
-            return string.Join(", ", tag.AlbumArtists);
-        }
+    //    // 1. Try AlbumArtists array
+    //    if (tag.AlbumArtists is { Length: > 0 } && !string.IsNullOrWhiteSpace(tag.AlbumArtists[0]))
+    //    {
+    //        return string.Join(", ", tag.AlbumArtists);
+    //    }
 
-        // 2. Try FirstAlbumArtist
-        if (!string.IsNullOrWhiteSpace(tag.FirstAlbumArtist))
-        {
-            return tag.FirstAlbumArtist;
-        }
+    //    // 2. Try FirstAlbumArtist
+    //    if (!string.IsNullOrWhiteSpace(tag.FirstAlbumArtist))
+    //    {
+    //        return tag.FirstAlbumArtist;
+    //    }
 
-        // 3. Fall back to regular artist if no album artist is specified
-        string artistField = GetBestArtistField(tag);
-        if (!string.IsNullOrWhiteSpace(artistField))
-        {
-            return artistField;
-        }
+    //    // 3. Fall back to regular artist if no album artist is specified
+    //    string artistField = _mediaFileHelper.GetBestArtistField(tag);
+    //    if (!string.IsNullOrWhiteSpace(artistField))
+    //    {
+    //        return artistField;
+    //    }
 
-        return "";
-    }
+    //    return "";
+    //}
 
     private bool IsStandardId3v2Frame(string frameId)
     {

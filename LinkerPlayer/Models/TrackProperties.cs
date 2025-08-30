@@ -3,11 +3,11 @@
 public class TrackProperties
 {
     public string FileName { get; set; } = string.Empty;
-    public Tag? Tag { get; set; }
+    public Tags? Tag { get; set; }
     public Properties? Properties { get; set; }
 }
 
-public class Tag
+public class Tags
 {
     public string Title { get; set; } = string.Empty;
     public string Album { get; set; } = string.Empty;

@@ -1,5 +1,6 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
@@ -56,6 +57,7 @@ public partial class App
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
                 services.AddSingleton<IUIDispatcher, WpfUIDispatcher>();
+                services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
                 
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();

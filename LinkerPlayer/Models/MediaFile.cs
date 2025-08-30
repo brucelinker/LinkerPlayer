@@ -2,6 +2,7 @@
 using LinkerPlayer.Core;
 using ManagedBass;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -44,8 +45,11 @@ public interface IMediaFile
 public partial class MediaFile : ObservableValidator, IMediaFile
 {
     private const string UnknownString = "<Unknown>";
-    private readonly ILogger<MediaFile>? _logger;
     private readonly CoverManager _coverManager = new();
+
+    // Helper properties to get services when needed
+    private IMediaFileHelper? MediaFileHelper => App.AppHost?.Services?.GetService<IMediaFileHelper>();
+    private ILogger<MediaFile>? Logger => App.AppHost?.Services?.GetService<ILogger<MediaFile>>();
 
     [Key]
     [StringLength(36, ErrorMessage = "Id must be a valid GUID (36 characters)")]
@@ -150,9 +154,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     public MediaFile() { }
 
-    public MediaFile(string fileName, ILogger<MediaFile>? logger = null)
+    public MediaFile(string fileName, MediaFileHelper? mediaFileHelper = null, ILogger<MediaFile>? logger = null)
     {
-        _logger = logger;
         Path = fileName;
         FileName = System.IO.Path.GetFileName(fileName);
         UpdateFromFileMetadata(false);
@@ -174,11 +177,12 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
             Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
 
-            List<string> albumArtists = file.Tag.AlbumArtists.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Artist = ValidateStringLength(albumArtists.Count > 1 ? string.Join("/", albumArtists) : file.Tag.FirstAlbumArtist ?? UnknownString, 128, nameof(Artist));
+            // Use the MediaFileHelper service to get the best album artist field
+            string albumArtist = MediaFileHelper?.GetBestAlbumArtistField(file.Tag) ?? UnknownString;
+            Artist = ValidateStringLength(albumArtist, 128, nameof(Artist));
 
             List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Performers = ValidateStringLength(performers.Count > 1 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
+            Performers = ValidateStringLength(performers.Count > 0 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
 
             if (string.IsNullOrWhiteSpace(Artist))
             {
@@ -219,22 +223,22 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (TagLib.CorruptFileException ex)
         {
-            _logger?.LogError(ex, "Corrupted file {FileName}: {Message}", Path, ex.Message);
+            Logger?.LogError(ex, "Corrupted file {FileName}: {Message}", Path, ex.Message);
             SetFallbackMetadata(raisePropertyChanged);
         }
         catch (TagLib.UnsupportedFormatException ex)
         {
-            _logger?.LogError(ex, "Unsupported format for {FileName}: {Message}", Path, ex.Message);
+            Logger?.LogError(ex, "Unsupported format for {FileName}: {Message}", Path, ex.Message);
             SetFallbackMetadata(raisePropertyChanged);
         }
         catch (ArgumentException ex) when (ex.ParamName == "ident" && ex.Message.Contains("identifier must be four bytes long"))
         {
-            _logger?.LogError(ex, "Invalid metadata identifiers in {FileName}: {Message}", Path, ex.Message);
+            Logger?.LogError(ex, "Invalid metadata identifiers in {FileName}: {Message}", Path, ex.Message);
             SetFallbackMetadata(raisePropertyChanged);
         }
         catch (Exception e)
         {
-            _logger?.LogError(e, "TagLib.File.Create failed for {FileName}: {Message}", Path, e.Message);
+            Logger?.LogError(e, "TagLib.File.Create failed for {FileName}: {Message}", Path, e.Message);
             SetFallbackMetadata(raisePropertyChanged);
         }
     }
@@ -295,7 +299,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to load album cover for {Path}", Path);
+            Logger?.LogError(ex, "Failed to load album cover for {Path}", Path);
             AlbumCover = null;
         }
     }
@@ -343,7 +347,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         if (value.Length > maxLength)
         {
-            _logger?.LogWarning("Property {PropertyName} exceeds maximum length of {MaxLength} characters. Truncating.",
+            Logger?.LogWarning("Property {PropertyName} exceeds maximum length of {MaxLength} characters. Truncating.",
                 propertyName, maxLength);
             return value.Substring(0, maxLength);
         }

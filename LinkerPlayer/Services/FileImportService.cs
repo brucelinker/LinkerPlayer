@@ -163,6 +163,23 @@ public class FileImportService : IFileImportService
             Phase = ""
         });
 
+        // Clear progress after a short delay (run in background to avoid blocking)
+        if (progress != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                progress.Report(new ProgressData
+                {
+                    IsProcessing = false,
+                    TotalTracks = 0,
+                    ProcessedTracks = 0,
+                    Status = string.Empty,
+                    Phase = string.Empty
+                });
+            });
+        }
+
         _logger.LogInformation("Import completed. Successfully imported {Count} files", importedFiles.Count);
         return importedFiles;
     }
@@ -227,19 +244,6 @@ public class FileImportService : IFileImportService
                 }
 
                 processedCount++;
-
-                // Report progress after processing each file
-                //progress?.Report(new ProgressData
-                //{
-                //    IsProcessing = true,
-                //    TotalTracks = totalFiles,
-                //    ProcessedTracks = processedCount,
-                //    Status = $"Imported: {fileName} ({processedCount}/{totalFiles})",
-                //    Phase = "Importing"
-                //});
-
-                //// Add a small delay to allow UI to update
-                //await Task.Delay(50);
             }
             catch (Exception ex)
             {
@@ -265,8 +269,25 @@ public class FileImportService : IFileImportService
             TotalTracks = totalFiles,
             ProcessedTracks = processedCount,
             Status = $"Import completed. {importedFiles.Count} files imported successfully.",
-            Phase = ""
+            Phase = string.Empty
         });
+
+        // Clear progress after a short delay (run in background to avoid blocking)
+        if (progress != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                progress.Report(new ProgressData
+                {
+                    IsProcessing = false,
+                    TotalTracks = 0,
+                    ProcessedTracks = 0,
+                    Status = string.Empty,
+                    Phase = string.Empty
+                });
+            });
+        }
 
         _logger.LogInformation("Folder import completed. {ImportedCount}/{TotalFiles} files imported successfully", 
             importedFiles.Count, totalFiles);

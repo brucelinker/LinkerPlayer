@@ -203,8 +203,9 @@ public partial class PlaylistTabs
         if (DataContext is PlaylistTabsViewModel playlistTabsViewModel)
         {
             SharedDataModel sharedDataModel = playlistTabsViewModel.SharedDataModel;
+            IMediaFileHelper mediaFileHelper = App.AppHost.Services.GetRequiredService<IMediaFileHelper>();
             ILogger<PropertiesViewModel> logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
-            PropertiesViewModel propertiesViewModel = new PropertiesViewModel(sharedDataModel, logger);
+            PropertiesViewModel propertiesViewModel = new PropertiesViewModel(sharedDataModel, mediaFileHelper, logger);
             PropertiesWindow dialog = new PropertiesWindow
             {
                 DataContext = propertiesViewModel
