@@ -134,7 +134,7 @@ public class OutputDeviceManager
             if (!string.IsNullOrEmpty(device.Name) && device.IsEnabled)
             {
                 _currentDeviceName = device.Name;
-                _logger.LogDebug($"GetCurrentDeviceName: Returned {device.Name} (index {currentDevice})");
+                //_logger.LogDebug($"GetCurrentDeviceName: Returned {device.Name} (index {currentDevice})");
                 return device.Name;
             }
 

@@ -79,7 +79,7 @@ public class EditableTabHeaderControl : ContentControl
             {
                 _logger.LogWarning("EditableTabHeaderControl: DataContext is not PlaylistTab in SetEditMode");
             }
-            var viewModel = FindAncestorViewModel(this);
+            PlaylistTabsViewModel? viewModel = FindAncestorViewModel(this);
             if (viewModel != null)
             {
                 Tag = viewModel;

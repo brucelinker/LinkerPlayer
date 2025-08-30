@@ -16,7 +16,7 @@ public class MockUIDispatcher : IUIDispatcher
 
     public Task<T> InvokeAsync<T>(Func<T> func)
     {
-        var result = func();
+        T result = func();
         return Task.FromResult(result);
     }
 

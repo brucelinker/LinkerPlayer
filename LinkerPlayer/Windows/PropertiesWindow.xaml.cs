@@ -38,7 +38,7 @@ public partial class PropertiesWindow
         // Forward the mouse wheel event to the parent ScrollViewer
         if (WindowScrollViewer != null)
         {
-            var eventArgs = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            MouseWheelEventArgs eventArgs = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
             {
                 RoutedEvent = UIElement.MouseWheelEvent,
                 Source = sender
@@ -102,10 +102,10 @@ public partial class PropertiesWindow
         e.Handled = true;
 
         // Manually scroll the TextBox
-        var textBox = sender as TextBox;
+        TextBox? textBox = sender as TextBox;
         if (textBox != null)
         {
-            var scrollViewer = GetScrollViewer(textBox);
+            ScrollViewer? scrollViewer = GetScrollViewer(textBox);
             if (scrollViewer != null)
             {
                 // Scroll the TextBox content
@@ -130,8 +130,8 @@ public partial class PropertiesWindow
 
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
         {
-            var child = VisualTreeHelper.GetChild(element, i);
-            var result = GetScrollViewer(child);
+            DependencyObject child = VisualTreeHelper.GetChild(element, i);
+            ScrollViewer? result = GetScrollViewer(child);
             if (result != null)
                 return result;
         }

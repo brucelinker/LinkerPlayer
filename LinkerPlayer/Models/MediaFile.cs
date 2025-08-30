@@ -269,13 +269,13 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         try
         {
-            var image = _coverManager.GetImageFromPictureTag(Path);
+            BitmapImage? image = _coverManager.GetImageFromPictureTag(Path);
             if (image != null)
             {
                 // Force reload from file, not cache
                 if (image.UriSource != null)
                 {
-                    var bitmap = new BitmapImage();
+                    BitmapImage bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
                     bitmap.UriSource = image.UriSource;
@@ -354,7 +354,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         try
         {
-            using var file = File.Create(filePath);
+            using File? file = File.Create(filePath);
             var tagInfo = new
             {
                 FileName = file.Name,

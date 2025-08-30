@@ -42,14 +42,14 @@ public class FileImportServiceTests : IDisposable
     public void IsAudioFile_ShouldReturnCorrectResult(string extension, bool expected)
     {
         // Arrange
-        var filePath = $"test{extension}";
+        string filePath = $"test{extension}";
         
         // We create a real FileImportService with a null MusicLibrary just for this test
         // since IsAudioFile doesn't use MusicLibrary
-        var fileImportService = new TestableFileImportService(_mockLogger.Object);
+        TestableFileImportService fileImportService = new TestableFileImportService(_mockLogger.Object);
 
         // Act
-        var result = fileImportService.IsAudioFile(filePath);
+        bool result = fileImportService.IsAudioFile(filePath);
 
         // Assert
         result.Should().Be(expected);
@@ -59,7 +59,7 @@ public class FileImportServiceTests : IDisposable
     public void IsAudioFile_WithNullOrEmptyPath_ShouldReturnFalse()
     {
         // Arrange
-        var fileImportService = new TestableFileImportService(_mockLogger.Object);
+        TestableFileImportService fileImportService = new TestableFileImportService(_mockLogger.Object);
 
         // Act & Assert
         fileImportService.IsAudioFile(null!).Should().BeFalse();
@@ -71,11 +71,11 @@ public class FileImportServiceTests : IDisposable
     public void GetAudioFileCount_WithNonExistentFolder_ShouldReturnZero()
     {
         // Arrange
-        var nonExistentPath = Path.Combine(_testDirectory, "NonExistent");
-        var fileImportService = new TestableFileImportService(_mockLogger.Object);
+        string nonExistentPath = Path.Combine(_testDirectory, "NonExistent");
+        TestableFileImportService fileImportService = new TestableFileImportService(_mockLogger.Object);
 
         // Act
-        var result = fileImportService.GetAudioFileCount(nonExistentPath);
+        int result = fileImportService.GetAudioFileCount(nonExistentPath);
 
         // Assert
         result.Should().Be(0);
@@ -89,10 +89,10 @@ public class FileImportServiceTests : IDisposable
         CreateTestFile("song2.flac");
         CreateTestFile("document.txt");
         CreateTestFile("image.jpg");
-        var fileImportService = new TestableFileImportService(_mockLogger.Object);
+        TestableFileImportService fileImportService = new TestableFileImportService(_mockLogger.Object);
 
         // Act
-        var result = fileImportService.GetAudioFileCount(_testDirectory);
+        int result = fileImportService.GetAudioFileCount(_testDirectory);
 
         // Assert
         result.Should().Be(2);
@@ -115,8 +115,8 @@ public class FileImportServiceTests : IDisposable
 
     private string CreateTestFile(string fileName, string? directory = null)
     {
-        var targetDir = directory ?? _testDirectory;
-        var filePath = Path.Combine(targetDir, fileName);
+        string targetDir = directory ?? _testDirectory;
+        string filePath = Path.Combine(targetDir, fileName);
         File.WriteAllText(filePath, "test content");
         return filePath;
     }
@@ -138,7 +138,7 @@ public class TestableFileImportService
         if (string.IsNullOrWhiteSpace(path))
             return false;
 
-        var extension = Path.GetExtension(path);
+        string extension = Path.GetExtension(path);
         return !string.IsNullOrEmpty(extension) && 
                _supportedAudioExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }

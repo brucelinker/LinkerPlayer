@@ -54,10 +54,10 @@ public class TrackNavigationServiceTests
     public void GetNextTrackIndex_WithEmptyTrackList_ShouldReturnMinusOne()
     {
         // Arrange
-        var emptyTracks = new List<MediaFile>();
+        List<MediaFile> emptyTracks = new List<MediaFile>();
 
         // Act
-        var result = _trackNavigationService.GetNextTrackIndex(emptyTracks, 0, shuffleMode: false);
+        int result = _trackNavigationService.GetNextTrackIndex(emptyTracks, 0, shuffleMode: false);
 
         // Assert
         result.Should().Be(-1);
@@ -67,10 +67,10 @@ public class TrackNavigationServiceTests
     public void GetPreviousTrackIndex_WithEmptyTrackList_ShouldReturnMinusOne()
     {
         // Arrange
-        var emptyTracks = new List<MediaFile>();
+        List<MediaFile> emptyTracks = new List<MediaFile>();
 
         // Act
-        var result = _trackNavigationService.GetPreviousTrackIndex(emptyTracks, 0, shuffleMode: false);
+        int result = _trackNavigationService.GetPreviousTrackIndex(emptyTracks, 0, shuffleMode: false);
 
         // Assert
         result.Should().Be(-1);
@@ -139,7 +139,7 @@ public class TrackNavigationServiceTests
     public void InitializeShuffle_WithEmptyTracks_ShouldClearShuffle()
     {
         // Arrange
-        var emptyTracks = new List<MediaFile>();
+        List<MediaFile> emptyTracks = new List<MediaFile>();
 
         // Act
         _trackNavigationService.InitializeShuffle(emptyTracks);

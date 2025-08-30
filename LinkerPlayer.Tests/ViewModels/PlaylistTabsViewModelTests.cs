@@ -11,7 +11,7 @@ public class PlaylistTabsViewModelTests
         // This is a placeholder test while we work on making the complex dependencies testable
         // In the future, these classes should be refactored to use dependency injection properly
         
-        var result = true;
+        bool result = true;
         result.Should().BeTrue();
     }
 

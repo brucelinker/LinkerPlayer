@@ -30,14 +30,14 @@ public class PlaylistManagerService : IPlaylistManagerService
             throw new ArgumentException("Playlist name cannot be null or empty", nameof(name));
         }
 
-        var uniqueName = GetUniquePlaylistName(name);
+        string uniqueName = GetUniquePlaylistName(name);
         
         try
         {
-            var playlist = await _musicLibrary.AddNewPlaylistAsync(uniqueName);
-            var tracks = await LoadPlaylistTracksAsync(uniqueName);
+            Playlist playlist = await _musicLibrary.AddNewPlaylistAsync(uniqueName);
+            IEnumerable<MediaFile> tracks = LoadPlaylistTracks(uniqueName);
             
-            var tab = new PlaylistTab
+            PlaylistTab tab = new PlaylistTab
             {
                 Name = uniqueName,
                 Tracks = new ObservableCollection<MediaFile>(tracks)
@@ -78,11 +78,11 @@ public class PlaylistManagerService : IPlaylistManagerService
             }
 
             // Update database directly for better control
-            await using var context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
+            await using MusicLibraryDbContext context = new MusicLibraryDbContext(new DbContextOptionsBuilder<MusicLibraryDbContext>()
                 .UseSqlite($"Data Source={GetDatabasePath()}")
                 .Options);
 
-            var dbPlaylist = await context.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
+            Playlist? dbPlaylist = await context.Playlists.FirstOrDefaultAsync(p => p.Name == oldName);
             if (dbPlaylist == null)
             {
                 _logger.LogWarning("Playlist not found in database: {OldName}", oldName);
@@ -93,7 +93,7 @@ public class PlaylistManagerService : IPlaylistManagerService
             await context.SaveChangesAsync();
 
             // Update in-memory playlists
-            var playlist = _musicLibrary.Playlists.FirstOrDefault(p => p.Name == oldName);
+            Playlist? playlist = _musicLibrary.Playlists.FirstOrDefault(p => p.Name == oldName);
             if (playlist != null)
             {
                 playlist.Name = newName;
@@ -161,7 +161,7 @@ public class PlaylistManagerService : IPlaylistManagerService
             return false;
         }
 
-        var trackList = tracks?.ToList();
+        List<MediaFile>? trackList = tracks?.ToList();
         if (trackList == null || !trackList.Any())
         {
             _logger.LogWarning("AddTracksToPlaylistAsync called with no tracks");
@@ -174,7 +174,7 @@ public class PlaylistManagerService : IPlaylistManagerService
             await _musicLibrary.SaveTracksBatchAsync(trackList);
 
             // Add track IDs to playlist
-            var trackIds = trackList.Select(t => t.Id).ToList();
+            List<string> trackIds = trackList.Select(t => t.Id).ToList();
             await _musicLibrary.AddTracksToPlaylistAsync(trackIds, playlistName, saveImmediately: false);
 
             await _musicLibrary.SaveToDatabaseAsync();
@@ -217,8 +217,8 @@ public class PlaylistManagerService : IPlaylistManagerService
             baseName = "New Playlist";
         }
 
-        var uniqueName = baseName;
-        var index = 1;
+        string uniqueName = baseName;
+        int index = 1;
 
         while (_musicLibrary.Playlists.Any(p => p.Name.Equals(uniqueName, StringComparison.OrdinalIgnoreCase)))
         {
@@ -228,25 +228,25 @@ public class PlaylistManagerService : IPlaylistManagerService
         return uniqueName;
     }
 
-    public async Task<IEnumerable<MediaFile>> LoadPlaylistTracksAsync(string playlistName)
+    public IEnumerable<MediaFile> LoadPlaylistTracks(string playlistName)
     {
         if (string.IsNullOrWhiteSpace(playlistName))
         {
-            _logger.LogWarning("LoadPlaylistTracksAsync called with invalid playlist name");
+            _logger.LogWarning("LoadPlaylistTracks called with invalid playlist name");
             return Enumerable.Empty<MediaFile>();
         }
 
         try
         {
-            var tracks = _musicLibrary.GetTracksFromPlaylist(playlistName);
+            List<MediaFile> tracks = _musicLibrary.GetTracksFromPlaylist(playlistName);
             
             // Update metadata for all tracks
-            foreach (var track in tracks)
+            foreach (MediaFile track in tracks)
             {
                 track.UpdateFromFileMetadata();
             }
 
-            _logger.LogDebug("Loaded {Count} tracks for playlist: {PlaylistName}", tracks.Count, playlistName);
+            //_logger.LogDebug("Loaded {Count} tracks for playlist: {PlaylistName}", tracks.Count, playlistName);
             return tracks;
         }
         catch (Exception ex)

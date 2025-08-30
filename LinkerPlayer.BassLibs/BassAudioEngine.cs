@@ -68,18 +68,18 @@ public static class BassAudioEngine
             BassNativeLibraryManager.Initialize(_logger);
 
             // Step 2: Set DLL directory for BASS to find native libraries
-            var nativeLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
+            string nativeLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
             SetDllDirectory(nativeLibPath);
             _logger?.LogInformation($"Set DLL directory to: {nativeLibPath}");
 
             // Step 3: Log BASS version
-            var version = ManagedBass.Bass.Version;
+            Version? version = ManagedBass.Bass.Version;
             _logger?.LogInformation($"BASS Version: {version}");
 
             // Step 4: Initialize BASS
             if (!ManagedBass.Bass.Init(-1, options.SampleRate, options.InitFlags))
             {
-                var error = ManagedBass.Bass.LastError;
+                Errors error = ManagedBass.Bass.LastError;
                 _initializationResult.ErrorMessage = $"Failed to initialize BASS: {error}";
                 _logger?.LogError(_initializationResult.ErrorMessage);
                 return _initializationResult;
@@ -119,7 +119,7 @@ public static class BassAudioEngine
             }
 
             // Step 8: Log device info
-            var deviceInfo = ManagedBass.Bass.GetDeviceInfo(ManagedBass.Bass.CurrentDevice);
+            DeviceInfo deviceInfo = ManagedBass.Bass.GetDeviceInfo(ManagedBass.Bass.CurrentDevice);
             _logger?.LogInformation($"Using audio device: {deviceInfo.Name}");
 
             // Reset DLL directory
@@ -182,7 +182,7 @@ public static class BassAudioEngine
     private static void LoadEssentialPlugins(BassInitializationResult result)
     {
         // Load only essential plugins that require explicit loading
-        var essentialPlugins = new[]
+        string[] essentialPlugins = new[]
         {
             "bassape.dll",     // Monkey's Audio - requires explicit loading
             "bassflac.dll",    // FLAC support - may need explicit loading
@@ -199,7 +199,7 @@ public static class BassAudioEngine
     private static void LoadAllPlugins(BassInitializationResult result)
     {
         // Load all available plugins
-        var allPlugins = BassNativeLibraryManager.GetAvailableDlls()
+        string[] allPlugins = BassNativeLibraryManager.GetAvailableDlls()
             .Where(dll => dll != "bass.dll") // Don't try to load the main BASS library as a plugin
             .ToArray();
 
@@ -210,7 +210,7 @@ public static class BassAudioEngine
     {
         _logger?.LogInformation($"Loading {pluginNames.Length} BASS plugins");
 
-        foreach (var pluginName in pluginNames)
+        foreach (string pluginName in pluginNames)
         {
             try
             {
@@ -221,8 +221,8 @@ public static class BassAudioEngine
                     continue;
                 }
 
-                var pluginPath = BassNativeLibraryManager.GetDllPath(pluginName);
-                var handle = ManagedBass.Bass.PluginLoad(pluginPath);
+                string pluginPath = BassNativeLibraryManager.GetDllPath(pluginName);
+                int handle = ManagedBass.Bass.PluginLoad(pluginPath);
 
                 if (handle != 0)
                 {
@@ -231,7 +231,7 @@ public static class BassAudioEngine
                 }
                 else
                 {
-                    var error = ManagedBass.Bass.LastError;
+                    Errors error = ManagedBass.Bass.LastError;
                     result.FailedPlugins.Add($"{pluginName} ({error})");
                     _logger?.LogWarning($"Failed to load plugin: {pluginName}, Error: {error}");
                 }

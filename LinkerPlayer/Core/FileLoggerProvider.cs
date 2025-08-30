@@ -48,7 +48,7 @@ public class FileLogger : ILogger
     {
         if (!IsEnabled(logLevel)) return;
 
-        var entry = new LogEntry
+        LogEntry entry = new LogEntry
         {
             Timestamp = DateTime.Now,
             LogLevel = logLevel,
@@ -76,7 +76,7 @@ public static class FileLoggerExtensions
 {
     public static ILoggingBuilder AddFile(this ILoggingBuilder builder, string filePath, Action<FileLoggerOptions> configure)
     {
-        var options = new FileLoggerOptions();
+        FileLoggerOptions options = new FileLoggerOptions();
         configure(options);
         builder.AddProvider(new FileLoggerProvider(filePath, options.FormatLogEntry));
         return builder;

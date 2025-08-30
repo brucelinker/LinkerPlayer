@@ -15,10 +15,6 @@ public class FileImportService : IFileImportService
     private readonly ILogger<FileImportService> _logger;
     private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
 
-    // Constants for progress reporting
-    private const int DefaultBatchSize = 10;
-    private const int MaxBatchSize = 100;
-
     public FileImportService(MusicLibrary musicLibrary, ILogger<FileImportService> logger)
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
@@ -27,7 +23,7 @@ public class FileImportService : IFileImportService
 
     public async Task<List<MediaFile>> ImportFilesAsync(string[] filePaths, IProgress<ProgressData>? progress = null)
     {
-        var importedFiles = new List<MediaFile>();
+        List<MediaFile> importedFiles = new List<MediaFile>();
         
         if (filePaths == null || filePaths.Length == 0)
         {
@@ -37,35 +33,135 @@ public class FileImportService : IFileImportService
 
         _logger.LogInformation("Starting import of {Count} items", filePaths.Length);
 
-        foreach (string path in filePaths)
+        // Separate files from folders for better progress tracking
+        List<string> files = filePaths.Where(path => File.Exists(path) && IsAudioFile(path)).ToList();
+        List<string> folders = filePaths.Where(Directory.Exists).ToList();
+        int totalItems = files.Count + folders.Count;
+        int processedItems = 0;
+
+        // Report initial progress
+        progress?.Report(new ProgressData
+        {
+            IsProcessing = true,
+            TotalTracks = totalItems,
+            ProcessedTracks = 0,
+            Status = "Starting file import...",
+            Phase = "Importing"
+        });
+
+        // Process individual files first
+        foreach (string filePath in files)
         {
             try
             {
-                if (File.Exists(path) && IsAudioFile(path))
+                string fileName = Path.GetFileName(filePath);
+                progress?.Report(new ProgressData
                 {
-                    var importedFile = await ImportFileAsync(path);
-                    if (importedFile != null)
-                    {
-                        importedFiles.Add(importedFile);
-                        _logger.LogDebug("Successfully imported file: {Path}", path);
-                    }
-                }
-                else if (Directory.Exists(path))
+                    IsProcessing = true,
+                    TotalTracks = totalItems,
+                    ProcessedTracks = processedItems,
+                    Status = $"Importing: {fileName}",
+                    Phase = "Importing"
+                });
+
+                MediaFile? importedFile = await ImportFileAsync(filePath);
+                if (importedFile != null)
                 {
-                    var folderFiles = await ImportFolderAsync(path, progress);
-                    importedFiles.AddRange(folderFiles);
-                    _logger.LogDebug("Successfully imported {Count} files from folder: {Path}", folderFiles.Count, path);
+                    importedFiles.Add(importedFile);
+                    //_logger.LogDebug("Successfully imported file: {Path}", filePath);
                 }
-                else
+
+                processedItems++;
+                
+                progress?.Report(new ProgressData
                 {
-                    _logger.LogWarning("Invalid path (not a file or directory): {Path}", path);
-                }
+                    IsProcessing = true,
+                    TotalTracks = totalItems,
+                    ProcessedTracks = processedItems,
+                    Status = $"Imported: {fileName}",
+                    Phase = "Importing"
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to import item: {Path}", path);
+                _logger.LogError(ex, "Failed to import file: {Path}", filePath);
+                processedItems++;
+                
+                string fileName = Path.GetFileName(filePath);
+                progress?.Report(new ProgressData
+                {
+                    IsProcessing = true,
+                    TotalTracks = totalItems,
+                    ProcessedTracks = processedItems,
+                    Status = $"Failed to import: {fileName}",
+                    Phase = "Importing"
+                });
             }
         }
+
+        // Process folders
+        foreach (string folderPath in folders)
+        {
+            try
+            {
+                string folderName = Path.GetFileName(folderPath);
+                progress?.Report(new ProgressData
+                {
+                    IsProcessing = true,
+                    TotalTracks = totalItems,
+                    ProcessedTracks = processedItems,
+                    Status = $"Processing folder: {folderName}",
+                    Phase = "Importing"
+                });
+
+                List<MediaFile> folderFiles = await ImportFolderAsync(folderPath, progress);
+                importedFiles.AddRange(folderFiles);
+                processedItems++;
+                
+                //_logger.LogDebug("Successfully imported {Count} files from folder: {Path}", folderFiles.Count, folderPath);
+                
+                progress?.Report(new ProgressData
+                {
+                    IsProcessing = true,
+                    TotalTracks = totalItems,
+                    ProcessedTracks = processedItems,
+                    Status = $"Completed folder: {folderName} ({folderFiles.Count} files)",
+                    Phase = "Importing"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to import folder: {Path}", folderPath);
+                processedItems++;
+                
+                string folderName = Path.GetFileName(folderPath);
+                progress?.Report(new ProgressData
+                {
+                    IsProcessing = true,
+                    TotalTracks = totalItems,
+                    ProcessedTracks = processedItems,
+                    Status = $"Failed to process folder: {folderName}",
+                    Phase = "Importing"
+                });
+            }
+        }
+
+        // Handle any invalid paths
+        List<string> invalidPaths = filePaths.Where(path => !File.Exists(path) && !Directory.Exists(path)).ToList();
+        foreach (string invalidPath in invalidPaths)
+        {
+            _logger.LogWarning("Invalid path (not a file or directory): {Path}", invalidPath);
+        }
+
+        // Final progress report
+        progress?.Report(new ProgressData
+        {
+            IsProcessing = false,
+            TotalTracks = totalItems,
+            ProcessedTracks = processedItems,
+            Status = $"Import completed. {importedFiles.Count} files imported successfully.",
+            Phase = ""
+        });
 
         _logger.LogInformation("Import completed. Successfully imported {Count} files", importedFiles.Count);
         return importedFiles;
@@ -73,7 +169,7 @@ public class FileImportService : IFileImportService
 
     public async Task<List<MediaFile>> ImportFolderAsync(string folderPath, IProgress<ProgressData>? progress = null)
     {
-        var importedFiles = new List<MediaFile>();
+        List<MediaFile> importedFiles = new List<MediaFile>();
         
         if (!Directory.Exists(folderPath))
         {
@@ -81,8 +177,8 @@ public class FileImportService : IFileImportService
             return importedFiles;
         }
 
-        var audioFiles = GetAudioFilesFromFolder(folderPath);
-        var totalFiles = audioFiles.Count;
+        List<string> audioFiles = GetAudioFilesFromFolder(folderPath);
+        int totalFiles = audioFiles.Count;
         
         if (totalFiles == 0)
         {
@@ -90,8 +186,7 @@ public class FileImportService : IFileImportService
             return importedFiles;
         }
 
-        var batchSize = CalculateBatchSize(totalFiles);
-        var processedCount = 0;
+        int processedCount = 0;
 
         // Report initial progress
         progress?.Report(new ProgressData
@@ -105,45 +200,62 @@ public class FileImportService : IFileImportService
 
         _logger.LogInformation("Importing {TotalFiles} audio files from folder: {FolderPath}", totalFiles, folderPath);
 
-        // Process files in batches for better performance and progress reporting
-        var batches = audioFiles.Chunk(batchSize);
-        
-        foreach (var batch in batches)
+        // Process files one by one for detailed progress reporting
+        foreach (string filePath in audioFiles)
         {
-            var batchTasks = batch.Select(async file =>
+            try
             {
-                try
+                string fileName = Path.GetFileName(filePath);
+                
+                // Report progress before processing each file
+                progress?.Report(new ProgressData
                 {
-                    var importedFile = await ImportFileAsync(file);
-                    if (importedFile != null)
-                    {
-                        return importedFile;
-                    }
-                }
-                catch (Exception ex)
+                    IsProcessing = true,
+                    TotalTracks = totalFiles,
+                    ProcessedTracks = processedCount,
+                    Status = $"Importing: {fileName}",
+                    Phase = "Importing"
+                });
+
+                // Add a small delay to allow UI to show the "Importing" message
+                await Task.Delay(25);
+
+                MediaFile? importedFile = await ImportFileAsync(filePath);
+                if (importedFile != null)
                 {
-                    _logger.LogError(ex, "Failed to import file in batch: {FilePath}", file);
+                    importedFiles.Add(importedFile);
                 }
-                return null;
-            });
 
-            var batchResults = await Task.WhenAll(batchTasks);
-            var successfulImports = batchResults.Where(f => f != null).Cast<MediaFile>().ToList();
-            
-            importedFiles.AddRange(successfulImports);
-            processedCount += batch.Length;
+                processedCount++;
 
-            // Report progress
-            progress?.Report(new ProgressData
+                // Report progress after processing each file
+                //progress?.Report(new ProgressData
+                //{
+                //    IsProcessing = true,
+                //    TotalTracks = totalFiles,
+                //    ProcessedTracks = processedCount,
+                //    Status = $"Imported: {fileName} ({processedCount}/{totalFiles})",
+                //    Phase = "Importing"
+                //});
+
+                //// Add a small delay to allow UI to update
+                //await Task.Delay(50);
+            }
+            catch (Exception ex)
             {
-                IsProcessing = true,
-                TotalTracks = totalFiles,
-                ProcessedTracks = processedCount,
-                Status = $"Imported {successfulImports.Count}/{batch.Length} files from current batch",
-                Phase = "Importing"
-            });
+                _logger.LogError(ex, "Failed to import file: {FilePath}", filePath);
+                processedCount++;
 
-            _logger.LogDebug("Processed batch: {ProcessedCount}/{TotalFiles}", processedCount, totalFiles);
+                string fileName = Path.GetFileName(filePath);
+                progress?.Report(new ProgressData
+                {
+                    IsProcessing = true,
+                    TotalTracks = totalFiles,
+                    ProcessedTracks = processedCount,
+                    Status = $"Failed to import: {fileName} ({processedCount}/{totalFiles})",
+                    Phase = "Importing"
+                });
+            }
         }
 
         // Final progress report
@@ -178,22 +290,22 @@ public class FileImportService : IFileImportService
 
         try
         {
-            var mediaFile = new MediaFile { Path = filePath };
+            MediaFile mediaFile = new MediaFile { Path = filePath };
             mediaFile.UpdateFromFileMetadata();
 
             // Check if track already exists in library
-            var existingTrack = _musicLibrary.IsTrackInLibrary(mediaFile);
+            MediaFile? existingTrack = _musicLibrary.IsTrackInLibrary(mediaFile);
             if (existingTrack != null)
             {
-                _logger.LogDebug("Track already exists in library: {FilePath}", filePath);
+                //_logger.LogDebug("Track already exists in library: {FilePath}", filePath);
                 return existingTrack.Clone();
             }
 
             // Add new track to library
-            var addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
+            MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
             if (addedTrack != null)
             {
-                _logger.LogDebug("Successfully added new track to library: {FilePath}", filePath);
+                //_logger.LogDebug("Successfully added new track to library: {FilePath}", filePath);
                 return addedTrack.Clone();
             }
         }
@@ -210,7 +322,7 @@ public class FileImportService : IFileImportService
         if (string.IsNullOrWhiteSpace(path))
             return false;
 
-        var extension = Path.GetExtension(path);
+        string extension = Path.GetExtension(path);
         return _supportedAudioExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -244,14 +356,5 @@ public class FileImportService : IFileImportService
             _logger.LogError(ex, "Failed to get audio files from folder: {FolderPath}", folderPath);
             return new List<string>();
         }
-    }
-
-    private static int CalculateBatchSize(int totalFiles)
-    {
-        if (totalFiles <= DefaultBatchSize)
-            return totalFiles;
-
-        var batchSize = Math.Max(DefaultBatchSize, totalFiles / 10);
-        return Math.Min(batchSize, MaxBatchSize);
     }
 }

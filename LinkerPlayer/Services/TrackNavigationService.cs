@@ -38,8 +38,8 @@ public class TrackNavigationService : ITrackNavigationService
         }
 
         // Normal sequential navigation
-        var nextIndex = currentIndex == currentTracks.Count - 1 ? 0 : currentIndex + 1;
-        _logger.LogDebug("Next track index (sequential): {NextIndex}", nextIndex);
+        int nextIndex = currentIndex == currentTracks.Count - 1 ? 0 : currentIndex + 1;
+        //_logger.LogDebug("Next track index (sequential): {NextIndex}", nextIndex);
         return nextIndex;
     }
 
@@ -64,14 +64,14 @@ public class TrackNavigationService : ITrackNavigationService
         }
 
         // Normal sequential navigation
-        var previousIndex = currentIndex == 0 ? currentTracks.Count - 1 : currentIndex - 1;
-        _logger.LogDebug("Previous track index (sequential): {PreviousIndex}", previousIndex);
+        int previousIndex = currentIndex == 0 ? currentTracks.Count - 1 : currentIndex - 1;
+        //_logger.LogDebug("Previous track index (sequential): {PreviousIndex}", previousIndex);
         return previousIndex;
     }
 
     public void InitializeShuffle(IEnumerable<MediaFile> tracks, string? currentTrackId = null)
     {
-        var trackList = tracks?.ToList();
+        List<MediaFile>? trackList = tracks?.ToList();
         if (trackList == null || !trackList.Any())
         {
             _logger.LogWarning("InitializeShuffle called with empty track list");
@@ -82,8 +82,8 @@ public class TrackNavigationService : ITrackNavigationService
         _shuffleList.Clear();
         
         // Create a copy of the track list for shuffling
-        var tempList = new List<MediaFile>(trackList);
-        var random = new Random();
+        List<MediaFile> tempList = new List<MediaFile>(trackList);
+        Random random = new Random();
 
         // Fisher-Yates shuffle algorithm
         for (int i = tempList.Count - 1; i > 0; i--)
@@ -127,11 +127,11 @@ public class TrackNavigationService : ITrackNavigationService
             return false;
         }
 
-        var index = _shuffleList.FindIndex(track => track.Id == trackId);
+        int index = _shuffleList.FindIndex(track => track.Id == trackId);
         if (index >= 0)
         {
             _shuffledIndex = index;
-            _logger.LogDebug("Set shuffle position to {Position} for track {TrackId}", index, trackId);
+            //_logger.LogDebug("Set shuffle position to {Position} for track {TrackId}", index, trackId);
             return true;
         }
 
@@ -156,8 +156,8 @@ public class TrackNavigationService : ITrackNavigationService
         // Move to next position in shuffle
         _shuffledIndex = (_shuffledIndex == _shuffleList.Count - 1) ? 0 : _shuffledIndex + 1;
         
-        var shuffledTrack = _shuffleList[_shuffledIndex];
-        var actualIndex = currentTracks.ToList().FindIndex(track => track.Id == shuffledTrack.Id);
+        MediaFile shuffledTrack = _shuffleList[_shuffledIndex];
+        int actualIndex = currentTracks.ToList().FindIndex(track => track.Id == shuffledTrack.Id);
         
         if (actualIndex < 0)
         {
@@ -166,8 +166,7 @@ public class TrackNavigationService : ITrackNavigationService
             actualIndex = 0;
         }
 
-        _logger.LogDebug("Next shuffled track index: {ActualIndex} (shuffle position: {ShuffleIndex})", 
-            actualIndex, _shuffledIndex);
+        //_logger.LogDebug("Next shuffled track index: {ActualIndex} (shuffle position: {ShuffleIndex})", actualIndex, _shuffledIndex);
         return actualIndex;
     }
 
@@ -188,8 +187,8 @@ public class TrackNavigationService : ITrackNavigationService
         // Move to previous position in shuffle
         _shuffledIndex = (_shuffledIndex == 0) ? _shuffleList.Count - 1 : _shuffledIndex - 1;
         
-        var shuffledTrack = _shuffleList[_shuffledIndex];
-        var actualIndex = currentTracks.ToList().FindIndex(track => track.Id == shuffledTrack.Id);
+        MediaFile shuffledTrack = _shuffleList[_shuffledIndex];
+        int actualIndex = currentTracks.ToList().FindIndex(track => track.Id == shuffledTrack.Id);
         
         if (actualIndex < 0)
         {
@@ -198,8 +197,7 @@ public class TrackNavigationService : ITrackNavigationService
             actualIndex = currentTracks.Count - 1;
         }
 
-        _logger.LogDebug("Previous shuffled track index: {ActualIndex} (shuffle position: {ShuffleIndex})", 
-            actualIndex, _shuffledIndex);
+        //_logger.LogDebug("Previous shuffled track index: {ActualIndex} (shuffle position: {ShuffleIndex})", actualIndex, _shuffledIndex);
         return actualIndex;
     }
 }

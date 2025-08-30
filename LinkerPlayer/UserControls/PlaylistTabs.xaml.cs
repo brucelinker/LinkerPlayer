@@ -114,24 +114,18 @@ public partial class PlaylistTabs
 
     private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.NewPlaylistAsync();
-            }
-        });
+            viewModel.NewPlaylistCommand.Execute(null);
+        }
     }
 
     private void MenuItem_LoadPlaylistAsync(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.LoadPlaylistAsync();
-            }
-        });
+            viewModel.LoadPlaylistCommand.Execute(null);
+        }
     }
 
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
@@ -163,24 +157,18 @@ public partial class PlaylistTabs
 
     private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.AddFolderAsync();
-            }
-        });
+            viewModel.AddFolderCommand.Execute(null);
+        }
     }
 
     private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.AddFilesAsync();
-            }
-        });
+            viewModel.AddFilesCommand.Execute(null);
+        }
     }
 
     private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
@@ -196,34 +184,28 @@ public partial class PlaylistTabs
 
     private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.RemoveTrackAsync();
-            }
-        });
+            viewModel.RemoveTrackCommand.Execute(null);
+        }
     }
 
     private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.NewPlaylistFromFolderAsync();
-            }
-        });
+            viewModel.NewPlaylistFromFolderCommand.Execute(null);
+        }
     }
 
     private void MenuItem_Properties(object sender, RoutedEventArgs e)
     {
         if (DataContext is PlaylistTabsViewModel playlistTabsViewModel)
         {
-            var sharedDataModel = playlistTabsViewModel.SharedDataModel;
-            var logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
-            var propertiesViewModel = new PropertiesViewModel(sharedDataModel, logger);
-            var dialog = new PropertiesWindow
+            SharedDataModel sharedDataModel = playlistTabsViewModel.SharedDataModel;
+            ILogger<PropertiesViewModel> logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
+            PropertiesViewModel propertiesViewModel = new PropertiesViewModel(sharedDataModel, logger);
+            PropertiesWindow dialog = new PropertiesWindow
             {
                 DataContext = propertiesViewModel
             };

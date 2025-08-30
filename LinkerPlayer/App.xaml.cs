@@ -73,7 +73,7 @@ public partial class App
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        using var mutex = new Mutex(true, "LinkerPlayer", out bool createdNew);
+        using Mutex mutex = new Mutex(true, "LinkerPlayer", out bool createdNew);
         if (!createdNew)
         {
             _logger.LogError("Another instance is already running");

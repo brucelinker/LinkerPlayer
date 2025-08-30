@@ -70,7 +70,7 @@ public class WpfUIDispatcher : IUIDispatcher
         }
         else
         {
-            var result = await Application.Current.Dispatcher.InvokeAsync(asyncFunc);
+            Task<T>? result = await Application.Current.Dispatcher.InvokeAsync(asyncFunc);
             return await result;
         }
     }

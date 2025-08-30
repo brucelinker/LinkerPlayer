@@ -56,5 +56,5 @@ public interface IPlaylistManagerService
     /// </summary>
     /// <param name="playlistName">Name of the playlist</param>
     /// <returns>Collection of tracks in the playlist</returns>
-    Task<IEnumerable<MediaFile>> LoadPlaylistTracksAsync(string playlistName);
+    IEnumerable<MediaFile> LoadPlaylistTracks(string playlistName);
 }

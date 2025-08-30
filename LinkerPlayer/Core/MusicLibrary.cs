@@ -254,7 +254,7 @@ public class MusicLibrary
             }
 
             // Get all valid track IDs from the database
-            var validTrackIdsSet = new HashSet<string>(
+            HashSet<string> validTrackIdsSet = new HashSet<string>(
                 await context.Tracks.Select(t => t.Id).ToListAsync()
             );
 
@@ -267,7 +267,7 @@ public class MusicLibrary
                 }
 
                 // Validate TrackIds
-                var validTrackIds = playlist.TrackIds.Where(id => validTrackIdsSet.Contains(id)).ToList();
+                List<string> validTrackIds = playlist.TrackIds.Where(id => validTrackIdsSet.Contains(id)).ToList();
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
 
                 _logger.LogInformation($"Saving playlist {playlist.Name}");
@@ -332,7 +332,7 @@ public class MusicLibrary
             List<Playlist> savedPlaylists = await context.Playlists.ToListAsync();
             foreach (Playlist p in savedPlaylists)
             {
-                var trackIds = await context.PlaylistTracks
+                List<string?> trackIds = await context.PlaylistTracks
                     .Where(pt => pt.PlaylistId == p.Id)
                     .OrderBy(pt => pt.Position)
                     .Select(pt => pt.TrackId)
@@ -365,13 +365,13 @@ public class MusicLibrary
                 .ToListAsync();
             
             // Check if there are any tracks left in the database
-            var totalTracksCount = await context.Tracks.CountAsync();
+            int totalTracksCount = await context.Tracks.CountAsync();
             
             if (orphanedTracks.Any())
             {
                 // Remove MetadataCache entries for orphaned tracks
-                var orphanedPaths = orphanedTracks.Select(t => t.Path).ToList();
-                var orphanedCacheEntries = context.MetadataCache.Where(mc => orphanedPaths.Contains(mc.Path));
+                List<string> orphanedPaths = orphanedTracks.Select(t => t.Path).ToList();
+                IQueryable<MetadataCache> orphanedCacheEntries = context.MetadataCache.Where(mc => orphanedPaths.Contains(mc.Path));
                 context.MetadataCache.RemoveRange(orphanedCacheEntries);
                 context.Tracks.RemoveRange(orphanedTracks);
                 await context.SaveChangesAsync();
@@ -381,7 +381,7 @@ public class MusicLibrary
             // If no tracks exist at all, clean up all metadata cache entries
             if (totalTracksCount == 0)
             {
-                var allCacheEntries = await context.MetadataCache.ToListAsync();
+                List<MetadataCache> allCacheEntries = await context.MetadataCache.ToListAsync();
                 if (allCacheEntries.Any())
                 {
                     context.MetadataCache.RemoveRange(allCacheEntries);
@@ -406,13 +406,13 @@ public class MusicLibrary
     public async Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true,
         bool skipMetadata = false)
     {
-        _logger.LogDebug($"Entering AddTrackToLibraryAsync for {mediaFile.Path}");
+        //_logger.LogDebug($"Entering AddTrackToLibraryAsync for {mediaFile.Path}");
         try
         {
             MediaFile? existingTrack = IsTrackInLibrary(mediaFile);
             if (existingTrack != null)
             {
-                _logger.LogDebug($"Track already in library: {mediaFile.Path}");
+                //_logger.LogDebug($"Track already in library: {mediaFile.Path}");
                 return existingTrack;
             }
 
@@ -443,16 +443,16 @@ public class MusicLibrary
                         mediaFile.Year = cached.Metadata.Year;
                         mediaFile.Copyright = cached.Metadata.Copyright;
                         mediaFile.Comment = cached.Metadata.Comment;
-                        _logger.LogDebug($"Metadata cache hit for {mediaFile.Path}");
+                        //_logger.LogDebug($"Metadata cache hit for {mediaFile.Path}");
                     }
                     else
                     {
                         try
                         {
                             mediaFile.UpdateFromFileMetadata(false);
-                            _logger.LogDebug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
+                            //_logger.LogDebug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
                             _metadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
-                            _logger.LogDebug($"Added {mediaFile.Path} to MetadataCache. Cache size: {_metadataCache.Count}");
+                            //_logger.LogDebug($"Added {mediaFile.Path} to MetadataCache. Cache size: {_metadataCache.Count}");
                         }
                         catch (Exception ex)
                         {
@@ -661,7 +661,7 @@ public class MusicLibrary
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
-            var allCacheEntries = await context.MetadataCache.ToListAsync();
+            List<MetadataCache> allCacheEntries = await context.MetadataCache.ToListAsync();
             if (allCacheEntries.Any())
             {
                 context.MetadataCache.RemoveRange(allCacheEntries);

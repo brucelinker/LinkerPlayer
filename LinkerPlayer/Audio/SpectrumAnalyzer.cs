@@ -442,7 +442,7 @@ public partial class SpectrumAnalyzer : Control
         if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
         {
             _animationTimer.Stop();
-            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and all bars/peaks decayed");
+            //_logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and all bars/peaks decayed");
             return;
         }
 
@@ -683,8 +683,8 @@ public partial class SpectrumAnalyzer : Control
         for (int i = 0; i < actualBarCount; i++)
         {
             double xCoord = BarSpacing + barWidth * i + BarSpacing * i + 1;
-            var barShape = CreateShape(BarShapeType, barWidth, 0, BarStyle, xCoord, height);
-            var peakShape = CreateShape(PeakShapeType, barWidth, peakDotHeight, PeakStyle, xCoord, height - peakDotHeight);
+            Shape barShape = CreateShape(BarShapeType, barWidth, 0, BarStyle, xCoord, height);
+            Shape peakShape = CreateShape(PeakShapeType, barWidth, peakDotHeight, PeakStyle, xCoord, height - peakDotHeight);
             _barShapes.Add(barShape);
             _peakShapes.Add(peakShape);
             _spectrumCanvas.Children.Add(barShape);
@@ -746,14 +746,14 @@ public partial class SpectrumAnalyzer : Control
             if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
             {
                 _animationTimer.Start();
-                _logger.LogDebug("SpectrumAnalyzer: Timer started due to IsPlaying=true");
+                //_logger.LogDebug("SpectrumAnalyzer: Timer started due to IsPlaying=true");
             }
             else if (!_soundPlayer.IsPlaying)
             {
                 if (!_animationTimer.IsEnabled)
                     _animationTimer.Start();
                 UpdateSpectrumShapes();
-                _logger.LogDebug("SpectrumAnalyzer: Update triggered due to IsPlaying=false");
+                //_logger.LogDebug("SpectrumAnalyzer: Update triggered due to IsPlaying=false");
             }
         }
     }
@@ -763,7 +763,7 @@ public partial class SpectrumAnalyzer : Control
         if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
         {
             _animationTimer.Stop();
-            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in AnimationTimer_Tick - all bars/peaks decayed");
+            //_logger.LogDebug("SpectrumAnalyzer: Timer stopped in AnimationTimer_Tick - all bars/peaks decayed");
             return;
         }
 

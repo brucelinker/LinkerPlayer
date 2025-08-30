@@ -93,12 +93,12 @@ namespace LinkerPlayer.BassLibs
 
         private static void ExtractNativeDlls()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var tempPath = Path.Combine(Path.GetTempPath(), "LinkerPlayer", "BassLibs", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0");
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            string tempPath = Path.Combine(Path.GetTempPath(), "LinkerPlayer", "BassLibs", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "1.0.0");
 
             Directory.CreateDirectory(tempPath);
 
-            var dllNames = new[]
+            string[] dllNames = new[]
             {
                 "bass.dll",
                 "bassalac.dll",
@@ -113,14 +113,14 @@ namespace LinkerPlayer.BassLibs
                 "bass_fx.dll"
             };
 
-            foreach (var dllName in dllNames)
+            foreach (string dllName in dllNames)
             {
-                var resourceName = $"LinkerPlayer.BassLibs.Native.{dllName}";
-                var extractedPath = Path.Combine(tempPath, dllName);
+                string resourceName = $"LinkerPlayer.BassLibs.Native.{dllName}";
+                string extractedPath = Path.Combine(tempPath, dllName);
 
                 try
                 {
-                    using var resourceStream = assembly.GetManifestResourceStream(resourceName);
+                    using Stream? resourceStream = assembly.GetManifestResourceStream(resourceName);
                     if (resourceStream == null)
                     {
                         _logger?.LogWarning($"BASS DLL resource not found: {dllName}");
@@ -131,13 +131,13 @@ namespace LinkerPlayer.BassLibs
                     bool shouldExtract = !File.Exists(extractedPath);
                     if (!shouldExtract)
                     {
-                        var existingLength = new FileInfo(extractedPath).Length;
+                        long existingLength = new FileInfo(extractedPath).Length;
                         shouldExtract = existingLength != resourceStream.Length;
                     }
 
                     if (shouldExtract)
                     {
-                        using var fileStream = File.Create(extractedPath);
+                        using FileStream fileStream = File.Create(extractedPath);
                         resourceStream.CopyTo(fileStream);
                     }
 

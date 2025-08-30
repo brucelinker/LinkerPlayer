@@ -10,7 +10,7 @@ public class PlaylistManagerServiceTests
     {
         // This is a placeholder test while we work on making the complex dependencies testable
         
-        var result = true;
+        bool result = true;
         result.Should().BeTrue();
     }
 

@@ -189,7 +189,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             Bass.UpdatePeriod = 10;
 
             // Log device info for debugging
-            var deviceInfo = Bass.GetDeviceInfo(Bass.CurrentDevice);
+            DeviceInfo deviceInfo = Bass.GetDeviceInfo(Bass.CurrentDevice);
             _logger.LogInformation($"Using audio device: {deviceInfo.Name}");
 
             IsBassInitialized = true;
@@ -663,7 +663,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         _equalizerBands.Clear();
 
         // Create NEW band objects from the input, don't store references
-        foreach (var band in bands)
+        foreach (EqualizerBandSettings band in bands)
         {
             _equalizerBands.Add(new EqualizerBandSettings(
                 band.Frequency,

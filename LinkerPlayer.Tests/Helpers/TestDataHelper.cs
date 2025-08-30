@@ -22,7 +22,7 @@ public static class TestDataHelper
 
     public static List<MediaFile> CreateTestMediaFiles(int count = 3)
     {
-        var files = new List<MediaFile>();
+        List<MediaFile> files = new List<MediaFile>();
         for (int i = 1; i <= count; i++)
         {
             files.Add(CreateTestMediaFile($"id-{i}", $"Song {i}", $"Artist {i}"));
@@ -32,7 +32,7 @@ public static class TestDataHelper
 
     public static Playlist CreateTestPlaylist(string name = "Test Playlist", params string[] trackIds)
     {
-        var playlist = new Playlist
+        Playlist playlist = new Playlist
         {
             Name = name,
             TrackIds = new ObservableCollection<string>(trackIds)
@@ -48,7 +48,7 @@ public static class TestDataHelper
 
     public static PlaylistTab CreateTestPlaylistTab(string name = "Test Tab", int trackCount = 3)
     {
-        var tracks = CreateTestMediaFiles(trackCount);
+        List<MediaFile> tracks = CreateTestMediaFiles(trackCount);
         return new PlaylistTab
         {
             Name = name,
