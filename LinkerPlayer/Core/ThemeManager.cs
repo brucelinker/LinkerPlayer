@@ -43,13 +43,36 @@ public class ThemeManager
     public void ModifyTheme(ThemeColors themeColor)
     {
         ClearStyles();
+        
+        // Add theme colors first
         AddTheme(themeColor);
 
+        // Add the solid color brushes
         const string colors = @"Styles\SolidColorBrushes.xaml";
         Uri colorsUri = new(colors, UriKind.Relative);
         ResourceDictionary brushesDict = (Application.LoadComponent(colorsUri) as ResourceDictionary)!;
-
         AddDict(brushesDict);
+
+        // Re-add the essential style dictionaries that were cleared
+        const string stylesRepo = @"Styles\StylesRepository.xaml";
+        Uri stylesUri = new(stylesRepo, UriKind.Relative);
+        ResourceDictionary stylesDict = (Application.LoadComponent(stylesUri) as ResourceDictionary)!;
+        AddDict(stylesDict);
+
+        const string horizontalSlider = @"Styles\HorizontalSlider.xaml";
+        Uri sliderUri = new(horizontalSlider, UriKind.Relative);
+        ResourceDictionary sliderDict = (Application.LoadComponent(sliderUri) as ResourceDictionary)!;
+        AddDict(sliderDict);
+
+        const string rectangleButton = @"Styles\RectangleButton.xaml";
+        Uri buttonUri = new(rectangleButton, UriKind.Relative);
+        ResourceDictionary buttonDict = (Application.LoadComponent(buttonUri) as ResourceDictionary)!;
+        AddDict(buttonDict);
+
+        const string circularButton = @"Styles\CircularButton.xaml";
+        Uri circularUri = new(circularButton, UriKind.Relative);
+        ResourceDictionary circularDict = (Application.LoadComponent(circularUri) as ResourceDictionary)!;
+        AddDict(circularDict);
     }
 
     public static void AddTheme(ThemeColors skin)

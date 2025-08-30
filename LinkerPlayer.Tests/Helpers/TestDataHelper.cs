@@ -1,0 +1,70 @@
+using LinkerPlayer.Models;
+using System.Collections.ObjectModel;
+
+namespace LinkerPlayer.Tests.Helpers;
+
+public static class TestDataHelper
+{
+    public static MediaFile CreateTestMediaFile(string id = "test-id", string title = "Test Song", string artist = "Test Artist")
+    {
+        return new MediaFile
+        {
+            Id = id,
+            Title = title,
+            Artist = artist,
+            Album = "Test Album",
+            Path = $"C:\\Music\\{title}.mp3",
+            Duration = TimeSpan.FromMinutes(3),
+            Track = 1,
+            Year = 2023
+        };
+    }
+
+    public static List<MediaFile> CreateTestMediaFiles(int count = 3)
+    {
+        var files = new List<MediaFile>();
+        for (int i = 1; i <= count; i++)
+        {
+            files.Add(CreateTestMediaFile($"id-{i}", $"Song {i}", $"Artist {i}"));
+        }
+        return files;
+    }
+
+    public static Playlist CreateTestPlaylist(string name = "Test Playlist", params string[] trackIds)
+    {
+        var playlist = new Playlist
+        {
+            Name = name,
+            TrackIds = new ObservableCollection<string>(trackIds)
+        };
+
+        if (trackIds.Length > 0)
+        {
+            playlist.SelectedTrack = trackIds[0];
+        }
+
+        return playlist;
+    }
+
+    public static PlaylistTab CreateTestPlaylistTab(string name = "Test Tab", int trackCount = 3)
+    {
+        var tracks = CreateTestMediaFiles(trackCount);
+        return new PlaylistTab
+        {
+            Name = name,
+            Tracks = new ObservableCollection<MediaFile>(tracks)
+        };
+    }
+
+    public static ProgressData CreateTestProgressData(bool isProcessing = false, int processed = 0, int total = 100, string status = "")
+    {
+        return new ProgressData
+        {
+            IsProcessing = isProcessing,
+            ProcessedTracks = processed,
+            TotalTracks = total,
+            Status = status,
+            Phase = isProcessing ? "Testing" : ""
+        };
+    }
+}

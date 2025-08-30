@@ -1,5 +1,6 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +50,13 @@ public partial class App
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<MusicLibrary>();
+                
+                // Add the new services
+                services.AddSingleton<IFileImportService, FileImportService>();
+                services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
+                services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
+                services.AddSingleton<IUIDispatcher, WpfUIDispatcher>();
+                
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
                 services.AddSingleton<EqualizerWindow>();
