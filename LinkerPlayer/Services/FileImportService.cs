@@ -13,9 +13,8 @@ public class FileImportService : IFileImportService
 {
     private readonly MusicLibrary _musicLibrary;
     private readonly ILogger<FileImportService> _logger;
-    
     private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
-    
+
     // Constants for progress reporting
     private const int DefaultBatchSize = 10;
     private const int MaxBatchSize = 100;
