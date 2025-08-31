@@ -16,7 +16,31 @@ using System.Threading.Tasks;
 
 namespace LinkerPlayer.Core;
 
-public class MusicLibrary
+public interface IMusicLibrary
+{
+    ObservableCollection<MediaFile> MainLibrary { get; }
+    ObservableCollection<Playlist> Playlists { get; }
+    Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true, bool skipMetadata = false);
+    Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
+    Task<Playlist> AddNewPlaylistAsync(string playlistName);
+    Task<bool> AddPlaylistAsync(Playlist newPlaylist);
+    Task RemovePlaylistAsync(string playlistName);
+    Task AddTracksToPlaylistAsync(IList<string> trackIds, string playlistName, bool saveImmediately = true);
+    Task AddTrackToPlaylistAsync(string trackId, string playlistName, bool saveImmediately = true, int position = -1);
+    MediaFile? IsTrackInLibrary(MediaFile mediaFile);
+    List<Playlist> GetPlaylists();
+    List<MediaFile> GetTracksFromPlaylist(string? playlistName);
+    Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks);
+    Task SaveToDatabaseAsync();
+    Task LoadFromDatabaseAsync();
+    Task CleanOrphanedTracksAsync();
+    Task SaveMetadataCacheAsync();
+    Task LoadMetadataCacheAsync();
+    Task ClearAllMetadataCacheAsync();
+    void ClearPlayState();
+}
+
+public class MusicLibrary : IMusicLibrary
 {
     private readonly ILogger<MusicLibrary> _logger;
 

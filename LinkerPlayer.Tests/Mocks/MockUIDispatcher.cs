@@ -6,7 +6,7 @@ namespace LinkerPlayer.Tests.Mocks;
 /// Mock implementation of IUIDispatcher for unit testing.
 /// Executes all operations synchronously on the current thread.
 /// </summary>
-public class MockUIDispatcher : IUIDispatcher
+public class MockUIDispatcher : IUiDispatcher
 {
     public Task InvokeAsync(Action action)
     {

@@ -50,13 +50,13 @@ public partial class App
                 services.AddSingleton<SettingsManager>();
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
-                services.AddSingleton<MusicLibrary>();
+                services.AddSingleton<IMusicLibrary, MusicLibrary>();
                 
                 // Add the new services
                 services.AddSingleton<IFileImportService, FileImportService>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
-                services.AddSingleton<IUIDispatcher, WpfUIDispatcher>();
+                services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
                 
                 services.AddSingleton<PlaylistTabsViewModel>();
@@ -89,7 +89,7 @@ public partial class App
             AppHost.StartAsync();
             _logger.LogInformation("AppHost started successfully");
             MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
-            MusicLibrary musicLibrary = AppHost.Services.GetRequiredService<MusicLibrary>();
+            IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
             _logger.LogInformation("Showing MainWindow");
             mainWindow.Show();
             _logger.LogInformation("Loading MetadataCache");

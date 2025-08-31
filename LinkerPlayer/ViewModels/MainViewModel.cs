@@ -14,7 +14,7 @@ public class MainViewModel : ObservableObject
     private static readonly ThemeManager ThemeMgr = new();
     private readonly SettingsManager _settingsManager;
     private readonly OutputDeviceManager _outputDeviceManager;
-    private readonly MusicLibrary _musicLibrary;
+    private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<MainViewModel> _logger;
 
     public MainViewModel(
@@ -22,7 +22,7 @@ public class MainViewModel : ObservableObject
         PlayerControlsViewModel playerControlsViewModel,
         PlaylistTabsViewModel playlistTabsViewModel,
         OutputDeviceManager outputDeviceManager,
-        MusicLibrary musicLibrary,
+        IMusicLibrary musicLibrary,
         ILogger<MainViewModel> logger)
     {
         _musicLibrary = musicLibrary;

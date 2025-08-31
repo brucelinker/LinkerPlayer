@@ -6,11 +6,11 @@ namespace LinkerPlayer.Tests.Services;
 
 public class WpfUiDispatcherTests
 {
-    private readonly WpfUIDispatcher _uiDispatcher;
+    private readonly WpfUiDispatcher _uiDispatcher;
 
     public WpfUiDispatcherTests()
     {
-        _uiDispatcher = new WpfUIDispatcher();
+        _uiDispatcher = new WpfUiDispatcher();
     }
 
     [Fact]

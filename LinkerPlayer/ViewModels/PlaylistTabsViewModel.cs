@@ -42,14 +42,14 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public readonly SharedDataModel SharedDataModel;
     private readonly SettingsManager _settingsManager;
-    private readonly MusicLibrary _musicLibrary;
+    private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<PlaylistTabsViewModel> _logger;
     
     // New services
     private readonly IFileImportService _fileImportService;
     private readonly IPlaylistManagerService _playlistManagerService;
     private readonly ITrackNavigationService _trackNavigationService;
-    private readonly IUIDispatcher _uiDispatcher;
+    private readonly IUiDispatcher _uiDispatcher;
 
     private TabControl? _tabControl;
     private DataGrid? _dataGrid;
@@ -62,13 +62,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
 
     public PlaylistTabsViewModel(
-        MusicLibrary musicLibrary,
+        IMusicLibrary musicLibrary,
         SharedDataModel sharedDataModel,
         SettingsManager settingsManager,
         IFileImportService fileImportService,
         IPlaylistManagerService playlistManagerService,
         ITrackNavigationService trackNavigationService,
-        IUIDispatcher uiDispatcher,
+        IUiDispatcher uiDispatcher,
         ILogger<PlaylistTabsViewModel> logger)
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
@@ -683,6 +683,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         // Update UI
         _dataGrid!.SelectedIndex = newIndex;
         _dataGrid.ScrollIntoView(newTrack);
+
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
 
         //_logger.LogDebug("Navigated to track: {Title} at index {Index}", newTrack.Title, newIndex);
         return newTrack;
