@@ -4,6 +4,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
     <ResourceDictionary>
+      <BitmapImage x:Key="AppIcon" UriSource="Images/app64.ico"/>
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/SolidColorBrushes.xaml" />
