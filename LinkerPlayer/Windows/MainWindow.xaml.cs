@@ -13,7 +13,7 @@ using System.Windows.Input;
 
 namespace LinkerPlayer.Windows;
 
-public partial class MainWindow
+public partial class MainWindow : Window
 {
     public static MainWindow? Instance { get; private set; }
     private readonly MainViewModel _mainViewModel;
@@ -29,6 +29,8 @@ public partial class MainWindow
         {
             Instance = this;
             InitializeComponent();
+
+            _logger.LogInformation("MainWindow: Regular WPF Window initialized");
 
             _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
             _audioEngine = serviceProvider.GetRequiredService<AudioEngine>();
@@ -63,12 +65,18 @@ public partial class MainWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        _logger.LogInformation("MainWindow: Window_Loaded event fired");
+        
+        // Initialize the view model
         _mainViewModel.OnWindowLoaded();
         WeakReferenceMessenger.Default.Send(new MainWindowLoadedMessage(true));
+        
+        _logger.LogInformation("MainWindow: Regular WPF Window loaded successfully");
     }
 
     private void OnMainWindowClose(object sender, EventArgs e)
     {
+        _logger.LogInformation("MainWindow: OnMainWindowClose called");
         Bass.Free();
         WeakReferenceMessenger.Default.Send(new MainWindowClosingMessage(true));
         _mainViewModel.OnWindowClosing();
@@ -91,9 +99,14 @@ public partial class MainWindow
 
     private void Window_StateChanged(object sender, EventArgs e)
     {
+        _logger.LogInformation("MainWindow: Window state changed to: {State}", WindowState);
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (e.ChangedButton == MouseButton.Left)
+        {
+            DragMove();
+        }
     }
 }

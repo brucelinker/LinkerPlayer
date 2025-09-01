@@ -13,10 +13,10 @@
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 		<PackageReference Include="ControlzEx" Version="7.0.1" />
 		<PackageReference Include="MahApps.Metro.IconPacks" Version="6.1.0" />
-		<PackageReference Include="ManagedBass" Version="3.1.4" />
-		<PackageReference Include="ManagedBass.Fx" Version="3.1.4" />
-		<PackageReference Include="ManagedBass.Mix" Version="3.1.4" />
-		<PackageReference Include="ManagedBass.Wasapi" Version="3.1.4" />
+		<PackageReference Include="ManagedBass" Version="4.0.0" />
+		<PackageReference Include="ManagedBass.Fx" Version="4.0.0" />
+		<PackageReference Include="ManagedBass.Mix" Version="4.0.0" />
+		<PackageReference Include="ManagedBass.Wasapi" Version="4.0.0" />
 		<PackageReference Include="MaterialDesignThemes" Version="5.2.2-ci942" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.8" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.8">

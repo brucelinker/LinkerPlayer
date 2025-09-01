@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
@@ -38,10 +39,23 @@ public partial class PlaylistTabs
         {
             viewModel.LoadPlaylistTabs();
             _logger.LogInformation("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
+            
             if (viewModel.TabList.Any())
             {
-                viewModel.SelectedTabIndex = 0; // Force initial selection
-                _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to 0");
+                // Get the saved tab index and set it if valid
+                var settingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
+                int savedTabIndex = settingsManager.Settings.SelectedTabIndex;
+                
+                if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
+                {
+                    viewModel.SelectedTabIndex = savedTabIndex;
+                    _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to saved value {Index}", savedTabIndex);
+                }
+                else
+                {
+                    viewModel.SelectedTabIndex = 0;
+                    _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
+                }
             }
             else
             {
