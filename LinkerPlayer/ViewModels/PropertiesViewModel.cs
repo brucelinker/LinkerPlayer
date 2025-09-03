@@ -273,7 +273,6 @@ public partial class PropertiesViewModel : ObservableObject
 
         AddMetadataItem("Composer", tag.FirstComposer ?? string.Join(", ", tag.Composers ?? []), true, v => { tag.Composers = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
         AddMetadataItem("Copyright", tag.Copyright ?? "", true, v => { tag.Copyright = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
-        AddMetadataItem("Lyrics", tag.Lyrics ?? "", true, v => { tag.Lyrics = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         AddMetadataItem("Beats Per Minute", tag.BeatsPerMinute > 0 ? tag.BeatsPerMinute.ToString() : "", true, v => { tag.BeatsPerMinute = uint.TryParse(v, out uint bpm) ? bpm : 0; HasUnsavedChanges = true; });
         AddMetadataItem("Conductor", tag.Conductor ?? "", true, v => { tag.Conductor = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
         AddMetadataItem("Grouping", tag.Grouping ?? "", true, v => { tag.Grouping = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });

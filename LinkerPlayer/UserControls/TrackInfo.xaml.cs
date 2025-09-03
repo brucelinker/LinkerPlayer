@@ -5,6 +5,7 @@ using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Diagnostics.Metrics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -40,6 +41,7 @@ public partial class TrackInfo
         Loaded += TrackInfo_Loaded;
 
         Spectrum.RegisterSoundPlayer(_audioEngine);
+        VuMeter.RegisterSoundPlayer(_audioEngine);
         SpectrumButton.Content = nameof(BarHeightScalingStyles.Decibel);
         Spectrum.BarHeightScaling = BarHeightScalingStyles.Decibel;
 
@@ -59,6 +61,16 @@ public partial class TrackInfo
         else
         {
             _logger.LogError("TrackInfo: SpectrumAnalyzer control not found");
+        }
+
+        if (FindName("VuMeter") is VuMeter vuMeter)
+        {
+            vuMeter.RegisterSoundPlayer(_audioEngine);
+            _logger.LogInformation("TrackInfo: Registered VuMeter with AudioEngine");
+        }
+        else
+        {
+            _logger.LogError("TrackInfo: VuMeter control not found");
         }
     }
 
