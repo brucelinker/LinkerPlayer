@@ -174,18 +174,6 @@
         RefreshInterval="25"
         Style="{StaticResource SpectrumAnalyzerStyle}" />
         
-      <!-- VU Meter below Spectrum Analyzer -->
-      <audio:VuMeter
-        x:Name="VuMeter"
-        Grid.Row="1"
-        Height="50"
-        Margin="0,5,0,0"
-        ChannelHeight="15"
-        ChannelSpacing="3"
-        DecaySpeed="0.95"
-        ShowLabels="True"
-        Style="{StaticResource VuMeterStyle}" />
-        
       <Button
         Name="SpectrumButton"
         Grid.Row="0"
@@ -200,6 +188,18 @@
         Foreground="{DynamicResource ControlForegroundBrush}"
         Style="{StaticResource LinkerRectangleButton}"
         ToolTip="Spectrum Style" />
+
+      <audio:VuMeter
+        x:Name="VuMeter"
+        Grid.Row="1"
+        Height="50"
+        Margin="0,5,0,0"
+        ChannelHeight="15"
+        ChannelSpacing="3"
+        DecaySpeed="0.95"
+        ShowLabels="True"
+        Style="{StaticResource VuMeterStyle}" />
+
     </Grid>
   </Grid>
 </UserControl>

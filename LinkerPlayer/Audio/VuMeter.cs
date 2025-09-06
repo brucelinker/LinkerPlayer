@@ -29,13 +29,11 @@ public partial class VuMeter : Control
     private Rectangle? _rightChannelBar;
     private double _leftLevel;
     private double _rightLevel;
-    private readonly Brush _normalBrush = new SolidColorBrush(Color.FromRgb(0, 255, 0));
-    private readonly Brush _warningBrush = new SolidColorBrush(Color.FromRgb(255, 255, 0));
-    private readonly Brush _dangerBrush = new SolidColorBrush(Color.FromRgb(255, 0, 0));
     private readonly object _lockObject = new object();
 
     // Cached property values to avoid cross-thread access
     private double _cachedDecaySpeed = 0.85;
+    private double _cachedDangerThreshold = 0.0;
     private bool _isPlayerPlaying = false;
     private AudioEngine? _audioEngine;
     private bool _isShuttingDown = false;
@@ -82,11 +80,92 @@ public partial class VuMeter : Control
         set => SetValue(DecaySpeedProperty, value);
     }
 
+    // Color dependency properties
+    public static readonly DependencyProperty PeakBrushProperty =
+        DependencyProperty.Register(nameof(PeakBrush), typeof(Brush), typeof(VuMeter),
+            new UIPropertyMetadata(null));
+
+    public Brush? PeakBrush
+    {
+        get => (Brush?)GetValue(PeakBrushProperty);
+        set => SetValue(PeakBrushProperty, value);
+    }
+
+    // Gradient dependency properties for spectrum-like appearance
+    public static readonly DependencyProperty GradientStartColorProperty =
+        DependencyProperty.Register(nameof(GradientStartColor), typeof(Color), typeof(VuMeter),
+            new UIPropertyMetadata(Color.FromRgb(44, 8, 106))); // #2C086A - matches spectrum
+
+    public Color GradientStartColor
+    {
+        get => (Color)GetValue(GradientStartColorProperty);
+        set => SetValue(GradientStartColorProperty, value);
+    }
+
+    public static readonly DependencyProperty GradientEndColorProperty =
+        DependencyProperty.Register(nameof(GradientEndColor), typeof(Color), typeof(VuMeter),
+            new UIPropertyMetadata(Colors.Black));
+
+    public Color GradientEndColor
+    {
+        get => (Color)GetValue(GradientEndColorProperty);
+        set => SetValue(GradientEndColorProperty, value);
+    }
+
+    public static readonly DependencyProperty ClippingColorProperty =
+        DependencyProperty.Register(nameof(ClippingColor), typeof(Color), typeof(VuMeter),
+            new UIPropertyMetadata(Colors.Red));
+
+    public Color ClippingColor
+    {
+        get => (Color)GetValue(ClippingColorProperty);
+        set => SetValue(ClippingColorProperty, value);
+    }
+
+    // Threshold dependency properties
+    public static readonly DependencyProperty WarningThresholdProperty =
+        DependencyProperty.Register(nameof(WarningThreshold), typeof(double), typeof(VuMeter),
+            new UIPropertyMetadata(-6.0));
+
+    public double WarningThreshold
+    {
+        get => (double)GetValue(WarningThresholdProperty);
+        set => SetValue(WarningThresholdProperty, value);
+    }
+
+    public static readonly DependencyProperty DangerThresholdProperty =
+        DependencyProperty.Register(nameof(DangerThreshold), typeof(double), typeof(VuMeter),
+            new UIPropertyMetadata(0.0, OnDangerThresholdChanged));
+
+    public double DangerThreshold
+    {
+        get => (double)GetValue(DangerThresholdProperty);
+        set => SetValue(DangerThresholdProperty, value);
+    }
+
+    public static readonly DependencyProperty ScaleBrushProperty =
+        DependencyProperty.Register(nameof(ScaleBrush), typeof(Brush), typeof(VuMeter),
+            new UIPropertyMetadata(Brushes.Gray));
+
+    public Brush ScaleBrush
+    {
+        get => (Brush)GetValue(ScaleBrushProperty);
+        set => SetValue(ScaleBrushProperty, value);
+    }
+
     private static void OnDecaySpeedChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is VuMeter vuMeter)
         {
             vuMeter._cachedDecaySpeed = (double)e.NewValue;
+        }
+    }
+
+    private static void OnDangerThresholdChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is VuMeter vuMeter)
+        {
+            vuMeter._cachedDangerThreshold = (double)e.NewValue;
         }
     }
 
@@ -126,16 +205,12 @@ public partial class VuMeter : Control
         };
         _animationTimer.Tick += AnimationTimer_Tick;
 
-        // Freeze brushes for performance
-        _normalBrush.Freeze();
-        _warningBrush.Freeze();
-        _dangerBrush.Freeze();
-
         // Set default template
         DefaultStyleKey = typeof(VuMeter);
 
         // Initialize cached values
         _cachedDecaySpeed = DecaySpeed;
+        _cachedDangerThreshold = DangerThreshold;
 
         // Initialize levels to minimum
         _leftLevel = MinDbValue;
@@ -257,17 +332,18 @@ public partial class VuMeter : Control
         double availableHeight = canvasHeight - labelHeight;
         double channelHeight = Math.Min(ChannelHeight, (availableHeight - ChannelSpacing) / 2);
 
-        // Create scale markings and labels
+        // Create channel bars first (at top)
+        CreateChannelBars(canvasWidth, channelHeight, 0);
+
+        // Create scale markings and labels below the bars
         if (ShowLabels)
         {
-            CreateScaleMarkings(canvasWidth, labelHeight);
+            double scaleTopOffset = channelHeight * 2 + ChannelSpacing;
+            CreateScaleMarkings(canvasWidth, scaleTopOffset);
         }
-
-        // Create channel bars
-        CreateChannelBars(canvasWidth, channelHeight, labelHeight);
     }
 
-    private void CreateScaleMarkings(double canvasWidth, double labelHeight)
+    private void CreateScaleMarkings(double canvasWidth, double topOffset)
     {
         if (_vuCanvas == null) return;
 
@@ -280,10 +356,10 @@ public partial class VuMeter : Control
             var tickLine = new Line
             {
                 X1 = position,
-                Y1 = 0,
+                Y1 = topOffset,
                 X2 = position,
-                Y2 = 5,
-                Stroke = Brushes.Gray,
+                Y2 = topOffset + 5,
+                Stroke = ScaleBrush,
                 StrokeThickness = 1
             };
             _vuCanvas.Children.Add(tickLine);
@@ -293,12 +369,12 @@ public partial class VuMeter : Control
             {
                 Text = db == 0 ? "0" : db.ToString("+0;-0", CultureInfo.InvariantCulture),
                 FontSize = 9,
-                Foreground = Brushes.Gray,
+                Foreground = ScaleBrush,
                 HorizontalAlignment = HorizontalAlignment.Center
             };
 
             Canvas.SetLeft(label, position - 8);
-            Canvas.SetTop(label, 6);
+            Canvas.SetTop(label, topOffset + 6);
             _vuCanvas.Children.Add(label);
         }
     }
@@ -312,7 +388,7 @@ public partial class VuMeter : Control
         {
             Width = 0,
             Height = channelHeight,
-            Fill = _normalBrush
+            Fill = CreateGradientBrush(channelHeight, MinDbValue) // Start with no signal
         };
         Canvas.SetLeft(_leftChannelBar, 0);
         Canvas.SetTop(_leftChannelBar, labelOffset);
@@ -323,7 +399,7 @@ public partial class VuMeter : Control
         {
             Width = 0,
             Height = channelHeight,
-            Fill = _normalBrush
+            Fill = CreateGradientBrush(channelHeight, MinDbValue) // Start with no signal
         };
         Canvas.SetLeft(_rightChannelBar, 0);
         Canvas.SetTop(_rightChannelBar, labelOffset + channelHeight + ChannelSpacing);
@@ -336,7 +412,7 @@ public partial class VuMeter : Control
             {
                 Text = "L",
                 FontSize = 10,
-                Foreground = Brushes.Gray,
+                Foreground = ScaleBrush,
                 FontWeight = FontWeights.Bold
             };
             Canvas.SetLeft(leftLabel, -15);
@@ -347,7 +423,7 @@ public partial class VuMeter : Control
             {
                 Text = "R",
                 FontSize = 10,
-                Foreground = Brushes.Gray,
+                Foreground = ScaleBrush,
                 FontWeight = FontWeights.Bold
             };
             Canvas.SetLeft(rightLabel, -15);
@@ -385,22 +461,12 @@ public partial class VuMeter : Control
         // Update left channel
         double leftWidth = Math.Max(0, Math.Min(canvasWidth, (leftLevel - MinDbValue) / DbRange * canvasWidth));
         _leftChannelBar.Width = leftWidth;
-        _leftChannelBar.Fill = GetLevelBrush(leftLevel);
+        _leftChannelBar.Fill = CreateGradientBrush(_leftChannelBar.Height, leftLevel);
 
         // Update right channel  
         double rightWidth = Math.Max(0, Math.Min(canvasWidth, (rightLevel - MinDbValue) / DbRange * canvasWidth));
         _rightChannelBar.Width = rightWidth;
-        _rightChannelBar.Fill = GetLevelBrush(rightLevel);
-    }
-
-    private Brush GetLevelBrush(double dbLevel)
-    {
-        return dbLevel switch
-        {
-            >= 0 => _dangerBrush,      // 0dB and above - red
-            >= -6 => _warningBrush,    // -6dB to 0dB - yellow  
-            _ => _normalBrush          // Below -6dB - green
-        };
+        _rightChannelBar.Fill = CreateGradientBrush(_rightChannelBar.Height, rightLevel);
     }
 
     private void UpdateAudioLevels()
@@ -415,32 +481,32 @@ public partial class VuMeter : Control
 
         try
         {
-            // Get real audio levels from BASS
-            double dbLevel = _audioEngine.GetDecibelLevel();
+            // Get real stereo audio levels from BASS
+            var (leftDb, rightDb) = _audioEngine.GetStereoDecibelLevels();
 
-            // If we can't get a level, don't update
-            if (double.IsNaN(dbLevel) || double.IsInfinity(dbLevel))
+            // If we can't get levels, don't update
+            if (double.IsNaN(leftDb) || double.IsInfinity(leftDb) || 
+                double.IsNaN(rightDb) || double.IsInfinity(rightDb))
             {
                 return;
             }
 
             lock (_lockObject)
             {
-                // SIMPLIFIED: Just use the BASS dB values directly - no peak hold, no decay during playback
-                // This is to test if the VU meter display works at all
-                _leftLevel = dbLevel;
-                _rightLevel = dbLevel + 1.0; // Slight difference for stereo simulation
+                // Use actual stereo channel levels
+                _leftLevel = leftDb;
+                _rightLevel = rightDb;
 
                 // Clamp to valid range
                 _leftLevel = Math.Max(MinDbValue, Math.Min(MaxDbValue, _leftLevel));
                 _rightLevel = Math.Max(MinDbValue, Math.Min(MaxDbValue, _rightLevel));
 
                 // Debug logging
-                if (!_isShuttingDown && DateTime.Now.Millisecond < 50) // Log roughly once per second
-                {
-                    _logger.LogDebug("VuMeter: BASS dB={DbLevel:F1} | Direct=L:{LeftLevel:F1},R:{RightLevel:F1}",
-                        dbLevel, _leftLevel, _rightLevel);
-                }
+                //if (!_isShuttingDown && DateTime.Now.Millisecond < 50) // Log roughly once per second
+                //{
+                //    _logger.LogDebug("VuMeter: Stereo levels L:{LeftLevel:F1}dB, R:{RightLevel:F1}dB (DangerThreshold={DangerThreshold:F1}dB)",
+                //        _leftLevel, _rightLevel, _cachedDangerThreshold);
+                //}
             }
         }
         catch (Exception ex)
@@ -493,18 +559,17 @@ public partial class VuMeter : Control
             bool wasPlaying = _isPlayerPlaying;
             _isPlayerPlaying = _soundPlayer.IsPlaying;
 
-            _logger.LogDebug("VuMeter: Player state changed from {WasPlaying} to {IsPlaying}", wasPlaying, _isPlayerPlaying);
+            //_logger.LogDebug("VuMeter: Player state changed from {WasPlaying} to {IsPlaying}", wasPlaying, _isPlayerPlaying);
 
             if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
             {
                 _animationTimer.Start();
-                _logger.LogDebug("VuMeter: Player started, timer started");
+                //_logger.LogDebug("VuMeter: Player started, timer started");
             }
             else if (!_soundPlayer.IsPlaying)
             {
-                _logger.LogDebug("VuMeter: Player stopped, current levels L:{LeftLevel:F1}, R:{RightLevel:F1}", _leftLevel, _rightLevel);
+                //_logger.LogDebug("VuMeter: Player stopped, current levels L:{LeftLevel:F1}, R:{RightLevel:F1}", _leftLevel, _rightLevel);
 
-                // FIXED: Immediately clear levels when player stops - don't rely on decay
                 lock (_lockObject)
                 {
                     _leftLevel = MinDbValue;
@@ -517,7 +582,7 @@ public partial class VuMeter : Control
                 // Update display immediately
                 UpdateVuBars();
 
-                _logger.LogDebug("VuMeter: Levels immediately set to minimum when stopped");
+                //_logger.LogDebug("VuMeter: Levels immediately set to minimum when stopped");
             }
         }
     }
@@ -541,7 +606,7 @@ public partial class VuMeter : Control
             {
                 // If timer is running but not playing, stop it
                 _animationTimer.Stop();
-                _logger.LogDebug("VuMeter: Timer stopped - not playing");
+                //_logger.LogDebug("VuMeter: Timer stopped - not playing");
             }
         }
         catch (Exception ex)
@@ -564,6 +629,24 @@ public partial class VuMeter : Control
     {
         DefaultStyleKeyProperty.OverrideMetadata(typeof(VuMeter),
             new FrameworkPropertyMetadata(typeof(VuMeter)));
+    }
+    #endregion
+
+    #region Gradient Brush Creator
+    private Brush CreateGradientBrush(double barHeight, double dbLevel)
+    {
+        var gradient = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0) // Left to right gradient (horizontal)
+        };
+
+        // Simple spectrum-style gradient like SpectrumAnalyzer
+        gradient.GradientStops.Add(new GradientStop(GradientStartColor, 0.0));
+        gradient.GradientStops.Add(new GradientStop(GradientEndColor, 1.0));
+
+        gradient.Freeze(); // Freeze for performance
+        return gradient;
     }
     #endregion
 }

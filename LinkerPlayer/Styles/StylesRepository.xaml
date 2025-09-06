@@ -536,6 +536,20 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{DynamicResource DefaultBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
+    <!-- VU Meter Gradient Configuration (matches spectrum analyzer) -->
+    <Setter Property="GradientStartColor" Value="{DynamicResource SpectrumStartColor}" />
+    <Setter Property="GradientEndColor" Value="{DynamicResource SpectrumEndColor}" />
+    <Setter Property="ClippingColor" Value="Red" />
+    <Setter Property="PeakBrush" Value="{DynamicResource SpectrumPeakBrush}" />
+    <Setter Property="ScaleBrush" Value="{DynamicResource DefaultForegroundBrush}" />
+    <!-- VU Meter Thresholds (in dB) -->
+    <Setter Property="WarningThreshold" Value="-6" />     <!-- Warning threshold (currently unused) -->
+    <Setter Property="DangerThreshold" Value="-3" />      <!-- Currently unused with peak indicators -->
+    <!-- VU Meter Layout -->
+    <Setter Property="ChannelHeight" Value="15" />
+    <Setter Property="ChannelSpacing" Value="3" />
+    <Setter Property="ShowLabels" Value="True" />
+    <Setter Property="DecaySpeed" Value="0.85" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type audio:VuMeter}">

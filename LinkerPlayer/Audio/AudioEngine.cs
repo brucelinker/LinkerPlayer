@@ -266,6 +266,27 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         return avgDb;
     }
 
+    /// <summary>
+    /// Gets the individual left and right channel decibel levels for stereo VU meter display
+    /// </summary>
+    /// <returns>Tuple containing (leftChannelDb, rightChannelDb)</returns>
+    public (double LeftDb, double RightDb) GetStereoDecibelLevels()
+    {
+        int level = Bass.ChannelGetLevel(CurrentStream);
+        if (level == -1)
+        {
+            return (double.NaN, double.NaN);
+        }
+
+        int left = level & 0xFFFF;
+        int right = (level >> 16) & 0xFFFF;
+
+        double leftDb = left > 0 ? 20 * Math.Log10(left / 32768.0) : -120.0;
+        double rightDb = right > 0 ? 20 * Math.Log10(right / 32768.0) : -120.0;
+
+        return (leftDb, rightDb);
+    }
+
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
     {
         _logger.LogInformation("Track ended");

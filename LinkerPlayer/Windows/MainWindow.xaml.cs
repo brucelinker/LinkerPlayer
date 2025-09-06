@@ -77,7 +77,7 @@ public partial class MainWindow : Window
     private void OnMainWindowClose(object sender, EventArgs e)
     {
         _logger.LogInformation("MainWindow: OnMainWindowClose called");
-        Bass.Free();
+        // Remove Bass.Free() from here - it will be handled by AudioEngine.Dispose()
         WeakReferenceMessenger.Default.Send(new MainWindowClosingMessage(true));
         _mainViewModel.OnWindowClosing();
     }
@@ -87,8 +87,9 @@ public partial class MainWindow : Window
         try
         {
             _logger.LogInformation("MainWindow: Shutting down application");
-            _audioEngine.Dispose();
-            _outputDeviceManager.Dispose();
+            // Remove manual disposal from here - it will be handled by App.OnExit()
+            //_audioEngine.Dispose();
+            //_outputDeviceManager.Dispose();
         }
         catch (Exception ex)
         {

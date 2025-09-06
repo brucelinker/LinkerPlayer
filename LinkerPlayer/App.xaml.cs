@@ -192,13 +192,33 @@ public partial class App
     {
         try
         {
-            SettingsManager settingsManager = AppHost.Services.GetRequiredService<SettingsManager>();
-            // Don't call SaveSettings here - it's designed for individual property changes
-            // The settings are automatically saved by the timer when properties change
-            _logger.LogInformation("SettingsManager retrieved for shutdown");
+            // Save settings and data BEFORE stopping the host
+            try
+            {
+                SettingsManager settingsManager = AppHost.Services.GetRequiredService<SettingsManager>();
+                _logger.LogInformation("SettingsManager retrieved for shutdown");
+                
+                IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
+                musicLibrary.SaveMetadataCacheAsync().GetAwaiter().GetResult(); // Save metadata cache on exit
+                _logger.LogInformation("Metadata cache saved successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error saving data during shutdown - continuing with cleanup");
+            }
             
-            MusicLibrary musicLibrary = AppHost.Services.GetRequiredService<MusicLibrary>();
-            musicLibrary.SaveMetadataCacheAsync().GetAwaiter().GetResult(); // Save metadata cache on exit
+            // Cleanup AudioEngine first to avoid RPC timeouts
+            try
+            {
+                AudioEngine audioEngine = AppHost.Services.GetRequiredService<AudioEngine>();
+                audioEngine.Dispose();
+                _logger.LogInformation("AudioEngine disposed successfully");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error disposing AudioEngine - continuing with cleanup");
+            }
+            
             _logger.LogInformation("Application shutdown complete");
         }
         catch (Exception ex)
@@ -208,13 +228,24 @@ public partial class App
 
         try
         {
+            // Stop and dispose the host
             AppHost.StopAsync().GetAwaiter().GetResult();
             AppHost.Dispose();
-            WindowPlace.Save();
+            _logger.LogInformation("AppHost stopped and disposed successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error disposing AppHost or WindowPlace");
+            _logger.LogError(ex, "Error disposing AppHost");
+        }
+        
+        try
+        {
+            WindowPlace.Save();
+            _logger.LogInformation("Window placement saved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving window placement");
         }
         
         base.OnExit(e);
