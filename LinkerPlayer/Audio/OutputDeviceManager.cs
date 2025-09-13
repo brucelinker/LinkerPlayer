@@ -100,18 +100,18 @@ public class OutputDeviceManager
             {
                 _audioEngine.ReselectOutputDevice(deviceName);
                 _currentDeviceName = deviceName;
-                _logger.LogInformation($"MainOutputDevice: {deviceName}");
+                _logger.LogInformation($"SelectedOutputDevice: {deviceName}");
             }
             else
             {
                 _logger.LogWarning($"SetMainOutputDevice: Device '{deviceName}' not found, using default");
                 _audioEngine.ReselectOutputDevice("Default");
                 _currentDeviceName = "Default";
-                _logger.LogInformation("MainOutputDevice: Default");
+                _logger.LogInformation("SelectedOutputDevice: Default");
             }
 
-            _settingsManager.Settings.MainOutputDevice = deviceName;
-            _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
+            _settingsManager.Settings.SelectedOutputDevice = deviceName;
+            _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
         }
         catch (Exception ex)
         {

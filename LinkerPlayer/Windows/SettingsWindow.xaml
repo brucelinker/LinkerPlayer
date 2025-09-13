@@ -94,7 +94,34 @@
     </Grid>
 
     <Grid Grid.Row="1">
-      <StackPanel Margin="30,10,30,0">
+      <StackPanel Margin="30,10,30,20">
+
+        <!--  Output Mode  -->
+        <Grid Margin="0,0,0,14">
+
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition />
+          </Grid.ColumnDefinitions>
+
+          <TextBlock
+            Grid.Column="0"
+            HorizontalAlignment="Right"
+            d:Foreground="white"
+            Text="Output Mode:" />
+
+          <ComboBox
+            x:Name="ModeCombo"
+            Grid.Column="2"
+            Width="Auto"
+            Height="24"
+            Style="{StaticResource CustomComboBoxStyle}">
+            <ComboBoxItem Content="DirectSound" />
+            <ComboBoxItem Content="WASAPI Shared" />
+            <ComboBoxItem Content="WASAPI Exclusive" />
+          </ComboBox>
+        </Grid>
 
         <!--  Main Output Device  -->
         <Grid Margin="0,0,0,14">
@@ -108,10 +135,11 @@
           <TextBlock
             Grid.Column="0"
             HorizontalAlignment="Right"
-            Text="Main Output Device:" />
+            d:Foreground="white"
+            Text="Output Device:" />
 
           <ComboBox
-            Name="MainOutputDevicesList"
+            x:Name="DeviceCombo"
             Grid.Column="2"
             Width="Auto"
             Height="24"

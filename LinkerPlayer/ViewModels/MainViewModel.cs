@@ -77,7 +77,7 @@ public class MainViewModel : ObservableObject
         {
             await _musicLibrary.SaveToDatabaseAsync();
         }).Wait();
-        _settingsManager.Settings.MainOutputDevice = _outputDeviceManager.GetCurrentDeviceName();
-        _settingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
+        _settingsManager.Settings.SelectedOutputDevice = _outputDeviceManager.GetCurrentDeviceName();
+        _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
     }
 }

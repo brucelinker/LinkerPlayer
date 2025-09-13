@@ -61,16 +61,16 @@ public partial class SettingsWindow
     {
         foreach (string device in _outputDeviceManager.GetOutputDevicesList())
         {
-            MainOutputDevicesList.Items.Add(device);
+            DeviceCombo.Items.Add(device);
         }
 
-        if (MainOutputDevicesList.Items.Contains(SettingsManager.Settings.MainOutputDevice))
+        if (DeviceCombo.Items.Contains(SettingsManager.Settings.SelectedOutputDevice))
         {
-            MainOutputDevicesList.SelectedItem = SettingsManager.Settings.MainOutputDevice;
+            DeviceCombo.SelectedItem = SettingsManager.Settings.SelectedOutputDevice;
         }
         else
         {
-            MainOutputDevicesList.SelectedItem = _outputDeviceManager.GetCurrentDeviceName();
+            DeviceCombo.SelectedItem = _outputDeviceManager.GetCurrentDeviceName();
         }
 
         int selectedThemeIndex = _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme);
@@ -98,14 +98,14 @@ public partial class SettingsWindow
 
     private void Close_Click(object sender, RoutedEventArgs e)
     {
-        string deviceName = MainOutputDevicesList.SelectedItem.ToString() ?? DefaultDevice;
+        string deviceName = DeviceCombo.SelectedItem.ToString() ?? DefaultDevice;
 
-        if (deviceName != SettingsManager.Settings.MainOutputDevice || 
+        if (deviceName != SettingsManager.Settings.SelectedOutputDevice || 
             deviceName != _outputDeviceManager.GetCurrentDeviceName())
         {
-            SettingsManager.Settings.MainOutputDevice = deviceName!;
-            SettingsManager.SaveSettings(nameof(AppSettings.MainOutputDevice));
-            _audioEngine.ReselectOutputDevice(SettingsManager.Settings.MainOutputDevice!);
+            SettingsManager.Settings.SelectedOutputDevice = deviceName!;
+            SettingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
+            _audioEngine.ReselectOutputDevice(SettingsManager.Settings.SelectedOutputDevice!);
         }
         
         if (ThemesList.SelectedIndex != _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme))

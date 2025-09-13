@@ -112,10 +112,10 @@ namespace LinkerPlayer.Properties {
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string MainOutputDevice {
             get {
-                return ((string)(this["MainOutputDevice"]));
+                return ((string)(this["SelectedOutputDevice"]));
             }
             set {
-                this["MainOutputDevice"] = value;
+                this["SelectedOutputDevice"] = value;
             }
         }
         

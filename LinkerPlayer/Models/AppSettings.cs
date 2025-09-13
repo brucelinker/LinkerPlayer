@@ -4,7 +4,8 @@ public class AppSettings
 {
     public bool EqualizerEnabled { get; set; }
     public string EqualizerPresetName { get; set; } = "Flat";
-    public string MainOutputDevice { get; set; } = string.Empty;
+    public string SelectedOutputDevice { get; set; } = string.Empty;
+    public OutputMode SelectedOutputMode { get; set; } = OutputMode.DirectSound;
     public int SelectedTabIndex { get; set; }
     public string SelectedTheme { get; set; } = "Slate";
     public bool ShuffleMode { get; set; }
