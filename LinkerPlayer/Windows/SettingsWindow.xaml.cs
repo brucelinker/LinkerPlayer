@@ -59,7 +59,7 @@ public partial class SettingsWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        foreach (string device in _outputDeviceManager.GetOutputDevicesList())
+        foreach (string device in _outputDeviceManager.GetDirectSoundDevices())
         {
             DeviceCombo.Items.Add(device);
         }

@@ -13,7 +13,6 @@ public class MainViewModel : ObservableObject
 {
     private static readonly ThemeManager ThemeMgr = new();
     private readonly SettingsManager _settingsManager;
-    private readonly OutputDeviceManager _outputDeviceManager;
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<MainViewModel> _logger;
 
@@ -21,7 +20,6 @@ public class MainViewModel : ObservableObject
         SettingsManager settingsManager,
         PlayerControlsViewModel playerControlsViewModel,
         PlaylistTabsViewModel playlistTabsViewModel,
-        OutputDeviceManager outputDeviceManager,
         IMusicLibrary musicLibrary,
         ILogger<MainViewModel> logger)
     {
@@ -33,10 +31,8 @@ public class MainViewModel : ObservableObject
             _logger.Log(LogLevel.Information, "Initializing MainViewModel"); _settingsManager = settingsManager;
             PlayerControlsViewModel = playerControlsViewModel;
             PlaylistTabsViewModel = playlistTabsViewModel;
-            _outputDeviceManager = outputDeviceManager;
 
             ThemeColors selectedTheme;
-            _outputDeviceManager.InitializeOutputDevice();
 
             if (!string.IsNullOrEmpty(_settingsManager.Settings.SelectedTheme))
             {
@@ -77,7 +73,7 @@ public class MainViewModel : ObservableObject
         {
             await _musicLibrary.SaveToDatabaseAsync();
         }).Wait();
-        _settingsManager.Settings.SelectedOutputDevice = _outputDeviceManager.GetCurrentDeviceName();
+
         _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
     }
 }

@@ -10,7 +10,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Windows;
 // ReSharper disable InconsistentNaming
 
 namespace LinkerPlayer.Audio;
@@ -86,9 +85,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             // Initialize BASS
             InitializeBass();
-
-            // Load plugins after BASS is initialized
-            LoadBassPlugins();
 
             // Explicitly load bass_fx.dll
             LoadBassFxLibrary();
@@ -201,54 +197,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    private void LoadBassPlugins()
-    {
-        try
-        {
-            // Load essential plugins that require explicit loading
-            string[] essentialPluginFiles =
-            [
-                "bassape.dll",     // Monkey's Audio - requires explicit loading
-                "bassflac.dll",    // FLAC support - may need explicit loading
-                "bassalac.dll",    // Apple Lossless - requires explicit loading
-                "basswv.dll",      // WavPack - requires explicit loading
-                "bass_aac.dll",    // AAC - may need explicit loading
-                "bass_ac3.dll"     // AC3 - may need explicit loading
-            ];
-
-            int loadedCount = 0;
-            foreach (string plugin in essentialPluginFiles)
-            {
-                if (BassNativeLibraryManager.IsDllAvailable(plugin))
-                {
-                    try
-                    {
-                        string path = BassNativeLibraryManager.GetDllPath(plugin);
-                        int handle = Bass.PluginLoad(path);
-                        if (handle != 0)
-                        {
-                            loadedCount++;
-                        }
-                        else
-                        {
-                            _logger.LogWarning($"Failed to load plugin: {plugin}, Error={Bass.LastError}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError($"Exception loading plugin {plugin}: {ex.Message}");
-                    }
-                }
-            }
-
-            _logger.LogInformation($"Loaded {loadedCount}/{essentialPluginFiles.Length} BASS plugins");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in LoadBassPlugins");
-        }
-    }
-
     public double GetDecibelLevel()
     {
         int level = Bass.ChannelGetLevel(CurrentStream);
@@ -266,10 +214,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         return avgDb;
     }
 
-    /// <summary>
-    /// Gets the individual left and right channel decibel levels for stereo VU meter display
-    /// </summary>
-    /// <returns>Tuple containing (leftChannelDb, rightChannelDb)</returns>
     public (double LeftDb, double RightDb) GetStereoDecibelLevels()
     {
         int level = Bass.ChannelGetLevel(CurrentStream);
@@ -424,7 +368,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             else
             {
                 _logger.LogError($"Failed to play stream: {Bass.LastError}");
-                return;
             }
         }
         else
@@ -649,24 +592,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
 
         return _eqInitialized;
-    }
-
-    public void SetEqualizerEnabled(bool enabled)
-    {
-        EqEnabled = enabled;
-
-        if (enabled)
-        {
-            if (CurrentStream != 0)
-            {
-                InitializeEqualizer();
-            }
-        }
-        else
-        {
-            CleanupEqualizer();
-            _logger.LogInformation("Equalizer disabled");
-        }
     }
 
     public List<EqualizerBandSettings> GetBandsList()
