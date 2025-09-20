@@ -292,6 +292,8 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void PreviousTrack()
     {
+        StopTrack();
+
         _logger.LogInformation("PreviousTrack called");
         MediaFile? prevMediaFile = _playlistTabsViewModel.PreviousMediaFile();
 
@@ -313,6 +315,8 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void NextTrack()
     {
+        StopTrack();
+
         _logger.LogInformation("NextTrack called");
         MediaFile? nextMediaFile = _playlistTabsViewModel.NextMediaFile();
 
