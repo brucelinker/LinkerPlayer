@@ -5,198 +5,171 @@ using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace LinkerPlayer.Audio;
 
-public class OutputDeviceManager
+public enum DeviceType { DirectSound, Wasapi }
+
+public record Device(string Name, DeviceType Type, int Index, bool IsDefault = false);
+
+public class OutputDeviceManager : IDisposable
 {
     private readonly AudioEngine _audioEngine;
     private readonly SettingsManager _settingsManager;
     private readonly ILogger<OutputDeviceManager> _logger;
 
-    private readonly List<string> _directSoundDevices = new();
-    private readonly List<string> _wasapiDevices = new();
+    private readonly List<Device> _devices = new();
     private bool _isInitialized;
-    private string _currentDeviceName = "Default";
+    private Device _currentDevice;
 
     public OutputDeviceManager(AudioEngine audioEngine, SettingsManager settingsManager, ILogger<OutputDeviceManager> logger)
     {
         _audioEngine = audioEngine;
         _settingsManager = settingsManager;
         _logger = logger;
+        _currentDevice = new Device("Default", DeviceType.DirectSound, -1, true);
     }
 
     public void InitializeOutputDevice()
     {
         if (_isInitialized)
         {
-            //_logger.LogInformation("OutputDeviceManager: Already initialized, skipping");
             return;
         }
 
         try
         {
-            _directSoundDevices.Clear();
-            GetDirectSoundDevices();
-            SetOutputDevice();
+            RefreshDeviceList();
+            SetOutputDevice(_settingsManager.Settings.SelectedOutputDevice ?? "Default");
             _isInitialized = true;
             _logger.LogInformation("OutputDeviceManager: Initialization complete");
         }
         catch (Exception ex)
         {
-            _logger.LogError($"OutputDeviceManager: Initialization failed: {ex.Message}");
+            _logger.LogError(ex, "OutputDeviceManager: Initialization failed");
             throw;
         }
     }
 
-    public List<string> GetDirectSoundDevices()
+    private void RefreshDeviceList()
     {
-        if (_directSoundDevices.Count > 0)
-            return _directSoundDevices;
+        _devices.Clear();
 
+        // Get DirectSound devices
         try
         {
-            for (int i = 0; i < Bass.DeviceCount; i++) // Start at 1 to skip "No sound" (index 0)
+            for (int i = 1; i < Bass.DeviceCount; i++) // Start from 1 to skip "Default"
             {
-                try
-                {
-                    DeviceInfo device = Bass.GetDeviceInfo(i);
+                var dsDevice = Bass.GetDeviceInfo(i);
+                if (string.IsNullOrEmpty(dsDevice.Name) || !dsDevice.IsEnabled)
+                    continue;
 
-                    _logger.LogInformation($"Device {i}: {device.Name} - {device.Type}");
-
-                    if (string.IsNullOrEmpty(device.Name) || !device.IsEnabled)
-                    {
-                        _logger.LogDebug($"GetOutputDevicesList: Stopped at index {i} (empty name or disabled)");
-                        break;
-                    }
-
-                    _directSoundDevices.Add(device.Name);
-                }
-                catch (BassException ex)
-                {
-                    _logger.LogDebug($"GetOutputDevicesList: Invalid device at index {i}: {ex.Message}");
-                    break;
-                }
+                _devices.Add(new Device(dsDevice.Name, DeviceType.DirectSound, i));
             }
-
-            _logger.LogInformation($"GetOutputDevicesList: Found {_directSoundDevices.Count} enabled devices");
-            return _directSoundDevices;
+            _logger.LogInformation("Found {Count} DirectSound devices", _devices.Count(d => d.Type == DeviceType.DirectSound));
         }
         catch (Exception ex)
         {
-            _logger.LogError($"GetOutputDevicesList: Failed: {ex.Message}");
-            return _directSoundDevices;
+            _logger.LogError(ex, "Error enumerating DirectSound devices");
         }
-    }
 
-    public List<string> GetWasapiDevices()
-    {
-        if(_wasapiDevices.Count > 0)
-            return _wasapiDevices;
-
+        // Get WASAPI devices
         try
         {
             int wasapiCount = 0;
             for (int i = 0; BassWasapi.GetDeviceInfo(i, out var wasapiDevice); i++)
             {
-                // Log all devices for debugging purposes
-                //_logger.LogDebug($"Found WASAPI Device {i}: '{wasapiDevice.Name}' (ID: {wasapiDevice.ID}) - " +
-                //              $"Enabled: {wasapiDevice.IsEnabled}, Input: {wasapiDevice.IsInput}, Default: {wasapiDevice.IsDefault}");
-
-                // Only add enabled output devices to the list
-                if (!string.IsNullOrEmpty(wasapiDevice.Name) &&
-                    wasapiDevice.IsEnabled &&
-                    !wasapiDevice.IsInput)
+                if (wasapiDevice.IsEnabled && !wasapiDevice.IsInput && !string.IsNullOrEmpty(wasapiDevice.Name))
                 {
-                    string deviceDisplayName = wasapiDevice.Name;
-
-                    // Add default indicator
-                    if (wasapiDevice.IsDefault)
-                        deviceDisplayName += " (Default)";
-
-                    _wasapiDevices.Add(deviceDisplayName);
+                    string deviceDisplayName = wasapiDevice.IsDefault ? $"{wasapiDevice.Name} (Default)" : wasapiDevice.Name;
+                    _devices.Add(new Device(deviceDisplayName, DeviceType.Wasapi, i, wasapiDevice.IsDefault));
                     wasapiCount++;
-                    _logger.LogInformation($"Added WASAPI Device {i}: {deviceDisplayName}");
                 }
             }
-
-            _logger.LogInformation($"Found {wasapiCount} enabled WASAPI output devices");
-            return _wasapiDevices;
+            _logger.LogInformation("Found {Count} enabled WASAPI output devices", wasapiCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error enumerating WASAPI devices: {ex.Message}");
-            return _wasapiDevices;
+            _logger.LogError(ex, "Error enumerating WASAPI devices");
         }
     }
 
-    public void SetOutputDevice(string deviceName = "Default")
+    public IEnumerable<Device> GetOutputDevices()
     {
+        if (!_audioEngine.IsBassInitialized)
+        {
+            _logger.LogWarning("GetOutputDevices: BASS not initialized");
+            return Enumerable.Empty<Device>();
+        }
+
+        RefreshDeviceList();
+        return _devices;
+    }
+
+    public void SetOutputDevice(string deviceName)
+    {
+        if (!_isInitialized)
+        {
+            RefreshDeviceList();
+        }
+
+        Device deviceToSet = _devices.FirstOrDefault(d => d.Name == deviceName)
+                          ?? _devices.FirstOrDefault(d => d.IsDefault && d.Type == DeviceType.Wasapi)
+                          ?? new Device("Default", DeviceType.DirectSound, -1, true);
+
         try
         {
-            bool isWasapiDevice = deviceName.StartsWith("WASAPI: ");
-            string actualDeviceName = isWasapiDevice ? deviceName.Substring(8) : deviceName;
+            _audioEngine.ReselectOutputDevice(deviceToSet);
+            _currentDevice = deviceToSet;
+            _logger.LogInformation("Output device set to: {DeviceName}", deviceToSet.Name);
 
-            if (isWasapiDevice)
-            {
-                // For WASAPI devices, we don't change the device here
-                // WASAPI device selection happens during WASAPI initialization
-                _currentDeviceName = deviceName;
-                _logger.LogInformation($"Selected WASAPI device: {actualDeviceName}");
-            }
-            else
-            {
-                // For DirectSound devices, use the existing logic
-                List<string> availableDevices = GetDirectSoundDevices();
-                if (availableDevices.Contains(deviceName))
-                {
-                    _audioEngine.ReselectOutputDevice(deviceName);
-                    _currentDeviceName = deviceName;
-                    _logger.LogInformation($"DirectSound device set to: {deviceName}");
-                }
-                else
-                {
-                    _logger.LogWarning($"SetOutputDevice: Device '{deviceName}' not found, using default");
-                    _audioEngine.ReselectOutputDevice("Default");
-                    _currentDeviceName = "Default";
-                }
-            }
-
-            _settingsManager.Settings.SelectedOutputDevice = deviceName;
+            _settingsManager.Settings.SelectedOutputDevice = deviceToSet.Name;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
         }
         catch (Exception ex)
         {
-            _logger.LogError($"SetOutputDevice: Failed: {ex.Message}");
+            _logger.LogError(ex, "SetOutputDevice failed for device '{DeviceName}'", deviceName);
         }
     }
 
-    public string GetCurrentDeviceName()
+    public Device GetCurrentDevice() => _currentDevice;
+
+    public IEnumerable<Device> GetDirectSoundDevices()
     {
-        if (!_isInitialized || !_audioEngine.IsInitialized)
+        if (!_audioEngine.IsBassInitialized)
         {
-            _logger.LogDebug("GetCurrentDeviceName: OutputDeviceManager or BASS not initialized, returning cached name");
-            return _currentDeviceName;
+            _logger.LogWarning("GetDirectSoundDevices: BASS not initialized");
+            return Enumerable.Empty<Device>();
         }
+        RefreshDeviceList();
+        return _devices.Where(d => d.Type == DeviceType.DirectSound);
+    }
 
-        try
+    public IEnumerable<Device> GetWasapiDevices()
+    {
+        if (!_audioEngine.IsBassInitialized)
         {
-            int currentDevice = Bass.CurrentDevice;
-            DeviceInfo device = Bass.GetDeviceInfo(currentDevice);
-            if (!string.IsNullOrEmpty(device.Name) && device.IsEnabled)
-            {
-                _currentDeviceName = device.Name;
-                //_logger.LogDebug($"GetCurrentDeviceName: Returned {device.Name} (index {currentDevice})");
-                return device.Name;
-            }
-
-            _logger.LogWarning("GetCurrentDeviceName: No valid device found, returning cached name");
-            return _currentDeviceName;
+            _logger.LogWarning("GetWasapiDevices: BASS not initialized");
+            return Enumerable.Empty<Device>();
         }
-        catch (Exception ex)
+        RefreshDeviceList();
+        return _devices.Where(d => d.Type == DeviceType.Wasapi);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
         {
-            _logger.LogError($"GetCurrentDeviceName: Failed: {ex.Message}");
-            return _currentDeviceName;
+            _devices.Clear();
+            _isInitialized = false;
+            _logger.LogInformation("OutputDeviceManager: Disposed");
         }
     }
 }

@@ -6,8 +6,9 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:models="clr-namespace:LinkerPlayer.Models"
   Title="Settings"
+  Width="Auto"
+  Height="Auto"
   MinWidth="420"
   MinHeight="200"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
@@ -94,11 +95,10 @@
     </Grid>
 
     <Grid Grid.Row="1">
-      <StackPanel Margin="30,10,30,20">
+      <StackPanel Margin="0,0,10,14">
 
         <!--  Output Mode  -->
-        <Grid Margin="0,0,0,14">
-
+        <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150" />
             <ColumnDefinition Width="10" />
@@ -108,23 +108,31 @@
           <TextBlock
             Grid.Column="0"
             HorizontalAlignment="Right"
-            d:Foreground="white"
+            Foreground="{DynamicResource ControlForegroundBrush}"
             Text="Output Mode:" />
 
           <ComboBox
-            x:Name="ModeCombo"
+            x:Name="OutputModeCombo"
             Grid.Column="2"
             Width="Auto"
             Height="24"
+            HorizontalAlignment="Left"
+            Background="{DynamicResource ComboboxItemBackgroundBrush}"
+            BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
+            BorderThickness="1"
+            FontFamily="Segoe UI"
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ComboboxItemForegroundBrush}"
+            SelectionChanged="OnOutputModeSelectionChanged"
             Style="{StaticResource CustomComboBoxStyle}">
-            <ComboBoxItem Content="DirectSound" />
-            <ComboBoxItem Content="WASAPI Shared" />
-            <ComboBoxItem Content="WASAPI Exclusive" />
+            <ComboBoxItem Content="DirectSound" Tag="DirectSound" />
+            <ComboBoxItem Content="WASAPI Shared" Tag="WasapiShared" />
+            <ComboBoxItem Content="WASAPI Exclusive" Tag="WasapiExclusive" />
           </ComboBox>
         </Grid>
 
-        <!--  Main Output Device  -->
-        <Grid Margin="0,0,0,14">
+        <!--  Output Device  -->
+        <Grid Margin="0,10,10,14">
 
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150" />
@@ -135,11 +143,10 @@
           <TextBlock
             Grid.Column="0"
             HorizontalAlignment="Right"
-            d:Foreground="white"
             Text="Output Device:" />
 
           <ComboBox
-            x:Name="DeviceCombo"
+            x:Name="OutputDeviceCombo"
             Grid.Column="2"
             Width="Auto"
             Height="24"
@@ -154,7 +161,7 @@
         </Grid>
 
         <!--  Color Theme  -->
-        <Grid>
+        <Grid Margin="0,0,0,14">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="150" />
             <ColumnDefinition Width="10" />
@@ -181,11 +188,11 @@
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
             SelectionChanged="OnThemeSelectionChanged"
             Style="{StaticResource CustomComboBoxStyle}">
-            <ComboBoxItem Content="Light" Tag="{x:Static models:ThemeColors.Light}" />
-            <ComboBoxItem Content="Gray" Tag="{x:Static models:ThemeColors.Gray}" />
-            <ComboBoxItem Content="Slate" Tag="{x:Static models:ThemeColors.Slate}" />
-            <ComboBoxItem Content="Dark" Tag="{x:Static models:ThemeColors.Dark}" />
-            <ComboBoxItem Content="Midnight" Tag="{x:Static models:ThemeColors.Midnight}" />
+            <ComboBoxItem Content="Light" Tag="Light" />
+            <ComboBoxItem Content="Gray" Tag="Gray" />
+            <ComboBoxItem Content="Slate" Tag="Slate" />
+            <ComboBoxItem Content="Dark" Tag="Dark" />
+            <ComboBoxItem Content="Midnight" Tag="Midnight" />
           </ComboBox>
         </Grid>
 

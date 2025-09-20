@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Windows;
 // ReSharper disable InconsistentNaming
 
 namespace LinkerPlayer.Audio;
@@ -24,6 +25,10 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     [ObservableProperty] private double _currentTrackPosition;
     [ObservableProperty] private float _musicVolume = 0.5f;
     [ObservableProperty] private bool _isPlaying;
+
+    private OutputMode _currentMode = OutputMode.DirectSound;
+    private bool _wasapiInitialized;
+    private WasapiProcedure _wasapiProc;
 
     private readonly float[] _fftBuffer = new float[2048];
     private readonly System.Timers.Timer _positionTimer;
@@ -88,6 +93,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             // Explicitly load bass_fx.dll
             LoadBassFxLibrary();
+
+            _wasapiProc = new WasapiProcedure(WasapiProc);
 
             _positionTimer = new System.Timers.Timer(50);
             _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
@@ -167,7 +174,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             {
                 if (BassNativeLibraryManager.IsDllAvailable("basswasapi.dll"))
                 {
-                    BassWasapi.Init(-1, 44100, 2, WasapiInitFlags.Shared);
+                    BassWasapi.Init(-1, 44100, 2, WasapiInitFlags.Shared, 0.1f, 0, WasapiProc);
+                    _wasapiInitialized = true;
                     _logger.LogInformation("WASAPI initialized successfully");
                 }
                 else
@@ -195,6 +203,25 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             _logger.LogError($"Error initializing BASS: {ex.Message}");
         }
+    }
+
+    private int WasapiProc(IntPtr buffer, int length, IntPtr user)
+    {
+        if (CurrentStream == 0)
+        {
+            _logger.LogDebug("WASAPI proc: No stream, returning 0");
+            return 0;
+        }
+
+        int data = Bass.ChannelGetData(CurrentStream, buffer, length);
+        if (data < 0)
+        {
+            _logger.LogWarning($"WASAPI proc: Failed to get data: {Bass.LastError}");
+            return 0;
+        }
+
+        _logger.LogTrace($"WASAPI proc: Returned {data} bytes");
+        return data;
     }
 
     public double GetDecibelLevel()
@@ -489,34 +516,93 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    public void ReselectOutputDevice(string deviceName)
+    public void ChangeOutputMode(OutputMode selectedOutputMode)
     {
-        int deviceId = -1;
-        for (int i = 0; ; i++)
+        // Stop current playback first
+        Stop();
+
+        // Free current resources
+        FreeResources();
+
+        // Initialize new mode
+        bool success;
+
+        if (selectedOutputMode == OutputMode.DirectSound)
         {
-            DeviceInfo device = Bass.GetDeviceInfo(i);
-            if (string.IsNullOrEmpty(device.Name)) break;
-            if (device.Name == deviceName)
+            _currentMode = OutputMode.DirectSound;
+            success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
+            if (success)
             {
-                deviceId = i;
-                break;
+                _logger.LogInformation("Switched to DirectSound mode");
+            }
+            else
+            {
+                _logger.LogError($"Failed to initialize DirectSound: {Bass.LastError}");
+            }
+        }
+        else
+        {
+            // For WASAPI modes, we still need BASS for decoding
+            success = Bass.Init(0, 44100, DeviceInitFlags.Default);
+
+            if (success)
+            {
+                _currentMode = selectedOutputMode;
+                _logger.LogInformation($"Switched to {selectedOutputMode} mode");
+            }
+            else
+            {
+                _logger.LogError($"Failed to initialize BASS for WASAPI: {Bass.LastError}");
             }
         }
 
-        Bass.Free();
-        if (!Bass.Init(deviceId))
+        if (!success)
         {
-            _logger.LogError($"Failed to initialize BASS with device {deviceName}: {Bass.LastError}");
+            _logger.LogError($"Failed to initialize {selectedOutputMode} mode");
+            MessageBox.Show($"Failed to initialize {selectedOutputMode} mode", "Error",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    public void ReselectOutputDevice(Device device)
+    {
+        _logger.LogInformation("ReselectOutputDevice called with: {DeviceName}", device.Name);
+
+        if (device.Type != DeviceType.DirectSound)
+        {
+            _logger.LogWarning("ReselectOutputDevice called for a non-DirectSound device. Ignoring.");
             return;
         }
 
-        _logger.LogInformation($"Output device set to: {deviceName}");
-
-        if (!string.IsNullOrEmpty(PathToMusic))
+        int deviceId = device.Index;
+        if (deviceId == -1)
         {
-            double position = CurrentTrackPosition;
-            Stop();
-            Play(PathToMusic, position);
+            _logger.LogWarning("Invalid device index (-1) for ReselectOutputDevice. Using default.");
+        }
+
+        try
+        {
+            Bass.Free();
+            if (!Bass.Init(deviceId))
+            {
+                _logger.LogError("Failed to initialize BASS with device {DeviceName}: {LastError}", device.Name, Bass.LastError);
+                // Try to re-init with default device as a fallback
+                Bass.Init(-1);
+                return;
+            }
+
+            _logger.LogInformation("DirectSound output device set to: {DeviceName}", device.Name);
+
+            //if (!string.IsNullOrEmpty(PathToMusic))
+            //{
+            //    double position = CurrentTrackPosition;
+            //    Stop();
+            //    Play(PathToMusic, position);
+            //}
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error switching DirectSound device");
         }
     }
 
@@ -791,6 +877,23 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     }
 
     #endregion
+
+    private void FreeResources()
+    {
+        if (CurrentStream != 0)
+        {
+            Bass.StreamFree(CurrentStream);
+            CurrentStream = 0;
+        }
+
+        if (_wasapiInitialized)
+        {
+            BassWasapi.Free();
+            _wasapiInitialized = false;
+        }
+
+        Bass.Free();
+    }
 
     public void Dispose()
     {

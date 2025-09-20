@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -20,10 +21,10 @@ public partial class SettingsWindow
     private readonly ILogger _logger;
     private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
 
-    private const string DefaultDevice = "Default";
+    private const string DefaultDeviceName = "Default";
 
     public SettingsWindow(
-        AudioEngine audioEngine, 
+        AudioEngine audioEngine,
         OutputDeviceManager outputDeviceManager,
         ILogger<SettingsWindow> logger)
     {
@@ -34,13 +35,48 @@ public partial class SettingsWindow
         try
         {
             _logger.Log(LogLevel.Information, "Initializing SettingsWindow");
-            InitializeComponent();
 
-            DataContext = this;
+            // Initialize component with error handling
+            try
+            {
+                InitializeComponent();
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error in InitializeComponent: {Message}", ex.Message);
+                throw; // This is critical, so we need to throw
+            }
 
-            ((App)Application.Current).WindowPlace.Register(this);
+            // Set DataContext safely
+            try
+            {
+                DataContext = this;
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error setting DataContext: {Message}", ex.Message);
+            }
 
-            PreviewKeyDown += Window_PreviewKeyDown;
+            // Register window placement safely
+            try
+            {
+                ((App)Application.Current).WindowPlace.Register(this);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error registering window placement: {Message}", ex.Message);
+            }
+
+            // Add key event handler safely
+            try
+            {
+                PreviewKeyDown += Window_PreviewKeyDown;
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error adding key event handler: {Message}", ex.Message);
+            }
+
             _logger.Log(LogLevel.Information, "SettingsWindow initialized successfully");
         }
         catch (IOException ex)
@@ -59,63 +95,245 @@ public partial class SettingsWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        foreach (string device in _outputDeviceManager.GetDirectSoundDevices())
+        try
         {
-            DeviceCombo.Items.Add(device);
-        }
+            _logger.Log(LogLevel.Information, "Settings Window_Loaded starting");
 
-        if (DeviceCombo.Items.Contains(SettingsManager.Settings.SelectedOutputDevice))
-        {
-            DeviceCombo.SelectedItem = SettingsManager.Settings.SelectedOutputDevice;
-        }
-        else
-        {
-            DeviceCombo.SelectedItem = _outputDeviceManager.GetCurrentDeviceName();
-        }
+            // Set theme with error handling
+            try
+            {
+                int selectedThemeIndex = _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme);
+                if (ThemesList.Items.Count >= 0 && selectedThemeIndex <= ThemesList.Items.Count)
+                {
+                    ThemesList.SelectedIndex = selectedThemeIndex;
+                }
+                else
+                {
+                    ThemesList.SelectedIndex = (int)ThemeColors.Dark;
+                }
 
-        int selectedThemeIndex = _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme);
-        if (ThemesList.Items.Count >= 0 && selectedThemeIndex <= ThemesList.Items.Count)
-        {
-            ThemesList.SelectedIndex = selectedThemeIndex;
-        }
-        else
-        {
-            ThemesList.SelectedIndex = (int)ThemeColors.Dark;
-        }
+                _themeManager.ModifyTheme((ThemeColors)ThemesList.SelectedIndex);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error setting theme: {Message}", ex.Message);
+                try
+                {
+                    ThemesList.SelectedIndex = (int)ThemeColors.Dark;
+                    _themeManager.ModifyTheme(ThemeColors.Dark);
+                }
+                catch (Exception themeEx)
+                {
+                    _logger.Log(LogLevel.Error, themeEx, "Error setting fallback theme: {Message}", themeEx.Message);
+                }
+            }
 
-        _themeManager.ModifyTheme((ThemeColors)ThemesList.SelectedIndex);
+            // Set audio mode selection first
+            OutputMode selectedOutputMode;
+            try
+            {
+                selectedOutputMode = SettingsManager.Settings.SelectedOutputMode;
+                SetOutputModeSelection(selectedOutputMode);
+                _logger.Log(LogLevel.Information, "Settings window loaded, audio mode UI set to: {OutputMode}", selectedOutputMode);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error setting audio mode UI: {Message}", ex.Message);
+                selectedOutputMode = OutputMode.DirectSound; // Safe fallback
+            }
+
+            // Load device list based on the current output mode
+            try
+            {
+                RefreshDeviceListForMode(selectedOutputMode);
+            }
+            catch (Exception ex)
+            {
+                _logger.Log(LogLevel.Error, ex, "Error loading output devices: {Message}", ex.Message);
+            }
+
+            _logger.Log(LogLevel.Information, "Settings Window_Loaded completed successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Critical error in Settings Window_Loaded: {Message}", ex.Message);
+            // Don't rethrow - just log the error and continue
+        }
     }
 
     private void OnThemeSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        ComboBoxItem selectedItem = ((sender as ComboBox)!.SelectedItem as ComboBoxItem)!;
+        if ((sender as ComboBox)?.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string themeName)
+        {
+            if (Enum.TryParse(themeName, out ThemeColors selectedTheme))
+            {
+                _themeManager.ModifyTheme(selectedTheme);
+                _logger.Log(LogLevel.Information, "Theme changed to {Theme}", selectedTheme);
+            }
+            else
+            {
+                _logger.Log(LogLevel.Warning, "Failed to parse theme from ComboBoxItem Tag: {Tag}", themeName);
+            }
+        }
+    }
 
-        ThemeColors selectedTheme = (ThemeColors)selectedItem.Tag;
+    private void OnOutputModeSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if ((sender as ComboBox)?.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string outputModeName)
+        {
+            if (Enum.TryParse(outputModeName, out OutputMode selectedOutputMode))
+            {
+                _logger.Log(LogLevel.Information, "Audio mode changed to {OutputMode}", selectedOutputMode);
 
-        _themeManager.ModifyTheme(selectedTheme);
-        _logger.Log(LogLevel.Information, "Theme changed to {Theme}", selectedTheme);
+                // Update the device list when output mode changes
+                RefreshDeviceListForMode(selectedOutputMode);
+            }
+            else
+            {
+                _logger.Log(LogLevel.Warning, "Failed to parse output mode from ComboBoxItem Tag: {Tag}", outputModeName);
+            }
+        }
+    }
+
+    private void RefreshDeviceListForMode(OutputMode outputMode)
+    {
+        try
+        {
+            OutputDeviceCombo.Items.Clear();
+
+            IEnumerable<Device> devices = outputMode == OutputMode.DirectSound
+                ? _outputDeviceManager.GetDirectSoundDevices()
+                : _outputDeviceManager.GetWasapiDevices();
+
+            var deviceList = devices.ToList();
+            _logger.Log(LogLevel.Information, "Refreshing device list for {OutputMode}: {Count} devices found", outputMode, deviceList.Count);
+
+            // Populate ComboBox with strings only
+            foreach (var device in deviceList)
+            {
+                OutputDeviceCombo.Items.Add(device.Name);
+                _logger.Log(LogLevel.Information, "Added device to UI: '{DeviceName}'", device.Name);
+            }
+
+            _logger.Log(LogLevel.Information, "UI ComboBox now has {Count} items", OutputDeviceCombo.Items.Count);
+
+            if (OutputDeviceCombo.Items.Count > 0)
+            {
+                string savedDeviceName = SettingsManager.Settings.SelectedOutputDevice ?? DefaultDeviceName;
+
+                string deviceNameToSelect = deviceList.Any(d => d.Name == savedDeviceName)
+                    ? savedDeviceName
+                    : deviceList.First().Name;
+
+                OutputDeviceCombo.SelectedItem = deviceNameToSelect;
+                _logger.Log(LogLevel.Information, "Selected device: '{DeviceName}'", deviceNameToSelect);
+            }
+            else
+            {
+                _logger.Log(LogLevel.Warning, "No devices found for {OutputMode} mode!", outputMode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Error refreshing device list: {Message}", ex.Message);
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)
     {
-        string deviceName = DeviceCombo.SelectedItem.ToString() ?? DefaultDevice;
-
-        if (deviceName != SettingsManager.Settings.SelectedOutputDevice || 
-            deviceName != _outputDeviceManager.GetCurrentDeviceName())
+        try
         {
-            SettingsManager.Settings.SelectedOutputDevice = deviceName!;
+            bool outputModeChanged = HandleOutputModeChange(out OutputMode selectedOutputMode);
+            bool deviceChanged = HandleDeviceChange(out Device selectedDevice);
+            HandleThemeChange();
+
+            ApplyAudioSettings(outputModeChanged, deviceChanged, selectedOutputMode, selectedDevice);
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Error applying settings: {Message}", ex.Message);
+        }
+
+        Hide();
+    }
+
+    private bool HandleOutputModeChange(out OutputMode selectedOutputMode)
+    {
+        selectedOutputMode = SettingsManager.Settings.SelectedOutputMode;
+        bool changed = false;
+
+        if (OutputModeCombo.SelectedItem is ComboBoxItem selectedItem &&
+            selectedItem.Tag is string tag &&
+            Enum.TryParse(tag, out OutputMode newMode) &&
+            newMode != SettingsManager.Settings.SelectedOutputMode)
+        {
+            SettingsManager.Settings.SelectedOutputMode = newMode;
+            SettingsManager.SaveSettings(nameof(AppSettings.SelectedOutputMode));
+            selectedOutputMode = newMode;
+            changed = true;
+            _logger.Log(LogLevel.Information, "Audio mode setting changed to {OutputMode}", newMode);
+        }
+        return changed;
+    }
+
+    private bool HandleDeviceChange(out Device selectedDevice)
+    {
+        // Use strings in the ComboBox; map back to Device only for engine/settings
+        string selectedName = (OutputDeviceCombo.SelectedItem as string) ?? DefaultDeviceName;
+        bool changed = false;
+
+        if (selectedName != (SettingsManager.Settings.SelectedOutputDevice ?? DefaultDeviceName))
+        {
+            SettingsManager.Settings.SelectedOutputDevice = selectedName;
             SettingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
-            _audioEngine.ReselectOutputDevice(SettingsManager.Settings.SelectedOutputDevice!);
-        }
-        
-        if (ThemesList.SelectedIndex != _themeManager.StringToThemeColorIndex(SettingsManager.Settings.SelectedTheme))
-        {
-            SettingsManager.Settings.SelectedTheme = _themeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
-            SettingsManager.SaveSettings(nameof(AppSettings.SelectedTheme));
+            changed = true;
+            _logger.Log(LogLevel.Information, "Audio device setting changed to {Device}", selectedName);
         }
 
-        Window? win = GetWindow(this);
-        win?.Hide();
+        // Determine current mode (HandleOutputModeChange is called before this)
+        OutputMode currentMode = SettingsManager.Settings.SelectedOutputMode;
+
+        IEnumerable<Device> devices = currentMode == OutputMode.DirectSound
+            ? _outputDeviceManager.GetDirectSoundDevices()
+            : _outputDeviceManager.GetWasapiDevices();
+
+        selectedDevice = devices.FirstOrDefault(d => d.Name == selectedName)
+            ?? new Device(DefaultDeviceName, DeviceType.DirectSound, -1, true);
+
+        return changed;
+    }
+
+    private void HandleThemeChange()
+    {
+        string newTheme = _themeManager.IndexToThemeColorString(ThemesList.SelectedIndex);
+        if (newTheme != SettingsManager.Settings.SelectedTheme)
+        {
+            SettingsManager.Settings.SelectedTheme = newTheme;
+            SettingsManager.SaveSettings(nameof(AppSettings.SelectedTheme));
+            _logger.Log(LogLevel.Information, "Theme setting changed to {Theme}", newTheme);
+        }
+    }
+
+    private void ApplyAudioSettings(bool outputModeChanged, bool deviceChanged, OutputMode newMode, Device newDevice)
+    {
+        if (outputModeChanged)
+        {
+            _audioEngine.ChangeOutputMode(newMode);
+            _logger.Log(LogLevel.Information, "Audio engine mode changed to {OutputMode}", newMode);
+        }
+        else if (deviceChanged)
+        {
+            if (newMode == OutputMode.DirectSound)
+            {
+                _audioEngine.ReselectOutputDevice(newDevice);
+                _logger.Log(LogLevel.Information, "DirectSound device changed to {Device}", newDevice.Name);
+            }
+            else
+            {
+                _logger.Log(LogLevel.Information, "WASAPI device changed - re-initializing audio engine with new device: {Device}", newDevice.Name);
+                _audioEngine.ChangeOutputMode(newMode);
+            }
+        }
     }
 
     string _editedHotkey = "";
@@ -196,5 +414,67 @@ public partial class SettingsWindow
     {
         Window? win = Window.GetWindow(this);
         if (win != null) win.Hide();
+    }
+
+    private OutputMode StringToOutputMode(string? OutputModeString)
+    {
+        if (string.IsNullOrEmpty(OutputModeString))
+        {
+            return OutputMode.DirectSound; // Safe default
+        }
+
+        return OutputModeString switch
+        {
+            "DirectSound" => OutputMode.DirectSound,
+            "WASAPI Shared" => OutputMode.WasapiShared,
+            "WASAPI Exclusive" => OutputMode.WasapiExclusive,
+            _ => OutputMode.DirectSound // Safe default for unknown values
+        };
+    }
+
+    private string OutputModeToString(OutputMode OutputMode)
+    {
+        return OutputMode switch
+        {
+            OutputMode.DirectSound => "DirectSound",
+            OutputMode.WasapiShared => "WASAPI Shared",
+            OutputMode.WasapiExclusive => "WASAPI Exclusive",
+            _ => "WASAPI Shared"
+        };
+    }
+
+    private void SetOutputModeSelection(OutputMode OutputMode)
+    {
+        try
+        {
+            if (OutputModeCombo?.Items == null)
+            {
+                _logger.Log(LogLevel.Warning, "OutputModeCombo or its Items is null");
+                return;
+            }
+
+            for (int i = 0; i < OutputModeCombo.Items.Count; i++)
+            {
+                if (OutputModeCombo.Items[i] is ComboBoxItem item &&
+                    item.Tag is string tag &&
+                    Enum.TryParse<OutputMode>(tag, out var tagMode) &&
+                    tagMode == OutputMode)
+                {
+                    OutputModeCombo.SelectedIndex = i;
+                    return;
+                }
+            }
+
+            // If no match found, select first item as fallback
+            if (OutputModeCombo.Items.Count > 0)
+            {
+                OutputModeCombo.SelectedIndex = 0;
+                _logger.Log(LogLevel.Warning, "Audio mode {OutputMode} not found in list, selected first item", OutputMode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Log(LogLevel.Error, ex, "Error setting audio mode selection: {Message}", ex.Message);
+        }
     }
 }
