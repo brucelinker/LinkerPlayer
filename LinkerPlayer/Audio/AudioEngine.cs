@@ -58,6 +58,10 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     private int[] _eqFxHandles = [];
     private int _endSyncHandle;
     private IntPtr _bassFxHandle = IntPtr.Zero; // Handle to explicitly loaded bass_fx.dll
+    private IntPtr _bassMixHandle = IntPtr.Zero;
+
+    private int _decodeStream = 0; // Holds the decode stream (file)
+    private int _mixerStream = 0; // Holds the mixer stream (WASAPI output)
 
     public bool IsInitialized => IsBassInitialized;
 
@@ -102,6 +106,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             // Explicitly load bass_fx.dll
             LoadBassFxLibrary();
+
+            // Explicitly load bassmix.dll
+            LoadBassMixLibrary();
 
             IEnumerable<Device> devices = _outputDeviceManager.RefreshOutputDeviceList();
 
@@ -155,6 +162,35 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         catch (Exception ex)
         {
             _logger.LogError(ex, "Exception while loading bass_fx.dll");
+        }
+    }
+
+    private void LoadBassMixLibrary()
+    {
+        try
+        {
+            if (!BassNativeLibraryManager.IsDllAvailable("bassmix.dll"))
+            {
+                _logger.LogError("bassmix.dll not available for explicit loading");
+                return;
+            }
+
+            string bassMixPath = BassNativeLibraryManager.GetDllPath("bassmix.dll");
+            _bassMixHandle = LoadLibrary(bassMixPath);
+
+            if (_bassMixHandle == IntPtr.Zero)
+            {
+                uint error = GetLastError();
+                _logger.LogError($"Failed to load bassmix.dll. Error code: {error}");
+            }
+            else
+            {
+                _logger.LogInformation("Successfully loaded bassmix.dll");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception while loading bassmix.dll");
         }
     }
 
@@ -280,8 +316,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         else
         {
             // For WASAPI modes, we still need BASS for decoding
-            //success = Bass.Init(-1, 44100, DeviceInitFlags.Default);
-
             bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
 
             BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo);
@@ -293,7 +327,10 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             if (success)
             {
                 _logger.LogInformation($"Bass.Init for {selectedOutputMode} mode succeeded!");
-                success = BassWasapi.Init(_currentDevice.Index, sampleRate, channels, wasapiFlag, 0.1f, 0, WasapiProc, IntPtr.Zero);
+                // Always assign the rooted delegate before use
+                if (_wasapiProc == null)
+                    _wasapiProc = new WasapiProcedure(WasapiProc);
+                success = BassWasapi.Init(_currentDevice.Index, sampleRate, channels, wasapiFlag, 0.1f, 0, _wasapiProc, IntPtr.Zero);
             }
             else
             {
@@ -321,36 +358,78 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void LoadAudioFile(string pathToMusic)
     {
+        _logger.LogDebug($"LoadAudioFile called with path: {pathToMusic}");
         try
         {
-            // Free previous stream and clean up EQ
+            // Free previous streams and clean up EQ
+            CleanupEqualizer();
+            if (_mixerStream != 0)
+            {
+                Bass.StreamFree(_mixerStream);
+                _mixerStream = 0;
+            }
+            if (_decodeStream != 0)
+            {
+                Bass.StreamFree(_decodeStream);
+                _decodeStream = 0;
+            }
             if (CurrentStream != 0)
             {
-                CleanupEqualizer();
                 Bass.StreamFree(CurrentStream);
                 CurrentStream = 0;
             }
 
-            // Create stream from file
             if (_currentMode == OutputMode.DirectSound)
             {
                 CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Default | BassFlags.Prescan);
+                _decodeStream = 0;
+                _mixerStream = 0;
             }
             else
             {
-                // For WASAPI, use decode flag
-                CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode | BassFlags.Float);
+                // WASAPI: always create decode stream and mixer
+                _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode | BassFlags.Float);
+                _logger.LogDebug($"WASAPI: _decodeStream handle: {_decodeStream}, Bass.LastError: {Bass.LastError}");
+                if (_decodeStream == 0)
+                {
+                    _logger.LogError($"Failed to load file: {Bass.LastError}. File: {pathToMusic}");
+                    return;
+                }
 
+                // Get device info
+                BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo);
+                int deviceFreq = deviceInfo.MixFrequency;
+                int deviceChans = deviceInfo.MixChannels;
+
+                // Always create a mixer for WASAPI output (remove BassFlags.Decode)
+                _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float);
+                _logger.LogDebug($"WASAPI: _mixerStream handle: {_mixerStream}, Bass.LastError: {Bass.LastError}");
+                if (_mixerStream == 0)
+                {
+                    _logger.LogError($"Failed to create mixer: {Bass.LastError}");
+                    Bass.StreamFree(_decodeStream);
+                    _decodeStream = 0;
+                    return;
+                }
+                if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, BassFlags.Default))
+                {
+                    _logger.LogError($"Failed to add decode stream to mixer: {Bass.LastError}");
+                    Bass.StreamFree(_mixerStream);
+                    _mixerStream = 0;
+                    Bass.StreamFree(_decodeStream);
+                    _decodeStream = 0;
+                    return;
+                }
+                CurrentStream = _mixerStream;
             }
 
             if (CurrentStream == 0)
             {
-                _logger.LogError($"Failed to load file: {Bass.LastError}. File: {pathToMusic}");
+                _logger.LogError($"Failed to create stream for playback: {Bass.LastError}");
                 return;
             }
 
             long lengthBytes = Bass.ChannelGetLength(CurrentStream);
-
             if (lengthBytes < 0)
             {
                 _logger.LogError($"Failed to get track length: {Bass.LastError}");
@@ -374,16 +453,19 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             _logger.LogError($"Error loading file: {ex.Message}");
             // Ensure we clean up if there's an exception
+            if (_mixerStream != 0)
+            {
+                Bass.StreamFree(_mixerStream);
+                _mixerStream = 0;
+            }
+            if (_decodeStream != 0)
+            {
+                Bass.StreamFree(_decodeStream);
+                _decodeStream = 0;
+            }
             if (CurrentStream != 0)
             {
-                try
-                {
-                    Bass.StreamFree(CurrentStream);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+                try { Bass.StreamFree(CurrentStream); } catch { }
                 CurrentStream = 0;
             }
         }
@@ -401,6 +483,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Play(string pathToMusic, double position = 0)
     {
+        _logger.LogDebug($"Play called with path: {pathToMusic}, position: {position}");
+        if (string.IsNullOrEmpty(pathToMusic))
+        {
+            _logger.LogError("Play called with null or empty pathToMusic");
+            return;
+        }
         PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
 
         if (!string.IsNullOrEmpty(pathToMusic) && playbackState == PlaybackState.Paused)
@@ -448,42 +536,20 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
                 WasapiInitFlags flags = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
 
-                // Keep callback alive
-                _wasapiProc = WasapiProc;
+                // Always use the rooted delegate
+                if (_wasapiProc == null)
+                    _wasapiProc = new WasapiProcedure(WasapiProc);
 
-                int freq = 0;
-                int chans = 0;
+                if (_mixerStream != 0)
+                {
+                    Bass.ChannelPlay(_mixerStream);
+                }
 
-                // Get device info for mix format
-                //int devIndex = _currentDevice != null ? _currentDevice.Index : BassWasapi.DefaultDevice;
-                //if (BassWasapi.GetDeviceInfo(devIndex, out var devInfo))
-                //{
-                //    freq = devInfo.MixFrequency;
-                //    chans = devInfo.MixChannels;
-                //    _logger.LogInformation($"{(exclusive ? "Exclusive" : "Shared")} mode: using device format {freq}Hz, {chans}ch");
-                //}
-
-                //// Fallback if device info not available
-                //if (freq == 0 || chans == 0)
-                //{
-                //    var info = Bass.ChannelGetInfo(CurrentStream);
-                //    freq = info.Frequency;
-                //    chans = info.Channels;
-                //    _logger.LogInformation("Device mix format not available, falling back to file format.");
-                //}
-
-                //if (BassWasapi.Init(devIndex, freq, chans, flags, 0.1f, 0, _wasapiProc, IntPtr.Zero))
-                //{
-                BassWasapi.Start();
-                _logger.LogInformation($"Playing with WASAPI {(exclusive ? "Exclusive" : "Shared")}");
-                //}
-                //else
-                //{
-                //_logger.LogInformation($"Failed to initialize WASAPI: {Bass.LastError}");
-                //Bass.StreamFree(CurrentStream);
-                //CurrentStream = 0;
-                //return;
-                //}
+                bool wasapiStarted = BassWasapi.Start();
+                if (!wasapiStarted)
+                    _logger.LogError($"BassWasapi.Start failed: {Bass.LastError}");
+                else
+                    _logger.LogInformation("BassWasapi.Start succeeded");
             }
         }
         else
@@ -507,6 +573,11 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             IsPlaying = false;
             CurrentTrackPosition = 0;
+
+            if (_wasapiInitialized)
+            {
+                BassWasapi.Stop();
+            }
         }
 
         OnPlaybackStopped?.Invoke();
@@ -607,21 +678,30 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private int WasapiProc(IntPtr buffer, int length, IntPtr user)
     {
-        if (CurrentStream == 0)
+        // _logger.LogDebug("WasapiProc called"); // Commented out to reduce log spam
+        int stream = _mixerStream;
+        if (stream <= 0)
         {
-            //_logger.LogDebug("WASAPI proc: No stream, returning 0");
+            // Optionally: log a warning only once, or not at all
+            // _logger.LogWarning("WasapiProc: mixer stream is invalid");
+            return 0; // Output silence
+        }
+        try
+        {
+            int data = Bass.ChannelGetData(stream, buffer, length);
+            if (data < 0)
+            {
+                // Only log if you want to debug errors, not every call
+                // _logger.LogWarning($"WASAPI proc: Failed to get data: {Bass.LastError}");
+                return 0;
+            }
+            return data;
+        }
+        catch
+        {
+            // _logger.LogError(ex, "Exception in WasapiProc");
             return 0;
         }
-
-        int data = Bass.ChannelGetData(CurrentStream, buffer, length);
-        if (data < 0)
-        {
-            _logger.LogWarning($"WASAPI proc: Failed to get data: {Bass.LastError}");
-            return 0;
-        }
-
-        //_logger.LogTrace($"WASAPI proc: Returned {data} bytes");
-        return data;
     }
 
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
@@ -999,18 +1079,27 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private void FreeResources()
     {
+        if (_mixerStream != 0)
+        {
+            Bass.StreamFree(_mixerStream);
+            _mixerStream = 0;
+        }
+        if (_decodeStream != 0)
+        {
+            Bass.StreamFree(_decodeStream);
+            _decodeStream = 0;
+        }
         if (CurrentStream != 0)
         {
             Bass.StreamFree(CurrentStream);
             CurrentStream = 0;
         }
-
         if (_wasapiInitialized)
         {
+            BassWasapi.Stop();
             BassWasapi.Free();
             _wasapiInitialized = false;
         }
-
         Bass.Free();
     }
 
@@ -1026,6 +1115,13 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             FreeLibrary(_bassFxHandle);
             _bassFxHandle = IntPtr.Zero;
+        }
+
+        // Free explicitly loaded bassmix.dll
+        if (_bassMixHandle != IntPtr.Zero)
+        {
+            FreeLibrary(_bassMixHandle);
+            _bassMixHandle = IntPtr.Zero;
         }
 
         // Only call BassWasapi.Free() if WASAPI was successfully initialized
