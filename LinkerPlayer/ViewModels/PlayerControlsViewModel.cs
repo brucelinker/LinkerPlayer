@@ -16,7 +16,7 @@ public partial class PlayerControlsViewModel : ObservableObject
 {
     private readonly AudioEngine _audioEngine;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;
-    private readonly SettingsManager _settingsManager;
+    private readonly ISettingsManager _settingsManager;
     private readonly SharedDataModel _sharedDataModel;
     private readonly ILogger<PlayerControlsViewModel> _logger;
 
@@ -25,7 +25,7 @@ public partial class PlayerControlsViewModel : ObservableObject
     public PlayerControlsViewModel(
         AudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
-        SettingsManager settingsManager,
+        ISettingsManager settingsManager,
         SharedDataModel sharedDataModel,
         ILogger<PlayerControlsViewModel> logger)
     {

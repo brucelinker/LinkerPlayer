@@ -9,7 +9,7 @@ namespace LinkerPlayer.UserControls;
 
 public partial class ToggleSwitch
 {
-    private static readonly SettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
+    private static readonly ISettingsManager SettingsManager = App.AppHost.Services.GetRequiredService<ISettingsManager>();
 
     public ToggleSwitch()
     {

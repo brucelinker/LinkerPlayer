@@ -43,8 +43,7 @@ public partial class PlaylistTabs
             if (viewModel.TabList.Any())
             {
                 // Get the saved tab index and set it if valid
-                var settingsManager = App.AppHost.Services.GetRequiredService<SettingsManager>();
-                int savedTabIndex = settingsManager.Settings.SelectedTabIndex;
+                int savedTabIndex = App.AppHost.Services.GetRequiredService<ISettingsManager>().Settings.SelectedTabIndex;
                 
                 if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
                 {

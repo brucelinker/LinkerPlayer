@@ -26,13 +26,13 @@ public partial class EqualizerWindow
 
     private readonly EqualizerViewModel _equalizerViewModel;
     private readonly AudioEngine _audioEngine;
-    private readonly SettingsManager _settingsManager;
+    private readonly ISettingsManager _settingsManager;
     private readonly ILogger<EqualizerWindow> _logger;
 
     public EqualizerWindow(
         EqualizerViewModel viewModel,
         AudioEngine audioEngine,
-        SettingsManager settingsManager,
+        ISettingsManager settingsManager,
         ILogger<EqualizerWindow> logger)
     {
         _logger = logger;

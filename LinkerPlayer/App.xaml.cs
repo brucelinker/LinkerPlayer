@@ -38,8 +38,7 @@ public partial class App
                 {
                     options.IncludeScopes = false;
                     options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
-                    options.UseUtcTimestamp = false;
-                });
+                    options.UseUtcTimestamp = false;                });
                 logging.AddDebug();
                 logging.AddFile($"Logs/LinkerPlayer-{timestamp}.txt", options =>
                 {
@@ -49,24 +48,23 @@ public partial class App
             })
             .ConfigureServices((_, services) =>
             {
-                services.AddSingleton<SettingsManager>();
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<IMusicLibrary, MusicLibrary>();
                 
-                // Add the new services
                 services.AddSingleton<IFileImportService, FileImportService>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
                 services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
-                
+                services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
+                services.AddSingleton<ISettingsManager, SettingsManager>();
+
                 services.AddSingleton<PlaylistTabsViewModel>();
-                services.AddSingleton<PlayerControlsViewModel>(); // Fixed: Added missing >
+                services.AddSingleton<PlayerControlsViewModel>();
                 services.AddSingleton<EqualizerWindow>();
                 services.AddSingleton<EqualizerViewModel>();
                 services.AddSingleton<AudioEngine>();
-                services.AddSingleton<OutputDeviceManager>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
             })
@@ -195,7 +193,7 @@ public partial class App
             // Save settings and data BEFORE stopping the host
             try
             {
-                SettingsManager settingsManager = AppHost.Services.GetRequiredService<SettingsManager>();
+                ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
                 _logger.LogInformation("SettingsManager retrieved for shutdown");
                 
                 IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();

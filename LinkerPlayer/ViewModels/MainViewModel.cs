@@ -12,12 +12,12 @@ namespace LinkerPlayer.ViewModels;
 public class MainViewModel : ObservableObject
 {
     private static readonly ThemeManager ThemeMgr = new();
-    private readonly SettingsManager _settingsManager;
+    private readonly ISettingsManager _settingsManager;
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<MainViewModel> _logger;
 
     public MainViewModel(
-        SettingsManager settingsManager,
+        ISettingsManager settingsManager,
         PlayerControlsViewModel playerControlsViewModel,
         PlaylistTabsViewModel playlistTabsViewModel,
         IMusicLibrary musicLibrary,

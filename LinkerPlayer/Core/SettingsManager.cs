@@ -7,17 +7,26 @@ using System.Timers;
 
 namespace LinkerPlayer.Core;
 
-public class SettingsManager
+public interface ISettingsManager
+{
+    AppSettings Settings { get; }
+    void LoadSettings();
+    void SaveSettings(string propertyName);
+    event Action<string>? SettingsChanged;
+}
+
+public class SettingsManager : ISettingsManager
 {
     private readonly string _settingsPath = string.Empty;
-    private readonly ILogger<SettingsManager> _logger;
+    private readonly ILogger<ISettingsManager> _logger;
     public AppSettings Settings { get; private set; } = new();
     private readonly Timer _saveTimer = new();
     public event Action<string>? SettingsChanged;
     private readonly Guid _instanceId = Guid.NewGuid();
     private readonly bool _isInitialized;
+    private readonly object _fileLock = new();
 
-    public SettingsManager(ILogger<SettingsManager> logger)
+    public SettingsManager(ILogger<ISettingsManager> logger)
     {
         _logger = logger;
         _logger.LogInformation("Initializing SettingsManager");
@@ -62,16 +71,19 @@ public class SettingsManager
 
         try
         {
-            if (File.Exists(_settingsPath))
+            lock (_fileLock)
             {
-                _logger.LogInformation("Reading settings file: {SettingsPath}", _settingsPath);
-                string json = File.ReadAllText(_settingsPath);
-                Settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
-            }
-            else
-            {
-                _logger.LogInformation("Settings file not found, using defaults: {SettingsPath}", _settingsPath);
-                Settings = new AppSettings();
+                if (File.Exists(_settingsPath))
+                {
+                    _logger.LogInformation("Reading settings file: {SettingsPath}", _settingsPath);
+                    string json = File.ReadAllText(_settingsPath);
+                    Settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                }
+                else
+                {
+                    _logger.LogInformation("Settings file not found, using defaults: {SettingsPath}", _settingsPath);
+                    Settings = new AppSettings();
+                }
             }
         }
         catch (IOException ex)
@@ -97,9 +109,12 @@ public class SettingsManager
     {
         try
         {
-            JsonSerializerOptions options = new() { WriteIndented = true };
-            string json = JsonSerializer.Serialize(Settings, options);
-            File.WriteAllText(_settingsPath, json);
+            lock (_fileLock)
+            {
+                JsonSerializerOptions options = new() { WriteIndented = true };
+                string json = JsonSerializer.Serialize(Settings, options);
+                File.WriteAllText(_settingsPath, json);
+            }
         }
         catch (Exception ex)
         {
