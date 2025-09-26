@@ -528,8 +528,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             {
                 // DirectSound play
                 Bass.ChannelPlay(CurrentStream);
-                IsPlaying = true;
-                PathToMusic = pathToMusic;
             }
             else
             {
@@ -551,6 +549,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 else
                     _logger.LogInformation("BassWasapi.Start succeeded");
             }
+
+            IsPlaying = true;
+            PathToMusic = pathToMusic;
         }
         else
         {
@@ -638,40 +639,64 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
-        bool wasPlaying = playbackState == PlaybackState.Playing;
-        if (wasPlaying)
+        if (_currentMode == OutputMode.DirectSound)
         {
-            if (!Bass.ChannelPause(CurrentStream))
+            PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
+            bool wasPlaying = playbackState == PlaybackState.Playing;
+            if (wasPlaying)
             {
-                _logger.LogError($"Failed to pause stream before seek: {Bass.LastError}");
+                Bass.ChannelPause(CurrentStream);
+            }
+
+            long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
+            if (bytePosition < 0)
+            {
+                _logger.LogError($"Failed to convert position {position} to bytes: {Bass.LastError}");
+                return;
+            }
+
+            if (!Bass.ChannelSetPosition(CurrentStream, bytePosition))
+            {
+                _logger.LogError($"Failed to seek to position {position}: {Bass.LastError}");
+                return;
+            }
+
+            double actualPosition = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
+            if (!double.IsNaN(actualPosition) && actualPosition >= 0)
+            {
+                CurrentTrackPosition = actualPosition;
+            }
+
+            if (wasPlaying)
+            {
+                Bass.ChannelPlay(CurrentStream);
             }
         }
-
-        long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
-        if (bytePosition < 0)
+        else // WASAPI
         {
-            _logger.LogError($"Failed to convert position {position} to bytes: {Bass.LastError}");
-            return;
-        }
-
-        if (!Bass.ChannelSetPosition(CurrentStream, bytePosition))
-        {
-            _logger.LogError($"Failed to seek to position {position}: {Bass.LastError}");
-            return;
-        }
-
-        double actualPosition = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
-        if (!double.IsNaN(actualPosition) && actualPosition >= 0)
-        {
-            CurrentTrackPosition = actualPosition;
-        }
-
-        if (wasPlaying)
-        {
-            if (!Bass.ChannelPlay(CurrentStream))
+            if (_decodeStream == 0)
             {
-                _logger.LogError($"Failed to resume stream after seek: {Bass.LastError}");
+                _logger.LogError("Cannot seek: decode stream is invalid");
+                return;
+            }
+
+            long bytePosition = Bass.ChannelSeconds2Bytes(_decodeStream, position);
+            if (bytePosition < 0)
+            {
+                _logger.LogError($"Failed to convert position {position} to bytes: {Bass.LastError}");
+                return;
+            }
+
+            if (!Bass.ChannelSetPosition(_decodeStream, bytePosition))
+            {
+                _logger.LogError($"Failed to seek to position {position}: {Bass.LastError}");
+                return;
+            }
+
+            double actualPosition = Bass.ChannelBytes2Seconds(_decodeStream, Bass.ChannelGetPosition(_decodeStream));
+            if (!double.IsNaN(actualPosition) && actualPosition >= 0)
+            {
+                CurrentTrackPosition = actualPosition;
             }
         }
     }
