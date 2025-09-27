@@ -11,9 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading.Channels;
 using System.Windows;
-using TagLib.Matroska;
 // ReSharper disable InconsistentNaming
 
 namespace LinkerPlayer.Audio;
@@ -211,59 +209,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             {
                 _logger.LogWarning("Failed to set DLL directory for BASS libraries");
             }
-
-            if (!Bass.Init(Bass.NoSoundDevice, 48000, DeviceInitFlags.Default))
-            {
-                Console.WriteLine($"Failed to initialize BASS: {Bass.LastError}");
-                return;
-            }
-
-            _wasapiInitialized = true;
-
-            //if (_currentMode == OutputMode.DirectSound)
-            //{
-            //    // Initialize DirectSound mode
-            //    if (!Bass.Init(-1, 44100, DeviceInitFlags.DirectSound))
-            //    {
-            //        _logger.LogError("Failed to initialize BASS DirectSound: " + Bass.LastError);
-            //        return;
-            //    }
-            //    _logger.LogInformation("BASS DirectSound initialized successfully");
-            //    IsBassInitialized = true;
-            //    return;
-            //}
-            //else
-            //{
-            //    // Initialize WASAPI directly like the simple player
-            //    try
-            //    {
-            //        if (BassNativeLibraryManager.IsDllAvailable("basswasapi.dll"))
-            //        {
-            //            Bass.Init(-1, 44100, DeviceInitFlags.Default, IntPtr.Zero);
-            //            _wasapiInitialized = true;
-            //            _logger.LogInformation("WASAPI initialized successfully");
-            //        }
-            //        else
-            //        {
-            //            _logger.LogWarning("WASAPI DLL not available, skipping WASAPI initialization");
-            //        }
-            //    }
-            //    catch (Exception ex)
-            //    {
-            //        _logger.LogWarning($"WASAPI initialization failed: {ex.Message}");
-            //        // Continue without WASAPI
-            //    }
-
-            //    // Minimal configuration like the simple player
-            //    Bass.UpdatePeriod = 10;
-
-            //    // Log device info for debugging
-            //    DeviceInfo deviceInfo = Bass.GetDeviceInfo(Bass.CurrentDevice);
-            //    _logger.LogInformation($"Using audio device: {deviceInfo.Name}");
-
-            //    IsBassInitialized = true;
-            //    _logger.LogInformation("BASS initialized successfully!");
-            //}
 
             SetOutputMode(_currentMode, _currentDevice);
 
@@ -703,30 +648,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private int WasapiProc(IntPtr buffer, int length, IntPtr user)
     {
-        // _logger.LogDebug("WasapiProc called"); // Commented out to reduce log spam
-        int stream = _mixerStream;
-        if (stream <= 0)
-        {
-            // Optionally: log a warning only once, or not at all
-            // _logger.LogWarning("WasapiProc: mixer stream is invalid");
-            return 0; // Output silence
-        }
-        try
-        {
-            int data = Bass.ChannelGetData(stream, buffer, length);
-            if (data < 0)
-            {
-                // Only log if you want to debug errors, not every call
-                // _logger.LogWarning($"WASAPI proc: Failed to get data: {Bass.LastError}");
-                return 0;
-            }
-            return data;
-        }
-        catch
-        {
-            // _logger.LogError(ex, "Exception in WasapiProc");
-            return 0;
-        }
+        if (_mixerStream == 0) return 0;
+
+        return Bass.ChannelGetData(_mixerStream, buffer, length);
     }
 
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
@@ -734,48 +658,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         _logger.LogInformation("Track ended");
         Stop();
     }
-
-    //public void ReselectOutputDevice(Device device)
-    //{
-    //    _logger.LogInformation("ReselectOutputDevice called with: {DeviceName}", device.Name);
-
-    //    if (device.Type != DeviceType.DirectSound)
-    //    {
-    //        _logger.LogWarning("ReselectOutputDevice called for a non-DirectSound device. Ignoring.");
-    //        return;
-    //    }
-
-    //    int deviceId = device.Index;
-    //    if (deviceId == -1)
-    //    {
-    //        _logger.LogWarning("Invalid device index (-1) for ReselectOutputDevice. Using default.");
-    //    }
-
-    //    try
-    //    {
-    //        Bass.Free();
-    //        if (!Bass.Init(deviceId))
-    //        {
-    //            _logger.LogError("Failed to initialize BASS with device {DeviceName}: {LastError}", device.Name, Bass.LastError);
-    //            // Try to re-init with default device as a fallback
-    //            Bass.Init(-1);
-    //            return;
-    //        }
-
-    //        _logger.LogInformation("DirectSound output device set to: {DeviceName}", device.Name);
-
-    //        //if (!string.IsNullOrEmpty(PathToMusic))
-    //        //{
-    //        //    double position = CurrentTrackPosition;
-    //        //    Stop();
-    //        //    Play(PathToMusic, position);
-    //        //}
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        _logger.LogError(ex, "Error switching DirectSound device");
-    //    }
-    //}
 
     partial void OnMusicVolumeChanged(float value)
     {
