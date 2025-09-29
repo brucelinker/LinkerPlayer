@@ -115,7 +115,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             _wasapiProc = new WasapiProcedure(WasapiProc);
 
-            _positionTimer = new System.Timers.Timer(50);
+            _positionTimer = new System.Timers.Timer(100);
             _positionTimer.Elapsed += (_, _) => HandleFftCalculated();
             _positionTimer.AutoReset = true;
 
@@ -222,6 +222,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public IEnumerable<Device> DirectSoundDevices => _outputDeviceManager.GetDirectSoundDevices();
     public IEnumerable<Device> WasapiDevices => _outputDeviceManager.GetWasapiDevices();
 
+    private int _sampleRate;
+
     public void SetOutputMode(OutputMode selectedOutputMode, Device? device)
     {
         // Stop current playback first
@@ -252,6 +254,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             if (success)
             {
                 _logger.LogInformation("Switched to DirectSound mode");
+                IsBassInitialized = true;
+                _sampleRate = 44100; // keep in sync with init
             }
             else
             {
@@ -263,29 +267,52 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             // For WASAPI modes, we still need BASS for decoding
             bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
 
-            BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo);
-            int sampleRate = deviceInfo.MixFrequency;
-            int channels = deviceInfo.MixChannels;
-            WasapiInitFlags wasapiFlag = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
+            // Get device info for mixer creation
+            if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+            {
+                _logger.LogError($"Failed to get device info for mixer creation: {Bass.LastError}");
+                return;
+            }
 
-            success = Bass.Init(-1, sampleRate, DeviceInitFlags.Default); // for decoding
+            // Enable mixer low-pass filter for better resampling quality
+            Bass.Configure((Configuration)0x10600, true);
+
+            // Store for use elsewhere
+            _sampleRate = deviceInfo.MixFrequency;
+
+            // Initialize BASS for decoding only (no device)
+            success = Bass.Init(0, deviceInfo.MixFrequency, DeviceInitFlags.Default); // Use no-sound device for decoding
             if (success)
             {
                 _logger.LogInformation($"Bass.Init for {selectedOutputMode} mode succeeded!");
-                // Always assign the rooted delegate before use
-                if (_wasapiProc == null)
-                    _wasapiProc = new WasapiProcedure(WasapiProc);
-                success = BassWasapi.Init(_currentDevice.Index, sampleRate, channels, wasapiFlag, 0.1f, 0, _wasapiProc, IntPtr.Zero);
+                IsBassInitialized = true;
             }
             else
             {
                 _logger.LogError($"Failed to initialize BASS for decoding: {Bass.LastError}");
+                return; // Early exit if decoding init fails
+            }
+
+            // Now initialize WASAPI with buffering
+            var flags = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
+            flags |= WasapiInitFlags.Buffer; // Enable buffering to prevent data stealing
+
+            float bufferLength = 0.10f; // 100ms buffer for stability
+            float period = 0f; // Use default period
+
+            success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, flags, bufferLength, period, _wasapiProc, IntPtr.Zero);
+
+            if (!success)
+            {
+                _logger.LogError($"WASAPI init failed with buffer: {Bass.LastError} - Retrying without buffer");
+                flags &= ~WasapiInitFlags.Buffer; // Fallback without buffer if unsupported
+                success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, flags, bufferLength, period, _wasapiProc, IntPtr.Zero);
             }
 
             if (success)
             {
-                _logger.LogInformation($"BassWasapi.Init for {selectedOutputMode} mode succeeded!");
                 _wasapiInitialized = true;
+                _logger.LogInformation($"Switched to {_currentMode} mode with buffer {(flags.HasFlag(WasapiInitFlags.Buffer) ? "enabled" : "disabled (fallback)")}");
             }
             else
             {
@@ -333,6 +360,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             else
             {
                 // WASAPI: always create decode stream and mixer
+
+                // Get device info for mixer creation
+                if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+                {
+                    _logger.LogError($"Failed to get device info for mixer creation: {Bass.LastError}");
+                    return;
+                }
+
+                int deviceFreq = deviceInfo.MixFrequency;
+                int deviceChans = deviceInfo.MixChannels;
+
+                // Try float first
                 _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode | BassFlags.Float);
                 _logger.LogDebug($"WASAPI: _decodeStream handle: {_decodeStream}, Bass.LastError: {Bass.LastError}");
                 if (_decodeStream == 0)
@@ -341,22 +380,56 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     return;
                 }
 
-                // Get device info
-                BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo);
-                int deviceFreq = deviceInfo.MixFrequency;
-                int deviceChans = deviceInfo.MixChannels;
+                // Get decode stream info for channel count
+                Bass.ChannelGetInfo(_decodeStream, out var decodeInfo);
+                int decodeChans = decodeInfo.Channels;
+                _logger.LogDebug($"Decode Stream: Freq: {decodeInfo.Frequency}, Channels: {decodeChans}, Flags: {decodeInfo.Flags}");
 
-                // Always create a mixer for WASAPI output (remove BassFlags.Decode)
-                _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float);
-                _logger.LogDebug($"WASAPI: _mixerStream handle: {_mixerStream}, Bass.LastError: {Bass.LastError}");
-                if (_mixerStream == 0)
+                // Log WASAPI device info
+                _logger.LogInformation($"WASAPI Device: {deviceInfo.Name}, MixFrequency: {deviceInfo.MixFrequency}, MixChannels: {deviceInfo.MixChannels}");
+
+                // Try float mixer first
+                _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float | BassFlags.Decode);
+                bool mixerIsFloat = _mixerStream != 0;
+                if (_mixerStream != 0)
                 {
-                    _logger.LogError($"Failed to create mixer: {Bass.LastError}");
-                    Bass.StreamFree(_decodeStream);
-                    _decodeStream = 0;
-                    return;
+                    _logger.LogInformation($"File Rate: {decodeInfo.Frequency} Hz, Channels: {decodeInfo.Channels}");
+                    _logger.LogInformation($"Device Rate: {deviceFreq} Hz, Channels: {deviceChans}");
+                    Bass.ChannelGetInfo(_mixerStream, out var mixerInfo);
+                    _logger.LogInformation($"Mixer Rate: {mixerInfo.Frequency} Hz");
+                    _logger.LogDebug($"Mixer Stream: Freq: {mixerInfo.Frequency}, Channels: {mixerInfo.Channels}, Flags: {mixerInfo.Flags}");
                 }
-                if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, BassFlags.Default))
+                else
+                {
+                    // Fallback to 16-bit PCM mixer
+                    _logger.LogWarning("Falling back to 16-bit PCM mixer");
+                    _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Decode);
+                    mixerIsFloat = false;
+                    if (_mixerStream != 0)
+                    {
+                        _logger.LogInformation($"File Rate: {decodeInfo.Frequency} Hz, Channels: {decodeInfo.Channels}");
+                        _logger.LogInformation($"Device Rate: {deviceFreq} Hz, Channels: {deviceChans}");
+                        Bass.ChannelGetInfo(_mixerStream, out var mixerInfo);
+                        _logger.LogInformation($"Mixer Rate: {mixerInfo.Frequency} Hz");
+                        _logger.LogDebug($"PCM Mixer Stream: Freq: {mixerInfo.Frequency}, Channels: {mixerInfo.Channels}, Flags: {mixerInfo.Flags}");
+                    }
+                    else
+                    {
+                        _logger.LogError($"Failed to create mixer: {Bass.LastError}");
+                        Bass.StreamFree(_decodeStream);
+                        _decodeStream = 0;
+                        return;
+                    }
+                }
+
+                // Use MixerChanDownMix if channel counts do not match
+                BassFlags addFlags = BassFlags.Default;
+                if (decodeChans != deviceChans) addFlags |= BassFlags.MixerChanDownMix;
+                if (decodeInfo.Frequency != deviceFreq) addFlags |= BassFlags.MixerChanNoRampin; // Critical for rate mismatches
+
+                _logger.LogInformation($"Adding channel with flags: {addFlags}, File Rate: {decodeInfo.Frequency} Hz, Device Rate: {deviceFreq} Hz");
+
+                if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, addFlags))
                 {
                     _logger.LogError($"Failed to add decode stream to mixer: {Bass.LastError}");
                     Bass.StreamFree(_mixerStream);
@@ -365,7 +438,10 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     _decodeStream = 0;
                     return;
                 }
+
                 CurrentStream = _mixerStream;
+                // Store if mixer is float for WASAPI init
+                _mixerIsFloat = mixerIsFloat;
             }
 
             if (CurrentStream == 0)
@@ -476,16 +552,17 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             }
             else
             {
-                bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
-                WasapiInitFlags flags = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
-
-                // Always use the rooted delegate
-                if (_wasapiProc == null)
-                    _wasapiProc = new WasapiProcedure(WasapiProc);
+                // WASAPI playback - always try to initialize WASAPI when we play
+                if (!InitializeWasapiForPlayback())
+                {
+                    _logger.LogError("Failed to initialize WASAPI for playback");
+                    return;
+                }
 
                 if (_mixerStream != 0)
                 {
-                    Bass.ChannelPlay(_mixerStream);
+                    _logger.LogDebug("Calling Bass.ChannelPlay on mixer stream before WASAPI start");
+                    Bass.ChannelPlay(_mixerStream, false);
                 }
 
                 bool wasapiStarted = BassWasapi.Start();
@@ -533,11 +610,24 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (CurrentStream != 0 && IsPlaying)
         {
-            if (!Bass.ChannelPause(CurrentStream))
+            if (_currentMode == OutputMode.DirectSound)
             {
-                _logger.LogError($"Failed to pause stream: {Bass.LastError}");
-                return;
+                if (!Bass.ChannelPause(CurrentStream))
+                {
+                    _logger.LogError($"Failed to pause stream: {Bass.LastError}");
+                    return;
+                }
             }
+            else
+            {
+                // WASAPI pause
+                BassWasapi.Stop();
+                if (_mixerStream != 0)
+                {
+                    Bass.ChannelPause(_mixerStream);
+                }
+            }
+            
             IsPlaying = false;
         }
     }
@@ -546,11 +636,29 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (CurrentStream != 0 && !IsPlaying)
         {
-            if (!Bass.ChannelPlay(CurrentStream))
+            if (_currentMode == OutputMode.DirectSound)
             {
-                _logger.LogError($"Failed to resume stream: {Bass.LastError}");
-                return;
+                if (!Bass.ChannelPlay(CurrentStream))
+                {
+                    _logger.LogError($"Failed to resume stream: {Bass.LastError}");
+                    return;
+                }
             }
+            else
+            {
+                // WASAPI resume
+                if (_mixerStream != 0)
+                {
+                    Bass.ChannelPlay(_mixerStream);
+                }
+                
+                if (!BassWasapi.Start())
+                {
+                    _logger.LogError($"Failed to resume WASAPI: {Bass.LastError}");
+                    return;
+                }
+            }
+            
             IsPlaying = true;
 
             _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
@@ -646,17 +754,153 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
+    // Add a private field to track mixer format
+    private bool _mixerIsFloat = true;
+
     private int WasapiProc(IntPtr buffer, int length, IntPtr user)
     {
-        if (_mixerStream == 0) return 0;
+        if (_mixerStream == 0) 
+        {
+            unsafe
+            {
+                byte* ptr = (byte*)buffer.ToPointer();
+                for (int i = 0; i < length; i++)
+                {
+                    ptr[i] = 0;
+                }
+            }
+            return length;
+        }
 
-        return Bass.ChannelGetData(_mixerStream, buffer, length);
+        int bytesRead;
+        if (_mixerIsFloat)
+        {
+            // Request float data
+            bytesRead = Bass.ChannelGetData(_mixerStream, buffer, length | (int)DataFlags.Float);
+        }
+        else
+        {
+            // Request 16-bit PCM data
+            bytesRead = Bass.ChannelGetData(_mixerStream, buffer, length);
+        }
+
+        if (bytesRead > 0)
+        {
+            if (bytesRead < length)
+            {
+                unsafe
+                {
+                    byte* ptr = (byte*)buffer.ToPointer();
+                    for (int i = bytesRead; i < length; i++)
+                    {
+                        ptr[i] = 0;
+                    }
+                }
+            }
+            return length;
+        }
+        else
+        {
+            unsafe
+            {
+                byte* ptr = (byte*)buffer.ToPointer();
+                for (int i = 0; i < length; i++)
+                {
+                    ptr[i] = 0;
+                }
+            }
+            return length;
+        }
     }
 
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
     {
         _logger.LogInformation("Track ended");
         Stop();
+    }
+
+    private bool InitializeWasapiForPlayback()
+    {
+        try
+        {
+            // Always free any existing WASAPI initialization first
+            if (_wasapiInitialized)
+            {
+                _logger.LogInformation("Freeing existing WASAPI initialization");
+                BassWasapi.Stop();
+                BassWasapi.Free();
+                _wasapiInitialized = false;
+            }
+
+            // Get device info
+            if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+            {
+                _logger.LogError($"Failed to get WASAPI device info for device {_currentDevice.Index}: {Bass.LastError}");
+                return false;
+            }
+
+            bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
+            WasapiInitFlags baseFlags = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
+
+            // Prefer buffered mode so GetData/GetLevel work reliably outside the callback
+            WasapiInitFlags bufferedFlags = baseFlags | WasapiInitFlags.Buffer;
+            const WasapiInitFlags FLOAT_FLAG = (WasapiInitFlags)0x100; // enable float when supported
+
+            float bufferLength = 0.10f; // ~100ms allows UI FFT/VU without starving the callback
+            float period = 0f; // default
+
+            bool success = false;
+
+            // Try float + buffered
+            if (_mixerIsFloat)
+            {
+                _logger.LogInformation($"Initializing WASAPI (buffered): Device={deviceInfo.Name}, Freq={deviceInfo.MixFrequency}, Channels={deviceInfo.MixChannels}, Mode={_currentMode}, Float=TRUE");
+                success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, bufferedFlags | FLOAT_FLAG, bufferLength, period, _wasapiProc, IntPtr.Zero);
+            }
+
+            // Fallbacks in order of preference
+            if (!success && _mixerIsFloat)
+            {
+                _logger.LogWarning($"WASAPI float buffered init failed: {Bass.LastError} - trying float without buffer");
+                success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, baseFlags | FLOAT_FLAG, 0, 0, _wasapiProc, IntPtr.Zero);
+            }
+
+            if (!success)
+            {
+                _logger.LogInformation("Trying PCM buffered WASAPI init");
+                success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, bufferedFlags, bufferLength, period, _wasapiProc, IntPtr.Zero);
+            }
+
+            if (!success)
+            {
+                _logger.LogWarning($"WASAPI PCM buffered init failed: {Bass.LastError} - trying PCM without buffer");
+                success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, baseFlags, 0, 0, _wasapiProc, IntPtr.Zero);
+            }
+
+            if (success)
+            {
+                _wasapiInitialized = true;
+                if (BassWasapi.GetInfo(out var info))
+                {
+                    _logger.LogInformation($"WASAPI initialized successfully. Buffered={(info.BufferLength > 0 ? "Yes" : "No")}, Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
+                }
+                else
+                {
+                    _logger.LogInformation($"WASAPI initialized successfully. Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
+                }
+                return true;
+            }
+            else
+            {
+                _logger.LogError($"Failed to initialize WASAPI: {Bass.LastError}");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception during WASAPI initialization");
+            return false;
+        }
     }
 
     partial void OnMusicVolumeChanged(float value)
@@ -845,7 +1089,16 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public double GetDecibelLevel()
     {
-        int level = Bass.ChannelGetLevel(CurrentStream);
+        int level;
+        if (_currentMode == OutputMode.DirectSound)
+        {
+            level = Bass.ChannelGetLevel(CurrentStream);
+        }
+        else
+        {
+            level = BassWasapi.GetLevel();
+        }
+
         if (level == -1)
         {
             return double.NaN;
@@ -862,7 +1115,16 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public (double LeftDb, double RightDb) GetStereoDecibelLevels()
     {
-        int level = Bass.ChannelGetLevel(CurrentStream);
+        int level;
+        if (_currentMode == OutputMode.DirectSound)
+        {
+            level = Bass.ChannelGetLevel(CurrentStream);
+        }
+        else
+        {
+            level = BassWasapi.GetLevel();
+        }
+
         if (level == -1)
         {
             return (double.NaN, double.NaN);
@@ -881,7 +1143,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (fftDataBuffer.Length != ExpectedFftSize)
         {
-            return false;
+            return false; // Early exit if buffer size wrong
         }
 
         if (CurrentStream == 0)
@@ -890,14 +1152,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return false;
         }
 
-        if (FftUpdate.Length == ExpectedFftSize)
+        int bytesRead;
+        if (_currentMode == OutputMode.DirectSound)
         {
-            Array.Copy(FftUpdate, fftDataBuffer, ExpectedFftSize);
-            return true;
+            bytesRead = Bass.ChannelGetData(CurrentStream, fftDataBuffer, (int)DataFlags.FFT2048);
+        }
+        else
+        {
+            // IMPORTANT: In WASAPI use device GetData to avoid starving the mixer decode stream
+            bytesRead = BassWasapi.GetData(fftDataBuffer, (int)DataFlags.FFT2048);
         }
 
-        int bytesRead = Bass.ChannelGetData(CurrentStream, fftDataBuffer, (int)DataFlags.FFT2048);
-        if (bytesRead < 0)
+        if (bytesRead <= 0)
         {
             Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
             return false;
@@ -909,8 +1175,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     public int GetFftFrequencyIndex(int frequency)
     {
         const int fftSize = 2048;
-        const int sampleRate = 44100;
-        const float binWidth = sampleRate / (float)fftSize;
+        // Ensure we have a sane sample rate
+        int rate = _sampleRate > 0 ? _sampleRate : 44100;
+        float binWidth = rate / (float)fftSize;  // Use cached rate
         int index = (int)(frequency / binWidth);
         return Math.Clamp(index, 0, fftSize / 2 - 1);
     }
@@ -936,15 +1203,27 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return;
         }
 
-        int bytesRead = Bass.ChannelGetData(CurrentStream, _fftBuffer, (int)DataFlags.FFT2048);
+        int bytesRead;
+        if (_currentMode == OutputMode.DirectSound)
+        {
+            bytesRead = Bass.ChannelGetData(CurrentStream, _fftBuffer, (int)DataFlags.FFT2048);
+        }
+        else // WASAPI modes
+        {
+            bytesRead = BassWasapi.GetData(_fftBuffer, (int)DataFlags.FFT2048);
+        }
+
+        int fftSize; // Declare once here
         if (bytesRead < 0)
         {
-            FftUpdate = new float[ExpectedFftSize];
+            fftSize = _fftBuffer.Length / 2; // 1024 for consistency
+            FftUpdate = new float[fftSize];
+            Array.Clear(FftUpdate, 0, fftSize);
             OnFftCalculated?.Invoke(FftUpdate);
             return;
         }
 
-        int fftSize = _fftBuffer.Length / 2;
+        fftSize = _fftBuffer.Length / 2; // Assign value for success path (1024 magnitudes)
         float[] fftResult = new float[fftSize];
         for (int i = 0; i < fftSize; i++)
         {
@@ -1003,6 +1282,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
         if (_wasapiInitialized)
         {
+            _logger.LogInformation("FreeResources: Freeing WASAPI");
             BassWasapi.Stop();
             BassWasapi.Free();
             _wasapiInitialized = false;

@@ -442,7 +442,7 @@ public partial class SpectrumAnalyzer : Control
         if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
         {
             _animationTimer.Stop();
-            //_logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and all bars/peaks decayed");
+            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and all bars/peaks decayed");
             return;
         }
 
@@ -456,7 +456,7 @@ public partial class SpectrumAnalyzer : Control
 
         if (_soundPlayer != null && !_soundPlayer.GetFftData(_channelData))
         {
-            _logger.LogDebug("SpectrumAnalyzer: Skipped update - no FFT data");
+            // No FFT available now; keep animating decay but do not log per-tick
             UpdateSpectrumShapes();
             return;
         }
@@ -728,14 +728,16 @@ public partial class SpectrumAnalyzer : Control
     #region Event Handlers
     private void SoundPlayer_OnFftCalculated(float[] fftData)
     {
-        if (fftData.Length == 1024 && _channelData.Length == 2048)
+        int expectedInputLength = _channelData.Length / 2; // 1024, assuming magnitudes
+        if (fftData.Length == expectedInputLength && _channelData.Length == 2048)
         {
             Array.Copy(fftData, 0, _channelData, 0, fftData.Length);
             Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length);
         }
         else
         {
-            _logger.LogWarning("SpectrumAnalyzer: FFT data length mismatch, expected {Expected}, got {Actual}", _channelData.Length, fftData.Length);
+            // Quietly ignore transient mismatches to avoid flooding logs
+            Array.Clear(_channelData, 0, _channelData.Length);
         }
     }
 
@@ -746,14 +748,12 @@ public partial class SpectrumAnalyzer : Control
             if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
             {
                 _animationTimer.Start();
-                //_logger.LogDebug("SpectrumAnalyzer: Timer started due to IsPlaying=true");
             }
             else if (!_soundPlayer.IsPlaying)
             {
                 if (!_animationTimer.IsEnabled)
                     _animationTimer.Start();
                 UpdateSpectrumShapes();
-                //_logger.LogDebug("SpectrumAnalyzer: Update triggered due to IsPlaying=false");
             }
         }
     }
@@ -763,13 +763,12 @@ public partial class SpectrumAnalyzer : Control
         if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
         {
             _animationTimer.Stop();
-            //_logger.LogDebug("SpectrumAnalyzer: Timer stopped in AnimationTimer_Tick - all bars/peaks decayed");
             return;
         }
 
         if (_soundPlayer != null && _soundPlayer.IsPlaying && _soundPlayer.GetFftData(_channelData))
         {
-            Array.Copy(_channelData, _channelData, _channelData.Length);
+            // data already in _channelData
         }
 
         UpdateSpectrum();

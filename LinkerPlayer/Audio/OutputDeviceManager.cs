@@ -32,10 +32,13 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
     {
         _devices.Clear();
 
+        // Add default DirectSound device
+        _devices.Add(new Device("Default", OutputDeviceType.DirectSound, -1, true));
+
         // Get DirectSound devices
         try
         {
-            for (int i = 1; i < Bass.DeviceCount; i++) // Start from 1 to skip "Default"
+            for (int i = 1; i < Bass.DeviceCount; i++) // Start from 1 to skip "No sound"
             {
                 var dsDevice = Bass.GetDeviceInfo(i);
                 if (string.IsNullOrEmpty(dsDevice.Name) || !dsDevice.IsEnabled)
@@ -43,7 +46,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
 
                 _devices.Add(new Device(dsDevice.Name, OutputDeviceType.DirectSound, i));
             }
-            _logger.LogInformation("Found {Count} DirectSound devices", _devices.Count(d => d.Type == OutputDeviceType.DirectSound));
+            _logger.LogInformation("Found {Count} DirectSound devices", _devices.Count(d => d.Type == OutputDeviceType.DirectSound) - 1); // -1 for default
         }
         catch (Exception ex)
         {
@@ -54,7 +57,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         try
         {
             int wasapiCount = 0;
-            for (int i = 1; BassWasapi.GetDeviceInfo(i, out var wasapiDevice); i++)
+            for (int i = 0; BassWasapi.GetDeviceInfo(i, out var wasapiDevice); i++) // WASAPI devices start from 0
             {
                 if (wasapiDevice.IsEnabled && !wasapiDevice.IsInput && !string.IsNullOrEmpty(wasapiDevice.Name))
                 {
