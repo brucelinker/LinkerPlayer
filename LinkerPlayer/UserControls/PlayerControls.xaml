@@ -141,11 +141,11 @@
       <Border BorderBrush="Transparent" BorderThickness="1">
         <Grid Margin="10,26,10,0">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="40" />
             <!--  CurrentTime  -->
             <ColumnDefinition Width="*" />
             <!--  Progress Slider  -->
-            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="40" />
             <!--  TotalTime  -->
           </Grid.ColumnDefinitions>
 
@@ -153,34 +153,36 @@
           <TextBlock
             Name="CurrentTime"
             Grid.Column="0"
-            Padding="0,0,10,0"
-            d:Foreground="Transparent"
+            Padding="0,0,0,0"
             FontSize="16"
             FontWeight="Light"
             Foreground="{DynamicResource PlayerForegroundBrush}"
-            Text="0:00" />
+            Text="0:00" 
+            d:Text="00:00"
+            d:Foreground="white"/>
 
           <!--  Player Slider  -->
-          <Slider
+            <Slider
             x:Name="SeekBar"
             Grid.Column="1"
-            Margin="5,0,5,0"
+            Margin="0,0,15,0"
             Panel.ZIndex="1"
             Maximum="100"
             Style="{StaticResource CustomHorizontalSlider}"
             ValueChanged="SeekBar_ValueChanged" />
-
+                    
           <!--  Total Time  -->
           <TextBlock
             Name="TotalTime"
             Grid.Column="2"
-            Padding="10,0,0,0"
-            d:Foreground="Transparent"
+            Padding="0,0,0,0"
             FontSize="16"
             FontWeight="Light"
-            Foreground="{DynamicResource PlayerForegroundBrush}">
-            0:00
-          </TextBlock>
+            Foreground="{DynamicResource PlayerForegroundBrush}"
+            Text="0:00" 
+            d:Text="00:00"
+            d:Foreground="white"/>
+
         </Grid>
       </Border>
     </Grid>

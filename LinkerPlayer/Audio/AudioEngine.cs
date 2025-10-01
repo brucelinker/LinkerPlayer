@@ -905,9 +905,17 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     partial void OnMusicVolumeChanged(float value)
     {
-        if (CurrentStream != 0)
+        if (_currentMode == OutputMode.DirectSound)
         {
-            Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, value);
+            if (CurrentStream != 0)
+            {
+                Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, value);
+            }
+        }
+        else if (_currentMode == OutputMode.WasapiShared || _currentMode == OutputMode.WasapiExclusive)
+        {
+            // Set WASAPI session volume (0.0 = mute, 1.0 = max)
+            BassWasapi.SetVolume(WasapiVolumeTypes.Session, value);
         }
     }
 

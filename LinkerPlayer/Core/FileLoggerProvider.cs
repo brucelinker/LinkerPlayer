@@ -59,7 +59,7 @@ public class FileLogger : ILogger
         string logMessage = _formatLogEntry(entry);
         lock (_lock)
         {
-            File.AppendAllText(_filePath, logMessage + Environment.NewLine);
+            File.AppendAllText(_filePath, logMessage);
         }
     }
 }

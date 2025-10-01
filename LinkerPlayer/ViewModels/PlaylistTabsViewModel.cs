@@ -959,6 +959,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     private MediaFile GetLastSelectedTrack(Playlist playlist)
     {
+        if (playlist.SelectedTrack == null)
+            return null;
+
         return _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == playlist.SelectedTrack) ?? TabList[SelectedTabIndex].Tracks[0];
     }
 
