@@ -61,8 +61,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     private int _decodeStream = 0; // Holds the decode stream (file)
     private int _mixerStream = 0; // Holds the mixer stream (WASAPI output)
 
-    public bool IsInitialized => IsBassInitialized;
-
     public event Action? OnPlaybackStopped;
     public event Action<float[]>? OnFftCalculated;
 
