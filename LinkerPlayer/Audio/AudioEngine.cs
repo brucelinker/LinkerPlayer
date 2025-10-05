@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
@@ -92,8 +94,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         try
         {
-            _logger.LogInformation("Initializing AudioEngine");
-
             // Initialize BASS Native Library Manager first
             BassNativeLibraryManager.Initialize(_logger);
 
@@ -118,6 +118,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _positionTimer.AutoReset = true;
 
             FftUpdate = new float[ExpectedFftSize];
+
+            WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, m) =>
+            {
+                OnMainWindowClosing(m.Value);
+            });
+
             _logger.LogInformation("AudioEngine initialized successfully");
         }
         catch (IOException ex)
@@ -328,7 +334,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void LoadAudioFile(string pathToMusic)
     {
-        _logger.LogDebug($"LoadAudioFile called with path: {pathToMusic}");
+        //_logger.LogDebug($"LoadAudioFile called with path: {pathToMusic}");
         try
         {
             // Free previous streams and clean up EQ
@@ -384,18 +390,19 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 _logger.LogDebug($"Decode Stream: Freq: {decodeInfo.Frequency}, Channels: {decodeChans}, Flags: {decodeInfo.Flags}");
 
                 // Log WASAPI device info
-                _logger.LogInformation($"WASAPI Device: {deviceInfo.Name}, MixFrequency: {deviceInfo.MixFrequency}, MixChannels: {deviceInfo.MixChannels}");
+                //_logger.LogInformation($"WASAPI Device: {deviceInfo.Name}, MixFrequency: {deviceInfo.MixFrequency}, MixChannels: {deviceInfo.MixChannels}");
 
                 // Try float mixer first
                 _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float | BassFlags.Decode);
                 bool mixerIsFloat = _mixerStream != 0;
                 if (_mixerStream != 0)
                 {
-                    _logger.LogInformation($"File Rate: {decodeInfo.Frequency} Hz, Channels: {decodeInfo.Channels}");
-                    _logger.LogInformation($"Device Rate: {deviceFreq} Hz, Channels: {deviceChans}");
                     Bass.ChannelGetInfo(_mixerStream, out var mixerInfo);
-                    _logger.LogInformation($"Mixer Rate: {mixerInfo.Frequency} Hz");
-                    _logger.LogDebug($"Mixer Stream: Freq: {mixerInfo.Frequency}, Channels: {mixerInfo.Channels}, Flags: {mixerInfo.Flags}");
+
+                    //_logger.LogInformation($"File Rate: {decodeInfo.Frequency} Hz, Channels: {decodeInfo.Channels}");
+                    //_logger.LogInformation($"Device Rate: {deviceFreq} Hz, Channels: {deviceChans}");
+                    //_logger.LogInformation($"Mixer Rate: {mixerInfo.Frequency} Hz");
+                    //_logger.LogDebug($"Mixer Stream: Freq: {mixerInfo.Frequency}, Channels: {mixerInfo.Channels}, Flags: {mixerInfo.Flags}");
                 }
                 else
                 {
@@ -405,11 +412,12 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     mixerIsFloat = false;
                     if (_mixerStream != 0)
                     {
-                        _logger.LogInformation($"File Rate: {decodeInfo.Frequency} Hz, Channels: {decodeInfo.Channels}");
-                        _logger.LogInformation($"Device Rate: {deviceFreq} Hz, Channels: {deviceChans}");
                         Bass.ChannelGetInfo(_mixerStream, out var mixerInfo);
-                        _logger.LogInformation($"Mixer Rate: {mixerInfo.Frequency} Hz");
-                        _logger.LogDebug($"PCM Mixer Stream: Freq: {mixerInfo.Frequency}, Channels: {mixerInfo.Channels}, Flags: {mixerInfo.Flags}");
+
+                        //_logger.LogInformation($"File Rate: {decodeInfo.Frequency} Hz, Channels: {decodeInfo.Channels}");
+                        //_logger.LogInformation($"Device Rate: {deviceFreq} Hz, Channels: {deviceChans}");
+                        //_logger.LogInformation($"Mixer Rate: {mixerInfo.Frequency} Hz");
+                        //_logger.LogDebug($"PCM Mixer Stream: Freq: {mixerInfo.Frequency}, Channels: {mixerInfo.Channels}, Flags: {mixerInfo.Flags}");
                     }
                     else
                     {
@@ -425,7 +433,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 if (decodeChans != deviceChans) addFlags |= BassFlags.MixerChanDownMix;
                 if (decodeInfo.Frequency != deviceFreq) addFlags |= BassFlags.MixerChanNoRampin; // Critical for rate mismatches
 
-                _logger.LogInformation($"Adding channel with flags: {addFlags}, File Rate: {decodeInfo.Frequency} Hz, Device Rate: {deviceFreq} Hz");
+                //_logger.LogInformation($"Adding channel with flags: {addFlags}, File Rate: {decodeInfo.Frequency} Hz, Device Rate: {deviceFreq} Hz");
 
                 if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, addFlags))
                 {
@@ -466,7 +474,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 InitializeEqualizer();
             }
 
-            _logger.LogInformation($"Successfully loaded audio file: {Path.GetFileName(pathToMusic)}");
+            //_logger.LogInformation($"Successfully loaded audio file: {Path.GetFileName(pathToMusic)}");
         }
         catch (Exception ex)
         {
@@ -502,7 +510,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Play(string pathToMusic, double position = 0)
     {
-        _logger.LogDebug($"Play called with path: {pathToMusic}, position: {position}");
+        //_logger.LogDebug($"Play called with path: {pathToMusic}, position: {position}");
         if (string.IsNullOrEmpty(pathToMusic))
         {
             _logger.LogError("Play called with null or empty pathToMusic");
@@ -824,7 +832,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             // Always free any existing WASAPI initialization first
             if (_wasapiInitialized)
             {
-                _logger.LogInformation("Freeing existing WASAPI initialization");
                 BassWasapi.Stop();
                 BassWasapi.Free();
                 _wasapiInitialized = false;
@@ -925,6 +932,11 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _positionTimer.Stop();
     }
 
+    private void OnMainWindowClosing(bool value)
+    {
+        Stop();
+    }
+
     #region Equalizer
     public bool InitializeEqualizer()
     {
@@ -978,10 +990,10 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
 
         _eqInitialized = successCount > 0;
-        if (_eqInitialized)
-        {
-            _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
-        }
+        //if (_eqInitialized)
+        //{
+        //    _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
+        //}
 
         return _eqInitialized;
     }

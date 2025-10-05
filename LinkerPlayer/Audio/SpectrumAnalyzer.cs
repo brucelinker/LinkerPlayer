@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -36,7 +37,7 @@ public partial class SpectrumAnalyzer : Control
     #endregion
 
     #region Fields
-    private readonly DispatcherTimer _animationTimer;
+    private readonly System.Threading.Timer _animationTimer;
     private Canvas? _spectrumCanvas;
     private ISpectrumPlayer? _soundPlayer;
     private readonly List<Shape> _barShapes = [];
@@ -46,6 +47,7 @@ public partial class SpectrumAnalyzer : Control
     private readonly ILogger<SpectrumAnalyzer> _logger;
     private int[] _barIndexMax = [];
     private int[] _barLogScaleIndexMax = [];
+    private readonly object _updateLock = new object();
     #endregion
 
     #region Constants
@@ -262,7 +264,14 @@ public partial class SpectrumAnalyzer : Control
     private static void OnRefreshIntervalChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is SpectrumAnalyzer sa)
-            sa._animationTimer.Interval = TimeSpan.FromMilliseconds((int)e.NewValue);
+        {
+            // Update System.Threading.Timer interval
+            sa._animationTimer.Change(Timeout.Infinite, (int)e.NewValue);
+            if (sa._soundPlayer?.IsPlaying == true)
+            {
+                sa._animationTimer.Change(0, (int)e.NewValue);
+            }
+        }
     }
 
     private static void OnFftComplexityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -313,11 +322,13 @@ public partial class SpectrumAnalyzer : Control
     public SpectrumAnalyzer()
     {
         _logger = App.AppHost.Services.GetRequiredService<ILogger<SpectrumAnalyzer>>();
-        _animationTimer = new DispatcherTimer(DispatcherPriority.Render)
-        {
-            Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
-        };
-        _animationTimer.Tick += AnimationTimer_Tick;
+        
+        // Use System.Threading.Timer instead of DispatcherTimer to avoid UI thread blocking
+        _animationTimer = new System.Threading.Timer(
+            AnimationTimer_Tick, 
+            null, 
+            Timeout.Infinite, // Don't start automatically
+            DefaultUpdateInterval);
     }
     #endregion
 
@@ -337,7 +348,7 @@ public partial class SpectrumAnalyzer : Control
             _soundPlayer.OnFftCalculated += SoundPlayer_OnFftCalculated;
             UpdateBarLayout();
             if (_soundPlayer.IsPlaying)
-                _animationTimer.Start();
+                _animationTimer.Change(0, Timeout.Infinite);
             _logger.LogInformation("SpectrumAnalyzer: Registered sound player");
         }
     }
@@ -351,8 +362,8 @@ public partial class SpectrumAnalyzer : Control
             _soundPlayer = null;
             if (_spectrumCanvas != null)
                 UpdateSpectrumShapes();
-            if (!_animationTimer.IsEnabled)
-                _animationTimer.Start();
+            if (!_animationTimer.Change(Timeout.Infinite, Timeout.Infinite))
+                _animationTimer.Change(0, Timeout.Infinite);
             _logger.LogInformation("SpectrumAnalyzer: Sound player unregistered");
         }
     }
@@ -441,24 +452,29 @@ public partial class SpectrumAnalyzer : Control
 
         if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
         {
-            _animationTimer.Stop();
-            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and all bars/peaks decayed");
+            _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
+            //_logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrum - no sound player and all bars/peaks decayed");
             return;
         }
 
         if (_soundPlayer != null && !_soundPlayer.IsPlaying)
         {
-            if (!_animationTimer.IsEnabled)
-                _animationTimer.Start();
+            _animationTimer.Change(0, RefreshInterval); // Ensure timer is running
             UpdateSpectrumShapes();
             return;
         }
 
-        if (_soundPlayer != null && !_soundPlayer.GetFftData(_channelData))
+        if (_soundPlayer != null)
         {
-            // No FFT available now; keep animating decay but do not log per-tick
-            UpdateSpectrumShapes();
-            return;
+            lock (_updateLock)
+            {
+                if (!_soundPlayer.GetFftData(_channelData))
+                {
+                    // No FFT available now; keep animating decay but do not log per-tick
+                    UpdateSpectrumShapes();
+                    return;
+                }
+            }
         }
 
         UpdateSpectrumShapes();
@@ -487,6 +503,13 @@ public partial class SpectrumAnalyzer : Control
         maxFreqIndex = Math.Min(maxFreqIndex, _channelData.Length - 1);
         if (maxFreqIndex <= minFreqIndex)
             maxFreqIndex = minFreqIndex + 1;
+
+        // Copy channel data under lock to avoid race conditions
+        float[] channelDataCopy;
+        lock (_updateLock)
+        {
+            channelDataCopy = (float[])_channelData.Clone();
+        }
 
         if (_soundPlayer == null || !_soundPlayer.IsPlaying)
         {
@@ -519,28 +542,28 @@ public partial class SpectrumAnalyzer : Control
                 switch (BarHeightScaling)
                 {
                     case BarHeightScalingStyles.Decibel:
-                        dbValue = 20 * Math.Log10(_channelData[i] > 0 ? _channelData[i] : 1e-5);
+                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
                         fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Linear:
-                        fftBucketHeight = _channelData[i] * ScaleFactorLinear * barHeightScale;
+                        fftBucketHeight = channelDataCopy[i] * ScaleFactorLinear * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Sqrt:
-                        fftBucketHeight = Math.Sqrt(_channelData[i]) * ScaleFactorSqr * barHeightScale;
+                        fftBucketHeight = Math.Sqrt(channelDataCopy[i]) * ScaleFactorSqr * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Mel:
-                        dbValue = 20 * Math.Log10(_channelData[i] > 0 ? _channelData[i] : 1e-5);
+                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
                         fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Bark:
-                        dbValue = 20 * Math.Log10(_channelData[i] > 0 ? _channelData[i] : 1e-5);
+                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
                         fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Power:
-                        fftBucketHeight = _channelData[i] * _channelData[i] * 20 * barHeightScale;
+                        fftBucketHeight = channelDataCopy[i] * channelDataCopy[i] * 20 * barHeightScale;
                         break;
                     case BarHeightScalingStyles.LogFrequency:
-                        fftBucketHeight = _channelData[i] * ScaleFactorLinear * barHeightScale;
+                        fftBucketHeight = channelDataCopy[i] * ScaleFactorLinear * barHeightScale;
                         break;
                 }
                 fftBucketHeight = Math.Max(fftBucketHeight, 0);
@@ -584,8 +607,8 @@ public partial class SpectrumAnalyzer : Control
 
         if (allZero && (_soundPlayer == null || !_soundPlayer.IsPlaying))
         {
-            _animationTimer.Stop();
-            _logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrumShapes - all bars/peaks zero");
+            _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
+            //_logger.LogDebug("SpectrumAnalyzer: Timer stopped in UpdateSpectrumShapes - all bars/peaks zero");
         }
 
         BarValuesChanged?.Invoke(this, _channelPeakData);
@@ -731,13 +754,19 @@ public partial class SpectrumAnalyzer : Control
         int expectedInputLength = _channelData.Length / 2; // 1024, assuming magnitudes
         if (fftData.Length == expectedInputLength && _channelData.Length == 2048)
         {
-            Array.Copy(fftData, 0, _channelData, 0, fftData.Length);
-            Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length);
+            lock (_updateLock)
+            {
+                Array.Copy(fftData, 0, _channelData, 0, fftData.Length);
+                Array.Clear(_channelData, fftData.Length, _channelData.Length - fftData.Length);
+            }
         }
         else
         {
             // Quietly ignore transient mismatches to avoid flooding logs
-            Array.Clear(_channelData, 0, _channelData.Length);
+            lock (_updateLock)
+            {
+                Array.Clear(_channelData, 0, _channelData.Length);
+            }
         }
     }
 
@@ -745,33 +774,41 @@ public partial class SpectrumAnalyzer : Control
     {
         if (e.PropertyName == "IsPlaying" && _soundPlayer != null)
         {
-            if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
+            if (_soundPlayer.IsPlaying)
             {
-                _animationTimer.Start();
+                // Start the timer
+                _animationTimer.Change(0, RefreshInterval);
             }
-            else if (!_soundPlayer.IsPlaying)
+            else
             {
-                if (!_animationTimer.IsEnabled)
-                    _animationTimer.Start();
-                UpdateSpectrumShapes();
+                // Keep timer running for decay animation
+                _animationTimer.Change(0, RefreshInterval);
             }
         }
     }
 
-    private void AnimationTimer_Tick(object? sender, EventArgs e)
+    private void AnimationTimer_Tick(object? state)
     {
-        if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
+        // This now runs on a background thread!
+        // Marshal spectrum update to UI thread
+        Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
         {
-            _animationTimer.Stop();
-            return;
-        }
+            if (_soundPlayer == null && _channelPeakData.All(p => p < 0.05f) && _barShapes.All(s => s.Height < 0.05))
+            {
+                _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
+                return;
+            }
 
-        if (_soundPlayer != null && _soundPlayer.IsPlaying && _soundPlayer.GetFftData(_channelData))
-        {
-            // data already in _channelData
-        }
+            if (_soundPlayer != null && _soundPlayer.IsPlaying)
+            {
+                lock (_updateLock)
+                {
+                    _soundPlayer.GetFftData(_channelData);
+                }
+            }
 
-        UpdateSpectrum();
+            UpdateSpectrum();
+        }), DispatcherPriority.Background); // Use Background priority to not block UI
     }
 
     private void SpectrumCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)

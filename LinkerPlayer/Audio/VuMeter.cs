@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using System;
 using System.Globalization;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -21,7 +22,7 @@ public partial class VuMeter : Control
     #endregion
 
     #region Fields
-    private readonly DispatcherTimer _animationTimer;
+    private readonly System.Threading.Timer _animationTimer;
     private Canvas? _vuCanvas;
     private ISpectrumPlayer? _soundPlayer;
     private readonly ILogger<VuMeter> _logger;
@@ -199,11 +200,12 @@ public partial class VuMeter : Control
             _isShuttingDown = true;
         }
 
-        _animationTimer = new DispatcherTimer(DispatcherPriority.Render)
-        {
-            Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
-        };
-        _animationTimer.Tick += AnimationTimer_Tick;
+        // Use System.Threading.Timer instead of DispatcherTimer to avoid UI thread blocking
+        _animationTimer = new System.Threading.Timer(
+            AnimationTimer_Tick,
+            null,
+            Timeout.Infinite, // Don't start automatically
+            DefaultUpdateInterval);
 
         // Set default template
         DefaultStyleKey = typeof(VuMeter);
@@ -243,7 +245,7 @@ public partial class VuMeter : Control
             _soundPlayer.OnFftCalculated += SoundPlayer_OnFftCalculated;
             _isPlayerPlaying = _soundPlayer.IsPlaying;
             if (_soundPlayer.IsPlaying)
-                _animationTimer.Start();
+                _animationTimer.Change(0, DefaultUpdateInterval); // Start timer
             _logger.LogInformation("VuMeter: Registered sound player");
         }
     }
@@ -259,7 +261,7 @@ public partial class VuMeter : Control
             _isPlayerPlaying = false;
 
             // Force immediate cleanup
-            _animationTimer.Stop();
+            _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
 
             lock (_lockObject)
             {
@@ -561,12 +563,12 @@ public partial class VuMeter : Control
 
             //_logger.LogDebug("VuMeter: Player state changed from {WasPlaying} to {IsPlaying}", wasPlaying, _isPlayerPlaying);
 
-            if (_soundPlayer.IsPlaying && !_animationTimer.IsEnabled)
+            if (_soundPlayer.IsPlaying)
             {
-                _animationTimer.Start();
+                _animationTimer.Change(0, DefaultUpdateInterval); // Start timer
                 //_logger.LogDebug("VuMeter: Player started, timer started");
             }
-            else if (!_soundPlayer.IsPlaying)
+            else
             {
                 //_logger.LogDebug("VuMeter: Player stopped, current levels L:{LeftLevel:F1}, R:{RightLevel:F1}", _leftLevel, _rightLevel);
 
@@ -577,7 +579,7 @@ public partial class VuMeter : Control
                 }
 
                 // Stop the timer - no need for decay animation
-                _animationTimer.Stop();
+                _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
 
                 // Update display immediately
                 UpdateVuBars();
@@ -587,11 +589,11 @@ public partial class VuMeter : Control
         }
     }
 
-    private void AnimationTimer_Tick(object? sender, EventArgs e)
+    private void AnimationTimer_Tick(object? state)
     {
         if (_isShuttingDown)
         {
-            _animationTimer.Stop();
+            _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
             return;
         }
 
@@ -600,12 +602,16 @@ public partial class VuMeter : Control
             // Timer should only run during playback for smooth updates
             if (_isPlayerPlaying)
             {
-                UpdateVuBars();
+                // Marshal to UI thread
+                Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    UpdateVuBars();
+                }), DispatcherPriority.Background);
             }
             else
             {
                 // If timer is running but not playing, stop it
-                _animationTimer.Stop();
+                _animationTimer.Change(Timeout.Infinite, Timeout.Infinite); // Stop timer
                 //_logger.LogDebug("VuMeter: Timer stopped - not playing");
             }
         }

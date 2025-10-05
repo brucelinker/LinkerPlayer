@@ -5,7 +5,6 @@ using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Diagnostics.Metrics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -25,7 +24,7 @@ public partial class TrackInfo
         set
         {
             SetValue(SelectedMediaFileProperty, value);
-            _logger.LogInformation("TrackInfo.SelectedMediaFile set to: {ValueTitle}", value != null ? value.Title : "null");
+            //_logger.LogInformation("TrackInfo.SelectedMediaFile set to: {ValueTitle}", value != null ? value.Title : "null");
         }
     }
 
@@ -56,7 +55,7 @@ public partial class TrackInfo
         if (FindName("Spectrum") is SpectrumAnalyzer spectrum)
         {
             spectrum.RegisterSoundPlayer(_audioEngine);
-            _logger.LogInformation("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
+            //_logger.LogInformation("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
         }
         else
         {
@@ -66,7 +65,7 @@ public partial class TrackInfo
         if (FindName("VuMeter") is VuMeter vuMeter)
         {
             vuMeter.RegisterSoundPlayer(_audioEngine);
-            _logger.LogInformation("TrackInfo: Registered VuMeter with AudioEngine");
+            //_logger.LogInformation("TrackInfo: Registered VuMeter with AudioEngine");
         }
         else
         {
@@ -74,19 +73,30 @@ public partial class TrackInfo
         }
     }
 
-    private void OnSelectedTrackChanged(MediaFile? mediaFile)
+    private async void OnSelectedTrackChanged(MediaFile? mediaFile)
     {
         if (mediaFile != null)
         {
             SelectedMediaFile = mediaFile;
 
-            if (string.IsNullOrWhiteSpace(mediaFile.Artist) || mediaFile.Bitrate == 0)
-            {
-                mediaFile.UpdateFullMetadata();
-            }
+            // Metadata is already loaded from database cache - no need to reload!
 
-            // Always attempt to load AlbumCover to ensure fresh state
-            mediaFile.LoadAlbumCover();
+            // NEW: Load album cover asynchronously if not already loaded
+            if (mediaFile.AlbumCover == null)
+            {
+                // Load album cover on background thread to avoid blocking UI
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        mediaFile.LoadAlbumCover();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to load album cover for {Title}", mediaFile.Title);
+                    }
+                });
+            }
 
             // Check if AlbumCover is null or invalid
             bool isInvalidImage = mediaFile.AlbumCover == null;
@@ -107,7 +117,7 @@ public partial class TrackInfo
             if (isInvalidImage)
             {
                 mediaFile.AlbumCover = GetDefaultAlbumImage();
-                _logger.LogInformation("TrackInfo: Set default album cover for {MediaFileTitle}", mediaFile.Title);
+                //_logger.LogInformation("TrackInfo: Set default album cover for {MediaFileTitle}", mediaFile.Title);
                 if (FindName("TrackImageText") is TextBlock trackImageText)
                 {
                     trackImageText.Text = "[No Image]";
@@ -122,7 +132,7 @@ public partial class TrackInfo
             if (FindName("TrackImage") is Image trackImage)
             {
                 trackImage.Source = mediaFile.AlbumCover ?? GetDefaultAlbumImage();
-                _logger.LogInformation("TrackInfo: Set TrackImage.Source to AlbumCover ({0})", mediaFile.AlbumCover != null ? "custom" : "default");
+                //_logger.LogInformation("TrackInfo: Set TrackImage.Source to AlbumCover ({0})", mediaFile.AlbumCover != null ? "custom" : "default");
             }
         }
         else

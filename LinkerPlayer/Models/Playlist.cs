@@ -19,11 +19,11 @@ public partial class Playlist : ObservableValidator
 
     [StringLength(36, ErrorMessage = "SelectedTrack must be a valid GUID (36 characters)")]
     [ObservableProperty]
-    private string? _selectedTrack;
+    private string? _selectedTrackId;
 
     public ObservableCollection<string> TrackIds { get; set; } = new();
 
-    [ForeignKey(nameof(SelectedTrack))]
+    [ForeignKey(nameof(SelectedTrackId))]
     public MediaFile? SelectedTrackNavigation { get; set; }
 
     public List<PlaylistTrack> PlaylistTracks { get; set; } = new();

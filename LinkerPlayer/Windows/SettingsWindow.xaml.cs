@@ -1,7 +1,6 @@
 ﻿using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -33,8 +32,6 @@ public partial class SettingsWindow
 
         try
         {
-            _logger.Log(LogLevel.Information, "Initializing SettingsWindow");
-
             // Initialize component with error handling
             try
             {
@@ -42,7 +39,7 @@ public partial class SettingsWindow
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error in InitializeComponent: {Message}", ex.Message);
+                _logger.LogError(ex, "Error in InitializeComponent: {Message}", ex.Message);
                 throw; // This is critical, so we need to throw
             }
 
@@ -53,7 +50,7 @@ public partial class SettingsWindow
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error setting DataContext: {Message}", ex.Message);
+                _logger.LogError(ex, "Error setting DataContext: {Message}", ex.Message);
             }
 
             // Register window placement safely
@@ -63,7 +60,7 @@ public partial class SettingsWindow
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error registering window placement: {Message}", ex.Message);
+                _logger.LogError(ex, "Error registering window placement: {Message}", ex.Message);
             }
 
             // Add key event handler safely
@@ -73,20 +70,20 @@ public partial class SettingsWindow
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error adding key event handler: {Message}", ex.Message);
+                _logger.LogError(ex, "Error adding key event handler: {Message}", ex.Message);
             }
 
-            _logger.Log(LogLevel.Information, "SettingsWindow initialized successfully");
+            _logger.LogInformation("SettingsWindow initialized successfully");
         }
         catch (IOException ex)
         {
-            _logger.Log(LogLevel.Error, ex, "IO error in SettingsWindow constructor: {Message}\n{StackTrace}",
+            _logger.LogError(ex, "IO error in SettingsWindow constructor: {Message}\n{StackTrace}",
                 ex.Message, ex.StackTrace);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Unexpected error in SettingsWindow constructor: {Message}\n{StackTrace}",
+            _logger.LogError(ex, "Unexpected error in SettingsWindow constructor: {Message}\n{StackTrace}",
                 ex.Message, ex.StackTrace);
             throw;
         }
@@ -96,8 +93,6 @@ public partial class SettingsWindow
     {
         try
         {
-            _logger.Log(LogLevel.Information, "Settings Window_Loaded starting");
-
             // Set theme with error handling
             try
             {
@@ -115,7 +110,7 @@ public partial class SettingsWindow
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error setting theme: {Message}", ex.Message);
+                _logger.LogError(ex, "Error setting theme: {Message}", ex.Message);
                 try
                 {
                     ThemesList.SelectedIndex = (int)ThemeColors.Dark;
@@ -123,7 +118,7 @@ public partial class SettingsWindow
                 }
                 catch (Exception themeEx)
                 {
-                    _logger.Log(LogLevel.Error, themeEx, "Error setting fallback theme: {Message}", themeEx.Message);
+                    _logger.LogError(themeEx, "Error setting fallback theme: {Message}", themeEx.Message);
                 }
             }
 
@@ -133,11 +128,11 @@ public partial class SettingsWindow
             {
                 selectedOutputMode = _settingsManager.Settings.SelectedOutputMode;
                 SetOutputModeSelection(selectedOutputMode);
-                _logger.Log(LogLevel.Information, "Settings window loaded, audio mode UI set to: {OutputMode}", selectedOutputMode);
+                //_logger.LogInformation("Settings window loaded, audio mode UI set to: {OutputMode}", selectedOutputMode);
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error setting audio mode UI: {Message}", ex.Message);
+                _logger.LogError(ex, "Error setting audio mode UI: {Message}", ex.Message);
                 selectedOutputMode = OutputMode.DirectSound; // Safe fallback
             }
 
@@ -148,14 +143,12 @@ public partial class SettingsWindow
             }
             catch (Exception ex)
             {
-                _logger.Log(LogLevel.Error, ex, "Error loading output devices: {Message}", ex.Message);
+                _logger.LogError(ex, "Error loading output devices: {Message}", ex.Message);
             }
-
-            _logger.Log(LogLevel.Information, "Settings Window_Loaded completed successfully");
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Critical error in Settings Window_Loaded: {Message}", ex.Message);
+            _logger.LogError(ex, "Critical error in Settings Window_Loaded: {Message}", ex.Message);
             // Don't rethrow - just log the error and continue
         }
     }
@@ -167,7 +160,7 @@ public partial class SettingsWindow
             if (Enum.TryParse(themeName, out ThemeColors selectedTheme))
             {
                 _themeManager.ModifyTheme(selectedTheme);
-                _logger.Log(LogLevel.Information, "Theme changed to {Theme}", selectedTheme);
+                //_logger.LogInformation("Theme changed to {Theme}", selectedTheme);
             }
             else
             {
@@ -182,14 +175,14 @@ public partial class SettingsWindow
         {
             if (Enum.TryParse(outputModeName, out OutputMode selectedOutputMode))
             {
-                _logger.Log(LogLevel.Information, "Audio mode changed to {OutputMode}", selectedOutputMode);
+                //_logger.Log(LogLevel.Information, "Audio mode changed to {OutputMode}", selectedOutputMode);
 
                 // Update the device list when output mode changes
                 RefreshDeviceListForMode(selectedOutputMode);
             }
             else
             {
-                _logger.Log(LogLevel.Warning, "Failed to parse output mode from ComboBoxItem Tag: {Tag}", outputModeName);
+                _logger.LogWarning("Failed to parse output mode from ComboBoxItem Tag: {Tag}", outputModeName);
             }
         }
     }
@@ -205,16 +198,16 @@ public partial class SettingsWindow
                 : _audioEngine.WasapiDevices;
 
             var deviceList = devices.ToList();
-            _logger.Log(LogLevel.Information, "Refreshing device list for {OutputMode}: {Count} devices found", outputMode, deviceList.Count);
+            //_logger.LogInformation("Refreshing device list for {OutputMode}: {Count} devices found", outputMode, deviceList.Count);
 
             // Populate ComboBox with strings only
             foreach (var device in deviceList)
             {
                 OutputDeviceCombo.Items.Add(device.Name);
-                _logger.Log(LogLevel.Information, "Added device to UI: '{DeviceName}'", device.Name);
+                //_logger.LogInformation("Added device to UI: '{DeviceName}'", device.Name);
             }
 
-            _logger.Log(LogLevel.Information, "UI ComboBox now has {Count} items", OutputDeviceCombo.Items.Count);
+            //_logger.LogInformation("UI ComboBox now has {Count} items", OutputDeviceCombo.Items.Count);
 
             if (OutputDeviceCombo.Items.Count > 0)
             {
@@ -225,16 +218,16 @@ public partial class SettingsWindow
                     : deviceList.First().Name;
 
                 OutputDeviceCombo.SelectedItem = deviceNameToSelect;
-                _logger.Log(LogLevel.Information, "Selected device: '{DeviceName}'", deviceNameToSelect);
+                //_logger.LogInformation("Selected device: '{DeviceName}'", deviceNameToSelect);
             }
             else
             {
-                _logger.Log(LogLevel.Warning, "No devices found for {OutputMode} mode!", outputMode);
+                _logger.LogWarning("No devices found for {OutputMode} mode!", outputMode);
             }
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error refreshing device list: {Message}", ex.Message);
+            _logger.LogError(ex, "Error refreshing device list: {Message}", ex.Message);
         }
     }
 
@@ -252,7 +245,7 @@ public partial class SettingsWindow
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputMode));
             selectedOutputMode = newMode;
             changed = true;
-            _logger.Log(LogLevel.Information, "Audio mode setting changed to {OutputMode}", newMode);
+            //_logger.LogInformation("Audio mode setting changed to {OutputMode}", newMode);
         }
         return changed;
     }
@@ -268,7 +261,7 @@ public partial class SettingsWindow
             _settingsManager.Settings.SelectedOutputDevice = new Device(selectedName, OutputDeviceType.DirectSound, -1, true);
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
             changed = true;
-            _logger.Log(LogLevel.Information, "Audio device setting changed to {Device}", selectedName);
+            //_logger.LogInformation("Audio device setting changed to {Device}", selectedName);
         }
 
         // Determine current mode (HandleOutputModeChange is called before this)
@@ -291,7 +284,7 @@ public partial class SettingsWindow
         {
             _settingsManager.Settings.SelectedTheme = newTheme;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedTheme));
-            _logger.Log(LogLevel.Information, "Theme setting changed to {Theme}", newTheme);
+            //_logger.LogInformation("Theme setting changed to {Theme}", newTheme);
         }
     }
 
@@ -301,14 +294,14 @@ public partial class SettingsWindow
         {
             _audioEngine.SetOutputMode(newMode, newDevice);
            
-            if (newMode == OutputMode.DirectSound)
-            {
-                _logger.Log(LogLevel.Information, "DirectSound device changed to {Device}", newDevice.Name);
-            }
-            else
-            {
-                _logger.Log(LogLevel.Information, "WASAPI device changed to: {Device}", newDevice.Name);
-            }
+            //if (newMode == OutputMode.DirectSound)
+            //{
+            //    _logger.LogInformation("DirectSound device changed to {Device}", newDevice.Name);
+            //}
+            //else
+            //{
+            //    _logger.LogInformation("WASAPI device changed to: {Device}", newDevice.Name);
+            //}
         }
     }
 
@@ -321,7 +314,7 @@ public partial class SettingsWindow
         {
             if (OutputModeCombo?.Items == null)
             {
-                _logger.Log(LogLevel.Warning, "OutputModeCombo or its Items is null");
+                _logger.LogWarning("OutputModeCombo or its Items is null");
                 return;
             }
 
@@ -341,12 +334,12 @@ public partial class SettingsWindow
             if (OutputModeCombo.Items.Count > 0)
             {
                 OutputModeCombo.SelectedIndex = 0;
-                _logger.Log(LogLevel.Warning, "Audio mode {OutputMode} not found in list, selected first item", OutputMode);
+                _logger.LogWarning("Audio mode {OutputMode} not found in list, selected first item", OutputMode);
             }
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error setting audio mode selection: {Message}", ex.Message);
+            _logger.LogError(ex, "Error setting audio mode selection: {Message}", ex.Message);
         }
     }
 
@@ -428,7 +421,7 @@ public partial class SettingsWindow
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Error applying settings: {Message}", ex.Message);
+            _logger.LogError(ex, "Error applying settings: {Message}", ex.Message);
         }
 
         Hide();

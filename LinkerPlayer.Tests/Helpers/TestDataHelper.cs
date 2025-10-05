@@ -5,6 +5,9 @@ namespace LinkerPlayer.Tests.Helpers;
 
 public static class TestDataHelper
 {
+    /// <summary>
+    /// Creates a MediaFile for testing - now safe because CoverManager is lazy-initialized
+    /// </summary>
     public static MediaFile CreateTestMediaFile(string id = "test-id", string title = "Test Song", string artist = "Test Artist")
     {
         return new MediaFile
@@ -14,9 +17,13 @@ public static class TestDataHelper
             Artist = artist,
             Album = "Test Album",
             Path = $"C:\\Music\\{title}.mp3",
+            FileName = $"{title}.mp3",
             Duration = TimeSpan.FromMinutes(3),
             Track = 1,
-            Year = 2023
+            Year = 2023,
+            Bitrate = 320,
+            SampleRate = 44100,
+            Channels = 2
         };
     }
 
@@ -40,7 +47,7 @@ public static class TestDataHelper
 
         if (trackIds.Length > 0)
         {
-            playlist.SelectedTrack = trackIds[0];
+            playlist.SelectedTrackId = trackIds[0];
         }
 
         return playlist;

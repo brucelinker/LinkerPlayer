@@ -38,7 +38,7 @@ public partial class PlaylistTabs
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
             viewModel.LoadPlaylistTabs();
-            _logger.LogInformation("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
+            //_logger.LogInformation("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
             
             if (viewModel.TabList.Any())
             {
@@ -48,12 +48,12 @@ public partial class PlaylistTabs
                 if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
                 {
                     viewModel.SelectedTabIndex = savedTabIndex;
-                    _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to saved value {Index}", savedTabIndex);
+                    //_logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to saved value {Index}", savedTabIndex);
                 }
                 else
                 {
                     viewModel.SelectedTabIndex = 0;
-                    _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
+                    //_logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
                 }
             }
             else
@@ -106,10 +106,10 @@ public partial class PlaylistTabs
                 Console.WriteLine("Tab selection changed.");
             }
         }
-        else
-        {
-            Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
-        }
+        //else
+        //{
+        //    Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
+        //}
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)

@@ -150,8 +150,8 @@ public class TrackNavigationService : ITrackNavigationService
             _shuffledIndex = 0;
         }
 
-        _logger.LogInformation("Initialized shuffle with {Count} tracks, current position: {Position}", 
-            _shuffleList.Count, _shuffledIndex);
+        //_logger.LogInformation("Initialized shuffle with {Count} tracks, current position: {Position}", 
+        //    _shuffleList.Count, _shuffledIndex);
     }
 
     public void ClearShuffle()
@@ -207,7 +207,7 @@ public class TrackNavigationService : ITrackNavigationService
         
         if (actualIndex < 0)
         {
-            _logger.LogWarning("Shuffled track not found in current track list, reinitializing shuffle");
+            //_logger.LogWarning("Shuffled track not found in current track list, reinitializing shuffle");
             InitializeShuffle(currentTracks);
             actualIndex = 0;
         }

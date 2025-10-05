@@ -51,7 +51,7 @@ public partial class App
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<IMusicLibrary, MusicLibrary>();
-                
+
                 services.AddSingleton<IFileImportService, FileImportService>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
@@ -59,6 +59,9 @@ public partial class App
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<ISettingsManager, SettingsManager>();
+
+                // NEW: Database save service for debouncing saves
+                services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
 
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
@@ -86,18 +89,18 @@ public partial class App
         try
         {
             _logger.LogInformation("Starting AppHost");
-            
+
             // Show splash screen first
             _splashWindow = new SplashWindow();
             _splashWindow.Show();
             _logger.LogInformation("Splash screen shown");
-            
+
             // Start async initialization
             Task.Run(async () =>
             {
                 await InitializeApplicationAsync();
             });
-            
+
             base.OnStartup(e);
         }
         catch (IOException ex)
@@ -116,17 +119,17 @@ public partial class App
         try
         {
             _logger.LogInformation("Starting background initialization");
-            
+
             // Start the host
             await AppHost.StartAsync();
             _logger.LogInformation("AppHost started successfully");
-            
+
             // Load metadata cache
             IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
             _logger.LogInformation("Loading MetadataCache");
             await musicLibrary.LoadMetadataCacheAsync();
             _logger.LogInformation("MetadataCache loaded");
-            
+
             // Switch to UI thread to create and show main window
             await Dispatcher.BeginInvoke(new Action(() =>
             {
@@ -134,19 +137,19 @@ public partial class App
                 {
                     _logger.LogInformation("Creating MainWindow");
                     MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
-                    
+
                     // IMPORTANT: Set MainWindow and ShutdownMode BEFORE showing the window
                     MainWindow = mainWindow;
                     ShutdownMode = ShutdownMode.OnMainWindowClose;
                     _logger.LogInformation("MainWindow set as application MainWindow");
-                    
+
                     // Show main window (it starts hidden and will show itself when ready)
                     mainWindow.Show();
                     _logger.LogInformation("MainWindow.Show() called");
-                    
+
                     // Wait longer before closing splash to ensure main window is fully rendered
-                    var timer = new System.Windows.Threading.DispatcherTimer 
-                    { 
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
                         Interval = TimeSpan.FromMilliseconds(2000) // Increased to 2 seconds
                     };
                     timer.Tick += (_, _) =>
@@ -195,6 +198,11 @@ public partial class App
             {
                 ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
                 _logger.LogInformation("SettingsManager retrieved for shutdown");
+                
+                // NEW: Force immediate database save on shutdown
+                IDatabaseSaveService databaseSaveService = AppHost.Services.GetRequiredService<IDatabaseSaveService>();
+                databaseSaveService.SaveImmediately();
+                _logger.LogInformation("Database saved on shutdown");
                 
                 IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
                 musicLibrary.SaveMetadataCacheAsync().GetAwaiter().GetResult(); // Save metadata cache on exit

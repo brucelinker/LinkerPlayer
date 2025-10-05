@@ -61,17 +61,17 @@ public class MusicLibraryDbContext : DbContext
             .Property(p => p.Name)
             .HasMaxLength(100);
         modelBuilder.Entity<Playlist>()
-            .Property(p => p.SelectedTrack)
+            .Property(p => p.SelectedTrackId)
             .HasMaxLength(36);
         modelBuilder.Entity<Playlist>()
             .Ignore(p => p.TrackIds);
         modelBuilder.Entity<Playlist>()
             .HasOne(p => p.SelectedTrackNavigation)
             .WithMany()
-            .HasForeignKey(p => p.SelectedTrack)
+            .HasForeignKey(p => p.SelectedTrackId)
             .OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<Playlist>()
-            .Property(p => p.SelectedTrack)
+            .Property(p => p.SelectedTrackId)
             .IsRequired(false);
 
         // PlaylistTrack: Many-to-many between Playlist and MediaFile

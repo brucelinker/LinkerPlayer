@@ -37,7 +37,6 @@ public partial class PlayerControlsViewModel : ObservableObject
 
         try
         {
-            _logger.Log(LogLevel.Information, "Initializing PlayerControlsViewModel");
             VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
             _volumeBeforeMute = VolumeSliderValue;
 
@@ -46,16 +45,17 @@ public partial class PlayerControlsViewModel : ObservableObject
             {
                 OnPlaybackStateChanged(m.Value);
             });
-            _logger.Log(LogLevel.Information, "PlayerControlsViewModel initialized successfully");
+
+            _logger.LogInformation("PlayerControlsViewModel initialized successfully");
         }
         catch (IOException ex)
         {
-            _logger.Log(LogLevel.Error, ex, "IO error in PlayerControlsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError("IO error in PlayerControlsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
         }
         catch (Exception ex)
         {
-            _logger.Log(LogLevel.Error, ex, "Unexpected error in PlayerControlsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+            _logger.LogError("Unexpected error in PlayerControlsViewModel constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
         }
     }
@@ -109,7 +109,6 @@ public partial class PlayerControlsViewModel : ObservableObject
             _volumeBeforeMute = VolumeSliderValue > 0 ? VolumeSliderValue : _volumeBeforeMute;
         }
         WeakReferenceMessenger.Default.Send(new IsMutedMessage(value));
-        //_logger.LogInformation("IsMuted changed to {Value}, VolumeBeforeMute={Volume}", value, _volumeBeforeMute);
     }
 
     partial void OnVolumeSliderValueChanged(double value)
@@ -135,7 +134,6 @@ public partial class PlayerControlsViewModel : ObservableObject
 
         _settingsManager.Settings.VolumeSliderValue = value;
         _settingsManager.SaveSettings(nameof(AppSettings.VolumeSliderValue));
-        //_logger.LogInformation("VolumeSliderValue changed to {Value}, IsMuted={IsMuted}", value, IsMuted);
     }
 
     private void OnSettingsChanged(string propertyName)
@@ -174,7 +172,6 @@ public partial class PlayerControlsViewModel : ObservableObject
         {
             _audioEngine.MusicVolume = 0;
         }
-        //_logger.LogInformation("Updated VolumeSliderValue={Value}, IsMuted={IsMuted}", value, isMuted);
     }
 
     public void SaveSettingsOnShutdown(double volumeValue, double seekBarValue)
@@ -186,15 +183,11 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void PlayPauseTrack()
     {
-        _logger.LogInformation("PlayPauseTrack called");
-
         // Ensure SelectedTrack is set
         SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
-        _logger.LogInformation($"SelectedTrack: {(SelectedTrack != null ? SelectedTrack.Path : "null")}");
 
         if (_audioEngine.IsPlaying)
         {
-            _logger.LogInformation("Track is playing, pausing");
             _audioEngine.Pause();
             State = PlaybackState.Paused;
 
@@ -207,12 +200,10 @@ public partial class PlayerControlsViewModel : ObservableObject
         {
             if (ActiveTrack?.State == PlaybackState.Paused)
             {
-                _logger.LogInformation("Track is paused, resuming");
                 ResumeTrack();
             }
             else
             {
-                _logger.LogInformation("Track is stopped, playing");
                 PlayTrack();
             }
         }
@@ -229,7 +220,6 @@ public partial class PlayerControlsViewModel : ObservableObject
         }
         else if (SelectedTrack != null)
         {
-            _logger.LogInformation($"Playing SelectedTrack: {SelectedTrack.Path}");
             _audioEngine.PathToMusic = SelectedTrack.Path;
             _audioEngine.Play();
 
@@ -238,6 +228,8 @@ public partial class PlayerControlsViewModel : ObservableObject
                 ActiveTrack = SelectedTrack;
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
+                
+                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack));
             }
         }
         else
@@ -251,7 +243,6 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void ResumeTrack()
     {
-        _logger.LogInformation("ResumeTrack called");
         _audioEngine.ResumePlay();
         State = PlaybackState.Playing;
 
@@ -271,7 +262,6 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void StopTrack()
     {
-        _logger.LogInformation("StopTrack called");
         _audioEngine.Stop();
         State = PlaybackState.Stopped;
 
@@ -282,6 +272,7 @@ public partial class PlayerControlsViewModel : ObservableObject
         }
 
         WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
+        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
     }
 
     [RelayCommand]
@@ -294,7 +285,6 @@ public partial class PlayerControlsViewModel : ObservableObject
     {
         StopTrack();
 
-        _logger.LogInformation("PreviousTrack called");
         MediaFile? prevMediaFile = _playlistTabsViewModel.PreviousMediaFile();
 
         if (prevMediaFile == null || !File.Exists(prevMediaFile.Path))
@@ -317,7 +307,6 @@ public partial class PlayerControlsViewModel : ObservableObject
     {
         StopTrack();
 
-        _logger.LogInformation("NextTrack called");
         MediaFile? nextMediaFile = _playlistTabsViewModel.NextMediaFile();
 
         if (nextMediaFile == null || !File.Exists(nextMediaFile.Path))

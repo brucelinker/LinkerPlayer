@@ -45,11 +45,14 @@ public interface IMediaFile
 public partial class MediaFile : ObservableValidator, IMediaFile
 {
     private const string UnknownString = "<Unknown>";
-    private readonly CoverManager _coverManager = new();
+    private CoverManager? _coverManager; // Make it nullable and lazy
 
     // Helper properties to get services when needed
     private IMediaFileHelper? MediaFileHelper => App.AppHost?.Services?.GetService<IMediaFileHelper>();
     private ILogger<MediaFile>? Logger => App.AppHost?.Services?.GetService<ILogger<MediaFile>>();
+
+    // Lazy initialization of CoverManager
+    private CoverManager CoverManager => _coverManager ??= new CoverManager();
 
     [Key]
     [StringLength(36, ErrorMessage = "Id must be a valid GUID (36 characters)")]
@@ -172,7 +175,12 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             using File? file = File.Create(Path);
 
-            Id = ValidateStringLength(Guid.NewGuid().ToString(), 36, nameof(Id));
+            // Only generate a new ID if we don't have one yet
+            if (string.IsNullOrEmpty(Id) || Id == Guid.Empty.ToString())
+            {
+                Id = ValidateStringLength(Guid.NewGuid().ToString(), 36, nameof(Id));
+            }
+            
             FileName = ValidateStringLength(System.IO.Path.GetFileName(Path), 255, nameof(FileName));
             Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
             Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
@@ -273,7 +281,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         try
         {
-            BitmapImage? image = _coverManager.GetImageFromPictureTag(Path);
+            BitmapImage? image = CoverManager.GetImageFromPictureTag(Path); // Use property instead of field
             if (image != null)
             {
                 // Force reload from file, not cache

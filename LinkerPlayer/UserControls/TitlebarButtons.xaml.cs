@@ -1,4 +1,5 @@
-﻿using LinkerPlayer.Windows;
+﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Input;
@@ -8,10 +9,12 @@ namespace LinkerPlayer.UserControls;
 public partial class TitlebarButtons
 {
     private readonly SettingsWindow _settingsWindow;
+    private readonly AudioEngine _audioEngine;
 
     public TitlebarButtons()
     {
         _settingsWindow = App.AppHost.Services.GetRequiredService<SettingsWindow>();
+        _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
 
         InitializeComponent();
     }
@@ -50,7 +53,10 @@ public partial class TitlebarButtons
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
-        Application.Current.Shutdown();
+        _audioEngine.Stop();
+        _audioEngine.Dispose();
+        Window? win = Window.GetWindow(this);
+        win?.Close(); // Triggers the normal window closing event
     }
 
     private void TitlebarButtons_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
