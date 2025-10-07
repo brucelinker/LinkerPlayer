@@ -98,7 +98,7 @@ public partial class PlayerControlsViewModel : ObservableObject
     {
         _settingsManager.Settings.ShuffleMode = value;
         _settingsManager.SaveSettings(nameof(AppSettings.ShuffleMode));
-        _logger.LogInformation("ShuffleMode changed to {Value}", value);
+        //_logger.LogInformation("ShuffleMode changed to {Value}", value);
         WeakReferenceMessenger.Default.Send(new ShuffleModeMessage(value));
     }
 
@@ -178,7 +178,7 @@ public partial class PlayerControlsViewModel : ObservableObject
     {
         _settingsManager.Settings.VolumeSliderValue = volumeValue;
         _settingsManager.SaveSettings(nameof(AppSettings.VolumeSliderValue));
-        _logger.LogInformation("Saved shutdown settings: Volume={Volume}, SeekBar={SeekBar}", volumeValue, seekBarValue);
+        //_logger.LogInformation("Saved shutdown settings: Volume={Volume}, SeekBar={SeekBar}", volumeValue, seekBarValue);
     }
 
     public void PlayPauseTrack()

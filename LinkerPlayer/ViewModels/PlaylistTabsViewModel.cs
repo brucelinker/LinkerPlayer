@@ -85,7 +85,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         try
         {
-            _logger.LogInformation("Initializing PlaylistTabsViewModel");
+            //_logger.LogInformation("Initializing PlaylistTabsViewModel");
             SharedDataModel = sharedDataModel ?? throw new ArgumentNullException(nameof(sharedDataModel));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
@@ -591,7 +591,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
                 });
 
-                _logger.LogInformation("Successfully removed playlist: {PlaylistName}", playlistTab.Name);
+                //_logger.LogInformation("Successfully removed playlist: {PlaylistName}", playlistTab.Name);
             }
             else
             {
@@ -640,8 +640,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         _dataGrid.UpdateLayout();
                     });
 
-                    _logger.LogInformation("Removed track {TrackTitle} from playlist {PlaylistName}",
-                        trackToRemove.Title, SelectedPlaylist.Name);
+                    //_logger.LogInformation("Removed track {TrackTitle} from playlist {PlaylistName}",
+                    //    trackToRemove.Title, SelectedPlaylist.Name);
                 }
                 else
                 {
@@ -914,12 +914,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 string? currentTrackId = ActiveTrack?.Id ?? SelectedTrack?.Id;
                 _trackNavigationService.InitializeShuffle(currentTracks, currentTrackId);
-                _logger.LogInformation("Shuffle mode enabled with {Count} tracks", currentTracks.Count);
+                //_logger.LogInformation("Shuffle mode enabled with {Count} tracks", currentTracks.Count);
             }
             else
             {
                 _trackNavigationService.ClearShuffle();
-                _logger.LogInformation("Shuffle mode disabled");
+                //_logger.LogInformation("Shuffle mode disabled");
             }
         }
     }
@@ -1012,8 +1012,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         playlist.SelectedTrackId = importedTracks.First().Id;
                     }
 
-                    _logger.LogInformation("Created playlist '{PlaylistName}' with {Count} tracks",
-                        uniqueName, importedTracks.Count);
+                    //_logger.LogInformation("Created playlist '{PlaylistName}' with {Count} tracks",
+                    //    uniqueName, importedTracks.Count);
                 }
                 else
                 {

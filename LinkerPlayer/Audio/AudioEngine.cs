@@ -257,7 +257,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
             if (success)
             {
-                _logger.LogInformation("Switched to DirectSound mode");
+                //_logger.LogInformation("Switched to DirectSound mode");
                 IsBassInitialized = true;
                 _sampleRate = 44100; // keep in sync with init
             }
@@ -288,7 +288,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             success = Bass.Init(0, deviceInfo.MixFrequency, DeviceInitFlags.Default); // Use no-sound device for decoding
             if (success)
             {
-                _logger.LogInformation($"Bass.Init for {selectedOutputMode} mode succeeded!");
+                //_logger.LogInformation($"Bass.Init for {selectedOutputMode} mode succeeded!");
                 IsBassInitialized = true;
             }
             else
@@ -574,8 +574,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 bool wasapiStarted = BassWasapi.Start();
                 if (!wasapiStarted)
                     _logger.LogError($"BassWasapi.Start failed: {Bass.LastError}");
-                else
-                    _logger.LogInformation("BassWasapi.Start succeeded");
+                //else
+                    //_logger.LogInformation("BassWasapi.Start succeeded");
             }
 
             IsPlaying = true;
@@ -821,7 +821,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
     {
-        _logger.LogInformation("Track ended");
+        //_logger.LogInformation("Track ended");
         Stop();
     }
 
@@ -859,7 +859,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             // Try float + buffered
             if (_mixerIsFloat)
             {
-                _logger.LogInformation($"Initializing WASAPI (buffered): Device={deviceInfo.Name}, Freq={deviceInfo.MixFrequency}, Channels={deviceInfo.MixChannels}, Mode={_currentMode}, Float=TRUE");
+                //_logger.LogInformation($"Initializing WASAPI (buffered): Device={deviceInfo.Name}, Freq={deviceInfo.MixFrequency}, Channels={deviceInfo.MixChannels}, Mode={_currentMode}, Float=TRUE");
                 success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, bufferedFlags | FLOAT_FLAG, bufferLength, period, _wasapiProc, IntPtr.Zero);
             }
 
@@ -872,7 +872,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             if (!success)
             {
-                _logger.LogInformation("Trying PCM buffered WASAPI init");
+                //_logger.LogInformation("Trying PCM buffered WASAPI init");
                 success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, bufferedFlags, bufferLength, period, _wasapiProc, IntPtr.Zero);
             }
 
@@ -887,11 +887,11 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 _wasapiInitialized = true;
                 if (BassWasapi.GetInfo(out var info))
                 {
-                    _logger.LogInformation($"WASAPI initialized successfully. Buffered={(info.BufferLength > 0 ? "Yes" : "No")}, Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
+                    //_logger.LogInformation($"WASAPI initialized successfully. Buffered={(info.BufferLength > 0 ? "Yes" : "No")}, Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
                 }
                 else
                 {
-                    _logger.LogInformation($"WASAPI initialized successfully. Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
+                    //_logger.LogInformation($"WASAPI initialized successfully. Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
                 }
                 return true;
             }
