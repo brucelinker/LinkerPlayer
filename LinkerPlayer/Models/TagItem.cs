@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.Models;
 
@@ -24,6 +25,9 @@ public class TagItem : INotifyPropertyChanged
 
     public bool IsEditable { get; set; }
     public Action<string>? UpdateAction { get; set; }
+
+    // Album cover property for PictureInfoItems
+    public BitmapImage? AlbumCoverSource { get; set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

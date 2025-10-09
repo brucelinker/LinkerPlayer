@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Media.Imaging;
 using TagLib.Id3v2;
 using TagLib.Mpeg4;
 using TagLib.Ogg;
@@ -597,6 +598,35 @@ public partial class PropertiesViewModel : ObservableObject
             AddPictureInfoItem("Picture Type", tag.Pictures[0].Type.ToString(), false, null);
             AddPictureInfoItem("Picture Filename", tag.Pictures[0].Filename ?? "", false, null);
             AddPictureInfoItem("Picture Description", tag.Pictures[0].Description ?? "", false, null);
+
+            // Add album cover image as a new TagItem with AlbumCoverSource property
+            var pic = tag.Pictures[0];
+            BitmapImage? albumCover = null;
+            if (pic.Data?.Data is { Length: > 0 })
+            {
+                try
+                {
+                    using var ms = new MemoryStream(pic.Data.Data);
+                    albumCover = new BitmapImage();
+                    albumCover.BeginInit();
+                    albumCover.CacheOption = BitmapCacheOption.OnLoad;
+                    albumCover.StreamSource = ms;
+                    albumCover.EndInit();
+                    albumCover.Freeze();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error loading album cover image: {Message}", ex.Message);
+                }
+            }
+            PictureInfoItems.Add(new TagItem
+            {
+                Name = "Album Cover",
+                Value = string.Empty,
+                IsEditable = false,
+                UpdateAction = null,
+                AlbumCoverSource = albumCover
+            });
         }
         else
         {
@@ -1048,4 +1078,6 @@ public partial class PropertiesViewModel : ObservableObject
             _ => frameId // Use the frame ID if we don't have a mapping
         };
     }
+
+    public BitmapImage? AlbumCoverSource => PictureInfoItems.LastOrDefault()?.AlbumCoverSource;
 }
