@@ -57,7 +57,7 @@ public class MusicLibrary : IMusicLibrary
     private readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
     public ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
-    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
+    public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
     private readonly Dictionary<string, (DateTime LastModified, MediaFile Metadata)> _metadataCache =
         new(StringComparer.OrdinalIgnoreCase);
 
@@ -345,7 +345,7 @@ public class MusicLibrary : IMusicLibrary
                 }
                 else
                 {
-                    _logger.LogWarning($"Playlist '{playlist.Name}' is empty, no PlaylistTracks to save");
+                    //_logger.LogWarning($"Playlist '{playlist.Name}' is empty, no PlaylistTracks to save");
                 }
             }
 

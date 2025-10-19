@@ -146,16 +146,16 @@
               CanUserResizeRows="False"
               CellStyle="{StaticResource SharedDataGridCellStyle}"
               ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HorizontalScrollBarVisibility="Disabled"
               ItemsSource="{Binding MetadataItems}"
               PreviewMouseWheel="DataGrid_PreviewMouseWheel"
               RowStyle="{StaticResource SharedDataGridRowStyle}"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled"
-              HorizontalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="200"
+                  Width="250"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -210,16 +210,16 @@
               CanUserResizeRows="False"
               CellStyle="{StaticResource SharedDataGridCellStyle}"
               ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HorizontalScrollBarVisibility="Disabled"
               ItemsSource="{Binding PropertyItems}"
               PreviewMouseWheel="DataGrid_PreviewMouseWheel"
               RowStyle="{StaticResource SharedDataGridRowStyle}"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled"
-              HorizontalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="200"
+                  Width="250"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -266,16 +266,16 @@
               CanUserResizeRows="False"
               CellStyle="{StaticResource SharedDataGridCellStyle}"
               ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HorizontalScrollBarVisibility="Disabled"
               ItemsSource="{Binding ReplayGainItems}"
               PreviewMouseWheel="DataGrid_PreviewMouseWheel"
               RowStyle="{StaticResource SharedDataGridRowStyle}"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled"
-              HorizontalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="200"
+                  Width="250"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -320,14 +320,14 @@
                 Fill="{DynamicResource SpectrumPeakBrush}" />
             </Grid>
 
-            <!-- Picture section with two columns: DataGrid and Image -->
+            <!--  Picture section with two columns: DataGrid and Image  -->
             <Grid Grid.Row="7" Margin="0,0,0,10">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="140" />
               </Grid.ColumnDefinitions>
 
-              <!-- DataGrid: Name/Value columns only -->
+              <!--  DataGrid: Name/Value columns only  -->
               <DataGrid
                 Grid.Column="0"
                 MinWidth="200"
@@ -337,15 +337,15 @@
                 CanUserResizeRows="False"
                 CellStyle="{StaticResource SharedDataGridCellStyle}"
                 ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+                HorizontalScrollBarVisibility="Disabled"
                 ItemsSource="{Binding PictureInfoItems}"
                 PreviewMouseWheel="DataGrid_PreviewMouseWheel"
                 RowStyle="{StaticResource SharedDataGridRowStyle}"
                 Style="{StaticResource SharedDataGridStyle}"
-                VerticalScrollBarVisibility="Disabled"
-                HorizontalScrollBarVisibility="Disabled">
+                VerticalScrollBarVisibility="Disabled">
                 <DataGrid.Columns>
                   <DataGridTextColumn
-                    Width="200"
+                    Width="250"
                     MinWidth="100"
                     Binding="{Binding Name}"
                     CanUserResize="True"
@@ -361,14 +361,18 @@
                 </DataGrid.Columns>
               </DataGrid>
 
-              <!-- Album cover image -->
-              <Border Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Stretch" HorizontalAlignment="Center">
+              <!--  Album cover image  -->
+              <Border
+                Grid.Column="1"
+                Margin="10,0,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Stretch">
                 <Image
                   Width="120"
                   Height="120"
-                  Stretch="Uniform"
                   VerticalAlignment="Center"
-                  Source="{Binding AlbumCoverSource}" />
+                  Source="{Binding AlbumCoverSource}"
+                  Stretch="Uniform" />
               </Border>
             </Grid>
 

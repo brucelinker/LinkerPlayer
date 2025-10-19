@@ -1,4 +1,5 @@
 ﻿using LinkerPlayer.Audio;
+using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
@@ -68,6 +69,7 @@ public partial class App
                 services.AddSingleton<EqualizerWindow>();
                 services.AddSingleton<EqualizerViewModel>();
                 services.AddSingleton<AudioEngine>();
+                services.AddSingleton<BassAudioEngine>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
             })
@@ -129,6 +131,11 @@ public partial class App
             _logger.LogInformation("Loading MetadataCache");
             await musicLibrary.LoadMetadataCacheAsync();
             _logger.LogInformation("MetadataCache loaded");
+
+            // Initialize BassAudioEngine
+            var bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
+            bassEngine.Initialize(new BassInitializationOptions());
+            _logger.LogInformation("BassAudioEngine initialized successfully");
 
             // Switch to UI thread to create and show main window
             await Dispatcher.BeginInvoke(new Action(() =>

@@ -126,7 +126,8 @@ public partial class SettingsWindow
             OutputMode selectedOutputMode;
             try
             {
-                selectedOutputMode = _settingsManager.Settings.SelectedOutputMode;
+
+                selectedOutputMode = _audioEngine.GetCurrentOutputMode(); //_settingsManager.Settings.SelectedOutputMode;
                 SetOutputModeSelection(selectedOutputMode);
                 //_logger.LogInformation("Settings window loaded, audio mode UI set to: {OutputMode}", selectedOutputMode);
             }
@@ -254,16 +255,7 @@ public partial class SettingsWindow
     {
         // Use strings in the ComboBox; map back to Device only for engine/settings
         string selectedName = (OutputDeviceCombo.SelectedItem as string) ?? DefaultDeviceName;
-        bool changed = false;
-
-        if (selectedName != (_settingsManager.Settings.SelectedOutputDevice?.Name ?? DefaultDeviceName))
-        {
-            _settingsManager.Settings.SelectedOutputDevice = new Device(selectedName, OutputDeviceType.DirectSound, -1, true);
-            _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
-            changed = true;
-            //_logger.LogInformation("Audio device setting changed to {Device}", selectedName);
-        }
-
+        
         // Determine current mode (HandleOutputModeChange is called before this)
         OutputMode currentMode = _settingsManager.Settings.SelectedOutputMode;
 
@@ -271,8 +263,19 @@ public partial class SettingsWindow
             ? _audioEngine.DirectSoundDevices
             : _audioEngine.WasapiDevices;
 
+        // Find the actual device object with the correct index
         selectedDevice = devices.FirstOrDefault(d => d.Name == selectedName)
             ?? new Device(DefaultDeviceName, OutputDeviceType.DirectSound, -1, true);
+
+        bool changed = false;
+        if (selectedName != (_settingsManager.Settings.SelectedOutputDevice?.Name ?? DefaultDeviceName))
+        {
+            // Save the actual device object, not a placeholder
+            _settingsManager.Settings.SelectedOutputDevice = selectedDevice;
+            _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
+            changed = true;
+            //_logger.LogInformation("Audio device setting changed to {Device}", selectedName);
+        }
 
         return changed;
     }

@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Runtime;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -75,6 +76,13 @@ public partial class PlayerControls
             OnProgressDataChanged(m.Value);
         });
 
+        WeakReferenceMessenger.Default.Register<OutputModeChangedMessage>(this, (_, m) =>
+        {
+            OnOutputModeChanged(m.Value);
+        });
+
+        OnOutputModeChanged(_audioEngine.GetCurrentOutputMode());
+
         _logger.LogInformation("PlayerControls Loaded, DataContext type: {Type}", DataContext?.GetType().FullName ?? "null");
     }
 
@@ -110,6 +118,22 @@ public partial class PlayerControls
         else
         {
             StatusText.Text = $"{extension} | {_vm.SelectedTrack.Bitrate} kbps | {_vm.SelectedTrack.SampleRate} Hz | {channels}";
+        }
+    }
+
+    private void OnOutputModeChanged(OutputMode mode)
+    {
+        switch (mode)
+        {
+            case OutputMode.DirectSound:
+                Info.Text = "DirectSound";
+                break;
+            case OutputMode.WasapiShared:
+                Info.Text = "Wasapi Shared";
+                break;
+            case OutputMode.WasapiExclusive:
+                Info.Text = "Wasapi Exclusive";
+                break;
         }
     }
 

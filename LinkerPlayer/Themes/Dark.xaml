@@ -53,7 +53,7 @@
   <Color x:Key="MenuSelectionBackgroundColor">Black</Color>
 
   <Color x:Key="ComboboxForegroundColor">#505050</Color>
-  <Color x:Key="ComboboxBackgroundColor">#DCD7C1</Color>
+  <Color x:Key="ComboboxBackgroundColor">#DDDDDD</Color>
   <Color x:Key="ComboboxDisabledColor">Gray</Color>
   <Color x:Key="ComboboxMouseOverForegroundColor">#505050</Color>
   <Color x:Key="ComboboxMouseOverBackgroundColor">#FCF7E3</Color>

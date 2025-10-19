@@ -10,11 +10,18 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="ManagedBass" Version="4.0.0" />
-		<PackageReference Include="ManagedBass.Fx" Version="4.0.0" />
-		<PackageReference Include="ManagedBass.Mix" Version="4.0.0" />
-		<PackageReference Include="ManagedBass.Wasapi" Version="4.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
+	  <None Remove="Native\bassopus.dll" />
+	  <None Remove="Native\basswebm.dll" />
+	  <None Remove="Native\bass_dts.dll" />
+	  <None Remove="Native\bass_mpc.dll" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ManagedBass" Version="4.0.2" />
+		<PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
+		<PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
+		<PackageReference Include="ManagedBass.Wasapi" Version="4.0.2" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
 	</ItemGroup>
 
 	<!-- Embed BASS DLLs as resources -->
@@ -34,9 +41,11 @@
 		<EmbeddedResource Include="Native\bassmix.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bassmix.dll</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassopus.dll" />
 		<EmbeddedResource Include="Native\basswasapi.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.basswasapi.dll</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Native\basswebm.dll" />
 		<EmbeddedResource Include="Native\basswma.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.basswma.dll</LogicalName>
 		</EmbeddedResource>
@@ -46,12 +55,11 @@
 		<EmbeddedResource Include="Native\bass_aac.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bass_aac.dll</LogicalName>
 		</EmbeddedResource>
-		<EmbeddedResource Include="Native\bass_ac3.dll">
-			<LogicalName>LinkerPlayer.BassLibs.Native.bass_ac3.dll</LogicalName>
-		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bass_dts.dll" />
 		<EmbeddedResource Include="Native\bass_fx.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bass_fx.dll</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bass_mpc.dll" />
 	</ItemGroup>
 
 </Project>

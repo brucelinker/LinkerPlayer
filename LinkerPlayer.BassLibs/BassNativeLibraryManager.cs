@@ -101,16 +101,18 @@ namespace LinkerPlayer.BassLibs
             string[] dllNames = new[]
             {
                 "bass.dll",
+                "bass_aac.dll",
+                "bass_fx.dll",
+                "bass_mpc.dll",
                 "bassalac.dll",
                 "bassape.dll",
                 "bassflac.dll",
                 "bassmix.dll",
+                "bassopus.dll",
                 "basswasapi.dll",
+                "basswebm.dll",
                 "basswma.dll",
                 "basswv.dll",
-                "bass_aac.dll",
-                "bass_ac3.dll",
-                "bass_fx.dll"
             };
 
             foreach (string dllName in dllNames)
@@ -142,6 +144,7 @@ namespace LinkerPlayer.BassLibs
                     }
 
                     _extractedDlls[dllName.ToLowerInvariant()] = extractedPath;
+                    _logger?.LogInformation($"Loaded BASS DLL: {dllName}");
                 }
                 catch (Exception ex)
                 {
@@ -149,7 +152,7 @@ namespace LinkerPlayer.BassLibs
                 }
             }
 
-            _logger?.LogInformation($"BASS Native Library Manager ready - {_extractedDlls.Count} DLLs available");
+            //_logger?.LogInformation($"BASS Native Library Manager ready - {_extractedDlls.Count} DLLs available");
         }
 
         /// <summary>

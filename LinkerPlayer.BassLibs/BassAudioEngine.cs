@@ -39,30 +39,33 @@ public class BassInitializationResult
 /// <summary>
 /// High-level BASS audio engine manager
 /// </summary>
-public static class BassAudioEngine
+public class BassAudioEngine : IDisposable
 {
-    private static bool _isInitialized = false;
-    private static ILogger? _logger;
-    private static BassInitializationResult? _initializationResult;
+    private bool _isInitialized = false;
+    private readonly ILogger<BassAudioEngine> _logger;
+    private BassInitializationResult? _initializationResult;
+
+    public BassAudioEngine(ILogger<BassAudioEngine> logger)
+    {
+        _logger = logger;
+    }
 
     /// <summary>
     /// Initialize the BASS audio engine with the specified options
     /// </summary>
     /// <param name="options">Initialization options</param>
-    /// <param name="logger">Optional logger</param>
     /// <returns>Initialization result</returns>
-    public static BassInitializationResult Initialize(BassInitializationOptions? options = null, ILogger? logger = null)
+    public BassInitializationResult Initialize(BassInitializationOptions? options = null)
     {
         if (_isInitialized && _initializationResult != null)
             return _initializationResult;
 
-        _logger = logger;
         options ??= new BassInitializationOptions();
         _initializationResult = new BassInitializationResult();
 
         try
         {
-            _logger?.LogInformation("Initializing BASS Audio Engine");
+            _logger.LogInformation("Initializing BASS Audio Engine");
 
             // Step 1: Initialize native library manager
             BassNativeLibraryManager.Initialize(_logger);
@@ -70,23 +73,23 @@ public static class BassAudioEngine
             // Step 2: Set DLL directory for BASS to find native libraries
             string nativeLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
             SetDllDirectory(nativeLibPath);
-            _logger?.LogInformation($"Set DLL directory to: {nativeLibPath}");
+            _logger.LogInformation($"Set DLL directory to: {nativeLibPath}");
 
             // Step 3: Log BASS version
             Version? version = ManagedBass.Bass.Version;
-            _logger?.LogInformation($"BASS Version: {version}");
+            _logger.LogInformation($"BASS Version: {version}");
 
             // Step 4: Initialize BASS
             if (!ManagedBass.Bass.Init(-1, options.SampleRate, options.InitFlags))
             {
                 Errors error = ManagedBass.Bass.LastError;
                 _initializationResult.ErrorMessage = $"Failed to initialize BASS: {error}";
-                _logger?.LogError(_initializationResult.ErrorMessage);
+                _logger.LogError(_initializationResult.ErrorMessage);
                 return _initializationResult;
             }
 
             _initializationResult.IsBassInitialized = true;
-            _logger?.LogInformation("BASS initialized successfully");
+            _logger.LogInformation("BASS initialized successfully");
 
             // Step 5: Initialize WASAPI (optional)
             if (options.EnableWasapi)
@@ -95,11 +98,11 @@ public static class BassAudioEngine
                 {
                     BassWasapi.Init(-1, options.SampleRate, 2, options.WasapiFlags);
                     _initializationResult.IsWasapiInitialized = true;
-                    _logger?.LogInformation("WASAPI initialized successfully");
+                    _logger.LogInformation("WASAPI initialized successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "WASAPI initialization failed, continuing without WASAPI");
+                    _logger.LogWarning(ex, "WASAPI initialization failed, continuing without WASAPI");
                 }
             }
 
@@ -120,14 +123,14 @@ public static class BassAudioEngine
 
             // Step 8: Log device info
             DeviceInfo deviceInfo = ManagedBass.Bass.GetDeviceInfo(ManagedBass.Bass.CurrentDevice);
-            _logger?.LogInformation($"Using audio device: {deviceInfo.Name}");
+            _logger.LogInformation($"Using audio device: {deviceInfo.Name}");
 
             // Reset DLL directory
             SetDllDirectory(null);
 
             _initializationResult.IsSuccess = true;
             _isInitialized = true;
-            _logger?.LogInformation($"BASS Audio Engine initialized successfully. Loaded {_initializationResult.LoadedPlugins.Count} plugins.");
+            _logger.LogInformation($"BASS Audio Engine initialized successfully. Loaded {_initializationResult.LoadedPlugins.Count} plugins.");
 
             return _initializationResult;
         }
@@ -135,7 +138,7 @@ public static class BassAudioEngine
         {
             _initializationResult.Exception = ex;
             _initializationResult.ErrorMessage = ex.Message;
-            _logger?.LogError(ex, "Failed to initialize BASS Audio Engine");
+            _logger.LogError(ex, "Failed to initialize BASS Audio Engine");
             return _initializationResult;
         }
     }
@@ -143,21 +146,21 @@ public static class BassAudioEngine
     /// <summary>
     /// Gets the current initialization result
     /// </summary>
-    public static BassInitializationResult? GetInitializationResult() => _initializationResult;
+    public BassInitializationResult? GetInitializationResult() => _initializationResult;
 
     /// <summary>
     /// Checks if BASS is currently initialized
     /// </summary>
-    public static bool IsInitialized => _isInitialized;
+    public bool IsInitialized => _isInitialized;
 
     /// <summary>
     /// Shutdown the BASS audio engine
     /// </summary>
-    public static void Shutdown()
+    public void Shutdown()
     {
         if (!_isInitialized) return;
 
-        _logger?.LogInformation("Shutting down BASS Audio Engine");
+        _logger.LogInformation("Shutting down BASS Audio Engine");
 
         try
         {
@@ -171,32 +174,34 @@ public static class BassAudioEngine
 
             _isInitialized = false;
             _initializationResult = null;
-            _logger?.LogInformation("BASS Audio Engine shutdown complete");
+            _logger.LogInformation("BASS Audio Engine shutdown complete");
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error during BASS Audio Engine shutdown");
+            _logger.LogError(ex, "Error during BASS Audio Engine shutdown");
         }
     }
 
-    private static void LoadEssentialPlugins(BassInitializationResult result)
+    private void LoadEssentialPlugins(BassInitializationResult result)
     {
         // Load only essential plugins that require explicit loading
         string[] essentialPlugins = new[]
         {
+            "bass_aac.dll",    // AAC - may need explicit loading
+            "bass_mpc.dll",    // MPC - may need explicit loading
+            "bassalac.dll",    // Apple Lossless - requires explicit loading
             "bassape.dll",     // Monkey's Audio - requires explicit loading
             "bassflac.dll",    // FLAC support - may need explicit loading
-            "bassalac.dll",    // Apple Lossless - requires explicit loading
+            "bassopus.dll",    // Opus - requires explicit loading
+            "basswebm.dll",    // WebM/Opus - requires explicit loading
+            // basswma.dll - deliberately omitted - let Windows Media Foundation handle WMA
             "basswv.dll",      // WavPack - requires explicit loading
-            "bass_aac.dll",    // AAC - may need explicit loading
-            "bass_ac3.dll"     // AC3 - may need explicit loading
-            // Note: basswma.dll deliberately omitted - let Windows Media Foundation handle WMA
         };
 
         LoadSpecificPlugins(essentialPlugins, result);
     }
 
-    private static void LoadAllPlugins(BassInitializationResult result)
+    private void LoadAllPlugins(BassInitializationResult result)
     {
         // Load all available plugins
         string[] allPlugins = BassNativeLibraryManager.GetAvailableDlls()
@@ -206,9 +211,9 @@ public static class BassAudioEngine
         LoadSpecificPlugins(allPlugins, result);
     }
 
-    private static void LoadSpecificPlugins(string[] pluginNames, BassInitializationResult result)
+    private void LoadSpecificPlugins(string[] pluginNames, BassInitializationResult result)
     {
-        _logger?.LogInformation($"Loading {pluginNames.Length} BASS plugins");
+        _logger.LogInformation($"Loading {pluginNames.Length} BASS plugins");
 
         foreach (string pluginName in pluginNames)
         {
@@ -216,36 +221,44 @@ public static class BassAudioEngine
             {
                 if (!BassNativeLibraryManager.IsDllAvailable(pluginName))
                 {
-                    _logger?.LogWarning($"Plugin not available: {pluginName}");
+                    _logger.LogWarning($"Plugin not available: {pluginName}");
                     result.FailedPlugins.Add($"{pluginName} (not available)");
                     continue;
                 }
 
                 string pluginPath = BassNativeLibraryManager.GetDllPath(pluginName);
-                int handle = ManagedBass.Bass.PluginLoad(pluginPath);
+                int handle = Bass.PluginLoad(pluginPath);
 
                 if (handle != 0)
                 {
                     result.LoadedPlugins.Add(pluginName);
-                    _logger?.LogInformation($"Loaded plugin: {pluginName}");
+                    _logger.LogInformation($"Loaded plugin: {pluginName}; Handle: {handle}");
                 }
                 else
                 {
-                    Errors error = ManagedBass.Bass.LastError;
+                    Errors error = Bass.LastError;
                     result.FailedPlugins.Add($"{pluginName} ({error})");
-                    _logger?.LogWarning($"Failed to load plugin: {pluginName}, Error: {error}");
+                    _logger.LogWarning($"Failed to load plugin: {pluginName}, Error: {error}");
                 }
             }
             catch (Exception ex)
             {
                 result.FailedPlugins.Add($"{pluginName} (exception: {ex.Message})");
-                _logger?.LogError(ex, $"Exception loading plugin: {pluginName}");
+                _logger.LogError(ex, $"Exception loading plugin: {pluginName}");
             }
         }
 
-        _logger?.LogInformation($"Plugin loading complete. Loaded: {result.LoadedPlugins.Count}, Failed: {result.FailedPlugins.Count}");
+        _logger.LogInformation($"Plugin loading complete. Loaded: {result.LoadedPlugins.Count}, Failed: {result.FailedPlugins.Count}");
     }
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool SetDllDirectory(string? lpPathName);
+
+    public void Dispose()
+    {
+        Shutdown();
+        GC.SuppressFinalize(this);
+    }
 }
+
+

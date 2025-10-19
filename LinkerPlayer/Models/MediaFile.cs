@@ -104,7 +104,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     private string _copyright = string.Empty;
 
     [NotMapped]
-    [StringLength(256, ErrorMessage = "Comment cannot exceed 256 characters")]
+    //[StringLength(256, ErrorMessage = $"Comment cannot exceed 256 characters")]
     [ObservableProperty]
     private string _comment = string.Empty;
 
@@ -197,7 +197,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 Artist = ValidateStringLength(string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers, 128, nameof(Artist));
             }
 
-            Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
+            //Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
 
             List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
             Composers = ValidateStringLength(composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty, 256, nameof(Composers));
@@ -355,8 +355,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         if (value.Length > maxLength)
         {
-            Logger?.LogWarning("Property {PropertyName} exceeds maximum length of {MaxLength} characters. Truncating.",
-                propertyName, maxLength);
+            Logger?.LogWarning(
+                "Property {PropertyName} exceeds maximum length of {MaxLength} characters for file {FileName}. Truncating.",
+                propertyName, maxLength, FileName);
             return value.Substring(0, maxLength);
         }
         return value;

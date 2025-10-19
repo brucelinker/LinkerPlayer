@@ -59,8 +59,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private bool _isUpdatingSelection; // Flag to prevent recursive selection updates
     private bool _isSwitchingTabs; // Flag to indicate we're in the middle of a tab switch
 
-    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
-    private const string SupportedAudioFilter = "(*.mp3; *.flac; *.wma; *.ape)|*.mp3;*.flac;*.wma;*.ape";
+    private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
 

@@ -31,7 +31,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     [ObservableProperty] private float _musicVolume = 0.5f;
     [ObservableProperty] private bool _isPlaying;
 
-    private OutputMode _currentMode = OutputMode.DirectSound;
+    private OutputMode _currentMode;
     private Device _currentDevice;
 
     private bool _wasapiInitialized;
@@ -62,6 +62,15 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private int _decodeStream = 0; // Holds the decode stream (file)
     private int _mixerStream = 0; // Holds the mixer stream (WASAPI output)
+
+    // Audio device error tracking (works for both DirectSound and WASAPI)
+    private Errors _lastAudioError = Errors.OK;
+    private int _consecutiveAudioErrors = 0;
+    private const int MAX_AUDIO_ERROR_COUNT = 10;
+    private bool _audioDeviceLost = false;
+
+    // Timer tick counter for periodic logging
+    private int _handleFftCallCount = 0;
 
     public event Action? OnPlaybackStopped;
     public event Action<float[]>? OnFftCalculated;
@@ -94,23 +103,30 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         try
         {
-            // Initialize BASS Native Library Manager first
-            BassNativeLibraryManager.Initialize(_logger);
-
-            // Initialize BASS
-            InitializeBass();
-
-            // Explicitly load bass_fx.dll
-            LoadBassFxLibrary();
-
-            // Explicitly load bassmix.dll
-            LoadBassMixLibrary();
-
-            IEnumerable<Device> devices = _outputDeviceManager.RefreshOutputDeviceList();
-
             _currentMode = _settingsManager.Settings.SelectedOutputMode;
             _currentDevice = _settingsManager.Settings.SelectedOutputDevice ?? new Device("Default", OutputDeviceType.DirectSound, -1, true);
 
+            // Initialize BASS Native Library Manager first
+            BassNativeLibraryManager.Initialize(_logger);
+
+            // Set DLL directory to the extracted BASS libraries (safe at startup)
+            string bassLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
+            _logger.LogInformation($"Setting DLL directory to: {bassLibPath}");
+            if (!SetDllDirectory(bassLibPath))
+            {
+                _logger.LogWarning("Failed to set DLL directory for BASS libraries");
+            }
+
+            // Explicitly load bass_fx.dll (safe at startup)
+            LoadBassFxLibrary();
+
+            // Explicitly load bassmix.dll (safe at startup)
+            LoadBassMixLibrary();
+            
+            // Refresh device list (safe at startup - doesn't open devices)
+            IEnumerable<Device> devices = _outputDeviceManager.RefreshOutputDeviceList();
+
+            // Create WASAPI callback (safe at startup)
             _wasapiProc = new WasapiProcedure(WasapiProc);
 
             _positionTimer = new System.Timers.Timer(100);
@@ -124,7 +140,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 OnMainWindowClosing(m.Value);
             });
 
-            _logger.LogInformation("AudioEngine initialized successfully");
+            _logger.LogInformation("AudioEngine initialized successfully (audio device init deferred until Play)");
         }
         catch (IOException ex)
         {
@@ -196,7 +212,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    public void InitializeBass()
+    public void InitializeAudioDevice()
     {
         if (IsBassInitialized)
         {
@@ -205,136 +221,115 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         try
         {
-            // Set DLL directory to the extracted BASS libraries
-            string bassLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
-            _logger.LogInformation($"Setting DLL directory to: {bassLibPath}");
+            // Directly initialize the audio device based on current mode
+            // Do NOT call SetOutputMode - that's for configuration changes only
+            bool success;
 
-            if (!SetDllDirectory(bassLibPath))
+            if (_currentMode == OutputMode.DirectSound)
             {
-                _logger.LogWarning("Failed to set DLL directory for BASS libraries");
+                success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
+                if (success)
+                {
+                    IsBassInitialized = true;
+                    _sampleRate = 44100;
+                    
+                    _logger.LogInformation("Initialized DirectSound on first play");
+                }
+                else
+                {
+                    _logger.LogError($"Failed to initialize DirectSound: {Bass.LastError}");
+                }
             }
+            else
+            {
+                // For WASAPI modes, we need BASS for decoding
+                // Get device info for mixer creation
+                if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+                {
+                    _logger.LogError($"Failed to get device info: {Bass.LastError}");
+                    return;
+                }
 
-            SetOutputMode(_currentMode, _currentDevice);
+                // Enable mixer low-pass filter for better resampling quality
+                Bass.Configure((Configuration)0x10600, true);
 
+                // Store for use elsewhere
+                _sampleRate = deviceInfo.MixFrequency;
+
+                // Initialize BASS for decoding only (no device)
+                success = Bass.Init(0, deviceInfo.MixFrequency, DeviceInitFlags.Default);
+                if (success)
+                {
+                    IsBassInitialized = true;
+                    
+                    _logger.LogInformation($"Initialized BASS for decoding on first play (WASAPI mode: {_currentMode})");
+                }
+                else
+                {
+                    _logger.LogError($"Failed to initialize BASS for decoding: {Bass.LastError}");
+                }
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error initializing BASS: {ex.Message}");
+            _logger.LogError($"Error initializing audio device: {ex.Message}");
         }
     }
 
     public IEnumerable<Device> DirectSoundDevices => _outputDeviceManager.GetDirectSoundDevices();
     public IEnumerable<Device> WasapiDevices => _outputDeviceManager.GetWasapiDevices();
 
+    public OutputMode GetCurrentOutputMode() { return _currentMode; }
+    public Device GetCurrentOutputDevice() { return _currentDevice; }
+
     private int _sampleRate;
 
     public void SetOutputMode(OutputMode selectedOutputMode, Device? device)
     {
-        // Stop current playback first
-        Stop();
-
-        // Free current resources
-        FreeResources();
-
-        // Initialize new mode
-        bool success;
-
+        // This method is called from Settings dialog
+        // It should update mode/device settings and only reinitialize if already playing
+        
         if (device == null)
         {
             device = new Device("Default", OutputDeviceType.DirectSound, -1, true);
         }
 
+        // Check if we need to reinitialize (only if currently initialized)
+        bool needsReinit = IsBassInitialized;
+        
+        if (needsReinit)
+        {
+            // Stop current playback first
+            Stop();
+
+            // Free current resources
+            FreeResources();
+        }
+
+        // Update mode and device
         _currentMode = selectedOutputMode;
         _currentDevice = device;
 
+        // Save to settings
         _settingsManager.Settings.SelectedOutputMode = selectedOutputMode;
         _settingsManager.Settings.SelectedOutputDevice = device;
         _settingsManager.SaveSettings(nameof(_settingsManager.Settings.SelectedOutputMode));
         _settingsManager.SaveSettings(nameof(_settingsManager.Settings.SelectedOutputDevice));
 
-        if (_currentMode == OutputMode.DirectSound)
+        // If we were initialized, reinitialize with new settings
+        if (needsReinit)
         {
-            success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
-            if (success)
-            {
-                //_logger.LogInformation("Switched to DirectSound mode");
-                IsBassInitialized = true;
-                _sampleRate = 44100; // keep in sync with init
-            }
-            else
-            {
-                _logger.LogError($"Failed to initialize DirectSound: {Bass.LastError}");
-            }
-        }
-        else
-        {
-            // For WASAPI modes, we still need BASS for decoding
-            bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
-
-            // Get device info for mixer creation
-            if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
-            {
-                _logger.LogError($"Failed to get device info for mixer creation: {Bass.LastError}");
-                return;
-            }
-
-            // Enable mixer low-pass filter for better resampling quality
-            Bass.Configure((Configuration)0x10600, true);
-
-            // Store for use elsewhere
-            _sampleRate = deviceInfo.MixFrequency;
-
-            // Initialize BASS for decoding only (no device)
-            success = Bass.Init(0, deviceInfo.MixFrequency, DeviceInitFlags.Default); // Use no-sound device for decoding
-            if (success)
-            {
-                //_logger.LogInformation($"Bass.Init for {selectedOutputMode} mode succeeded!");
-                IsBassInitialized = true;
-            }
-            else
-            {
-                _logger.LogError($"Failed to initialize BASS for decoding: {Bass.LastError}");
-                return; // Early exit if decoding init fails
-            }
-
-            // Now initialize WASAPI with buffering
-            var flags = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
-            flags |= WasapiInitFlags.Buffer; // Enable buffering to prevent data stealing
-
-            float bufferLength = 0.10f; // 100ms buffer for stability
-            float period = 0f; // Use default period
-
-            success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, flags, bufferLength, period, _wasapiProc, IntPtr.Zero);
-
-            if (!success)
-            {
-                _logger.LogError($"WASAPI init failed with buffer: {Bass.LastError} - Retrying without buffer");
-                flags &= ~WasapiInitFlags.Buffer; // Fallback without buffer if unsupported
-                success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, flags, bufferLength, period, _wasapiProc, IntPtr.Zero);
-            }
-
-            if (success)
-            {
-                _wasapiInitialized = true;
-                _logger.LogInformation($"Switched to {_currentMode} mode with buffer {(flags.HasFlag(WasapiInitFlags.Buffer) ? "enabled" : "disabled (fallback)")}");
-            }
-            else
-            {
-                _logger.LogError($"Failed to initialize WASAPI: {Bass.LastError}");
-            }
+            IsBassInitialized = false; // Reset flag so InitializeAudioDevice will run
+            InitializeAudioDevice(); // Reinitialize with new mode/device
         }
 
-        if (!success)
-        {
-            _logger.LogError($"Failed to initialize {selectedOutputMode} mode");
-            MessageBox.Show($"Failed to initialize {selectedOutputMode} mode", "Error",
-                MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        WeakReferenceMessenger.Default.Send(new OutputModeChangedMessage(_currentMode));
     }
 
     public void LoadAudioFile(string pathToMusic)
     {
         //_logger.LogDebug($"LoadAudioFile called with path: {pathToMusic}");
+
         try
         {
             // Free previous streams and clean up EQ
@@ -355,9 +350,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 CurrentStream = 0;
             }
 
+            //int apePlugin = Bass.PluginLoad("bassape.dll");
+            //_logger.LogInformation($"APE plugin handle: {apePlugin}");
+
+            //_logger.LogInformation($"Trying to play: {pathToMusic}");
+            //_logger.LogInformation($"File exists: {File.Exists(pathToMusic)}");
+            //_logger.LogInformation($"Bass version: {Bass.Version}");
+            //_logger.LogInformation($"Loaded plugins: {string.Join(", ", Bass.PluginGetInfo(apePlugin))}");
+
             if (_currentMode == OutputMode.DirectSound)
             {
-                CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Default | BassFlags.Prescan);
+                //CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Default | BassFlags.Prescan);
+                CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Default);
                 _decodeStream = 0;
                 _mixerStream = 0;
             }
@@ -376,7 +380,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 int deviceChans = deviceInfo.MixChannels;
 
                 // Try float first
-                _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode | BassFlags.Float);
+                //_decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode | BassFlags.Float);
+                _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode);
                 _logger.LogDebug($"WASAPI: _decodeStream handle: {_decodeStream}, Bass.LastError: {Bass.LastError}");
                 if (_decodeStream == 0)
                 {
@@ -452,7 +457,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             if (CurrentStream == 0)
             {
-                _logger.LogError($"Failed to create stream for playback: {Bass.LastError}");
+                _logger.LogError($"Failed to create stream for playback - {Path.GetFileName(pathToMusic)}: {Bass.LastError}");
                 return;
             }
 
@@ -500,6 +505,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Play()
     {
+        _logger.LogInformation("Play() called - no path parameter");
         if (string.IsNullOrEmpty(PathToMusic))
         {
             _logger.LogError("Cannot play: PathToMusic is null or empty");
@@ -510,26 +516,56 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public void Play(string pathToMusic, double position = 0)
     {
-        //_logger.LogDebug($"Play called with path: {pathToMusic}, position: {position}");
+        _logger.LogInformation("Play() called with path: {Path}, position: {Position}", pathToMusic, position);
+        
         if (string.IsNullOrEmpty(pathToMusic))
         {
             _logger.LogError("Play called with null or empty pathToMusic");
             return;
         }
+        
+        // Reset audio device lost flag when user manually tries to play
+        if (_audioDeviceLost)
+        {
+            _logger.LogInformation("Resetting audio device lost flag - user is attempting to play again");
+            _audioDeviceLost = false;
+            _consecutiveAudioErrors = 0;
+            _lastAudioError = Errors.OK;
+        }
+        
+        // Initialize BASS on first play if not already initialized
+        if (!IsBassInitialized)
+        {
+            _logger.LogInformation("First play - initializing audio device (Bass.Init or BassWasapi.Init)");
+            InitializeAudioDevice();
+            
+            // If initialization failed, don't continue
+            if (!IsBassInitialized)
+            {
+                _logger.LogError("Failed to initialize audio device - cannot play");
+                return;
+            }
+        }
+        
         PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
 
         if (!string.IsNullOrEmpty(pathToMusic) && playbackState == PlaybackState.Paused)
         {
+            _logger.LogInformation("Resuming paused track");
             ResumePlay();
             return;
         }
 
+        _logger.LogInformation("Stopping current playback before loading new track");
         Stop();
 
+        _logger.LogInformation("Loading audio file: {FileName}", Path.GetFileName(pathToMusic));
         LoadAudioFile(pathToMusic);
 
         if (CurrentStream != 0)
         {
+            _logger.LogInformation("CurrentStream is valid ({StreamHandle}), starting playback", CurrentStream);
+            
             // Set end-of-track sync
             _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
             if (_endSyncHandle == 0)
@@ -551,39 +587,161 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, MusicVolume);
 
             // Start playback
+            bool playbackStarted = false;
+            
             if (_currentMode == OutputMode.DirectSound)
             {
-                // DirectSound play
-                Bass.ChannelPlay(CurrentStream);
+                _logger.LogInformation("Starting DirectSound playback");
+                bool playSuccess = Bass.ChannelPlay(CurrentStream);
+                
+                if (!playSuccess && Bass.LastError == Errors.Busy)
+                {
+                    _logger.LogError("Failed to start DirectSound playback - device is busy");
+                    _audioDeviceLost = true;
+                    
+                    Window? owner = Application.Current.MainWindow;
+                    if (owner != null)
+                    {
+                        MessageBox.Show(
+                            owner,
+                            "Audio device is being used exclusively by another application. Playback cannot start.\n\n" +
+                            "The other application has taken exclusive control of the audio device.\n" +
+                            "Please close the other application or switch to a different audio device in Settings.",
+                            "Audio Device Busy",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Audio device is being used exclusively by another application. Playback cannot start.\n\n" +
+                            "The other application has taken exclusive control of the audio device.\n" +
+                            "Please close the other application or switch to a different audio device in Settings.",
+                            "Audio Device Busy",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                    return; // Exit early - IsPlaying stays false
+                }
+                
+                playbackStarted = playSuccess;
             }
             else
             {
-                // WASAPI playback - always try to initialize WASAPI when we play
-                if (!InitializeWasapiForPlayback())
+                _logger.LogInformation("Starting WASAPI playback");
+                
+                // WASAPI playback - only initialize if not already initialized
+                if (!_wasapiInitialized)
                 {
-                    _logger.LogError("Failed to initialize WASAPI for playback");
-                    return;
+                    if (!InitializeWasapiForPlayback())
+                    {
+                        _logger.LogError("Failed to initialize WASAPI for playback");
+                        
+                        // Check if it failed due to device being busy
+                        if (Bass.LastError == Errors.Busy || Bass.LastError == Errors.Already)
+                        {
+                            _audioDeviceLost = true; // Set flag so user can try again later
+                            
+                            Window? owner = Application.Current.MainWindow;
+                            if (owner != null)
+                            {
+                                MessageBox.Show(
+                                    owner,
+                                    "Audio device is being used exclusively by another application. Playback cannot start.\n\n" +
+                                    "The other application has taken exclusive control of the audio device.\n" +
+                                    "Please close the other application or switch to a different audio device in Settings.",
+                                    "Audio Device Busy",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Warning);
+                            }
+                            else
+                            {
+                                MessageBox.Show(
+                                    "Audio device is being used exclusively by another application. Playback cannot start.\n\n" +
+                                    "The other application has taken exclusive control of the audio device.\n" +
+                                    "Please close the other application or switch to a different audio device in Settings.",
+                                    "Audio Device Busy",
+                                    MessageBoxButton.OK,
+                                    MessageBoxImage.Warning);
+                            }
+                        }
+                        else
+                        {
+                            // Some other error - still set flag so they can try again
+                            _audioDeviceLost = true;
+                        }
+                        return; // Exit early - IsPlaying stays false
+                    }
                 }
 
                 if (_mixerStream != 0)
                 {
-                    _logger.LogDebug("Calling Bass.ChannelPlay on mixer stream before WASAPI start");
+                    _logger.LogInformation("Calling Bass.ChannelPlay on mixer stream (handle {MixerStream})", _mixerStream);
                     Bass.ChannelPlay(_mixerStream, false);
                 }
 
                 bool wasapiStarted = BassWasapi.Start();
                 if (!wasapiStarted)
+                {
                     _logger.LogError($"BassWasapi.Start failed: {Bass.LastError}");
-                //else
-                    //_logger.LogInformation("BassWasapi.Start succeeded");
+                    
+                    // Check if it failed due to device being busy
+                    if (Bass.LastError == Errors.Busy)
+                    {
+                        _audioDeviceLost = true; // Set flag so user can try again later
+                        
+                        Window? owner = Application.Current.MainWindow;
+                        if (owner != null)
+                        {
+                            MessageBox.Show(
+                                owner,
+                                "Audio device is being used exclusively by another application. Playback cannot start.\n\n" +
+                                "The other application has taken exclusive control of the audio device.\n" +
+                                "Please close the other application or switch to a different audio device in Settings.",
+                                "Audio Device Busy",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                        else
+                        {
+                            MessageBox.Show(
+                                "Audio device is being used exclusively by another application. Playback cannot start.\n\n" +
+                                "The other application has taken exclusive control of the audio device.\n" +
+                                "Please close the other application or switch to a different audio device in Settings.",
+                                "Audio Device Busy",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+                    else
+                    {
+                        // Some other error - still set flag so they can try again
+                        _audioDeviceLost = true;
+                    }
+                    return; // Exit early - IsPlaying stays false
+                }
+                else
+                {
+                    _logger.LogInformation("BassWasapi.Start succeeded");
+                    playbackStarted = true;
+                }
             }
 
-            IsPlaying = true;
-            PathToMusic = pathToMusic;
+            // ONLY set IsPlaying if playback actually started successfully
+            if (playbackStarted)
+            {
+                IsPlaying = true;
+                PathToMusic = pathToMusic;
+                _logger.LogInformation("Playback started successfully. IsPlaying = {IsPlaying}", IsPlaying);
+            }
+            else
+            {
+                _logger.LogWarning("Playback did not start - IsPlaying remains false");
+            }
         }
         else
         {
-            _logger.LogError("Failed to create stream, cannot play");
+            _logger.LogError($"Failed to create stream, cannot play {Path.GetFileName(pathToMusic)}");
         }
     }
 
@@ -603,10 +761,18 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             IsPlaying = false;
             CurrentTrackPosition = 0;
 
+            // Stop WASAPI but DON'T free it (keep it initialized for next track)
             if (_wasapiInitialized)
             {
                 BassWasapi.Stop();
             }
+
+            FreeResources();
+        }
+        else
+        {
+            // Even if no stream, ensure IsPlaying is false
+            IsPlaying = false;
         }
 
         OnPlaybackStopped?.Invoke();
@@ -829,13 +995,29 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         try
         {
-            // Always free any existing WASAPI initialization first
-            if (_wasapiInitialized)
+            // Only reset error tracking if we're recovering from a lost device
+            // (not on every song change)
+            if (_audioDeviceLost)
             {
-                BassWasapi.Stop();
-                BassWasapi.Free();
-                _wasapiInitialized = false;
+                _logger.LogInformation("Recovering from audio device loss - resetting error tracking");
+                _audioDeviceLost = false;
+                _consecutiveAudioErrors = 0;
+                _lastAudioError = Errors.OK;
             }
+
+            // If already initialized AND running, don't re-initialize
+            if (_wasapiInitialized && BassWasapi.IsStarted)
+            {
+                _logger.LogInformation("WASAPI already initialized and running - skipping re-init");
+                return true;
+            }
+
+            // ALWAYS free WASAPI before initialization - BassWasapi.Free() is safe to call even if not init
+            // This prevents "Already" errors from stale WASAPI state
+            _logger.LogInformation("Freeing any existing WASAPI state before re-init");
+            BassWasapi.Stop();
+            BassWasapi.Free();
+            _wasapiInitialized = false;
 
             // Get device info
             if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
@@ -859,7 +1041,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             // Try float + buffered
             if (_mixerIsFloat)
             {
-                //_logger.LogInformation($"Initializing WASAPI (buffered): Device={deviceInfo.Name}, Freq={deviceInfo.MixFrequency}, Channels={deviceInfo.MixChannels}, Mode={_currentMode}, Float=TRUE");
+                _logger.LogInformation($"Initializing WASAPI (buffered): Device={deviceInfo.Name}, Freq={deviceInfo.MixFrequency}, Channels={deviceInfo.MixChannels}, Mode={_currentMode}, Float=TRUE");
                 success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, bufferedFlags | FLOAT_FLAG, bufferLength, period, _wasapiProc, IntPtr.Zero);
             }
 
@@ -872,7 +1054,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
             if (!success)
             {
-                //_logger.LogInformation("Trying PCM buffered WASAPI init");
+                _logger.LogInformation("Trying PCM buffered WASAPI init");
                 success = BassWasapi.Init(_currentDevice.Index, deviceInfo.MixFrequency, deviceInfo.MixChannels, bufferedFlags, bufferLength, period, _wasapiProc, IntPtr.Zero);
             }
 
@@ -885,14 +1067,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             if (success)
             {
                 _wasapiInitialized = true;
-                if (BassWasapi.GetInfo(out var info))
-                {
-                    //_logger.LogInformation($"WASAPI initialized successfully. Buffered={(info.BufferLength > 0 ? "Yes" : "No")}, Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
-                }
-                else
-                {
-                    //_logger.LogInformation($"WASAPI initialized successfully. Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
-                }
+                _logger.LogInformation($"WASAPI initialized successfully. Format={(_mixerIsFloat ? "float" : "16-bit PCM")}");
                 return true;
             }
             else
@@ -1105,16 +1280,167 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     #region SpectrumAnalyzer
 
+    private bool CheckAudioDeviceLost()
+    {
+        if (_audioDeviceLost)
+        {
+            return true; // Already handled
+        }
+
+        Errors currentError = Bass.LastError;
+        
+        // BASS_ERROR_BUSY (46) means device is being used exclusively by another application
+        // This happens when:
+        // 1. You're in DirectSound/WASAPI Shared and another app takes WASAPI Exclusive
+        // 2. You're in WASAPI Shared and another app takes WASAPI Exclusive
+        // 3. Device is otherwise unavailable
+        if (currentError == Errors.Busy)
+        {
+            _audioDeviceLost = true;
+            _logger.LogError("Audio device is busy (BASS_ERROR_BUSY). Another application has taken exclusive control of the audio device.");
+
+            // Marshal to UI thread to stop playback and show message
+            Application.Current?.Dispatcher.BeginInvoke(() =>
+            {
+                try
+                {
+                    // Stop playback (this will also stop the timer via OnIsPlayingChanged)
+                    Stop();
+
+                    // Show message box with owner window so it appears on the correct monitor
+                    Window? owner = Application.Current.MainWindow;
+                    if (owner != null)
+                    {
+                        MessageBox.Show(
+                            owner,
+                            "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
+                            "The other application has taken exclusive control of the audio device.\n" +
+                            "Please close the other application or switch to a different audio device in Settings.",
+                            "Audio Device Busy",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                    else
+                    {
+                        MessageBox.Show(
+                            "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
+                            "The other application has taken exclusive control of the audio device.\n" +
+                            "Please close the other application or switch to a different audio device in Settings.",
+                            "Audio Device Busy",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error showing audio device busy message: {Message}", ex.Message);
+                }
+            });
+
+            return true;
+        }
+        
+        // Check for other device errors (fallback for other error types)
+        if (currentError != Errors.OK && currentError != Errors.Unknown && currentError != Errors.Ended)
+        {
+            if (currentError == _lastAudioError)
+            {
+                _consecutiveAudioErrors++;
+            }
+            else
+            {
+                _lastAudioError = currentError;
+                _consecutiveAudioErrors = 1;
+            }
+
+            // If we've had too many consecutive errors, the device is likely lost
+            if (_consecutiveAudioErrors >= MAX_AUDIO_ERROR_COUNT)
+            {
+                _audioDeviceLost = true;
+                _logger.LogError("Audio device lost after {Count} consecutive errors. Last error: {Error}", 
+                    _consecutiveAudioErrors, currentError);
+
+                // Marshal to UI thread to stop playback and show message
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        // Stop playback (this will also stop the timer via OnIsPlayingChanged)
+                        Stop();
+
+                        // Show message box with owner window so it appears on the correct monitor
+                        Window? owner = Application.Current.MainWindow;
+                        if (owner != null)
+                        {
+                            MessageBox.Show(
+                                owner,
+                                $"Audio device error detected. Playback has been stopped.\n\nError: {currentError}",
+                                "Audio Device Error",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                        else
+                        {
+                            MessageBox.Show(
+                                $"Audio device error detected. Playback has been stopped.\n\nError: {currentError}",
+                                "Audio Device Error",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error showing audio device error message: {Message}", ex.Message);
+                    }
+                });
+
+                return true;
+            }
+        }
+        else
+        {
+            // Reset error tracking when successful
+            _consecutiveAudioErrors = 0;
+            _lastAudioError = Errors.OK;
+        }
+
+        return false;
+    }
+
     public double GetDecibelLevel()
     {
         int level;
         if (_currentMode == OutputMode.DirectSound)
         {
             level = Bass.ChannelGetLevel(CurrentStream);
+            
+            // Check for BUSY error
+            if (level == -1 && Bass.LastError == Errors.Busy)
+            {
+                CheckAudioDeviceLost();
+                return double.NaN;
+            }
         }
         else
         {
+            if (_audioDeviceLost)
+            {
+                return double.NaN;
+            }
+            
             level = BassWasapi.GetLevel();
+            
+            // Check for BUSY error
+            if (level == -1 && Bass.LastError == Errors.Busy)
+            {
+                CheckAudioDeviceLost();
+                return double.NaN;
+            }
+            
+            if (CheckAudioDeviceLost())
+            {
+                return double.NaN;
+            }
         }
 
         if (level == -1)
@@ -1137,10 +1463,34 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         if (_currentMode == OutputMode.DirectSound)
         {
             level = Bass.ChannelGetLevel(CurrentStream);
+            
+            // Check for BUSY error
+            if (level == -1 && Bass.LastError == Errors.Busy)
+            {
+                CheckAudioDeviceLost();
+                return (double.NaN, double.NaN);
+            }
         }
         else
         {
+            if (_audioDeviceLost)
+            {
+                return (double.NaN, double.NaN);
+            }
+            
             level = BassWasapi.GetLevel();
+            
+            // Check for BUSY error
+            if (level == -1 && Bass.LastError == Errors.Busy)
+            {
+                CheckAudioDeviceLost();
+                return (double.NaN, double.NaN);
+            }
+            
+            if (CheckAudioDeviceLost())
+            {
+                return (double.NaN, double.NaN);
+            }
         }
 
         if (level == -1)
@@ -1174,11 +1524,39 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         if (_currentMode == OutputMode.DirectSound)
         {
             bytesRead = Bass.ChannelGetData(CurrentStream, fftDataBuffer, (int)DataFlags.FFT2048);
+            
+            // Check for BUSY error immediately after GetData
+            if (bytesRead <= 0 && Bass.LastError == Errors.Busy)
+            {
+                CheckAudioDeviceLost();
+                Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
+                return false;
+            }
         }
         else
         {
+            if (_audioDeviceLost)
+            {
+                Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
+                return false;
+            }
+            
             // IMPORTANT: In WASAPI use device GetData to avoid starving the mixer decode stream
             bytesRead = BassWasapi.GetData(fftDataBuffer, (int)DataFlags.FFT2048);
+            
+            // Check for BUSY error immediately after GetData
+            if (bytesRead <= 0 && Bass.LastError == Errors.Busy)
+            {
+                CheckAudioDeviceLost();
+                Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
+                return false;
+            }
+            
+            if (CheckAudioDeviceLost())
+            {
+                Array.Clear(fftDataBuffer, 0, fftDataBuffer.Length);
+                return false;
+            }
         }
 
         if (bytesRead <= 0)
@@ -1202,6 +1580,122 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private void HandleFftCalculated()
     {
+        _handleFftCallCount++;
+        
+        // Log every 50 calls (5 seconds at 100ms intervals)
+        //if (_handleFftCallCount % 50 == 0)
+        //{
+            //_logger.LogInformation("HandleFftCalculated tick #{Count} - Timer is running, IsPlaying={IsPlaying}, _audioDeviceLost={AudioDeviceLost}", 
+                //_handleFftCallCount, IsPlaying, _audioDeviceLost);
+        //}
+
+        // Early exit if device is already lost
+        if (_audioDeviceLost)
+        {
+            return;
+        }
+
+        // **DIRECTSOUND CHECK**: If we're supposed to be playing, but the stream has stopped, the device was taken
+        if (_currentMode == OutputMode.DirectSound && IsPlaying && CurrentStream != 0)
+        {
+            PlaybackState state = Bass.ChannelIsActive(CurrentStream);
+            if (state == PlaybackState.Stopped)
+            {
+                _audioDeviceLost = true;
+                _logger.LogError("DirectSound playback has stopped unexpectedly - device taken by exclusive app!");
+                
+                // Marshal to UI thread to stop playback and show message
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        // Stop playback (this will also stop the timer via OnIsPlayingChanged)
+                        Stop();
+                        
+                        // Show message box with owner window so it appears on the correct monitor
+                        Window? owner = Application.Current.MainWindow;
+                        if (owner != null)
+                        {
+                            MessageBox.Show(
+                                owner,
+                                "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
+                                "The other application has taken exclusive control of the audio device.\n" +
+                                "Please close the other application or switch to a different audio device in Settings.",
+                                "Audio Device Busy",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                        else
+                        {
+                            MessageBox.Show(
+                                "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
+                                "The other application has taken exclusive control of the audio device.\n" +
+                                "Please close the other application or switch to a different audio device in Settings.",
+                                "Audio Device Busy",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error showing audio device busy message: {Message}", ex.Message);
+                    }
+                });
+                
+                return;
+            }
+        }
+
+        // **WASAPI-SPECIFIC CHECK**: If we're supposed to be playing, but WASAPI has stopped, the device was taken
+        if (_currentMode != OutputMode.DirectSound && IsPlaying && _wasapiInitialized)
+        {
+            if (!BassWasapi.IsStarted)
+            {
+                _audioDeviceLost = true;
+                _logger.LogError("WASAPI playback has stopped unexpectedly - device taken by exclusive app!");
+                
+                // Marshal to UI thread to stop playback and show message
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    try
+                    {
+                        // Stop playback (this will also stop the timer via OnIsPlayingChanged)
+                        Stop();
+                        
+                        // Show message box with owner window so it appears on the correct monitor
+                        Window? owner = Application.Current.MainWindow;
+                        if (owner != null)
+                        {
+                            MessageBox.Show(
+                                owner,
+                                "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
+                                "The other application has taken exclusive control of the audio device.\n" +
+                                "Please close the other application or switch to a different audio device in Settings.",
+                                "Audio Device Busy",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                        else
+                        {
+                            MessageBox.Show(
+                                "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
+                                "The other application has taken exclusive control of the audio device.\n" +
+                                "Please close the other application or switch to a different audio device in Settings.",
+                                "Audio Device Busy",
+                                MessageBoxButton.OK,
+                                MessageBoxImage.Warning);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error showing audio device busy message: {Message}", ex.Message);
+                    }
+                });
+                
+                return;
+            }
+        }
+
         if (CurrentStream != 0)
         {
             double positionSeconds = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
@@ -1211,6 +1705,13 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             }
 
             PlaybackState state = Bass.ChannelIsActive(CurrentStream);
+            
+            // Check for device loss after querying state
+            if (CheckAudioDeviceLost())
+            {
+                return;
+            }
+            
             if (state != PlaybackState.Playing)
             {
                 return;
@@ -1225,10 +1726,47 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         if (_currentMode == OutputMode.DirectSound)
         {
             bytesRead = Bass.ChannelGetData(CurrentStream, _fftBuffer, (int)DataFlags.FFT2048);
+            
+            // Check for BUSY error immediately after GetData
+            if (bytesRead < 0 && Bass.LastError == Errors.Busy)
+            {
+                _logger.LogError("DirectSound ChannelGetData failed: BASS_ERROR_BUSY");
+                CheckAudioDeviceLost(); // This will handle the error and show message
+                return;
+            }
         }
         else // WASAPI modes
         {
+            // Early exit if device is lost
+            if (_audioDeviceLost)
+            {
+                return;
+            }
+
             bytesRead = BassWasapi.GetData(_fftBuffer, (int)DataFlags.FFT2048);
+
+            // Check for BUSY error immediately after GetData
+            if (bytesRead < 0)
+            {
+                Errors error = Bass.LastError;
+                
+                if (error == Errors.Busy)
+                {
+                    _logger.LogError("WASAPI GetData failed: BASS_ERROR_BUSY - Device taken by exclusive app");
+                    CheckAudioDeviceLost(); // This will handle the error and show message
+                    return;
+                }
+                else if (error != Errors.OK && error != Errors.Unknown)
+                {
+                    _logger.LogWarning("WASAPI GetData returned {BytesRead}, Bass.LastError = {Error}", bytesRead, error);
+                }
+            }
+
+            // Check if device was lost during the GetData call
+            if (CheckAudioDeviceLost())
+            {
+                return;
+            }
         }
 
         int fftSize; // Declare once here
@@ -1283,29 +1821,25 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private void FreeResources()
     {
-        if (_mixerStream != 0)
-        {
-            Bass.StreamFree(_mixerStream);
-            _mixerStream = 0;
-        }
-        if (_decodeStream != 0)
-        {
-            Bass.StreamFree(_decodeStream);
-            _decodeStream = 0;
-        }
-        if (CurrentStream != 0)
-        {
-            Bass.StreamFree(CurrentStream);
-            CurrentStream = 0;
-        }
-        if (_wasapiInitialized)
-        {
-            _logger.LogInformation("FreeResources: Freeing WASAPI");
-            BassWasapi.Stop();
-            BassWasapi.Free();
-            _wasapiInitialized = false;
-        }
+        // Free all streams - Bass.StreamFree handles invalid handles gracefully
+        Bass.StreamFree(_mixerStream);
+        _mixerStream = 0;
+        
+        Bass.StreamFree(_decodeStream);
+        _decodeStream = 0;
+        
+        Bass.StreamFree(CurrentStream);
+        CurrentStream = 0;
+
+        // Free WASAPI - these calls are safe even if not initialized
+        _logger.LogInformation("FreeResources: Freeing WASAPI");
+        BassWasapi.Stop();
+        BassWasapi.Free();
+        _wasapiInitialized = false;
+
+        // Free BASS - safe to call even if not initialized
         Bass.Free();
+        IsBassInitialized = false; // ← CRITICAL: Reset this flag!
     }
 
     public void Dispose()

@@ -53,7 +53,8 @@ public class FileImportService : IFileImportService
 {
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<FileImportService> _logger;
-    private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".wma", ".ape", ".wav"];
+    //private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4a", ".mp4", ".ofr", ".ogg", ".wma", ".wv"];
+
 
     public FileImportService(IMusicLibrary musicLibrary, ILogger<FileImportService> logger)
     {
@@ -384,7 +385,7 @@ public class FileImportService : IFileImportService
             return false;
 
         string extension = Path.GetExtension(path);
-        return _supportedAudioExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+        return MusicLibrary._supportedAudioExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 
     public int GetAudioFileCount(string folderPath)

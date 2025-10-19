@@ -75,12 +75,14 @@
             VerticalAlignment="Center"
             d:Foreground="Transparent"
             Command="{Binding PrevCommand}"
-            Content="{iconPacks:Material SkipPrevious,
-                                         Width=13,
-                                         Height=13}"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Previous Track" />
+            ToolTip="Previous Track">
+            <iconPacks:PackIconMaterial
+              Width="13"
+              Height="13"
+              Kind="SkipPrevious" />
+          </Button>
 
           <!--  Play Button  -->
           <Button
@@ -90,15 +92,13 @@
             Margin="5,0,5,0"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            d:Content="{iconPacks:PackIconMaterial Kind=Play,
-                                                   Width=19,
-                                                   Height=19,
-                                                   Margin=4 0 0 0}"
             d:Foreground="Transparent"
             Command="{Binding PlayPauseCommand}"
-            Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}"
             Foreground="{DynamicResource PlayerForegroundBrush}"
-            Style="{StaticResource LinkerCircleButton}" />
+            Style="{StaticResource LinkerCircleButton}">
+            <!--  The Content binding will provide the correct icon via the converter  -->
+            <ContentPresenter Content="{Binding State, Mode=TwoWay, Converter={StaticResource PlayerStateToIconConverter}, ConverterParameter={x:Static wave:PlaybackState.Playing}}" />
+          </Button>
 
           <!--  Stop Button  -->
           <Button
@@ -110,12 +110,14 @@
             VerticalAlignment="Center"
             d:Foreground="Transparent"
             Command="{Binding StopCommand}"
-            Content="{iconPacks:Material Stop,
-                                         Width=12,
-                                         Height=12}"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Stop" />
+            ToolTip="Stop">
+            <iconPacks:PackIconMaterial
+              Width="12"
+              Height="12"
+              Kind="Stop" />
+          </Button>
 
           <!--  Next Button  -->
           <Button
@@ -127,12 +129,14 @@
             VerticalAlignment="Center"
             d:Foreground="Transparent"
             Command="{Binding NextCommand}"
-            Content="{iconPacks:Material SkipNext,
-                                         Width=13,
-                                         Height=13}"
             Foreground="{DynamicResource PlayerForegroundBrush}"
             Style="{StaticResource LinkerCircleButton}"
-            ToolTip="Next File (j)" />
+            ToolTip="Next File (j)">
+            <iconPacks:PackIconMaterial
+              Width="13"
+              Height="13"
+              Kind="SkipNext" />
+          </Button>
         </StackPanel>
       </Border>
     </Grid>
@@ -154,15 +158,15 @@
             Name="CurrentTime"
             Grid.Column="0"
             Padding="0,0,0,0"
+            d:Foreground="white"
+            d:Text="00:00"
             FontSize="16"
             FontWeight="Light"
             Foreground="{DynamicResource PlayerForegroundBrush}"
-            Text="0:00" 
-            d:Text="00:00"
-            d:Foreground="white"/>
+            Text="0:00" />
 
           <!--  Player Slider  -->
-            <Slider
+          <Slider
             x:Name="SeekBar"
             Grid.Column="1"
             Margin="0,0,15,0"
@@ -170,18 +174,18 @@
             Maximum="100"
             Style="{StaticResource CustomHorizontalSlider}"
             ValueChanged="SeekBar_ValueChanged" />
-                    
+
           <!--  Total Time  -->
           <TextBlock
             Name="TotalTime"
             Grid.Column="2"
             Padding="0,0,0,0"
+            d:Foreground="white"
+            d:Text="00:00"
             FontSize="16"
             FontWeight="Light"
             Foreground="{DynamicResource PlayerForegroundBrush}"
-            Text="0:00" 
-            d:Text="00:00"
-            d:Foreground="white"/>
+            Text="0:00" />
 
         </Grid>
       </Border>
@@ -273,6 +277,7 @@
       </StackPanel>
     </Grid>
 
+    <!--  Status Bar  -->
     <Grid
       Grid.Row="1"
       Grid.Column="0"
@@ -337,16 +342,15 @@
             Minimum="0"
             Visibility="Visible" />
 
-          <!--  Another status text or whatever else you want  -->
+          <!-- OutputMode  -->
           <TextBlock
             x:Name="Info"
-            Grid.Row="0"
             Grid.RowSpan="2"
             Grid.Column="2"
             Width="Auto"
-            Margin="5,0"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center"
+            Margin="0,5,5,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="top"
             FontSize="13"
             FontWeight="Light" />
 
