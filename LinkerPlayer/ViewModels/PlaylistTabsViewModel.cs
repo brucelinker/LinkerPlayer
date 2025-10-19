@@ -1277,6 +1277,75 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    private async Task ReorderTabs((int FromIndex, int ToIndex) indices)
+    {
+        if (indices.FromIndex < 0 || indices.ToIndex < 0 || 
+            indices.FromIndex >= TabList.Count || indices.ToIndex >= TabList.Count)
+        {
+            _logger.LogWarning("ReorderTabs called with invalid indices: from {FromIndex} to {ToIndex}", 
+                indices.FromIndex, indices.ToIndex);
+            return;
+        }
+
+        if (indices.FromIndex == indices.ToIndex)
+        {
+            return; // Nothing to do
+        }
+
+        try
+        {
+            // Remember the currently selected tab
+            PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count 
+                ? TabList[SelectedTabIndex] 
+                : null;
+
+            // Reorder in the UI
+            PlaylistTab movedTab = TabList[indices.FromIndex];
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                TabList.RemoveAt(indices.FromIndex);
+                TabList.Insert(indices.ToIndex, movedTab);
+            });
+
+            // Reorder in the database/service
+            bool success = await _playlistManagerService.ReorderPlaylistsAsync(indices.FromIndex, indices.ToIndex);
+
+            if (success)
+            {
+                // Update the selected tab index if needed
+                if (currentlySelectedTab != null)
+                {
+                    int newSelectedIndex = TabList.IndexOf(currentlySelectedTab);
+                    if (newSelectedIndex >= 0)
+                    {
+                        SelectedTabIndex = newSelectedIndex;
+                        _settingsManager.Settings.SelectedTabIndex = newSelectedIndex;
+                        _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
+                    }
+                }
+
+                _logger.LogInformation("Successfully reordered tab from index {FromIndex} to {ToIndex}", 
+                    indices.FromIndex, indices.ToIndex);
+            }
+            else
+            {
+                // Revert the UI change if database update failed
+                _logger.LogError("Failed to reorder tabs in database, reverting UI changes");
+                await _uiDispatcher.InvokeAsync(() =>
+                {
+                    TabList.RemoveAt(indices.ToIndex);
+                    TabList.Insert(indices.FromIndex, movedTab);
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reordering tabs from {FromIndex} to {ToIndex}", 
+                indices.FromIndex, indices.ToIndex);
+        }
+    }
+
     // Add CanExecute methods for commands that should be conditionally enabled
     private bool CanRemoveTrack() => _dataGrid?.SelectedItem != null && SelectedPlaylist != null;
 

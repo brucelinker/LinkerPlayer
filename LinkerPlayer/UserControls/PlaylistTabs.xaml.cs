@@ -22,6 +22,8 @@ public partial class PlaylistTabs
 {
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
     private readonly ILogger<PlaylistTabs> _logger;
+    private PlaylistTab? _draggedTab;
+    private int _draggedTabIndex = -1;
 
 
     public PlaylistTabs()
@@ -260,5 +262,69 @@ public partial class PlaylistTabs
                 }
             }, null);
         }
+    }
+
+    private void TabHeader_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed && sender is EditableTabHeaderControl tabHeader)
+        {
+            if (tabHeader.DataContext is PlaylistTab playlistTab)
+            {
+                _draggedTab = playlistTab;
+                _draggedTabIndex = GetTabIndex(playlistTab);
+                
+                if (_draggedTabIndex >= 0)
+                {
+                    DragDropEffects effects = DragDrop.DoDragDrop(tabHeader, playlistTab, DragDropEffects.Move);
+                    
+                    // Reset after drag completes
+                    _draggedTab = null;
+                    _draggedTabIndex = -1;
+                }
+            }
+        }
+    }
+
+    private void TabHeader_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(typeof(PlaylistTab)))
+        {
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
+        }
+    }
+
+    private void TabHeader_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(typeof(PlaylistTab)) && sender is EditableTabHeaderControl targetHeader)
+        {
+            if (targetHeader.DataContext is PlaylistTab targetTab && _draggedTab != null)
+            {
+                int targetIndex = GetTabIndex(targetTab);
+                
+                if (targetIndex >= 0 && _draggedTabIndex >= 0 && _draggedTabIndex != targetIndex)
+                {
+                    if (DataContext is PlaylistTabsViewModel viewModel)
+                    {
+                        viewModel.ReorderTabsCommand.Execute((_draggedTabIndex, targetIndex));
+                    }
+                }
+            }
+        }
+        
+        e.Handled = true;
+    }
+
+    private int GetTabIndex(PlaylistTab tab)
+    {
+        if (DataContext is PlaylistTabsViewModel viewModel)
+        {
+            return viewModel.TabList.IndexOf(tab);
+        }
+        return -1;
     }
 }

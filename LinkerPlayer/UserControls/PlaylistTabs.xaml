@@ -152,8 +152,12 @@
               <userControls:EditableTabHeaderControl
                 Margin="0"
                 Padding="0"
+                AllowDrop="True"
                 MouseLeftButtonDown="TabHeader_MouseLeftButtonDown"
                 MouseRightButtonDown="TabHeader_MouseRightButtonDown"
+                PreviewMouseMove="TabHeader_PreviewMouseMove"
+                DragOver="TabHeader_DragOver"
+                Drop="TabHeader_Drop"
                 Style="{StaticResource EditableTabHeaderControl}">
                 <userControls:EditableTabHeaderControl.ContextMenu>
                   <ContextMenu>

@@ -65,6 +65,14 @@ public interface IPlaylistManagerService
     /// <param name="playlistName">Name of the playlist</param>
     /// <returns>Collection of tracks in the playlist</returns>
     IEnumerable<MediaFile> LoadPlaylistTracks(string playlistName);
+
+    /// <summary>
+    /// Reorders playlists by moving a playlist from one index to another
+    /// </summary>
+    /// <param name="fromIndex">Source index</param>
+    /// <param name="toIndex">Destination index</param>
+    /// <returns>True if reordering was successful</returns>
+    Task<bool> ReorderPlaylistsAsync(int fromIndex, int toIndex);
 }
 
 public class PlaylistManagerService : IPlaylistManagerService
@@ -308,6 +316,39 @@ public class PlaylistManagerService : IPlaylistManagerService
         {
             _logger.LogError(ex, "Failed to load tracks for playlist: {PlaylistName}", playlistName);
             return Enumerable.Empty<MediaFile>();
+        }
+    }
+
+    public async Task<bool> ReorderPlaylistsAsync(int fromIndex, int toIndex)
+    {
+        if (fromIndex < 0 || toIndex < 0 || fromIndex >= _musicLibrary.Playlists.Count || toIndex >= _musicLibrary.Playlists.Count)
+        {
+            _logger.LogWarning("ReorderPlaylistsAsync called with invalid indices: from {FromIndex} to {ToIndex}", fromIndex, toIndex);
+            return false;
+        }
+
+        if (fromIndex == toIndex)
+        {
+            return true; // Nothing to do
+        }
+
+        try
+        {
+            // Reorder in memory
+            Playlist playlist = _musicLibrary.Playlists[fromIndex];
+            _musicLibrary.Playlists.RemoveAt(fromIndex);
+            _musicLibrary.Playlists.Insert(toIndex, playlist);
+
+            // Save to database to persist the new order
+            await _musicLibrary.SaveToDatabaseAsync();
+            
+            _logger.LogInformation("Successfully reordered playlist from index {FromIndex} to {ToIndex}", fromIndex, toIndex);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reorder playlists from index {FromIndex} to {ToIndex}", fromIndex, toIndex);
+            return false;
         }
     }
 
