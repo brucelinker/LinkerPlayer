@@ -21,6 +21,8 @@ public partial class Playlist : ObservableValidator
     [ObservableProperty]
     private string? _selectedTrackId;
 
+    public int Order { get; set; }
+
     public ObservableCollection<string> TrackIds { get; set; } = new();
 
     [ForeignKey(nameof(SelectedTrackId))]

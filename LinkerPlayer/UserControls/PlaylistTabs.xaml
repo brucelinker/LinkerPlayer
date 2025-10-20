@@ -123,6 +123,9 @@
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Margin" Value="0,0" />
         <Setter Property="Padding" Value="0" />
+        <Setter Property="AllowDrop" Value="True" />
+        <EventSetter Event="DragOver" Handler="TabItem_DragOver" />
+        <EventSetter Event="Drop" Handler="TabItem_Drop" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="TabItem">
@@ -157,6 +160,7 @@
                 MouseRightButtonDown="TabHeader_MouseRightButtonDown"
                 PreviewMouseMove="TabHeader_PreviewMouseMove"
                 DragOver="TabHeader_DragOver"
+                DragLeave="TabHeader_DragLeave"
                 Drop="TabHeader_Drop"
                 Style="{StaticResource EditableTabHeaderControl}">
                 <userControls:EditableTabHeaderControl.ContextMenu>
@@ -464,8 +468,11 @@
       Padding="0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
+      AllowDrop="True"
       BorderThickness="0"
       ContentTemplate="{StaticResource TabContentTemplate}"
+      DragOver="TabControl_DragOver"
+      Drop="TabControl_Drop"
       ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       ItemsSource="{Binding TabList}"
       SelectedIndex="{Binding SelectedTabIndex}"

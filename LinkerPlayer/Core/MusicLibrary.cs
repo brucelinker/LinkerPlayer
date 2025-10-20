@@ -93,6 +93,24 @@ public class MusicLibrary : IMusicLibrary
                 context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS idx_playlisttracks_playlistid ON PlaylistTracks(PlaylistId);");
                 //_logger.LogInformation("Creating MetadataCache table");
                 context.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS MetadataCache (Path TEXT PRIMARY KEY, LastModified INTEGER, Metadata TEXT NOT NULL);");
+                
+                // Add Order column to Playlists table if it doesn't exist (for existing databases)
+                try
+                {
+                    // Check if the Order column already exists
+                    var result = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Playlists') WHERE name='Order'").ToList();
+                    
+                    if (result.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Playlists ADD COLUMN \"Order\" INTEGER NOT NULL DEFAULT 0;");
+                        _logger.LogInformation("Added Order column to Playlists table");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking/adding Order column to Playlists table");
+                }
             }
             LoadFromDatabaseAsync().GetAwaiter().GetResult();
         }
@@ -179,6 +197,7 @@ public class MusicLibrary : IMusicLibrary
                 .ThenInclude(pt => pt.Track)
                 .Include(p => p.SelectedTrackNavigation)
                 .AsNoTracking()
+                .OrderBy(p => p.Order)
                 .ToListAsync();
             foreach (Playlist playlist in playlists)
             {
@@ -220,7 +239,8 @@ public class MusicLibrary : IMusicLibrary
                 {
                     Name = "New Playlist",
                     TrackIds = new ObservableCollection<string>(),
-                    SelectedTrackId = null
+                    SelectedTrackId = null,
+                    Order = 0
                 };
                 Playlists.Add(newPlaylist);
                 await SaveToDatabaseAsync();
@@ -290,6 +310,12 @@ public class MusicLibrary : IMusicLibrary
                 await context.Tracks.Select(t => t.Id).ToListAsync()
             );
 
+            // Update Order property for all playlists based on their position in the collection
+            for (int i = 0; i < Playlists.Count; i++)
+            {
+                Playlists[i].Order = i;
+            }
+
             foreach (Playlist playlist in Playlists)
             {
                 // Validate SelectedTrack
@@ -312,7 +338,8 @@ public class MusicLibrary : IMusicLibrary
                     Playlist newPlaylist = new()
                     {
                         Name = playlist.Name,
-                        SelectedTrackId = playlist.SelectedTrackId
+                        SelectedTrackId = playlist.SelectedTrackId,
+                        Order = playlist.Order
                     };
                     context.Playlists.Add(newPlaylist);
                     await context.SaveChangesAsync();
@@ -324,7 +351,9 @@ public class MusicLibrary : IMusicLibrary
                     playlistId = existingPlaylist.Id;
                     existingPlaylist.Name = playlist.Name;
                     existingPlaylist.SelectedTrackId = playlist.SelectedTrackId;
+                    existingPlaylist.Order = playlist.Order;
                     context.Entry(existingPlaylist).Property(p => p.SelectedTrackId).IsModified = true;
+                    context.Entry(existingPlaylist).Property(p => p.Order).IsModified = true;
                     context.Entry(existingPlaylist).State = EntityState.Modified;
                     context.PlaylistTracks.RemoveRange(existingPlaylist.PlaylistTracks);
                     playlist.Id = playlistId;
@@ -542,7 +571,8 @@ public class MusicLibrary : IMusicLibrary
         {
             Name = playlistName,
             TrackIds = new ObservableCollection<string>(),
-            SelectedTrackId = null
+            SelectedTrackId = null,
+            Order = Playlists.Count  // Set order to the end
         };
         await AddPlaylistAsync(playlist);
         //_logger.LogInformation($"Created new playlist {playlistName} with Id {playlist.Id}");
