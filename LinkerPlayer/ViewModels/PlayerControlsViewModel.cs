@@ -40,6 +40,9 @@ public partial class PlayerControlsViewModel : ObservableObject
             VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
             _volumeBeforeMute = VolumeSliderValue;
 
+            ShuffleMode = _settingsManager.Settings.ShuffleMode;
+            IsMuted = _settingsManager.Settings.VolumeSliderValue == 0;
+
             _settingsManager.SettingsChanged += OnSettingsChanged;
             WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
             {
