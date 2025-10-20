@@ -21,8 +21,8 @@
     <!-- Updated to match main project versions -->
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="FluentAssertions" Version="8.7.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.10" />
     
     <!-- Keep Shouldly if you prefer it, but FluentAssertions is more popular -->
     <PackageReference Include="Shouldly" Version="4.3.0" />
