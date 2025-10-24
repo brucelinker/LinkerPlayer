@@ -1,9 +1,10 @@
-﻿<Window
+<Window
   x:Class="LinkerPlayer.Windows.PropertiesWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+  xmlns:local="clr-namespace:LinkerPlayer.Windows"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   Title="PropertiesWindow"
   Width="500"
@@ -20,10 +21,14 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
       </ResourceDictionary.MergedDictionaries>
+
+      <!--  Inverse Boolean Converter  -->
+      <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
+      <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
     </ResourceDictionary>
   </Window.Resources>
 
-  <Grid Focusable="True">
+  <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="45" />
       <RowDefinition />
@@ -101,6 +106,9 @@
               <!--  Metadata  -->
               <RowDefinition Height="Auto" />
               <RowDefinition Height="Auto" />
+              <!--  Comment  -->
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
               <!--  Properties  -->
               <RowDefinition Height="Auto" />
               <RowDefinition Height="Auto" />
@@ -155,7 +163,7 @@
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="250"
+                  Width="230"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -168,7 +176,7 @@
                   Header="Value">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
-                      <TextBlock IsEnabled="{Binding IsEditable}" Text="{Binding Value}" />
+                      <TextBlock Text="{Binding Value}" />
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                   <DataGridTemplateColumn.CellEditingTemplate>
@@ -180,8 +188,62 @@
               </DataGrid.Columns>
             </DataGrid>
 
+            <!--  Comment Section (Lyrics-style) -->
+            <Grid Grid.Row="2" Margin="0,10,0,5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock
+                VerticalAlignment="Center"
+                FontSize="{DynamicResource FontSizeHeading}"
+                FontWeight="Normal"
+                Foreground="{DynamicResource ControlAccentLightBrush}"
+                Text="Comment" />
+              <Rectangle
+                Grid.Column="1"
+                Height="1.5"
+                Margin="8,3,0,0"
+                VerticalAlignment="Center"
+                Fill="{DynamicResource ControlAccentLightBrush}" />
+            </Grid>
+            <TextBox
+              x:Name="CommentTextBox"
+              Grid.Row="3"
+              MaxHeight="150"
+              Margin="0,0,0,10"
+              Padding="8"
+              AcceptsReturn="True"
+              BorderThickness="0"
+              FontSize="{DynamicResource FontSizeNormal}"
+              IsReadOnly="True"
+              LostFocus="CommentTextBox_LostFocus"
+              MouseDoubleClick="CommentTextBox_MouseDoubleClick"
+              PreviewKeyDown="CommentTextBox_PreviewKeyDown"
+              PreviewMouseWheel="CommentTextBox_PreviewMouseWheel"
+              Text="{Binding CommentItem.Value, UpdateSourceTrigger=PropertyChanged}"
+              TextWrapping="Wrap"
+              VerticalScrollBarVisibility="Auto">
+              <TextBox.Style>
+                <Style TargetType="TextBox">
+                  <Setter Property="Cursor" Value="Hand" />
+                  <Setter Property="Background" Value="Transparent" />
+                  <Setter Property="Foreground" Value="{DynamicResource TitleBarForegroundBrush}" />
+                  <Style.Triggers>
+                    <Trigger Property="IsReadOnly" Value="False">
+                      <Setter Property="Cursor" Value="IBeam" />
+                      <Setter Property="Background" Value="#FFFFFF" />
+                      <Setter Property="Foreground" Value="#000000" />
+                      <Setter Property="BorderThickness" Value="2" />
+                      <Setter Property="BorderBrush" Value="#0078D4" />
+                    </Trigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBox.Style>
+            </TextBox>
+
             <!--  Properties Title with Bar  -->
-            <Grid Grid.Row="2" Margin="0,0,0,5">
+            <Grid Grid.Row="4" Margin="0,0,0,5">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -201,10 +263,11 @@
             </Grid>
 
             <DataGrid
-              Grid.Row="3"
+              Grid.Row="5"
               Height="Auto"
               MinWidth="400"
               MaxHeight="Infinity"
+              Margin="0,0,0,10"
               AutoGenerateColumns="False"
               CanUserAddRows="False"
               CanUserResizeRows="False"
@@ -219,7 +282,7 @@
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="250"
+                  Width="230"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -236,7 +299,7 @@
             </DataGrid>
 
             <!--  ReplyGain Title with Bar  -->
-            <Grid Grid.Row="4" Margin="0,0,0,5">
+            <Grid Grid.Row="6" Margin="0,0,0,5">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -256,7 +319,7 @@
             </Grid>
 
             <DataGrid
-              Grid.Row="5"
+              Grid.Row="7"
               Height="Auto"
               MinWidth="400"
               MaxHeight="Infinity"
@@ -275,7 +338,7 @@
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="250"
+                  Width="230"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -301,7 +364,7 @@
             </DataGrid>
 
             <!--  Picture Title with Bar  -->
-            <Grid Grid.Row="6" Margin="0,0,0,5">
+            <Grid Grid.Row="8" Margin="0,0,0,5">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -320,64 +383,72 @@
                 Fill="{DynamicResource SpectrumPeakBrush}" />
             </Grid>
 
-            <!--  Picture section with two columns: DataGrid and Image  -->
-            <Grid Grid.Row="7" Margin="0,0,0,10">
+            <!--  Picture section with two columns: ItemsControl and Image  -->
+            <Grid Grid.Row="9" Margin="0,0,0,10">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="200" />
               </Grid.ColumnDefinitions>
 
-              <!--  DataGrid: Name/Value columns only  -->
-              <DataGrid
+              <!--  ItemsControl: Name/Value rows with scrollable textboxes  -->
+              <ItemsControl
                 Grid.Column="0"
                 MinWidth="200"
-                MaxHeight="Infinity"
-                AutoGenerateColumns="False"
-                CanUserAddRows="False"
-                CanUserResizeRows="False"
-                CellStyle="{StaticResource SharedDataGridCellStyle}"
-                ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
-                HorizontalScrollBarVisibility="Disabled"
-                ItemsSource="{Binding PictureInfoItems}"
-                PreviewMouseWheel="DataGrid_PreviewMouseWheel"
-                RowStyle="{StaticResource SharedDataGridRowStyle}"
-                Style="{StaticResource SharedDataGridStyle}"
-                VerticalScrollBarVisibility="Disabled">
-                <DataGrid.Columns>
-                  <DataGridTextColumn
-                    Width="250"
-                    MinWidth="100"
-                    Binding="{Binding Name}"
-                    CanUserResize="True"
-                    Header="Name"
-                    IsReadOnly="True" />
-                  <DataGridTextColumn
-                    Width="*"
-                    MinWidth="100"
-                    Binding="{Binding Value}"
-                    CanUserResize="True"
-                    Header="Value"
-                    IsReadOnly="True" />
-                </DataGrid.Columns>
-              </DataGrid>
+                ItemsSource="{Binding PictureInfoItems}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid Margin="0,1">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Top"
+                        Background="{DynamicResource TrackListColumnHeaderBackgroundBrush}"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Foreground="{DynamicResource TrackListColumnHeaderForegroundBrush}"
+                        Text="{Binding Name}" />
+                      <TextBox
+                        Grid.Column="1"
+                        MaxHeight="90"
+                        AcceptsReturn="True"
+                        Background="{DynamicResource TrackListItemBackgroundBrush}"
+                        BorderThickness="0"
+                        FontSize="{DynamicResource FontSizeNormal}"
+                        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+                        IsReadOnly="True"
+                        Text="{Binding Value}"
+                        TextWrapping="Wrap"
+                        VerticalScrollBarVisibility="Auto">
+                        <TextBox.Style>
+                          <Style TargetType="TextBox">
+                            <Setter Property="Cursor" Value="Arrow" />
+                            <Setter Property="Opacity" Value="1.0" />
+                          </Style>
+                        </TextBox.Style>
+                      </TextBox>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
 
               <!--  Album cover image  -->
               <Border
                 Grid.Column="1"
-                Margin="10,0,0,0"
+                Margin="0,0,0,0"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Stretch">
+                VerticalAlignment="Top">
                 <Image
-                  Width="120"
-                  Height="120"
-                  VerticalAlignment="Center"
+                  Width="180"
+                  Height="180"
                   Source="{Binding AlbumCoverSource}"
                   Stretch="Uniform" />
               </Border>
             </Grid>
 
             <!--  Lyrics  -->
-            <Grid Grid.Row="8" Margin="0,0,0,5">
+            <Grid Grid.Row="10" Margin="0,0,0,5">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -397,8 +468,7 @@
             </Grid>
             <TextBox
               x:Name="LyricsTextBox"
-              Grid.Row="9"
-              MinHeight="100"
+              Grid.Row="11"
               MaxHeight="300"
               Padding="8"
               AcceptsReturn="True"

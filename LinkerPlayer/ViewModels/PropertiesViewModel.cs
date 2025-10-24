@@ -32,6 +32,7 @@ public partial class PropertiesViewModel : ObservableObject
     public ObservableCollection<TagItem> PropertyItems { get; } = [];
     public ObservableCollection<TagItem> ReplayGainItems { get; } = [];
     public ObservableCollection<TagItem> PictureInfoItems { get; } = [];
+    [ObservableProperty] private TagItem _commentItem = new();
     [ObservableProperty] private TagItem _lyricsItem = new();
 
     public event EventHandler<bool>? CloseRequested;
@@ -133,7 +134,7 @@ public partial class PropertiesViewModel : ObservableObject
 
             // Check if file extension is supported by TagLib
             string extension = Path.GetExtension(path).ToLowerInvariant();
-            string[] supportedExtensions = [".mp3", ".flac", ".ogg", ".opus", ".m4a", ".mp4", ".aac", ".wma", ".wav", ".aiff", ".ape", ".wv"];
+            string[] supportedExtensions = [".mp3", ".flac", ".ogg", ".opus", ".m4a", ".mp4", ".aac", ".wma", ".wav", ".aiff", ".ape", ".wv", ".mpc"];
 
             if (!supportedExtensions.Contains(extension))
             {
@@ -167,6 +168,7 @@ public partial class PropertiesViewModel : ObservableObject
             PropertyItems.Clear();
             ReplayGainItems.Clear();
             PictureInfoItems.Clear();
+            CommentItem.Value = "[ No comment available. ]";
             LyricsItem.Value = "[ No lyrics available. ]";
 
             // Load data with clean separation of concerns
@@ -186,6 +188,20 @@ public partial class PropertiesViewModel : ObservableObject
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading custom metadata for file: {Path} - {Message}", path, ex.Message);
+            }
+
+            // Sort metadata items: keep regular tags in original order, move custom tags (with angle brackets) to bottom
+            var regularTags = MetadataItems.Where(item => !item.Name.StartsWith("<")).ToList();
+            var customTags = MetadataItems.Where(item => item.Name.StartsWith("<")).ToList();
+
+            MetadataItems.Clear();
+            foreach (var item in regularTags)
+            {
+                MetadataItems.Add(item);
+            }
+            foreach (var item in customTags)
+            {
+                MetadataItems.Add(item);
             }
 
             try
@@ -213,6 +229,15 @@ public partial class PropertiesViewModel : ObservableObject
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading picture information for file: {Path} - {Message}", path, ex.Message);
+            }
+
+            try
+            {
+                LoadCommentItem();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading comment for file: {Path} - {Message}", path, ex.Message);
             }
 
             try
@@ -270,7 +295,7 @@ public partial class PropertiesViewModel : ObservableObject
 
         AddMetadataItem("Year", tag.Year > 0 ? tag.Year.ToString() : "", true, v => { tag.Year = uint.TryParse(v, out uint year) ? year : 0; HasUnsavedChanges = true; });
         AddMetadataItem("Genre", tag.FirstGenre ?? string.Join(", ", tag.Genres ?? []), true, v => { tag.Genres = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
-        AddMetadataItem("Comment", tag.Comment ?? "", true, v => { tag.Comment = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
+        // Comment moved to separate section - see LoadCommentItem()
 
         AddMetadataItem("Composer", tag.FirstComposer ?? string.Join(", ", tag.Composers ?? []), true, v => { tag.Composers = string.IsNullOrEmpty(v) ? [] : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray(); HasUnsavedChanges = true; });
         AddMetadataItem("Copyright", tag.Copyright ?? "", true, v => { tag.Copyright = string.IsNullOrEmpty(v) ? null : v; HasUnsavedChanges = true; });
@@ -307,11 +332,64 @@ public partial class PropertiesViewModel : ObservableObject
             "REPLAYGAIN_TRACK_GAIN", "REPLAYGAIN_TRACK_PEAK", "REPLAYGAIN_ALBUM_GAIN", "REPLAYGAIN_ALBUM_PEAK"
         };
 
+        // Fields that should go to Picture section
+        HashSet<string> pictureFields = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "METADATA_BLOCK_PICTURE", "COVERART", "COVER_ART", "ALBUMART", "ALBUM_ART",
+            "PICTURE", "APIC"
+        };
+
         // Use a dictionary to collect all custom fields with their values
         Dictionary<string, List<string>> customFields = new(StringComparer.OrdinalIgnoreCase);
 
         //_logger.LogInformation("Main tag type: {TagType}, Available tag types: {TagTypes}", 
         //_audioFile.Tag.GetType().Name, _audioFile.TagTypes);
+
+        try
+        {
+            // APE tags (MPC/Musepack, APE, WavPack, etc.) - add this FIRST since MPC uses APE tags
+            if (_audioFile.GetTag(TagLib.TagTypes.Ape, false) is TagLib.Ape.Tag apeTag)
+            {
+                //_logger.LogDebug("Found APE tag");
+                // APE tags are accessed via enumeration of keys
+                foreach (string key in apeTag)
+                {
+                    try
+                    {
+                        var item = apeTag.GetItem(key);
+                        if (item != null)
+                        {
+                            string value = item.ToString();
+
+                            if (!string.IsNullOrWhiteSpace(value) && !standardFields.Contains(key))
+                            {
+                                if (!customFields.ContainsKey(key))
+                                {
+                                    customFields[key] = new List<string>();
+                                }
+                                customFields[key].Add(value);
+                            }
+                            else if (standardFields.Contains(key))
+                            {
+                                _logger.LogDebug("Skipped standard APE field: {Field}", key);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Error reading APE item {Key}: {Message}", key, ex.Message);
+                    }
+                }
+            }
+            else
+            {
+                //_logger.LogDebug("No APE tag found");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading APE tags: {Message}", ex.Message);
+        }
 
         try
         {
@@ -321,16 +399,24 @@ public partial class PropertiesViewModel : ObservableObject
                 //_logger.LogDebug("Found Xiph tag with {Count} fields", xiphTag.FieldCount);
                 foreach (string field in xiphTag)
                 {
-                    string value = xiphTag.GetFirstField(field) ?? "";
-                    //_logger.LogDebug("Found Vorbis field: {Field} = {Value}", field, value);
+                    // Get all values for this field (not just the first one)
+                    string[] fieldValues = xiphTag.GetField(field);
 
-                    if (!string.IsNullOrWhiteSpace(value) && !standardFields.Contains(field))
+                    if (fieldValues.Length > 0 && !standardFields.Contains(field))
                     {
                         if (!customFields.ContainsKey(field))
                         {
                             customFields[field] = new List<string>();
                         }
-                        customFields[field].Add(value);
+
+                        // Add all non-empty values
+                        foreach (string value in fieldValues)
+                        {
+                            if (!string.IsNullOrWhiteSpace(value))
+                            {
+                                customFields[field].Add(value);
+                            }
+                        }
                     }
                     else if (standardFields.Contains(field))
                     {
@@ -364,7 +450,7 @@ public partial class PropertiesViewModel : ObservableObject
                         foreach (KeyValuePair<string, string[]> kvp in dict)
                         {
                             string value = kvp.Value.FirstOrDefault() ?? "";
-                         
+
                             if (!string.IsNullOrWhiteSpace(value))
                             {
                                 // Clean up iTunes field names and check if it's standard
@@ -466,6 +552,28 @@ public partial class PropertiesViewModel : ObservableObject
         {
             string fieldName = kvp.Key;
             List<string> values = kvp.Value;
+
+            // Skip picture-related fields - they belong in the Picture section
+            if (pictureFields.Contains(fieldName))
+            {
+                // Skip METADATA_BLOCK_PICTURE entirely - it's just base64 noise, not useful to display
+                if (fieldName.Equals("METADATA_BLOCK_PICTURE", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                // Add other picture fields to Picture section
+                string pictureValue = string.Join("; ", values.Distinct().Where(v => !string.IsNullOrWhiteSpace(v)));
+                if (!string.IsNullOrWhiteSpace(pictureValue))
+                {
+                    // Truncate very long values (like base64 images) for display
+                    string displayValue = pictureValue.Length > 100
+             ? pictureValue.Substring(0, 100) + $"... [{pictureValue.Length} characters total]"
+           : pictureValue;
+                    AddPictureInfoItem($"<{fieldName}>", displayValue, false, null);
+                }
+                continue;
+            }
 
             // Remove duplicates and combine with semicolons
             string combinedValue = string.Join("; ", values.Distinct().Where(v => !string.IsNullOrWhiteSpace(v)));
@@ -632,6 +740,63 @@ public partial class PropertiesViewModel : ObservableObject
         {
             //_logger.LogDebug("No pictures found in tag data");
         }
+
+        // Sort picture items: keep regular tags in original order, move custom tags (with angle brackets) to bottom
+        var regularPictureTags = PictureInfoItems.Where(item => !item.Name.StartsWith("<")).ToList();
+        var customPictureTags = PictureInfoItems.Where(item => item.Name.StartsWith("<")).ToList();
+
+        PictureInfoItems.Clear();
+        foreach (var item in regularPictureTags)
+        {
+            PictureInfoItems.Add(item);
+        }
+        foreach (var item in customPictureTags)
+        {
+            PictureInfoItems.Add(item);
+        }
+
+        // Notify that AlbumCoverSource has changed
+        OnPropertyChanged(nameof(AlbumCoverSource));
+    }
+
+    private void LoadCommentItem()
+    {
+        if (_audioFile?.Tag == null)
+        {
+            _logger.LogWarning("No tag data found for comment information");
+            return;
+        }
+
+        Tag? tag = _audioFile.Tag;
+        string commentValue = tag.Comment ?? "[ No comment available. ]";
+
+        AddCommentItem("Comment", commentValue, true, v =>
+        {
+            // Don't update if the value is the placeholder text
+            if (v == "[ No comment available. ]")
+                tag.Lyrics = null;
+            else
+                tag.Comment = string.IsNullOrEmpty(v) ? null : v;
+            HasUnsavedChanges = true;
+        });
+    }
+
+    private void AddCommentItem(string name, string value, bool isEditable, Action<string>? updateAction)
+    {
+        TagItem item = new()
+        {
+            Name = name,
+            Value = value,
+            IsEditable = isEditable,
+            UpdateAction = isEditable ? updateAction : null
+        };
+
+        if (isEditable)
+        {
+            item.PropertyChanged += TagItem_PropertyChanged!;
+        }
+
+        CommentItem = item;
     }
 
     private void LoadLyricsItem()
@@ -645,14 +810,14 @@ public partial class PropertiesViewModel : ObservableObject
         Tag? tag = _audioFile.Tag;
         string lyricsValue = tag.Lyrics ?? "[ No lyrics available. ]";
 
-        AddLyricsItem("Lyrics", lyricsValue, true, v => 
-        { 
+        AddLyricsItem("Lyrics", lyricsValue, true, v =>
+        {
             // Don't update if the value is the placeholder text
             if (v == "[ No lyrics available. ]")
                 tag.Lyrics = null;
             else
-                tag.Lyrics = string.IsNullOrEmpty(v) ? null : v; 
-            HasUnsavedChanges = true; 
+                tag.Lyrics = string.IsNullOrEmpty(v) ? null : v;
+            HasUnsavedChanges = true;
         });
     }
 
@@ -756,6 +921,12 @@ public partial class PropertiesViewModel : ObservableObject
             foreach (TagItem item in ReplayGainItems.Where(i => i.IsEditable))
             {
                 item.UpdateAction?.Invoke(item.Value);
+            }
+
+            // Apply comment changes
+            if (CommentItem.IsEditable)
+            {
+                CommentItem.UpdateAction?.Invoke(CommentItem.Value);
             }
 
             // Apply lyrics changes
@@ -997,5 +1168,5 @@ public partial class PropertiesViewModel : ObservableObject
         };
     }
 
-    public BitmapImage? AlbumCoverSource => PictureInfoItems.LastOrDefault()?.AlbumCoverSource;
+    public BitmapImage? AlbumCoverSource => PictureInfoItems.FirstOrDefault(item => item.Name == "Album Cover")?.AlbumCoverSource;
 }
