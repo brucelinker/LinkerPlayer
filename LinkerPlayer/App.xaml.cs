@@ -63,6 +63,9 @@ public partial class App
 
                 // NEW: Database save service for debouncing saves
                 services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
+                
+                // BASS audio services
+                  services.AddSingleton<IBpmDetector, BpmDetector>();
 
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();

@@ -10,26 +10,66 @@ using System.Windows.Media;
 namespace LinkerPlayer.Windows;
 
 /// <summary>
-/// Converts true to false and false to true
+/// Converts false to Visible and true to Collapsed
 /// </summary>
-public class InverseBooleanConverter : IValueConverter
+public class InvertedBooleanToVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is bool boolValue)
         {
-            return !boolValue;
+return !boolValue ? Visibility.Visible : Visibility.Collapsed;
+    }
+        return Visibility.Collapsed;
+    }
+
+  public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+  {
+    if (value is Visibility visibility)
+   {
+    return visibility != Visibility.Visible;
         }
-        return value;
+        return false;
+    }
+}
+
+/// <summary>
+/// Shows UI only for "Beats Per Minute" row (returns Collapsed for BPM row, Visible for others)
+/// </summary>
+public class BpmRowVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string name && name == "Beats Per Minute")
+        {
+      return Visibility.Collapsed; // Hide normal text for BPM row
+        }
+  return Visibility.Visible;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is bool boolValue)
+        throw new NotImplementedException();
+    }
+}
+
+/// <summary>
+/// Shows UI only for "Beats Per Minute" row (returns Visible for BPM row, Collapsed for others)
+/// </summary>
+public class InverseBpmRowVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is string name && name == "Beats Per Minute")
         {
-            return !boolValue;
+            return Visibility.Visible; // Show BPM detection UI for BPM row
         }
-        return value;
+ return Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        throw new NotImplementedException();
     }
 }
 
@@ -40,9 +80,9 @@ public partial class PropertiesWindow
 {
     public PropertiesWindow()
     {
-        InitializeComponent();
+     InitializeComponent();
 
-        ((App)Application.Current).WindowPlace.Register(this);
+     ((App)Application.Current).WindowPlace.Register(this);
         this.Loaded += PropertiesWindow_Loaded;
     }
 

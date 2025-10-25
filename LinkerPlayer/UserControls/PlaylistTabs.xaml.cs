@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -222,15 +223,16 @@ public partial class PlaylistTabs
     {
         if (DataContext is PlaylistTabsViewModel playlistTabsViewModel)
         {
-            SharedDataModel sharedDataModel = playlistTabsViewModel.SharedDataModel;
-            IMediaFileHelper mediaFileHelper = App.AppHost.Services.GetRequiredService<IMediaFileHelper>();
-            ILogger<PropertiesViewModel> logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
-            PropertiesViewModel propertiesViewModel = new PropertiesViewModel(sharedDataModel, mediaFileHelper, logger);
+        SharedDataModel sharedDataModel = playlistTabsViewModel.SharedDataModel;
+          IMediaFileHelper mediaFileHelper = App.AppHost.Services.GetRequiredService<IMediaFileHelper>();
+        ILogger<PropertiesViewModel> logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
+   IBpmDetector? bpmDetector = App.AppHost.Services.GetRequiredService<IBpmDetector>();
+          PropertiesViewModel propertiesViewModel = new PropertiesViewModel(sharedDataModel, mediaFileHelper, logger, bpmDetector);
             PropertiesWindow dialog = new PropertiesWindow
             {
-                DataContext = propertiesViewModel
-            };
-            dialog.Show();
+           DataContext = propertiesViewModel
+   };
+ dialog.Show();
         }
     }
 

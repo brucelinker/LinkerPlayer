@@ -40,6 +40,7 @@
   <!--<Color x:Key="TrackListSelectedItemColor">#6B7B82</Color>-->
   <Color x:Key="TrackListTipBackgroundColor">Black</Color>
   <Color x:Key="TrackListTipForegroundColor">#F0F0F0</Color>
+  <Color x:Key="TrackListHyperlinkForegroundColor">#76CAFE</Color>
 
   <Color x:Key="PlayerForegroundColor">WhiteSmoke</Color>
   <Color x:Key="PlayerBackgroundColor">Black</Color>

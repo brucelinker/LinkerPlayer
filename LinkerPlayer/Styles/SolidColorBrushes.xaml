@@ -40,6 +40,7 @@
   <SolidColorBrush x:Key="TrackListMouseOverItemBackgroundBrush" Color="{DynamicResource TrackListMouseOverItemBackgroundColor}" />
   <SolidColorBrush x:Key="TrackListTipForegroundBrush" Color="{DynamicResource TrackListTipForegroundColor}" />
   <SolidColorBrush x:Key="TrackListTipBackgroundBrush" Color="{DynamicResource TrackListListTipBackgroundColor}" />
+  <SolidColorBrush x:Key="TrackListHyperlinkForegroundBrush" Color="{DynamicResource TrackListHyperlinkForegroundColor}" />
 
   <SolidColorBrush x:Key="PlayerForegroundBrush" Color="{DynamicResource PlayerForegroundColor}" />
   <SolidColorBrush x:Key="PlayerBackgroundBrush" Color="{DynamicResource PlayerBackgroundColor}" />

@@ -22,9 +22,11 @@
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
-      <!--  Inverse Boolean Converter  -->
-      <BooleanToVisibilityConverter x:Key="BoolToVisConverter" />
-      <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+      <!--  Converters  -->
+      <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+      <local:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter" />
+      <local:BpmRowVisibilityConverter x:Key="BpmRowVisibilityConverter" />
+      <local:InverseBpmRowVisibilityConverter x:Key="InverseBpmRowVisibilityConverter" />
     </ResourceDictionary>
   </Window.Resources>
 
@@ -71,6 +73,7 @@
 
       </StackPanel>
     </Grid>
+
     <Grid Grid.Row="1">
       <DockPanel>
         <StackPanel
@@ -150,6 +153,7 @@
               MaxHeight="Infinity"
               Margin="0,0,0,4"
               AutoGenerateColumns="False"
+              Background="Red"
               CanUserAddRows="False"
               CanUserResizeRows="False"
               CellStyle="{StaticResource SharedDataGridCellStyle}"
@@ -163,7 +167,7 @@
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="230"
+                  Width="240"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -176,7 +180,88 @@
                   Header="Value">
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
-                      <TextBlock Text="{Binding Value}" />
+                      <Grid>
+                        <TextBlock Text="{Binding Value}" Visibility="{Binding Name, Converter={StaticResource BpmRowVisibilityConverter}}" />
+
+                        <!--  BPM Detection UI - only visible for "Beats Per Minute" row  -->
+                        <Grid Visibility="{Binding Name, Converter={StaticResource InverseBpmRowVisibilityConverter}}">
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                          </Grid.ColumnDefinitions>
+
+                          <TextBlock
+                            Grid.Column="0"
+                            Margin="0,0,8,0"
+                            VerticalAlignment="Center"
+                            Text="{Binding Value}" />
+
+                          <!--  Hyperlink-style Detect button  -->
+                          <Button
+                            Grid.Column="1"
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding DataContext.DetectBpmCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                            Cursor="Hand"
+                            FontSize="14"
+                            ToolTip="Analyze audio file to detect beats per minute">
+                            <TextBlock
+                              Foreground="{DynamicResource TrackListHyperlinkForegroundBrush}"
+                              Text="Detect BPM..."
+                              TextDecorations="Underline" />
+                            <Button.Style>
+                              <Style TargetType="Button">
+                                <Setter Property="Template">
+                                  <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                      <ContentPresenter />
+                                    </ControlTemplate>
+                                  </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                  <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Opacity" Value="0.7" />
+                                  </Trigger>
+                                </Style.Triggers>
+                              </Style>
+                            </Button.Style>
+                          </Button>
+
+                          <!--  Progress indicator when detecting  -->
+                          <StackPanel
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Orientation="Horizontal"
+                            Visibility="{Binding DataContext.IsBpmDetecting, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ProgressBar
+                              Width="80"
+                              Height="16"
+                              Margin="0,0,8,0"
+                              Maximum="100"
+                              Minimum="0"
+                              Value="{Binding DataContext.BpmDetectionProgress, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                            <TextBlock
+                              VerticalAlignment="Center"
+                              FontSize="10"
+                              Foreground="{DynamicResource TitleBarForegroundBrush}"
+                              Text="{Binding DataContext.BpmDetectionStatus, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                          </StackPanel>
+
+                          <Button
+                            Grid.Column="2"
+                            Width="50"
+                            Height="22"
+                            Padding="4,2"
+                            Command="{Binding DataContext.CancelBpmDetectionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                            Content="Cancel"
+                            FontSize="10"
+                            Visibility="{Binding DataContext.IsBpmDetecting, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </Grid>
+                      </Grid>
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                   <DataGridTemplateColumn.CellEditingTemplate>
@@ -188,7 +273,7 @@
               </DataGrid.Columns>
             </DataGrid>
 
-            <!--  Comment Section (Lyrics-style) -->
+            <!--  Comment Section (Lyrics-style)  -->
             <Grid Grid.Row="2" Margin="0,10,0,5">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -282,7 +367,7 @@
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="230"
+                  Width="240"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -338,7 +423,7 @@
 
               <DataGrid.Columns>
                 <DataGridTextColumn
-                  Width="230"
+                  Width="240"
                   MinWidth="100"
                   Binding="{Binding Name}"
                   CanUserResize="True"
@@ -399,7 +484,7 @@
                   <DataTemplate>
                     <Grid Margin="0,1">
                       <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="230" />
+                        <ColumnDefinition Width="240" />
                         <ColumnDefinition Width="*" />
                       </Grid.ColumnDefinitions>
                       <TextBlock

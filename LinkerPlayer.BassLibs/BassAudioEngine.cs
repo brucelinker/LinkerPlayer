@@ -188,6 +188,7 @@ public class BassAudioEngine : IDisposable
         string[] essentialPlugins = new[]
         {
             "bass_aac.dll",    // AAC - may need explicit loading
+            "bass_fx.dll",     // BASS_FX - REQUIRED for BPM detection and effects
             "bass_mpc.dll",    // MPC - may need explicit loading
             "bassalac.dll",    // Apple Lossless - requires explicit loading
             "bassape.dll",     // Monkey's Audio - requires explicit loading

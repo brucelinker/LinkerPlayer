@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LinkerPlayer.BassLibs;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System;
@@ -9,6 +10,8 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using TagLib.Id3v2;
@@ -25,8 +28,14 @@ public partial class PropertiesViewModel : ObservableObject
     private readonly SharedDataModel _sharedDataModel;
     private readonly IMediaFileHelper _mediaFileHelper;
     private readonly ILogger<PropertiesViewModel> _logger;
+    private readonly IBpmDetector? _bpmDetector;
     private File? _audioFile;
+    private CancellationTokenSource? _bpmDetectionCts;
+    
     [ObservableProperty] private bool hasUnsavedChanges;
+  [ObservableProperty] private bool isBpmDetecting;
+    [ObservableProperty] private double bpmDetectionProgress;
+    [ObservableProperty] private string bpmDetectionStatus = string.Empty;
 
     public ObservableCollection<TagItem> MetadataItems { get; } = [];
     public ObservableCollection<TagItem> PropertyItems { get; } = [];
@@ -37,13 +46,14 @@ public partial class PropertiesViewModel : ObservableObject
 
     public event EventHandler<bool>? CloseRequested;
 
-    public PropertiesViewModel(SharedDataModel sharedDataModel, IMediaFileHelper mediaFileHelper, ILogger<PropertiesViewModel> logger)
+    public PropertiesViewModel(SharedDataModel sharedDataModel, IMediaFileHelper mediaFileHelper, ILogger<PropertiesViewModel> logger, IBpmDetector? bpmDetector = null)
     {
-        _sharedDataModel = sharedDataModel;
+ _sharedDataModel = sharedDataModel;
         _mediaFileHelper = mediaFileHelper;
         _logger = logger;
+        _bpmDetector = bpmDetector;
 
-        _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
+  _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
 
         if (_sharedDataModel.SelectedTrack != null)
         {
@@ -84,6 +94,94 @@ public partial class PropertiesViewModel : ObservableObject
         }
         CloseRequested?.Invoke(this, false);
     }
+
+    [RelayCommand(CanExecute = nameof(CanDetectBpm))]
+    private async Task DetectBpmAsync()
+    {
+     if (_bpmDetector == null)
+        {
+         MessageBox.Show("BPM detection is not available. The BASS audio library may not be properly initialized.",
+             "BPM Detection", MessageBoxButton.OK, MessageBoxImage.Warning);
+    return;
+     }
+
+        if (_sharedDataModel.SelectedTrack == null)
+     {
+ return;
+        }
+
+      string filePath = _sharedDataModel.SelectedTrack.Path;
+   
+        try
+        {
+  IsBpmDetecting = true;
+            BpmDetectionProgress = 0;
+            BpmDetectionStatus = "Analyzing audio file...";
+    
+            _bpmDetectionCts = new CancellationTokenSource();
+   
+            var progress = new Progress<double>(value =>
+       {
+   BpmDetectionProgress = value * 100; // Convert to percentage
+      BpmDetectionStatus = $"Detecting BPM... {BpmDetectionProgress:F0}%";
+  });
+
+          double? detectedBpm = await _bpmDetector.DetectBpmAsync(filePath, progress, _bpmDetectionCts.Token);
+
+     if (_bpmDetectionCts.Token.IsCancellationRequested)
+ {
+    BpmDetectionStatus = "Detection cancelled";
+           return;
+  }
+
+            if (detectedBpm.HasValue)
+            {
+      // Find the BPM metadata item and update it
+     var bpmItem = MetadataItems.FirstOrDefault(item => item.Name == "Beats Per Minute");
+   if (bpmItem != null)
+    {
+      bpmItem.Value = ((uint)detectedBpm.Value).ToString();
+         BpmDetectionStatus = $"BPM detected: {detectedBpm.Value:F0}";
+      }
+        else
+ {
+      BpmDetectionStatus = $"BPM detected: {detectedBpm.Value:F0} (unable to update field)";
+        }
+      
+  _logger.LogInformation("BPM detection completed: {BPM}", detectedBpm.Value);
+   }
+            else
+    {
+        BpmDetectionStatus = "Could not detect BPM";
+       MessageBox.Show("Unable to detect BPM for this track. The file may not have a clear rhythmic pattern.",
+         "BPM Detection", MessageBoxButton.OK, MessageBoxImage.Information);
+      }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during BPM detection");
+      BpmDetectionStatus = "Detection failed";
+          MessageBox.Show($"An error occurred during BPM detection:\n{ex.Message}",
+             "BPM Detection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+     finally
+        {
+            IsBpmDetecting = false;
+            _bpmDetectionCts?.Dispose();
+            _bpmDetectionCts = null;
+    }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanCancelBpmDetection))]
+    private void CancelBpmDetection()
+    {
+        _bpmDetectionCts?.Cancel();
+        BpmDetectionStatus = "Cancelling...";
+    }
+
+    private bool CanDetectBpm() => !IsBpmDetecting && _sharedDataModel.SelectedTrack != null && _bpmDetector != null;
+    
+  private bool CanCancelBpmDetection() => IsBpmDetecting;
 
     private void SharedDataModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
     {
@@ -702,10 +800,8 @@ public partial class PropertiesViewModel : ObservableObject
         if (tag.Pictures is { Length: > 0 })
         {
             AddPictureInfoItem("Picture Count", tag.Pictures.Length.ToString(), false, null);
-            AddPictureInfoItem("Picture Mime Type", tag.Pictures[0].MimeType ?? "", false, null);
             AddPictureInfoItem("Picture Type", tag.Pictures[0].Type.ToString(), false, null);
-            AddPictureInfoItem("Picture Filename", tag.Pictures[0].Filename ?? "", false, null);
-            AddPictureInfoItem("Picture Description", tag.Pictures[0].Description ?? "", false, null);
+            AddPictureInfoItem("Picture Mime Type", tag.Pictures[0].MimeType ?? "", false, null);
 
             // Add album cover image as a new TagItem with AlbumCoverSource property
             var pic = tag.Pictures[0];
@@ -714,6 +810,10 @@ public partial class PropertiesViewModel : ObservableObject
             {
                 try
                 {
+                    // Calculate and add picture size in KB
+                    double sizeInKB = pic.Data.Data.Length / 1024.0;
+                    AddPictureInfoItem("Picture Size", $"{sizeInKB:F2} KB", false, null);
+
                     using var ms = new MemoryStream(pic.Data.Data);
                     albumCover = new BitmapImage();
                     albumCover.BeginInit();
@@ -721,12 +821,17 @@ public partial class PropertiesViewModel : ObservableObject
                     albumCover.StreamSource = ms;
                     albumCover.EndInit();
                     albumCover.Freeze();
+
+                    // Add picture dimensions (width x height)
+                    AddPictureInfoItem("Picture Dimensions", $"{albumCover.PixelWidth} x {albumCover.PixelHeight}", false, null);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error loading album cover image: {Message}", ex.Message);
                 }
             }
+            AddPictureInfoItem("Picture Filename", tag.Pictures[0].Filename ?? "", false, null);
+            AddPictureInfoItem("Picture Description", tag.Pictures[0].Description ?? "", false, null);
             PictureInfoItems.Add(new TagItem
             {
                 Name = "Album Cover",
@@ -738,7 +843,7 @@ public partial class PropertiesViewModel : ObservableObject
         }
         else
         {
-            //_logger.LogDebug("No pictures found in tag data");
+           //_logger.LogDebug("No pictures found in tag data");
         }
 
         // Sort picture items: keep regular tags in original order, move custom tags (with angle brackets) to bottom
@@ -1067,6 +1172,7 @@ public partial class PropertiesViewModel : ObservableObject
                 var d when d.Contains("VOCAL", StringComparison.OrdinalIgnoreCase) => "VOCALS",
                 var d when d.Contains("SYNTHESIZER", StringComparison.OrdinalIgnoreCase) => "SYNTHESIZER",
                 var d when d.Contains("CLAP", StringComparison.OrdinalIgnoreCase) => "CLAPPING",
+
 
                 // Role mappings
                 var d when d.Contains("ENGINEER", StringComparison.OrdinalIgnoreCase) => "ENGINEER",
