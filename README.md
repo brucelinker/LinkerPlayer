@@ -11,8 +11,7 @@ LinkerPlayer is a modern, WPF, feature-rich audio player for Windows. It provide
 - **Audio Playback**: Supports popular formats including MP3, FLAC, APE, M4A, MP4, MPC, OGG, OPUS, WAV, WMA, WV.
 - **Tabbed Interface**: Create tabs for each playlist with drag-and-drop support.
 - **Playlist Management**: Support for playlist formats: m3u, pls, wpl, zpl.
-- **Metadata Editing**: View and edit tags such as Title, Artist, Album, Album Artist, Track/Disc numbers, Year, Genre, Composer, Copyright, Lyrics, and more.
-- **Lyrics Viewer**: Shows embedded lyrics with editing support.
+- **Properties Window**: View and edit tags such as Title, Artist, Album, Album Artist, Track/Disc numbers, Year, Genre, Composer, Copyright, Lyrics, and more. Able to detect Beats Per Minute (BPM).
 - **Customizable UI**: Modern WPF interface with theming and custom controls.
 - **Visualization**: Spectrum analyzer and VU meter for real-time audio visualization.
 - **Logging**: Integrated logging for troubleshooting and diagnostics.
