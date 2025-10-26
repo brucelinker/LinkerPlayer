@@ -31,9 +31,9 @@ public partial class PropertiesViewModel : ObservableObject
     private readonly IBpmDetector? _bpmDetector;
     private File? _audioFile;
     private CancellationTokenSource? _bpmDetectionCts;
-    
+
     [ObservableProperty] private bool hasUnsavedChanges;
-  [ObservableProperty] private bool isBpmDetecting;
+    [ObservableProperty] private bool isBpmDetecting;
     [ObservableProperty] private double bpmDetectionProgress;
     [ObservableProperty] private string bpmDetectionStatus = string.Empty;
 
@@ -48,12 +48,12 @@ public partial class PropertiesViewModel : ObservableObject
 
     public PropertiesViewModel(SharedDataModel sharedDataModel, IMediaFileHelper mediaFileHelper, ILogger<PropertiesViewModel> logger, IBpmDetector? bpmDetector = null)
     {
- _sharedDataModel = sharedDataModel;
+        _sharedDataModel = sharedDataModel;
         _mediaFileHelper = mediaFileHelper;
         _logger = logger;
         _bpmDetector = bpmDetector;
 
-  _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
+        _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
 
         if (_sharedDataModel.SelectedTrack != null)
         {
@@ -98,78 +98,78 @@ public partial class PropertiesViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanDetectBpm))]
     private async Task DetectBpmAsync()
     {
-     if (_bpmDetector == null)
+        if (_bpmDetector == null)
         {
-         MessageBox.Show("BPM detection is not available. The BASS audio library may not be properly initialized.",
-             "BPM Detection", MessageBoxButton.OK, MessageBoxImage.Warning);
-    return;
-     }
-
-        if (_sharedDataModel.SelectedTrack == null)
-     {
- return;
+            MessageBox.Show("BPM detection is not available. The BASS audio library may not be properly initialized.",
+                "BPM Detection", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
         }
 
-      string filePath = _sharedDataModel.SelectedTrack.Path;
-   
+        if (_sharedDataModel.SelectedTrack == null)
+        {
+            return;
+        }
+
+        string filePath = _sharedDataModel.SelectedTrack.Path;
+
         try
         {
-  IsBpmDetecting = true;
+            IsBpmDetecting = true;
             BpmDetectionProgress = 0;
             BpmDetectionStatus = "Analyzing audio file...";
-    
+
             _bpmDetectionCts = new CancellationTokenSource();
-   
+
             var progress = new Progress<double>(value =>
        {
-   BpmDetectionProgress = value * 100; // Convert to percentage
-      BpmDetectionStatus = $"Detecting BPM... {BpmDetectionProgress:F0}%";
-  });
+           BpmDetectionProgress = value * 100; // Convert to percentage
+           BpmDetectionStatus = $"Detecting BPM... {BpmDetectionProgress:F0}%";
+       });
 
-          double? detectedBpm = await _bpmDetector.DetectBpmAsync(filePath, progress, _bpmDetectionCts.Token);
+            double? detectedBpm = await _bpmDetector.DetectBpmAsync(filePath, progress, _bpmDetectionCts.Token);
 
-     if (_bpmDetectionCts.Token.IsCancellationRequested)
- {
-    BpmDetectionStatus = "Detection cancelled";
-           return;
-  }
+            if (_bpmDetectionCts.Token.IsCancellationRequested)
+            {
+                BpmDetectionStatus = "Detection cancelled";
+                return;
+            }
 
             if (detectedBpm.HasValue)
             {
-      // Find the BPM metadata item and update it
-     var bpmItem = MetadataItems.FirstOrDefault(item => item.Name == "Beats Per Minute");
-   if (bpmItem != null)
-    {
-      bpmItem.Value = ((uint)detectedBpm.Value).ToString();
-         BpmDetectionStatus = $"BPM detected: {detectedBpm.Value:F0}";
-      }
-        else
- {
-      BpmDetectionStatus = $"BPM detected: {detectedBpm.Value:F0} (unable to update field)";
-        }
-      
-  _logger.LogInformation("BPM detection completed: {BPM}", detectedBpm.Value);
-   }
+                // Find the BPM metadata item and update it
+                var bpmItem = MetadataItems.FirstOrDefault(item => item.Name == "Beats Per Minute");
+                if (bpmItem != null)
+                {
+                    bpmItem.Value = ((uint)detectedBpm.Value).ToString();
+                    BpmDetectionStatus = $"BPM detected: {detectedBpm.Value:F0}";
+                }
+                else
+                {
+                    BpmDetectionStatus = $"BPM detected: {detectedBpm.Value:F0} (unable to update field)";
+                }
+
+                _logger.LogInformation("BPM detection completed: {BPM}", detectedBpm.Value);
+            }
             else
-    {
-        BpmDetectionStatus = "Could not detect BPM";
-       MessageBox.Show("Unable to detect BPM for this track. The file may not have a clear rhythmic pattern.",
-         "BPM Detection", MessageBoxButton.OK, MessageBoxImage.Information);
-      }
+            {
+                BpmDetectionStatus = "Could not detect BPM";
+                MessageBox.Show("Unable to detect BPM for this track. The file may not have a clear rhythmic pattern.",
+                  "BPM Detection", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during BPM detection");
-      BpmDetectionStatus = "Detection failed";
-          MessageBox.Show($"An error occurred during BPM detection:\n{ex.Message}",
-             "BPM Detection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            BpmDetectionStatus = "Detection failed";
+            MessageBox.Show($"An error occurred during BPM detection:\n{ex.Message}",
+               "BPM Detection Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-     finally
+        finally
         {
             IsBpmDetecting = false;
             _bpmDetectionCts?.Dispose();
             _bpmDetectionCts = null;
-    }
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanCancelBpmDetection))]
@@ -180,8 +180,8 @@ public partial class PropertiesViewModel : ObservableObject
     }
 
     private bool CanDetectBpm() => !IsBpmDetecting && _sharedDataModel.SelectedTrack != null && _bpmDetector != null;
-    
-  private bool CanCancelBpmDetection() => IsBpmDetecting;
+
+    private bool CanCancelBpmDetection() => IsBpmDetecting;
 
     private void SharedDataModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
     {
@@ -799,10 +799,6 @@ public partial class PropertiesViewModel : ObservableObject
 
         if (tag.Pictures is { Length: > 0 })
         {
-            AddPictureInfoItem("Picture Count", tag.Pictures.Length.ToString(), false, null);
-            AddPictureInfoItem("Picture Type", tag.Pictures[0].Type.ToString(), false, null);
-            AddPictureInfoItem("Picture Mime Type", tag.Pictures[0].MimeType ?? "", false, null);
-
             // Add album cover image as a new TagItem with AlbumCoverSource property
             var pic = tag.Pictures[0];
             BitmapImage? albumCover = null;
@@ -810,10 +806,6 @@ public partial class PropertiesViewModel : ObservableObject
             {
                 try
                 {
-                    // Calculate and add picture size in KB
-                    double sizeInKB = pic.Data.Data.Length / 1024.0;
-                    AddPictureInfoItem("Picture Size", $"{sizeInKB:F2} KB", false, null);
-
                     using var ms = new MemoryStream(pic.Data.Data);
                     albumCover = new BitmapImage();
                     albumCover.BeginInit();
@@ -821,6 +813,19 @@ public partial class PropertiesViewModel : ObservableObject
                     albumCover.StreamSource = ms;
                     albumCover.EndInit();
                     albumCover.Freeze();
+
+                    PictureInfoItems.Add(new TagItem
+                    {
+                        Name = "Album Cover",
+                        Value = string.Empty,
+                        IsEditable = false,
+                        UpdateAction = null,
+                        AlbumCoverSource = albumCover
+                    });
+
+                    // Calculate and add picture size in KB
+                    double sizeInKB = pic.Data.Data.Length / 1024.0;
+                    AddPictureInfoItem("Picture Size", $"{sizeInKB:F2} KB", false, null);
 
                     // Add picture dimensions (width x height)
                     AddPictureInfoItem("Picture Dimensions", $"{albumCover.PixelWidth} x {albumCover.PixelHeight}", false, null);
@@ -830,20 +835,46 @@ public partial class PropertiesViewModel : ObservableObject
                     _logger.LogWarning(ex, "Error loading album cover image: {Message}", ex.Message);
                 }
             }
-            AddPictureInfoItem("Picture Filename", tag.Pictures[0].Filename ?? "", false, null);
-            AddPictureInfoItem("Picture Description", tag.Pictures[0].Description ?? "", false, null);
-            PictureInfoItems.Add(new TagItem
+
+            AddPictureInfoItem("Picture Count", tag.Pictures.Length.ToString(), false, null);
+            AddPictureInfoItem("Picture Type", tag.Pictures[0].Type.ToString(), false, null);
+            AddPictureInfoItem("Picture Mime Type", tag.Pictures[0].MimeType ?? "", false, null);
+
+            if (tag.Pictures.Length > 0)
             {
-                Name = "Album Cover",
-                Value = string.Empty,
-                IsEditable = false,
-                UpdateAction = null,
-                AlbumCoverSource = albumCover
+                if (string.IsNullOrEmpty(tag.Pictures[0].Filename))
+                {
+                    AddPictureInfoItem("Picture Filename", "<Embedded Image>", false, null);
+                }
+                else
+                {
+                    AddPictureInfoItem("Picture Filename", tag.Pictures[0].Filename, false, null);
+                }
+            }
+
+            AddPictureInfoItem("Picture Description", tag.Pictures[0].Description ?? "", true, v =>
+            {
+                // Update the picture description in the tag
+                var pictures = tag.Pictures;
+                if (pictures.Length > 0)
+                {
+                    var existingPic = pictures[0];
+                    var newPic = new TagLib.Picture(existingPic.Data)
+                    {
+                        Type = existingPic.Type,
+                        MimeType = existingPic.MimeType,
+                        Filename = existingPic.Filename,
+                        Description = string.IsNullOrEmpty(v) ? null : v
+                    };
+                    tag.Pictures = [newPic];
+                    HasUnsavedChanges = true;
+                }
             });
+
         }
         else
         {
-           //_logger.LogDebug("No pictures found in tag data");
+            //_logger.LogDebug("No pictures found in tag data");
         }
 
         // Sort picture items: keep regular tags in original order, move custom tags (with angle brackets) to bottom
@@ -989,13 +1020,20 @@ public partial class PropertiesViewModel : ObservableObject
 
     private void AddPictureInfoItem(string name, string value, bool isEditable, Action<string>? updateAction)
     {
-        PictureInfoItems.Add(new TagItem
+        TagItem item = new()
         {
             Name = name,
             Value = value,
             IsEditable = isEditable,
             UpdateAction = isEditable ? updateAction : null
-        });
+        };
+
+        if (isEditable)
+        {
+            item.PropertyChanged += TagItem_PropertyChanged!;
+        }
+
+        PictureInfoItems.Add(item);
     }
 
     private void TagItem_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -1024,6 +1062,12 @@ public partial class PropertiesViewModel : ObservableObject
 
             // Apply ReplayGain changes too
             foreach (TagItem item in ReplayGainItems.Where(i => i.IsEditable))
+            {
+                item.UpdateAction?.Invoke(item.Value);
+            }
+
+            // Apply picture changes (like Picture Description)
+            foreach (TagItem item in PictureInfoItems.Where(i => i.IsEditable))
             {
                 item.UpdateAction?.Invoke(item.Value);
             }

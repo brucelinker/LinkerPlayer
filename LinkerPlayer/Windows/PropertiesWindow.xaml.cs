@@ -1,4 +1,5 @@
 ﻿using LinkerPlayer.ViewModels;
+using LinkerPlayer.Models;
 using System;
 using System.Globalization;
 using System.Windows;
@@ -116,6 +117,33 @@ public partial class PropertiesWindow
         }
     }
 
+    private void PictureDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    {
+      // Cancel edit if the row is not editable
+        if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
+        {
+            e.Cancel = true;
+    }
+    }
+
+    private void MetadataDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    {
+   // Cancel edit if the row is not editable (e.g., custom tags with angle brackets)
+        if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
+ {
+         e.Cancel = true;
+        }
+    }
+
+    private void ReplayGainDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    {
+        // Cancel edit if the row is not editable (e.g., Peak values)
+     if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
+        {
+   e.Cancel = true;
+        }
+    }
+
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         ClosePropertiesWindow();
@@ -147,6 +175,26 @@ public partial class PropertiesWindow
             CommentTextBox.Focus();
             CommentTextBox.SelectAll();
         }
+    }
+
+    private void LyricsTextBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Clear all DataGrid selections when Lyrics TextBox is focused
+        ClearAllDataGridSelections();
+    }
+
+    private void CommentTextBox_GotFocus(object sender, RoutedEventArgs e)
+    {
+        // Clear all DataGrid selections when Comment TextBox is focused
+        ClearAllDataGridSelections();
+    }
+
+    private void ClearAllDataGridSelections()
+    {
+        MetadataDataGrid?.UnselectAll();
+        PropertiesDataGrid?.UnselectAll();
+        ReplayGainDataGrid?.UnselectAll();
+        PictureDataGrid?.UnselectAll();
     }
 
     private void EditableTextBox_GotFocus(object sender, RoutedEventArgs e)
@@ -291,5 +339,29 @@ public partial class PropertiesWindow
                 return result;
         }
         return null;
+    }
+
+    private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+  // Only handle additions (when a row is selected), not removals
+        if (e.AddedItems.Count == 0)
+     return;
+
+        DataGrid? currentDataGrid = sender as DataGrid;
+        if (currentDataGrid == null)
+      return;
+
+        // Clear selection in all other DataGrids
+     if (currentDataGrid != MetadataDataGrid)
+            MetadataDataGrid?.UnselectAll();
+        
+        if (currentDataGrid != PropertiesDataGrid)
+   PropertiesDataGrid?.UnselectAll();
+        
+        if (currentDataGrid != ReplayGainDataGrid)
+     ReplayGainDataGrid?.UnselectAll();
+        
+if (currentDataGrid != PictureDataGrid)
+            PictureDataGrid?.UnselectAll();
     }
 }

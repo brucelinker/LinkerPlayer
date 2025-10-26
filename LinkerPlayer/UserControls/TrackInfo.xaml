@@ -156,10 +156,10 @@
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch">
       <Grid.RowDefinitions>
-        <RowDefinition Height="*"/>
-        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
-      
+
       <audio:SpectrumAnalyzer
         x:Name="Spectrum"
         Grid.Row="0"
@@ -173,7 +173,7 @@
         PeakHeight="3.0"
         RefreshInterval="25"
         Style="{StaticResource SpectrumAnalyzerStyle}" />
-        
+
       <Button
         Name="SpectrumButton"
         Grid.Row="0"

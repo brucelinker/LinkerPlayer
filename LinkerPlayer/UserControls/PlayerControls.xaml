@@ -342,7 +342,7 @@
             Minimum="0"
             Visibility="Visible" />
 
-          <!-- OutputMode  -->
+          <!--  OutputMode  -->
           <TextBlock
             x:Name="Info"
             Grid.RowSpan="2"
