@@ -4,6 +4,7 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
+using LinkerPlayer.ViewModels.Properties.Loaders;
 using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -39,7 +40,8 @@ public partial class App
                 {
                     options.IncludeScopes = false;
                     options.TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff ";
-                    options.UseUtcTimestamp = false;                });
+                    options.UseUtcTimestamp = false;
+                });
                 logging.AddDebug();
                 logging.AddFile($"Logs/LinkerPlayer-{timestamp}.txt", options =>
                 {
@@ -63,9 +65,10 @@ public partial class App
 
                 // NEW: Database save service for debouncing saves
                 services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
-                
+
                 // BASS audio services
-                  services.AddSingleton<IBpmDetector, BpmDetector>();
+                services.AddSingleton<IBpmDetector, BpmDetector>();
+                services.AddSingleton<IReplayGainCalculator, ReplayGainCalculator>();
 
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
@@ -75,6 +78,17 @@ public partial class App
                 services.AddSingleton<BassAudioEngine>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
+
+                // Metadata loaders
+                services.AddTransient<CoreMetadataLoader>();
+                services.AddTransient<CustomMetadataLoader>();
+                services.AddTransient<FilePropertiesLoader>();
+                services.AddTransient<ReplayGainLoader>();
+                services.AddTransient<PictureInfoLoader>();
+                services.AddTransient<LyricsCommentLoader>();
+
+                // PropertiesViewModel - transient since it's created per Properties window
+                services.AddTransient<PropertiesViewModel>();
             })
             .Build();
 
@@ -208,12 +222,12 @@ public partial class App
             {
                 ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
                 _logger.LogInformation("SettingsManager retrieved for shutdown");
-                
+
                 // NEW: Force immediate database save on shutdown
                 IDatabaseSaveService databaseSaveService = AppHost.Services.GetRequiredService<IDatabaseSaveService>();
                 databaseSaveService.SaveImmediately();
                 _logger.LogInformation("Database saved on shutdown");
-                
+
                 IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
                 musicLibrary.SaveMetadataCacheAsync().GetAwaiter().GetResult(); // Save metadata cache on exit
                 _logger.LogInformation("Metadata cache saved successfully");
@@ -222,7 +236,7 @@ public partial class App
             {
                 _logger.LogError(ex, "Error saving data during shutdown - continuing with cleanup");
             }
-            
+
             // Cleanup AudioEngine first to avoid RPC timeouts
             try
             {
@@ -234,7 +248,7 @@ public partial class App
             {
                 _logger.LogError(ex, "Error disposing AudioEngine - continuing with cleanup");
             }
-            
+
             _logger.LogInformation("Application shutdown complete");
         }
         catch (Exception ex)
@@ -253,7 +267,7 @@ public partial class App
         {
             _logger.LogError(ex, "Error disposing AppHost");
         }
-        
+
         try
         {
             WindowPlace.Save();
@@ -263,7 +277,7 @@ public partial class App
         {
             _logger.LogError(ex, "Error saving window placement");
         }
-        
+
         base.OnExit(e);
     }
 }

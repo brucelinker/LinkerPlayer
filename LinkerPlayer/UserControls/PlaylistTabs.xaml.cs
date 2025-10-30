@@ -221,19 +221,14 @@ public partial class PlaylistTabs
 
     private void MenuItem_Properties(object sender, RoutedEventArgs e)
     {
-        if (DataContext is PlaylistTabsViewModel playlistTabsViewModel)
+      // Use DI to create PropertiesViewModel with all its dependencies
+ PropertiesViewModel propertiesViewModel = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
+       
+        PropertiesWindow dialog = new PropertiesWindow
         {
-        SharedDataModel sharedDataModel = playlistTabsViewModel.SharedDataModel;
-          IMediaFileHelper mediaFileHelper = App.AppHost.Services.GetRequiredService<IMediaFileHelper>();
-        ILogger<PropertiesViewModel> logger = App.AppHost.Services.GetRequiredService<ILogger<PropertiesViewModel>>();
-   IBpmDetector? bpmDetector = App.AppHost.Services.GetRequiredService<IBpmDetector>();
-          PropertiesViewModel propertiesViewModel = new PropertiesViewModel(sharedDataModel, mediaFileHelper, logger, bpmDetector);
-            PropertiesWindow dialog = new PropertiesWindow
-            {
-           DataContext = propertiesViewModel
-   };
- dialog.Show();
-        }
+      DataContext = propertiesViewModel
+        };
+        dialog.Show();
     }
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

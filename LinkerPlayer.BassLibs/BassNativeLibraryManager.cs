@@ -107,6 +107,7 @@ namespace LinkerPlayer.BassLibs
                 "bassalac.dll",
                 "bassape.dll",
                 "bassflac.dll",
+                "bassloud.dll",
                 "bassmix.dll",
                 "bassopus.dll",
                 "basswasapi.dll",

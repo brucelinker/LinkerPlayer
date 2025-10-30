@@ -10,6 +10,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <None Remove="Native\bassloud.dll" />
 	  <None Remove="Native\bassopus.dll" />
 	  <None Remove="Native\basswebm.dll" />
 	  <None Remove="Native\bass_dts.dll" />
@@ -38,6 +39,7 @@
 		<EmbeddedResource Include="Native\bassflac.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bassflac.dll</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassloud.dll" />
 		<EmbeddedResource Include="Native\bassmix.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bassmix.dll</LogicalName>
 		</EmbeddedResource>

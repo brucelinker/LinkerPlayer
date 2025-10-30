@@ -11,6 +11,30 @@ using System.Windows.Media;
 namespace LinkerPlayer.Windows;
 
 /// <summary>
+/// Inverts a boolean value
+/// </summary>
+public class InverseBooleanConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is bool boolValue)
+        {
+       return !boolValue;
+        }
+        return false;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+   if (value is bool boolValue)
+        {
+            return !boolValue;
+        }
+        return false;
+    }
+}
+
+/// <summary>
 /// Converts false to Visible and true to Collapsed
 /// </summary>
 public class InvertedBooleanToVisibilityConverter : IValueConverter

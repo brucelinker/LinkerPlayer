@@ -190,43 +190,52 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
 
         _dataGrid = sender as DataGrid;
-        if (_dataGrid?.SelectedItem is MediaFile selectedTrack)
+   
+        // Handle multi-selection
+        if (_dataGrid != null && _dataGrid.SelectedItems.Count > 0)
         {
-            if (SelectedTrack?.Id == selectedTrack.Id)
-            {
+        var selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
+     SharedDataModel.UpdateSelectedTracks(selectedTracks);
+
+     // Use the first selected item as the primary selection for backward compatibility
+   MediaFile selectedTrack = selectedTracks.First();
+
+if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
+   {
                 return;
-            }
+        }
 
-            // Save the user's selection
-            if (!SetLastSelectedTrack(selectedTrack))
-            {
-                // SelectedPlaylist is null
-                return;
-            }
+     // Save the user's selection
+      if (!SetLastSelectedTrack(selectedTrack))
+     {
+              // SelectedPlaylist is null
+   return;
+       }
 
-            SelectedTrack = selectedTrack;
-            SelectedTrackIndex = _dataGrid.SelectedIndex;
+    SelectedTrack = selectedTrack;
+            SelectedTrackIndex = _dataGrid.Items.IndexOf(selectedTrack);
 
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-            {
+     if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+{
                 var tab = TabList[SelectedTabIndex];
-                tab.SelectedTrack = SelectedTrack;
-                tab.SelectedIndex = SelectedTrackIndex;
+  tab.SelectedTrack = SelectedTrack;
+   tab.SelectedIndex = SelectedTrackIndex;
             }
 
-            _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
+        _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedTrackId));
 
-            _dataGrid.ScrollIntoView(SelectedTrack);
+       _dataGrid.ScrollIntoView(SelectedTrack);
 
-            if (ActiveTrack == null)
+       if (ActiveTrack == null)
             {
-                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
-            }
+ WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+      }
         }
-        else
+    else
         {
-            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(null));
+    SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
+ WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(null));
         }
     }
 

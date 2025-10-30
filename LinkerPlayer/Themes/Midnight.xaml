@@ -7,7 +7,7 @@
   <Color x:Key="MainWindowGradientEndColor">Black</Color>
   <Color x:Key="MainWindowBorderColor">#673AB7</Color>
 
-  <Color x:Key="ControlAccentLightColor">#673AB7</Color>
+  <Color x:Key="ControlAccentLightColor">#9184EE</Color>
   <Color x:Key="ControlAccentDarkColor">#673AB7</Color>
   <Color x:Key="ControlForegroundColor">White</Color>
   <Color x:Key="ControlBackgroundColor">Transparent</Color>
@@ -73,7 +73,7 @@
 
   <Color x:Key="SpectrumStartColor">#2C086A</Color>
   <Color x:Key="SpectrumEndColor">Black</Color>
-  <Color x:Key="SpectrumPeakColor">#8950F0</Color>
+  <Color x:Key="SpectrumPeakColor">#9184EE</Color>
 
   <Color x:Key="SpectrumLineColor">LightSteelBlue</Color>
   <Color x:Key="SpectrumBackgroundColor">#FFFFFF</Color>

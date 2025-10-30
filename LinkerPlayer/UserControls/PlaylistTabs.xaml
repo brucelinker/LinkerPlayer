@@ -255,7 +255,7 @@
             ScrollViewer.CanContentScroll="False"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             SelectionChanged="TracksTable_OnSelectionChanged"
-            SelectionMode="Single"
+            SelectionMode="Extended"
             SelectionUnit="FullRow"
             Sorting="TracksTable_OnSorting"
             Style="{StaticResource SharedDataGridStyle}"
