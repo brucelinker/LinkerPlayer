@@ -63,6 +63,7 @@ public class EditableTabHeaderControl : ContentControl
             {
                 if (_oldText != null) _textBox.Text = _oldText;
             }
+
             SetValue(IsInEditModeProperty, value);
         }
     }
@@ -79,7 +80,9 @@ public class EditableTabHeaderControl : ContentControl
             {
                 _logger.LogWarning("EditableTabHeaderControl: DataContext is not PlaylistTab in SetEditMode");
             }
+
             PlaylistTabsViewModel? viewModel = FindAncestorViewModel(this);
+
             if (viewModel != null)
             {
                 Tag = viewModel;
@@ -89,7 +92,9 @@ public class EditableTabHeaderControl : ContentControl
                 _logger.LogError("EditableTabHeaderControl: Could not find PlaylistTabsViewModel in SetEditMode");
             }
         }
+
         IsInEditMode = value;
+
         if (value && _timer != null)
         {
             _timer.Start();
@@ -108,7 +113,8 @@ public class EditableTabHeaderControl : ContentControl
         {
             if (!string.IsNullOrEmpty(_textBox.Text))
             {
-                _textBox.CaretIndex = _textBox.Text.Length;
+                _textBox.SelectAll();
+                //_textBox.CaretIndex = _textBox.Text.Length;
                 _textBox.Focus();
             }
         }
@@ -127,13 +133,23 @@ public class EditableTabHeaderControl : ContentControl
         }
         else if (e.Key == Key.Enter)
         {
-            IsInEditMode = false;
             if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel)
             {
-                viewModel.RenamePlaylistAsync((tab, _oldText)).GetAwaiter().GetResult();
+                // Store the new text value
+                string newText = _textBox!.Text;
+
+                // Update _oldText so the TextBlock shows the new value when we exit edit mode
+                string? previousOldText = _oldText;
+                _oldText = newText;
+
+                IsInEditMode = false;
+
+                // Call rename with the previous old text
+                viewModel.RenamePlaylistAsync((tab, previousOldText)).GetAwaiter().GetResult();
             }
             else
             {
+                IsInEditMode = false;
                 _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxKeyDown, DataContext: {DataType}, Tag: {TagType}",
                     DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
             }
@@ -149,15 +165,28 @@ public class EditableTabHeaderControl : ContentControl
             return;
         }
 
-        IsInEditMode = false;
         if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel && _textBox!.Text != _oldText)
         {
-            _ = viewModel.RenamePlaylistAsync((tab, _oldText));
+            // Store the new text value
+            string newText = _textBox.Text;
+            string? previousOldText = _oldText;
+
+            // Update _oldText so the TextBlock shows the new value when we exit edit mode
+            _oldText = newText;
+
+            IsInEditMode = false;
+
+            // Call rename with the previous old text
+            _ = viewModel.RenamePlaylistAsync((tab, previousOldText));
         }
-        else if (_textBox!.Text != _oldText)
+        else
         {
-            _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxLostFocus, DataContext: {DataType}, Tag: {TagType}",
-                DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
+            IsInEditMode = false;
+            if (_textBox!.Text != _oldText)
+            {
+                _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxLostFocus, DataContext: {DataType}, Tag: {TagType}",
+                    DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
+            }
         }
     }
 

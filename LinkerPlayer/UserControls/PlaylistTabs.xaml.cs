@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -17,7 +16,6 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Shapes;
 
 namespace LinkerPlayer.UserControls;
 
@@ -270,25 +268,31 @@ public partial class PlaylistTabs
     {
         if (e.LeftButton == MouseButtonState.Pressed && sender is EditableTabHeaderControl tabHeader)
         {
-            if (tabHeader.DataContext is PlaylistTab playlistTab)
+          // Don't start drag if the tab header is in edit mode
+        if (tabHeader.IsInEditMode)
+            {
+       return;
+          }
+
+   if (tabHeader.DataContext is PlaylistTab playlistTab)
             {
                 _draggedTab = playlistTab;
-                _draggedTabIndex = GetTabIndex(playlistTab);
-                
-                if (_draggedTabIndex >= 0)
-                {
-                    // Set custom cursor for drag operation
-                    Mouse.SetCursor(Cursors.Hand);
-                    
-                    DragDropEffects effects = DragDrop.DoDragDrop(tabHeader, playlistTab, DragDropEffects.Move);
-                    
-                    // Reset after drag completes
-                    RemoveDropIndicator();
-                    _draggedTab = null;
-                    _draggedTabIndex = -1;
-                    Mouse.SetCursor(Cursors.Arrow);
+       _draggedTabIndex = GetTabIndex(playlistTab);
+         
+    if (_draggedTabIndex >= 0)
+          {
+          // Set custom cursor for drag operation
+      Mouse.SetCursor(Cursors.Hand);
+         
+      DragDropEffects effects = DragDrop.DoDragDrop(tabHeader, playlistTab, DragDropEffects.Move);
+    
+          // Reset after drag completes
+               RemoveDropIndicator();
+      _draggedTab = null;
+           _draggedTabIndex = -1;
+     Mouse.SetCursor(Cursors.Arrow);
                 }
-            }
+     }
         }
     }
 

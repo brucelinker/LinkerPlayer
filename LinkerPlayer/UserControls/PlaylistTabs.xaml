@@ -61,7 +61,8 @@
                     x:Name="PART_TabHeader"
                     HorizontalAlignment="Stretch"
                     VerticalAlignment="Stretch"
-                    Foreground="{TemplateBinding Foreground}"
+                    Background="White"
+                    Foreground="Black"
                     Text="{Binding Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                     Visibility="Collapsed" />
                   <TextBlock
