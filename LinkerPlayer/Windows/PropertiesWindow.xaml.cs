@@ -111,15 +111,27 @@ public partial class PropertiesWindow
         this.Loaded += PropertiesWindow_Loaded;
     }
 
-    private const int ScrollAmount = 20; // At the top of the class
-
     private void PropertiesWindow_Loaded(object sender, RoutedEventArgs e)
     {
         if (DataContext is PropertiesViewModel vm)
         {
-            vm.CloseRequested += PropertiesViewModel_CloseRequested;
+   vm.CloseRequested += PropertiesViewModel_CloseRequested;
         }
     }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // Properly dispose the ViewModel when window closes
+    if (DataContext is PropertiesViewModel vm)
+        {
+            vm.CloseRequested -= PropertiesViewModel_CloseRequested;
+          vm.Dispose();
+        }
+
+  base.OnClosed(e);
+    }
+
+    private const int ScrollAmount = 20; // At the top of the class
 
     private void PropertiesViewModel_CloseRequested(object? sender, bool result)
     {

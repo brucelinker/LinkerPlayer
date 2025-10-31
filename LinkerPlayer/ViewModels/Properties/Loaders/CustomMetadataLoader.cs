@@ -25,8 +25,8 @@ public class CustomMetadataLoader : IMetadataLoader
         "TITLE", "ARTIST", "ALBUM", "ALBUMARTIST", "DATE", "YEAR", "GENRE", "COMPOSER",
         "TRACKNUMBER", "TRACK", "TOTALTRACKS", "TRACKCOUNT", "DISCNUMBER", "DISC",
   "TOTALDISCS", "DISCCOUNT", "COMMENT", "COPYRIGHT", "LYRICS", "BPM",
-        "BEATSPERMINUTE", "CONDUCTOR", "GROUPING", "PUBLISHER", "ISRC",
-        "ENCODER", "ENCODED-BY", "ENCODEDBY", "TOOL", "SOFTWARE", "ENCODING_TOOL",
+        "BEATSPERMINUTE", "CONDUCTOR", "GROUPING", "PUBLISHER",
+     "ENCODER", "ENCODED-BY", "ENCODEDBY", "TOOL", "SOFTWARE", "ENCODING_TOOL",
   "REPLAYGAIN_TRACK_GAIN", "REPLAYGAIN_TRACK_PEAK", "REPLAYGAIN_ALBUM_GAIN", "REPLAYGAIN_ALBUM_PEAK"
     };
 
@@ -97,12 +97,94 @@ public class CustomMetadataLoader : IMetadataLoader
 
     public void LoadMultiple(IReadOnlyList<File> audioFiles, ObservableCollection<TagItem> targetCollection)
   {
-   // For multiple files, custom metadata is too complex to compare meaningfully
-        // Skip loading custom metadata for multi-selection
-        // DON'T clear - ViewModel handles this and CoreMetadataLoader has already added items
-        // targetCollection.Clear();
-        
-        _logger.LogDebug("Custom metadata not displayed for multiple file selection");
+        if (audioFiles == null || audioFiles.Count == 0)
+        {
+       _logger.LogWarning("No audio files provided for custom metadata loading");
+            return;
+        }
+
+     // Aggregate custom fields across all files, showing "<various>" when values differ
+        var allCustomFields = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+        // Track which files have each field (to detect missing fields)
+  var fieldPresenceByFile = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+
+  for (int fileIndex = 0; fileIndex < audioFiles.Count; fileIndex++)
+  {
+       var audioFile = audioFiles[fileIndex];
+      if (audioFile?.Tag == null)
+      continue;
+
+    var customFields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+   LoadApeCustomTags(audioFile, customFields);
+            LoadVorbisCustomTags(audioFile, customFields);
+            LoadITunesCustomTags(audioFile, customFields);
+         LoadId3v2CustomTags(audioFile, customFields);
+
+      // Aggregate into allCustomFields
+ foreach (var kvp in customFields)
+   {
+ string fieldName = kvp.Key;
+    
+   // Skip picture-related fields
+    if (PictureFields.Contains(fieldName))
+    continue;
+
+           string combinedValue = string.Join("; ", kvp.Value.Distinct().Where(v => !string.IsNullOrWhiteSpace(v)));
+         
+      if (!string.IsNullOrWhiteSpace(combinedValue))
+      {
+         if (!allCustomFields.ContainsKey(fieldName))
+         {
+           allCustomFields[fieldName] = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+   fieldPresenceByFile[fieldName] = new HashSet<int>();
+  }
+      
+     if (!allCustomFields[fieldName].ContainsKey(combinedValue))
+   {
+             allCustomFields[fieldName][combinedValue] = 0;
+         }
+    allCustomFields[fieldName][combinedValue]++;
+     fieldPresenceByFile[fieldName].Add(fileIndex);
+          }
+    }
+     }
+
+     // Add aggregated custom fields to UI
+      foreach (var kvp in allCustomFields.OrderBy(x => x.Key))
+  {
+       string fieldName = kvp.Key;
+ var valueOccurrences = kvp.Value;
+   var filesWithField = fieldPresenceByFile[fieldName];
+
+ string displayValue;
+            
+  // Check if ALL files have this field
+            if (filesWithField.Count < audioFiles.Count)
+      {
+          // Some files don't have this field at all - show <various>
+          displayValue = "<various>";
+}
+       else if (valueOccurrences.Count == 1)
+      {
+ // All files have the same value
+  displayValue = valueOccurrences.Keys.First();
+   }
+        else
+{
+           // Multiple different values
+   displayValue = "<various>";
+    }
+
+targetCollection.Add(new TagItem
+      {
+         Name = $"<{fieldName}>", // Angle brackets indicate custom field
+Value = displayValue,
+        IsEditable = false // Custom tags are read-only for multi-selection
+      });
+ }
+
+    _logger.LogDebug("Loaded {Count} custom metadata fields for {FileCount} files", targetCollection.Count, audioFiles.Count);
     }
 
     private void LoadApeCustomTags(File audioFile, Dictionary<string, List<string>> customFields)

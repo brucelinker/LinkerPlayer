@@ -177,6 +177,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         if (_dataGrid == null || tab == null) return;
 
+        // FIX: Clear SelectedTracks when switching tabs to prevent "stuck" Properties window
+        // This ensures any open PropertiesViewModel isn't listening to the old tab's selections
+        SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
+
         SelectedPlaylist = GetSelectedPlaylist();
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
