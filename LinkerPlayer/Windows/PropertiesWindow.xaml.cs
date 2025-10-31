@@ -19,14 +19,14 @@ public class InverseBooleanConverter : IValueConverter
     {
         if (value is bool boolValue)
         {
-       return !boolValue;
+            return !boolValue;
         }
         return false;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-   if (value is bool boolValue)
+        if (value is bool boolValue)
         {
             return !boolValue;
         }
@@ -43,16 +43,16 @@ public class InvertedBooleanToVisibilityConverter : IValueConverter
     {
         if (value is bool boolValue)
         {
-return !boolValue ? Visibility.Visible : Visibility.Collapsed;
-    }
+            return !boolValue ? Visibility.Visible : Visibility.Collapsed;
+        }
         return Visibility.Collapsed;
     }
 
-  public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-  {
-    if (value is Visibility visibility)
-   {
-    return visibility != Visibility.Visible;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value is Visibility visibility)
+        {
+            return visibility != Visibility.Visible;
         }
         return false;
     }
@@ -67,9 +67,9 @@ public class BpmRowVisibilityConverter : IValueConverter
     {
         if (value is string name && name == "Beats Per Minute")
         {
-      return Visibility.Collapsed; // Hide normal text for BPM row
+            return Visibility.Collapsed; // Hide normal text for BPM row
         }
-  return Visibility.Visible;
+        return Visibility.Visible;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -89,7 +89,7 @@ public class InverseBpmRowVisibilityConverter : IValueConverter
         {
             return Visibility.Visible; // Show BPM detection UI for BPM row
         }
- return Visibility.Collapsed;
+        return Visibility.Collapsed;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -105,9 +105,9 @@ public partial class PropertiesWindow
 {
     public PropertiesWindow()
     {
-     InitializeComponent();
+        InitializeComponent();
 
-     ((App)Application.Current).WindowPlace.Register(this);
+        ((App)Application.Current).WindowPlace.Register(this);
         this.Loaded += PropertiesWindow_Loaded;
     }
 
@@ -115,20 +115,20 @@ public partial class PropertiesWindow
     {
         if (DataContext is PropertiesViewModel vm)
         {
-   vm.CloseRequested += PropertiesViewModel_CloseRequested;
+            vm.CloseRequested += PropertiesViewModel_CloseRequested;
         }
     }
 
     protected override void OnClosed(EventArgs e)
     {
         // Properly dispose the ViewModel when window closes
-    if (DataContext is PropertiesViewModel vm)
+        if (DataContext is PropertiesViewModel vm)
         {
             vm.CloseRequested -= PropertiesViewModel_CloseRequested;
-          vm.Dispose();
+            vm.Dispose();
         }
 
-  base.OnClosed(e);
+        base.OnClosed(e);
     }
 
     private const int ScrollAmount = 20; // At the top of the class
@@ -155,28 +155,28 @@ public partial class PropertiesWindow
 
     private void PictureDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
     {
-      // Cancel edit if the row is not editable
+        // Cancel edit if the row is not editable
         if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
         {
             e.Cancel = true;
-    }
+        }
     }
 
     private void MetadataDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
     {
-   // Cancel edit if the row is not editable (e.g., custom tags with angle brackets)
+        // Cancel edit if the row is not editable (e.g., custom tags with angle brackets)
         if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
- {
-         e.Cancel = true;
+        {
+            e.Cancel = true;
         }
     }
 
     private void ReplayGainDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
     {
         // Cancel edit if the row is not editable (e.g., Peak values)
-     if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
+        if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
         {
-   e.Cancel = true;
+            e.Cancel = true;
         }
     }
 
@@ -379,25 +379,25 @@ public partial class PropertiesWindow
 
     private void DataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-  // Only handle additions (when a row is selected), not removals
+        // Only handle additions (when a row is selected), not removals
         if (e.AddedItems.Count == 0)
-     return;
+            return;
 
         DataGrid? currentDataGrid = sender as DataGrid;
         if (currentDataGrid == null)
-      return;
+            return;
 
         // Clear selection in all other DataGrids
-     if (currentDataGrid != MetadataDataGrid)
+        if (currentDataGrid != MetadataDataGrid)
             MetadataDataGrid?.UnselectAll();
-        
+
         if (currentDataGrid != PropertiesDataGrid)
-   PropertiesDataGrid?.UnselectAll();
-        
+            PropertiesDataGrid?.UnselectAll();
+
         if (currentDataGrid != ReplayGainDataGrid)
-     ReplayGainDataGrid?.UnselectAll();
-        
-if (currentDataGrid != PictureDataGrid)
+            ReplayGainDataGrid?.UnselectAll();
+
+        if (currentDataGrid != PictureDataGrid)
             PictureDataGrid?.UnselectAll();
     }
 }

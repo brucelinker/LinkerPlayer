@@ -9,7 +9,6 @@
   d:DesignHeight="450"
   d:DesignWidth="250"
   DataContext="{Binding RelativeSource={RelativeSource Self}}"
-  FontFamily="Segoe UI"
   FontWeight="Light"
   mc:Ignorable="d">
 

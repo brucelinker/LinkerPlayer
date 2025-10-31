@@ -4,18 +4,42 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Application.Resources>
     <ResourceDictionary>
-      <BitmapImage x:Key="AppIcon" UriSource="Images/app64.ico" />
+      <!--  Load theme colors and brushes FIRST  -->
       <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Themes/Midnight.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/SolidColorBrushes.xaml" />
+
+        <!--  Load component styles SECOND  -->
+        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/HorizontalSlider.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/RectangleButton.xaml" />
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/CircularButton.xaml" />
-        <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Themes/Midnight.xaml" />
+
+        <!--  Load icon packs LAST  -->
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Octicons;component/Themes/packiconocticons.xaml" />
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Material;component/Themes/packiconmaterial.xaml" />
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Entypo;component/Themes/packiconentypo.xaml" />
       </ResourceDictionary.MergedDictionaries>
+
+      <BitmapImage x:Key="AppIcon" UriSource="Images/app64.ico" />
+
+      <!--  =========================================  -->
+      <!--  GLOBAL FONT CONFIGURATION  -->
+      <!--  =========================================  -->
+      <!--  Font styles defined AFTER MergedDictionaries to ensure they override any defaults  -->
+      <!--  Segoe UI Light (Thinner, modern - RECOMMENDED)  -->
+
+      <Style TargetType="{x:Type Window}">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontWeight" Value="Light" />
+        <Setter Property="FontSize" Value="12" />
+      </Style>
+
+      <Style TargetType="{x:Type UserControl}">
+        <Setter Property="FontFamily" Value="Segoe UI" />
+        <Setter Property="FontWeight" Value="Light" />
+        <Setter Property="FontSize" Value="12" />
+      </Style>
     </ResourceDictionary>
   </Application.Resources>
 </Application>

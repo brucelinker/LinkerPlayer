@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
@@ -43,6 +42,7 @@ public class MainViewModel : ObservableObject
                 selectedTheme = ThemeColors.Dark;
             }
 
+            // Theme system now properly preserves fonts via caching in ThemeManager
             ThemeMgr.ModifyTheme(selectedTheme);
             _logger.Log(LogLevel.Information, "MainViewModel initialized successfully");
         }

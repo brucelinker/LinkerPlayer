@@ -14,7 +14,6 @@
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
   Closing="Window_Closing"
-  FontFamily="Segoe UI"
   Loaded="Window_Loaded"
   ResizeMode="NoResize"
   ShowInTaskbar="False"
@@ -35,7 +34,6 @@
       </ResourceDictionary.MergedDictionaries>
 
       <Style TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
         <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
@@ -120,7 +118,6 @@
             Background="{DynamicResource ComboboxItemBackgroundBrush}"
             BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
             BorderThickness="1"
-            FontFamily="Segoe UI"
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
             SelectionChanged="OnOutputModeSelectionChanged"
@@ -154,7 +151,6 @@
             Background="{DynamicResource ComboboxItemBackgroundBrush}"
             BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
             BorderThickness="1"
-            FontFamily="Segoe UI"
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
             Style="{StaticResource CustomComboBoxStyle}" />
@@ -183,7 +179,6 @@
             Background="{DynamicResource ComboboxItemBackgroundBrush}"
             BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
             BorderThickness="1"
-            FontFamily="Segoe UI"
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ComboboxItemForegroundBrush}"
             SelectionChanged="OnThemeSelectionChanged"

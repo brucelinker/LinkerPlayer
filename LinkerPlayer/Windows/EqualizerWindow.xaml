@@ -15,7 +15,6 @@
   AllowsTransparency="True"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
-  FontFamily="Segoe UI"
   FontStyle="Normal"
   FontWeight="Normal"
   Loaded="Window_Loaded"
@@ -45,7 +44,6 @@
     <Grid.Resources>
 
       <Style x:Key="TextBlockFontStyle" TargetType="TextBlock">
-        <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
       </Style>
 
@@ -125,7 +123,6 @@
         materialDesign:HintAssist.Hint="Default"
         Background="Transparent"
         BorderBrush="{DynamicResource ControlBorderBrush}"
-        FontFamily="Segoe UI"
         FontSize="{DynamicResource FontSizeNormal}"
         FontStyle="Normal"
         FontWeight="Normal"
@@ -155,7 +152,6 @@
             <TextBox
               Name="NewPopupTextBox"
               Background="{DynamicResource ComboboxBackgroundBrush}"
-              FontFamily="Segoe UI"
               FontSize="{DynamicResource FontSizeNormal}"
               FontStyle="Normal"
               FontWeight="Normal"

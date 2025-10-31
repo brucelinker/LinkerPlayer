@@ -438,146 +438,144 @@
 
             <!--  ReplayGain Title with Bar  -->
             <Grid Grid.Row="6" Margin="0,0,0,5">
-    <Grid.ColumnDefinitions>
-       <ColumnDefinition Width="Auto" />
-         <ColumnDefinition Width="*" />
-    <ColumnDefinition Width="Auto" />
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-         
-           <TextBlock
-             Grid.Column="0"
+
+              <TextBlock
+                Grid.Column="0"
                 VerticalAlignment="Center"
-      FontSize="{DynamicResource FontSizeHeading}"
-     FontWeight="Normal"
-      Foreground="{DynamicResource ControlAccentLightBrush}"
-   Text="ReplayGain" />
-   
-   <Rectangle
+                FontSize="{DynamicResource FontSizeHeading}"
+                FontWeight="Normal"
+                Foreground="{DynamicResource ControlAccentLightBrush}"
+                Text="ReplayGain" />
+
+              <Rectangle
                 Grid.Column="1"
                 Height="1.5"
-         Margin="8,3,8,0"
-       VerticalAlignment="Center"
-         Fill="{DynamicResource ControlAccentLightBrush}" />
-           
+                Margin="8,3,8,0"
+                VerticalAlignment="Center"
+                Fill="{DynamicResource ControlAccentLightBrush}" />
 
-           <!--  ReplayGain Calculation Controls  -->
-           <StackPanel
-     Grid.Column="2"
-          HorizontalAlignment="Right"
-    VerticalAlignment="Center"
-   Orientation="Horizontal">
-    
-       <!--  Calculate Button (hyperlink style, similar to BPM)  -->
-          <Button
-           Padding="0"
+
+              <!--  ReplayGain Calculation Controls  -->
+              <StackPanel
+                Grid.Column="2"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Orientation="Horizontal">
+
+                <!--  Calculate Button (hyperlink style, similar to BPM)  -->
+                <Button
+                  Padding="0"
                   HorizontalAlignment="Right"
-       Background="Transparent"
-           BorderThickness="0"
-        Command="{Binding CalculateReplayGainCommand}"
-        Cursor="Hand"
-           FontSize="12"
-      ToolTip="Analyze audio file to calculate ReplayGain values"
-       Visibility="{Binding IsReplayGainCalculating, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
-                <TextBlock
-    Foreground="{DynamicResource TrackListHyperlinkForegroundBrush}"
- Text="Calculate..."
-       TextDecorations="Underline" />
-  <Button.Style>
-<Style TargetType="Button">
-    <Setter Property="Template">
-               <Setter.Value>
-         <ControlTemplate TargetType="Button">
-  <ContentPresenter />
-    </ControlTemplate>
-  </Setter.Value>
-       </Setter>
-          <Style.Triggers>
-               <Trigger Property="IsMouseOver" Value="True">
-      <Setter Property="Opacity" Value="0.7" />
- </Trigger>
-         </Style.Triggers>
-  </Style>
-   </Button.Style>
-          </Button>
+                  Background="Transparent"
+                  BorderThickness="0"
+                  Command="{Binding CalculateReplayGainCommand}"
+                  Cursor="Hand"
+                  FontSize="12"
+                  ToolTip="Analyze audio file to calculate ReplayGain values"
+                  Visibility="{Binding IsReplayGainCalculating, Converter={StaticResource InvertedBooleanToVisibilityConverter}}">
+                  <TextBlock
+                    Foreground="{DynamicResource TrackListHyperlinkForegroundBrush}"
+                    Text="Calculate..."
+                    TextDecorations="Underline" />
+                  <Button.Style>
+                    <Style TargetType="Button">
+                      <Setter Property="Template">
+                        <Setter.Value>
+                          <ControlTemplate TargetType="Button">
+                            <ContentPresenter />
+                          </ControlTemplate>
+                        </Setter.Value>
+                      </Setter>
+                      <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter Property="Opacity" Value="0.7" />
+                        </Trigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
 
-  <!--  Progress indicator when calculating  -->
-       <StackPanel
-               Orientation="Horizontal"
-       Visibility="{Binding IsReplayGainCalculating, Converter={StaticResource BooleanToVisibilityConverter}}">
-    <ProgressBar
-      Width="80"
-     Height="16"
-        Margin="0,0,8,0"
-          Maximum="100"
-    Minimum="0"
-    Value="{Binding ReplayGainCalculationProgress}" />
-       <TextBlock
-             VerticalAlignment="Center"
-       FontSize="10"
-               Foreground="{DynamicResource TitleBarForegroundBrush}"
-   Text="{Binding ReplayGainCalculationStatus}" />
-   <Button
-        Width="50"
-      Height="22"
-      Margin="8,0,0,0"
-         Padding="4,2"
-     Command="{Binding CancelReplayGainCalculationCommand}"
-          Content="Cancel"
-        FontSize="10" />
-     </StackPanel>
+                <!--  Progress indicator when calculating  -->
+                <StackPanel Orientation="Horizontal" Visibility="{Binding IsReplayGainCalculating, Converter={StaticResource BooleanToVisibilityConverter}}">
+                  <ProgressBar
+                    Width="80"
+                    Height="16"
+                    Margin="0,0,8,0"
+                    Maximum="100"
+                    Minimum="0"
+                    Value="{Binding ReplayGainCalculationProgress}" />
+                  <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="10"
+                    Foreground="{DynamicResource TitleBarForegroundBrush}"
+                    Text="{Binding ReplayGainCalculationStatus}" />
+                  <Button
+                    Width="50"
+                    Height="22"
+                    Margin="8,0,0,0"
+                    Padding="4,2"
+                    Command="{Binding CancelReplayGainCalculationCommand}"
+                    Content="Cancel"
+                    FontSize="10" />
+                </StackPanel>
               </StackPanel>
-         </Grid>
+            </Grid>
 
- <DataGrid
+            <DataGrid
               x:Name="ReplayGainDataGrid"
-      Grid.Row="7"
+              Grid.Row="7"
               Height="Auto"
-       MinWidth="400"
-          MaxHeight="Infinity"
-           Margin="0,0,0,10"
-       AutoGenerateColumns="False"
+              MinWidth="400"
+              MaxHeight="Infinity"
+              Margin="0,0,0,10"
+              AutoGenerateColumns="False"
               BeginningEdit="ReplayGainDataGrid_BeginningEdit"
               CanUserAddRows="False"
-          CanUserResizeRows="False"
-  CellStyle="{StaticResource PropertiesWindowDataGridCellStyle}"
-  ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
-      HorizontalScrollBarVisibility="Disabled"
-         ItemsSource="{Binding ReplayGainItems}"
-      PreviewMouseWheel="DataGrid_PreviewMouseWheel"
-   RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
-          SelectionChanged="DataGrid_SelectionChanged"
+              CanUserResizeRows="False"
+              CellStyle="{StaticResource PropertiesWindowDataGridCellStyle}"
+              ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HorizontalScrollBarVisibility="Disabled"
+              ItemsSource="{Binding ReplayGainItems}"
+              PreviewMouseWheel="DataGrid_PreviewMouseWheel"
+              RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
+              SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-      VerticalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled">
 
-           <DataGrid.Columns>
-           <DataGridTextColumn
-        Width="240"
- MinWidth="100"
-  Binding="{Binding Name}"
-       CanUserResize="True"
-            Header="Name"
-    IsReadOnly="True" />
-   <DataGridTemplateColumn
-         Width="*"
-               MinWidth="100"
- CanUserResize="True"
-       Header="Value">
-          <DataGridTemplateColumn.CellTemplate>
-           <DataTemplate>
-  <TextBlock IsEnabled="{Binding IsEditable}" Text="{Binding Value}" />
-            </DataTemplate>
-           </DataGridTemplateColumn.CellTemplate>
-      <DataGridTemplateColumn.CellEditingTemplate>
-           <DataTemplate>
-       <TextBox IsEnabled="{Binding IsEditable}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
-      </DataTemplate>
-      </DataGridTemplateColumn.CellEditingTemplate>
-     </DataGridTemplateColumn>
+              <DataGrid.Columns>
+                <DataGridTextColumn
+                  Width="240"
+                  MinWidth="100"
+                  Binding="{Binding Name}"
+                  CanUserResize="True"
+                  Header="Name"
+                  IsReadOnly="True" />
+                <DataGridTemplateColumn
+                  Width="*"
+                  MinWidth="100"
+                  CanUserResize="True"
+                  Header="Value">
+                  <DataGridTemplateColumn.CellTemplate>
+                    <DataTemplate>
+                      <TextBlock IsEnabled="{Binding IsEditable}" Text="{Binding Value}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellTemplate>
+                  <DataGridTemplateColumn.CellEditingTemplate>
+                    <DataTemplate>
+                      <TextBox IsEnabled="{Binding IsEditable}" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                    </DataTemplate>
+                  </DataGridTemplateColumn.CellEditingTemplate>
+                </DataGridTemplateColumn>
               </DataGrid.Columns>
- </DataGrid>
+            </DataGrid>
 
-    <!--  Picture Title with Bar  -->
-     <Grid Grid.Row="8" Margin="0,0,0,5">
+            <!--  Picture Title with Bar  -->
+            <Grid Grid.Row="8" Margin="0,0,0,5">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />

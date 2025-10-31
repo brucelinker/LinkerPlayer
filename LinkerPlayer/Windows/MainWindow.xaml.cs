@@ -47,11 +47,11 @@ public partial class MainWindow : Window
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         _logger.LogInformation("MainWindow: Window_Loaded event fired");
-        
+
         // Initialize the view model
         _mainViewModel.OnWindowLoaded();
         WeakReferenceMessenger.Default.Send(new MainWindowLoadedMessage(true));
-        
+
         _logger.LogInformation("MainWindow: Regular WPF Window loaded successfully");
     }
 

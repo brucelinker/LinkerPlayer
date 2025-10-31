@@ -56,8 +56,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private DataGrid? _dataGrid;
 
     private bool _shuffleMode;
-    private bool _isUpdatingSelection; // Flag to prevent recursive selection updates
-    private bool _isSwitchingTabs; // Flag to indicate we're in the middle of a tab switch
+    //private bool _isUpdatingSelection; // Flag to prevent recursive selection updates
+    //private bool _isSwitchingTabs; // Flag to indicate we're in the middle of a tab switch
 
     private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
@@ -188,58 +188,58 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)
     {
-        if (_isUpdatingSelection || _isSwitchingTabs)
-        {
-            return;
-        }
+        //if (_isUpdatingSelection || _isSwitchingTabs)
+        //{
+        //    return;
+        //}
 
         _dataGrid = sender as DataGrid;
-   
+
         // Handle multi-selection
         if (_dataGrid != null && _dataGrid.SelectedItems.Count > 0)
         {
-        var selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
-     SharedDataModel.UpdateSelectedTracks(selectedTracks);
+            var selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
+            SharedDataModel.UpdateSelectedTracks(selectedTracks);
 
-     // Use the first selected item as the primary selection for backward compatibility
-   MediaFile selectedTrack = selectedTracks.First();
+            // Use the first selected item as the primary selection for backward compatibility
+            MediaFile selectedTrack = selectedTracks.First();
 
-if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
-   {
+            if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
+            {
                 return;
-        }
-
-     // Save the user's selection
-      if (!SetLastSelectedTrack(selectedTrack))
-     {
-              // SelectedPlaylist is null
-   return;
-       }
-
-    SelectedTrack = selectedTrack;
-            SelectedTrackIndex = _dataGrid.Items.IndexOf(selectedTrack);
-
-     if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-{
-                var tab = TabList[SelectedTabIndex];
-  tab.SelectedTrack = SelectedTrack;
-   tab.SelectedIndex = SelectedTrackIndex;
             }
 
-        _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
+            // Save the user's selection
+            if (!SetLastSelectedTrack(selectedTrack))
+            {
+                // SelectedPlaylist is null
+                return;
+            }
+
+            SelectedTrack = selectedTrack;
+            SelectedTrackIndex = _dataGrid.Items.IndexOf(selectedTrack);
+
+            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+            {
+                var tab = TabList[SelectedTabIndex];
+                tab.SelectedTrack = SelectedTrack;
+                tab.SelectedIndex = SelectedTrackIndex;
+            }
+
+            _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedTrackId));
 
-       _dataGrid.ScrollIntoView(SelectedTrack);
+            _dataGrid.ScrollIntoView(SelectedTrack);
 
-       if (ActiveTrack == null)
+            if (ActiveTrack == null)
             {
- WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
-      }
+                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+            }
         }
-    else
+        else
         {
-    SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
- WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(null));
+            SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
+            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(null));
         }
     }
 
@@ -739,7 +739,7 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
         // Make sure it is not an empty playlist
         if (SelectedPlaylist.PlaylistTracks.Count > 0)
         {
-            string selectedTrackId = _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId;
+            string selectedTrackId = _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId!;
 
             SelectedTrack = _musicLibrary.GetTracksFromPlaylist(SelectedTab.Name)
                 .FirstOrDefault(s => s.Id == selectedTrackId) ?? SelectFirstTrack();
@@ -880,7 +880,7 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
         if (newIndex < 0 || newIndex >= tracks.Count)
         {
             _logger.LogError("Invalid track index: {NewIndex} (Total tracks: {TotalTracks})", newIndex, tracks.Count);
-            return SelectFirstTrack();
+            return SelectFirstTrack()!;
         }
 
         MediaFile newTrack = tracks[newIndex];
@@ -1010,7 +1010,7 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
                         }
 
                         // Set selected track if needed
-                        if (_dataGrid.SelectedItem == null && SelectedTab.Tracks.Any())
+                        if (_dataGrid!.SelectedItem == null && SelectedTab!.Tracks.Any())
                         {
                             _dataGrid.SelectedIndex = 0;
                             _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
@@ -1293,10 +1293,10 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
     [RelayCommand]
     private async Task ReorderTabs((int FromIndex, int ToIndex) indices)
     {
-        if (indices.FromIndex < 0 || indices.ToIndex < 0 || 
+        if (indices.FromIndex < 0 || indices.ToIndex < 0 ||
             indices.FromIndex >= TabList.Count || indices.ToIndex >= TabList.Count)
         {
-            _logger.LogWarning("ReorderTabs called with invalid indices: from {FromIndex} to {ToIndex}", 
+            _logger.LogWarning("ReorderTabs called with invalid indices: from {FromIndex} to {ToIndex}",
                 indices.FromIndex, indices.ToIndex);
             return;
         }
@@ -1309,8 +1309,8 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
         try
         {
             // Remember the currently selected tab
-            PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count 
-                ? TabList[SelectedTabIndex] 
+            PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count
+                ? TabList[SelectedTabIndex]
                 : null;
 
             // Reorder in the UI
@@ -1338,7 +1338,7 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
                     }
                 }
 
-                _logger.LogInformation("Successfully reordered tab from index {FromIndex} to {ToIndex}", 
+                _logger.LogInformation("Successfully reordered tab from index {FromIndex} to {ToIndex}",
                     indices.FromIndex, indices.ToIndex);
             }
             else
@@ -1354,7 +1354,7 @@ if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reordering tabs from {FromIndex} to {ToIndex}", 
+            _logger.LogError(ex, "Error reordering tabs from {FromIndex} to {ToIndex}",
                 indices.FromIndex, indices.ToIndex);
         }
     }
