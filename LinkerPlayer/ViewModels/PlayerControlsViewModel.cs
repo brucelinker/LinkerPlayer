@@ -214,24 +214,42 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void PlayTrack()
     {
+        _logger.LogInformation("PlayTrack called - ActiveTrack: {ActiveTrack}, SelectedTrack: {SelectedTrack}", 
+            ActiveTrack?.Title ?? "null", SelectedTrack?.Title ?? "null");
+        
         if (ActiveTrack != null)
         {
+            _logger.LogInformation("Playing ActiveTrack: {Path}", ActiveTrack.Path);
             _audioEngine.PathToMusic = ActiveTrack.Path;
             _audioEngine.Play();
+            
+            // Check if play actually started
+            if (!_audioEngine.IsPlaying)
+            {
+                _logger.LogError("AudioEngine.Play() completed but IsPlaying is still false for ActiveTrack");
+            }
+ 
             ActiveTrack.State = PlaybackState.Playing;
             State = PlaybackState.Playing;
         }
         else if (SelectedTrack != null)
         {
+            _logger.LogInformation("Playing SelectedTrack: {Path}", SelectedTrack.Path);
             _audioEngine.PathToMusic = SelectedTrack.Path;
             _audioEngine.Play();
+
+            // Check if play actually started
+            if (!_audioEngine.IsPlaying)
+            {
+                _logger.LogError("AudioEngine.Play() completed but IsPlaying is still false for SelectedTrack");
+            }
 
             if (ActiveTrack == null)
             {
                 ActiveTrack = SelectedTrack;
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
-                
+        
                 WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack));
             }
         }

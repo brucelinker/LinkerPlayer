@@ -57,8 +57,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     private bool _eqInitialized;
     private int[] _eqFxHandles = [];
     private int _endSyncHandle;
-    private IntPtr _bassFxHandle = IntPtr.Zero; // Handle to explicitly loaded bass_fx.dll
-    private IntPtr _bassMixHandle = IntPtr.Zero;
+    private IntPtr _bassFxHandle = IntPtr.Zero; // No longer needed - BassAudioEngine handles plugin loading
+    private IntPtr _bassMixHandle = IntPtr.Zero; // No longer needed - BassAudioEngine handles plugin loading
 
     private int _decodeStream = 0; // Holds the decode stream (file)
     private int _mixerStream = 0; // Holds the mixer stream (WASAPI output)
@@ -117,11 +117,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 _logger.LogWarning("Failed to set DLL directory for BASS libraries");
             }
 
-            // Explicitly load bass_fx.dll (safe at startup)
-            LoadBassFxLibrary();
-
-            // Explicitly load bassmix.dll (safe at startup)
-            LoadBassMixLibrary();
+            // DON'T explicitly load bass_fx.dll or bassmix.dll here - let BassAudioEngine handle it
+            // Those DLLs need to be loaded as BASS plugins, not just via LoadLibrary
             
             // Refresh device list (safe at startup - doesn't open devices)
             IEnumerable<Device> devices = _outputDeviceManager.RefreshOutputDeviceList();
@@ -151,64 +148,6 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             _logger.LogError(ex, "Unexpected error in AudioEngine constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
-        }
-    }
-
-    private void LoadBassFxLibrary()
-    {
-        try
-        {
-            if (!BassNativeLibraryManager.IsDllAvailable("bass_fx.dll"))
-            {
-                _logger.LogError("bass_fx.dll not available for explicit loading");
-                return;
-            }
-
-            string bassFxPath = BassNativeLibraryManager.GetDllPath("bass_fx.dll");
-            _bassFxHandle = LoadLibrary(bassFxPath);
-
-            if (_bassFxHandle == IntPtr.Zero)
-            {
-                uint error = GetLastError();
-                _logger.LogError($"Failed to load bass_fx.dll. Error code: {error}");
-            }
-            else
-            {
-                _logger.LogInformation("Successfully loaded bass_fx.dll");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception while loading bass_fx.dll");
-        }
-    }
-
-    private void LoadBassMixLibrary()
-    {
-        try
-        {
-            if (!BassNativeLibraryManager.IsDllAvailable("bassmix.dll"))
-            {
-                _logger.LogError("bassmix.dll not available for explicit loading");
-                return;
-            }
-
-            string bassMixPath = BassNativeLibraryManager.GetDllPath("bassmix.dll");
-            _bassMixHandle = LoadLibrary(bassMixPath);
-
-            if (_bassMixHandle == IntPtr.Zero)
-            {
-                uint error = GetLastError();
-                _logger.LogError($"Failed to load bassmix.dll. Error code: {error}");
-            }
-            else
-            {
-                _logger.LogInformation("Successfully loaded bassmix.dll");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Exception while loading bassmix.dll");
         }
     }
 
@@ -257,17 +196,27 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 _sampleRate = deviceInfo.MixFrequency;
 
                 // Initialize BASS for decoding only (no device)
-                success = Bass.Init(0, deviceInfo.MixFrequency, DeviceInitFlags.Default);
-                if (success)
+                // Try device's native rate first, then fall back to common rates
+                int[] ratesToTry = { deviceInfo.MixFrequency, 44100, 48000 };
+                
+                foreach (int rate in ratesToTry)
                 {
-                    IsBassInitialized = true;
-                    
-                    _logger.LogInformation($"Initialized BASS for decoding on first play (WASAPI mode: {_currentMode})");
+                    success = Bass.Init(0, rate, DeviceInitFlags.Default);
+                    if (success)
+                    {
+                        IsBassInitialized = true;
+                        
+                        _logger.LogInformation($"Initialized BASS for decoding at {rate} Hz on first play (WASAPI mode: {_currentMode})");
+                        return;
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"Failed to initialize BASS at {rate} Hz: {Bass.LastError}, trying next rate");
+                    }
                 }
-                else
-                {
-                    _logger.LogError($"Failed to initialize BASS for decoding: {Bass.LastError}");
-                }
+            
+                // If all rates failed, log final error
+                _logger.LogError($"Failed to initialize BASS for decoding with all sample rates: {Bass.LastError}");
             }
         }
         catch (Exception ex)
@@ -1123,11 +1072,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             return false;
         }
 
-        if (_bassFxHandle == IntPtr.Zero)
-        {
-            _logger.LogError("Cannot initialize equalizer: bass_fx.dll not loaded");
-            return false;
-        }
+        // bass_fx.dll is loaded as a plugin by BassAudioEngine, no need to check _bassFxHandle
 
         _eqFxHandles = new int[_equalizerBands.Count];
         int successCount = 0;
@@ -1167,8 +1112,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         _eqInitialized = successCount > 0;
         //if (_eqInitialized)
         //{
-        //    _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
-        //}
+   //    _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
+ //}
 
         return _eqInitialized;
     }
@@ -1230,35 +1175,35 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _equalizerBands[bandIndex].Gain = Math.Clamp(gain, -12f, 12f);
         }
 
-        // Only apply to actual EQ if it's enabled and initialized
+      // Only apply to actual EQ if it's enabled and initialized
         if (!EqEnabled || !_eqInitialized || _eqFxHandles.Length == 0 || CurrentStream == 0)
         {
             return;
-        }
+    }
 
         int bandIdx = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < 0.1f);
         if (bandIdx == -1 || bandIdx >= _eqFxHandles.Length || _eqFxHandles[bandIdx] == 0)
-        {
-            return;
+     {
+     return;
         }
 
         float clampedGain = Math.Clamp(gain, -12f, 12f);
 
         PeakEQParameters eqParams = new()
-        {
+    {
             fCenter = frequency,
             fBandwidth = _equalizerBands[bandIdx].Bandwidth,
-            fGain = clampedGain,
-            lChannel = FXChannelFlags.All
+         fGain = clampedGain,
+   lChannel = FXChannelFlags.All
         };
 
         if (Bass.FXSetParameters(_eqFxHandles[bandIdx], eqParams))
         {
-            _equalizerBands[bandIdx].Gain = clampedGain;
-        }
+  _equalizerBands[bandIdx].Gain = clampedGain;
+    }
         else
-        {
-            _logger.LogError($"Failed to update EQ gain for {frequency} Hz: {Bass.LastError}");
+{
+    _logger.LogError($"Failed to update EQ gain for {frequency} Hz: {Bass.LastError}");
         }
     }
 
@@ -1849,19 +1794,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         // Clean up equalizer
         CleanupEqualizer();
 
-        // Free explicitly loaded bass_fx.dll
-        if (_bassFxHandle != IntPtr.Zero)
-        {
-            FreeLibrary(_bassFxHandle);
-            _bassFxHandle = IntPtr.Zero;
-        }
-
-        // Free explicitly loaded bassmix.dll
-        if (_bassMixHandle != IntPtr.Zero)
-        {
-            FreeLibrary(_bassMixHandle);
-            _bassMixHandle = IntPtr.Zero;
-        }
+        // No longer need to free _bassFxHandle or _bassMixHandle
+        // They're managed by BassAudioEngine now
 
         // Only call BassWasapi.Free() if WASAPI was successfully initialized
         try
