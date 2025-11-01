@@ -167,7 +167,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             if (_currentMode == OutputMode.DirectSound)
             {
                 success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
-                if (success)
+                if (success || Bass.LastError == Errors.Already)
                 {
                     IsBassInitialized = true;
                     _sampleRate = 44100;
@@ -1112,7 +1112,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         _eqInitialized = successCount > 0;
         //if (_eqInitialized)
         //{
-   //    _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
+   //     _logger.LogInformation($"Equalizer initialized with {successCount}/{_equalizerBands.Count} bands");
  //}
 
         return _eqInitialized;
@@ -1643,7 +1643,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
         if (CurrentStream != 0)
         {
-            double positionSeconds = Bass.ChannelBytes2Seconds(CurrentStream, Bass.ChannelGetPosition(CurrentStream));
+            // Use decode stream for position in WASAPI modes to avoid mixer timeline desync
+            int posHandle = (_currentMode == OutputMode.DirectSound) ? CurrentStream : (_decodeStream != 0 ? _decodeStream : CurrentStream);
+            double positionSeconds = Bass.ChannelBytes2Seconds(posHandle, Bass.ChannelGetPosition(posHandle));
             if (!double.IsNaN(positionSeconds) && positionSeconds >= 0)
             {
                 CurrentTrackPosition = positionSeconds;
