@@ -2,7 +2,6 @@ using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
-using System.Windows;
 
 namespace LinkerPlayer.Audio;
 
@@ -170,34 +169,8 @@ public partial class AudioEngine
             {
                 _audioDeviceLost = true;
                 _logger.LogError("DirectSound playback has stopped unexpectedly - device taken by exclusive app!");
-                Application.Current?.Dispatcher.BeginInvoke(() =>
-                {
-                    try
-                    {
-                        Stop();
-                        Window? owner = Application.Current.MainWindow;
-                        if (owner != null)
-                        {
-                            MessageBox.Show(owner,
-             "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
-             "The other application has taken exclusive control of the audio device.\n" +
-             "Please close the other application or switch to a different audio device in Settings.",
-             "Audio Device Busy", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                        else
-                        {
-                            MessageBox.Show(
-             "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
-             "The other application has taken exclusive control of the audio device.\n" +
-             "Please close the other application or switch to a different audio device in Settings.",
-             "Audio Device Busy", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error showing audio device busy message: {Message}", ex.Message);
-                    }
-                });
+                Stop();
+                MarkDeviceBusyAndNotify("Playback has been stopped.");
                 return;
             }
         }
@@ -208,34 +181,8 @@ public partial class AudioEngine
             {
                 _audioDeviceLost = true;
                 _logger.LogError("WASAPI playback has stopped unexpectedly - device taken by exclusive app!");
-                Application.Current?.Dispatcher.BeginInvoke(() =>
-                {
-                    try
-                    {
-                        Stop();
-                        Window? owner = Application.Current.MainWindow;
-                        if (owner != null)
-                        {
-                            MessageBox.Show(owner,
-             "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
-             "The other application has taken exclusive control of the audio device.\n" +
-             "Please close the other application or switch to a different audio device in Settings.",
-             "Audio Device Busy", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                        else
-                        {
-                            MessageBox.Show(
-             "Audio device is being used exclusively by another application. Playback has been stopped.\n\n" +
-             "The other application has taken exclusive control of the audio device.\n" +
-             "Please close the other application or switch to a different audio device in Settings.",
-             "Audio Device Busy", MessageBoxButton.OK, MessageBoxImage.Warning);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error showing audio device busy message: {Message}", ex.Message);
-                    }
-                });
+                Stop();
+                MarkDeviceBusyAndNotify("Playback has been stopped.");
                 return;
             }
         }
@@ -343,7 +290,7 @@ public partial class AudioEngine
     {
         try
         {
-            int zeroLen = Math.Max(1, ExpectedFftSize /2);
+            int zeroLen = Math.Max(1, ExpectedFftSize / 2);
             OnFftCalculated?.Invoke(new float[zeroLen]);
         }
         catch { }
