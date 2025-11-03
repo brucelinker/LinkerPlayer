@@ -1,15 +1,16 @@
-﻿using LinkerPlayer.Models;
+using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
 using System.Text.Json;
-using System.Timers;
 
 namespace LinkerPlayer.Core;
 
 public interface ISettingsManager
 {
-    AppSettings Settings { get; }
+    AppSettings Settings
+    {
+        get;
+    }
     void LoadSettings();
     void SaveSettings(string propertyName);
     event Action<string>? SettingsChanged;
@@ -20,7 +21,7 @@ public class SettingsManager : ISettingsManager
     private readonly string _settingsPath = string.Empty;
     private readonly ILogger<ISettingsManager> _logger;
     public AppSettings Settings { get; private set; } = new();
-    private readonly Timer _saveTimer = new();
+    private readonly System.Timers.Timer _saveTimer = new();
     public event Action<string>? SettingsChanged;
     private readonly Guid _instanceId = Guid.NewGuid();
     private readonly bool _isInitialized;
@@ -45,7 +46,8 @@ public class SettingsManager : ISettingsManager
 
             _settingsPath = Path.Combine(appFolder, "settings.json");
 
-            _saveTimer = new Timer(1000) { AutoReset = false };
+            // Debounced save timer
+            _saveTimer = new System.Timers.Timer(1000) { AutoReset = false };
             _saveTimer.Elapsed += (_, _) => SaveSettingsInternal();
 
             //_logger.LogInformation("Loading settings from: {SettingsPath}", _settingsPath);
@@ -111,7 +113,10 @@ public class SettingsManager : ISettingsManager
         {
             lock (_fileLock)
             {
-                JsonSerializerOptions options = new() { WriteIndented = true };
+                JsonSerializerOptions options = new()
+                {
+                    WriteIndented = true
+                };
                 string json = JsonSerializer.Serialize(Settings, options);
                 File.WriteAllText(_settingsPath, json);
             }

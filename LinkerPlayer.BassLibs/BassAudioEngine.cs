@@ -1,9 +1,6 @@
 using ManagedBass;
 using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace LinkerPlayer.BassLibs;
 
@@ -27,13 +24,28 @@ public class BassInitializationOptions
 /// </summary>
 public class BassInitializationResult
 {
-    public bool IsSuccess { get; set; }
-    public bool IsBassInitialized { get; set; }
-    public bool IsWasapiInitialized { get; set; }
+    public bool IsSuccess
+    {
+        get; set;
+    }
+    public bool IsBassInitialized
+    {
+        get; set;
+    }
+    public bool IsWasapiInitialized
+    {
+        get; set;
+    }
     public List<string> LoadedPlugins { get; set; } = new();
     public List<string> FailedPlugins { get; set; } = new();
-    public string? ErrorMessage { get; set; }
-    public Exception? Exception { get; set; }
+    public string? ErrorMessage
+    {
+        get; set;
+    }
+    public Exception? Exception
+    {
+        get; set;
+    }
 }
 
 /// <summary>
@@ -158,7 +170,8 @@ public class BassAudioEngine : IDisposable
     /// </summary>
     public void Shutdown()
     {
-        if (!_isInitialized) return;
+        if (!_isInitialized)
+            return;
 
         _logger.LogInformation("Shutting down BASS Audio Engine");
 

@@ -7,14 +7,20 @@
 		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
 		<Title>LinkerPlayer BASS Audio Library</Title>
 		<Description>BASS audio engine and plugin management for LinkerPlayer</Description>
+		<EnableNETAnalyzers>true</EnableNETAnalyzers>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UsingRemove>true</UsingRemove>
+		<UsingSort>true</UsingSort>
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Remove="Native\bassloud.dll" />
-	  <None Remove="Native\bassopus.dll" />
-	  <None Remove="Native\basswebm.dll" />
-	  <None Remove="Native\bass_dts.dll" />
-	  <None Remove="Native\bass_mpc.dll" />
+	 <None Remove="Native\bassloud.dll" />
+	 <None Remove="Native\bassopus.dll" />
+	 <None Remove="Native\basswebm.dll" />
+	 <None Remove="Native\bass_dts.dll" />
+	 <None Remove="Native\bass_mpc.dll" />
 	</ItemGroup>
 
 	<ItemGroup>

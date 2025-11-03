@@ -1,4 +1,4 @@
-﻿namespace LinkerPlayer.Models;
+namespace LinkerPlayer.Models;
 
 public enum OutputMode
 {

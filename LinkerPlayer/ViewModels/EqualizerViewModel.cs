@@ -1,9 +1,8 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System;
 using System.Collections.ObjectModel;
 using System.IO;
 
@@ -15,7 +14,7 @@ public partial class EqualizerViewModel : ObservableObject
     private readonly ILogger<EqualizerViewModel> _logger;
     private readonly string _jsonFilePath;
 
-//    [ObservableProperty] private static ObservableCollection<Preset> _eqPresets = [];
+    //    [ObservableProperty] private static ObservableCollection<Preset> _eqPresets = [];
     [ObservableProperty] private ObservableCollection<Preset> _eqPresets = [];
     [ObservableProperty] private Preset? _selectedPreset;
     [ObservableProperty] private bool _isEqualizerEnabled;
@@ -67,20 +66,53 @@ public partial class EqualizerViewModel : ObservableObject
     //    //_logger.LogInformation($"OnEqPresetChanged: {value}");
     //}
 
-    partial void OnBand0Changed(float value) { _audioEngine.SetBandGain(32.0f, value); }
-    partial void OnBand1Changed(float value) { _audioEngine.SetBandGain(64.0f, value); }
-    partial void OnBand2Changed(float value) { _audioEngine.SetBandGain(125.0f, value); }
-    partial void OnBand3Changed(float value) { _audioEngine.SetBandGain(250.0f, value); }
-    partial void OnBand4Changed(float value) { _audioEngine.SetBandGain(500.0f, value); }
-    partial void OnBand5Changed(float value) { _audioEngine.SetBandGain(1000.0f, value); }
-    partial void OnBand6Changed(float value) { _audioEngine.SetBandGain(2000.0f, value); }
-    partial void OnBand7Changed(float value) { _audioEngine.SetBandGain(4000.0f, value); }
-    partial void OnBand8Changed(float value) { _audioEngine.SetBandGain(8000.0f, value); }
-    partial void OnBand9Changed(float value) { _audioEngine.SetBandGain(16000.0f, value); }
+    partial void OnBand0Changed(float value)
+    {
+        _audioEngine.SetBandGain(32.0f, value);
+    }
+    partial void OnBand1Changed(float value)
+    {
+        _audioEngine.SetBandGain(64.0f, value);
+    }
+    partial void OnBand2Changed(float value)
+    {
+        _audioEngine.SetBandGain(125.0f, value);
+    }
+    partial void OnBand3Changed(float value)
+    {
+        _audioEngine.SetBandGain(250.0f, value);
+    }
+    partial void OnBand4Changed(float value)
+    {
+        _audioEngine.SetBandGain(500.0f, value);
+    }
+    partial void OnBand5Changed(float value)
+    {
+        _audioEngine.SetBandGain(1000.0f, value);
+    }
+    partial void OnBand6Changed(float value)
+    {
+        _audioEngine.SetBandGain(2000.0f, value);
+    }
+    partial void OnBand7Changed(float value)
+    {
+        _audioEngine.SetBandGain(4000.0f, value);
+    }
+    partial void OnBand8Changed(float value)
+    {
+        _audioEngine.SetBandGain(8000.0f, value);
+    }
+    partial void OnBand9Changed(float value)
+    {
+        _audioEngine.SetBandGain(16000.0f, value);
+    }
 
     public void SaveEqPresets()
     {
-        JsonSerializerSettings settings = new() { TypeNameHandling = TypeNameHandling.Auto };
+        JsonSerializerSettings settings = new()
+        {
+            TypeNameHandling = TypeNameHandling.Auto
+        };
         string json = JsonConvert.SerializeObject(EqPresets, Formatting.Indented, settings);
         File.WriteAllText(_jsonFilePath, json);
 

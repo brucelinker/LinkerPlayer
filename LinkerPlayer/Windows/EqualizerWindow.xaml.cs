@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
@@ -6,9 +6,7 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -296,7 +294,10 @@ public partial class EqualizerWindow
 
     private void ControlsSetEnabledState(bool state)
     {
-        if (_selectedPreset == null) { return; }
+        if (_selectedPreset == null)
+        {
+            return;
+        }
         Presets_ComboBox.IsEnabled = state;
         NewButton.IsEnabled = state;
         SaveButton.IsEnabled = !_selectedPreset.Locked && state;
@@ -305,7 +306,10 @@ public partial class EqualizerWindow
 
         Preset? presets = _equalizerViewModel.EqPresets.FirstOrDefault();
 
-        if (presets == null) { return; }
+        if (presets == null)
+        {
+            return;
+        }
 
         for (int i = 0; i < presets.EqualizerBands!.Count; i++)
         {
@@ -343,7 +347,10 @@ public partial class EqualizerWindow
     {
         Preset? bandsSettings = _equalizerViewModel.EqPresets.FirstOrDefault();
 
-        if (bandsSettings == null) { return; }
+        if (bandsSettings == null)
+        {
+            return;
+        }
 
         Presets_ComboBox.SelectedItem = Properties.Settings.Default.EqualizerProfileName;
         _selectedPreset = _equalizerViewModel.EqPresets.FirstOrDefault(n => n.Name == Presets_ComboBox.SelectedItem as string)!;

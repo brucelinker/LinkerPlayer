@@ -1,6 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -11,7 +10,10 @@ namespace LinkerPlayer.Models;
 public partial class Playlist : ObservableValidator
 {
     [Key]
-    public int Id { get; set; }
+    public int Id
+    {
+        get; set;
+    }
 
     [StringLength(100, ErrorMessage = "Playlist name cannot exceed 100 characters")]
     [ObservableProperty]
@@ -21,12 +23,18 @@ public partial class Playlist : ObservableValidator
     [ObservableProperty]
     private string? _selectedTrackId;
 
-    public int Order { get; set; }
+    public int Order
+    {
+        get; set;
+    }
 
     public ObservableCollection<string> TrackIds { get; set; } = new();
 
     [ForeignKey(nameof(SelectedTrackId))]
-    public MediaFile? SelectedTrackNavigation { get; set; }
+    public MediaFile? SelectedTrackNavigation
+    {
+        get; set;
+    }
 
     public List<PlaylistTrack> PlaylistTracks { get; set; } = new();
 }

@@ -1,9 +1,8 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
@@ -12,7 +11,10 @@ namespace LinkerPlayer.Windows;
 
 public partial class MainWindow : Window
 {
-    public static MainWindow? Instance { get; private set; }
+    public static MainWindow? Instance
+    {
+        get; private set;
+    }
     private readonly MainViewModel _mainViewModel;
     private readonly ILogger<MainWindow> _logger;
 

@@ -1,10 +1,16 @@
-﻿namespace LinkerPlayer.Models;
+namespace LinkerPlayer.Models;
 
 public class TrackProperties
 {
     public string FileName { get; set; } = string.Empty;
-    public Tags? Tag { get; set; }
-    public Properties? Properties { get; set; }
+    public Tags? Tag
+    {
+        get; set;
+    }
+    public Properties? Properties
+    {
+        get; set;
+    }
 }
 
 public class Tags

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
@@ -8,9 +8,7 @@ using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 using System.ComponentModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -45,12 +43,12 @@ public partial class PlaylistTabs
         {
             viewModel.LoadPlaylistTabs();
             //_logger.LogInformation("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
-            
+
             if (viewModel.TabList.Any())
             {
                 // Get the saved tab index and set it if valid
                 int savedTabIndex = App.AppHost.Services.GetRequiredService<ISettingsManager>().Settings.SelectedTabIndex;
-                
+
                 if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
                 {
                     viewModel.SelectedTabIndex = savedTabIndex;
@@ -219,12 +217,12 @@ public partial class PlaylistTabs
 
     private void MenuItem_Properties(object sender, RoutedEventArgs e)
     {
-      // Use DI to create PropertiesViewModel with all its dependencies
- PropertiesViewModel propertiesViewModel = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
-       
+        // Use DI to create PropertiesViewModel with all its dependencies
+        PropertiesViewModel propertiesViewModel = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
+
         PropertiesWindow dialog = new PropertiesWindow
         {
-      DataContext = propertiesViewModel
+            DataContext = propertiesViewModel
         };
         dialog.Show();
     }
@@ -268,31 +266,31 @@ public partial class PlaylistTabs
     {
         if (e.LeftButton == MouseButtonState.Pressed && sender is EditableTabHeaderControl tabHeader)
         {
-          // Don't start drag if the tab header is in edit mode
-        if (tabHeader.IsInEditMode)
+            // Don't start drag if the tab header is in edit mode
+            if (tabHeader.IsInEditMode)
             {
-       return;
-          }
+                return;
+            }
 
-   if (tabHeader.DataContext is PlaylistTab playlistTab)
+            if (tabHeader.DataContext is PlaylistTab playlistTab)
             {
                 _draggedTab = playlistTab;
-       _draggedTabIndex = GetTabIndex(playlistTab);
-         
-    if (_draggedTabIndex >= 0)
-          {
-          // Set custom cursor for drag operation
-      Mouse.SetCursor(Cursors.Hand);
-         
-      DragDropEffects effects = DragDrop.DoDragDrop(tabHeader, playlistTab, DragDropEffects.Move);
-    
-          // Reset after drag completes
-               RemoveDropIndicator();
-      _draggedTab = null;
-           _draggedTabIndex = -1;
-     Mouse.SetCursor(Cursors.Arrow);
+                _draggedTabIndex = GetTabIndex(playlistTab);
+
+                if (_draggedTabIndex >= 0)
+                {
+                    // Set custom cursor for drag operation
+                    Mouse.SetCursor(Cursors.Hand);
+
+                    DragDropEffects effects = DragDrop.DoDragDrop(tabHeader, playlistTab, DragDropEffects.Move);
+
+                    // Reset after drag completes
+                    RemoveDropIndicator();
+                    _draggedTab = null;
+                    _draggedTabIndex = -1;
+                    Mouse.SetCursor(Cursors.Arrow);
                 }
-     }
+            }
         }
     }
 
@@ -316,15 +314,15 @@ public partial class PlaylistTabs
                 // Get mouse position relative to the tab
                 Point mousePos = e.GetPosition(targetTabItem);
                 double tabWidth = targetTabItem.ActualWidth;
-                
+
                 // Determine if we're on the left or right half of the tab
                 bool dropOnLeft = mousePos.X < tabWidth / 2;
-                
+
                 int targetIndex = GetTabIndex(targetTab);
-                
+
                 // Show drop indicator
                 ShowDropIndicator(targetTabItem, dropOnLeft);
-                
+
                 // Highlight the target tab
                 if (_lastHighlightedTab != targetTabItem)
                 {
@@ -345,7 +343,7 @@ public partial class PlaylistTabs
             if (tabItem != null)
             {
                 Point position = e.GetPosition(tabItem);
-                if (position.X < 0 || position.X > tabItem.ActualWidth || 
+                if (position.X < 0 || position.X > tabItem.ActualWidth ||
                     position.Y < 0 || position.Y > tabItem.ActualHeight)
                 {
                     ClearTabHighlight();
@@ -371,13 +369,13 @@ public partial class PlaylistTabs
             // Get mouse position relative to the tab
             Point mousePos = e.GetPosition(targetTabItem);
             double tabWidth = targetTabItem.ActualWidth;
-            
+
             // Determine if we're on the left or right half of the tab
             bool dropOnLeft = mousePos.X < tabWidth / 2;
-            
+
             // Show drop indicator
             ShowDropIndicator(targetTabItem, dropOnLeft);
-            
+
             // Highlight the target tab
             if (_lastHighlightedTab != targetTabItem)
             {
@@ -409,19 +407,19 @@ public partial class PlaylistTabs
         {
             Point mousePos = e.GetPosition(tabControl);
             TabItem? targetTabItem = GetTabItemAtPosition(tabControl, mousePos);
-            
+
             if (targetTabItem != null && targetTabItem.DataContext is PlaylistTab)
             {
                 // Get mouse position relative to the tab
                 Point tabMousePos = e.GetPosition(targetTabItem);
                 double tabWidth = targetTabItem.ActualWidth;
-                
+
                 // Determine if we're on the left or right half of the tab
                 bool dropOnLeft = tabMousePos.X < tabWidth / 2;
-                
+
                 // Show drop indicator
                 ShowDropIndicator(targetTabItem, dropOnLeft);
-                
+
                 // Highlight the target tab
                 if (_lastHighlightedTab != targetTabItem)
                 {
@@ -472,7 +470,7 @@ public partial class PlaylistTabs
     {
         RemoveDropIndicator();
         ClearTabHighlight();
-        
+
         if (!e.Data.GetDataPresent(typeof(PlaylistTab)) || targetTabItem == null)
         {
             e.Handled = true;
@@ -485,9 +483,9 @@ public partial class PlaylistTabs
             Point mousePos = e.GetPosition(targetTabItem);
             double tabWidth = targetTabItem.ActualWidth;
             bool dropOnLeft = mousePos.X < tabWidth / 2;
-            
+
             int targetIndex = GetTabIndex(targetTab);
-            
+
             if (targetIndex >= 0 && _draggedTabIndex >= 0 && _draggedTabIndex != targetIndex)
             {
                 // Adjust target index based on drop position
@@ -496,20 +494,20 @@ public partial class PlaylistTabs
                 {
                     targetIndex++;
                 }
-                
+
                 // If we're moving from left to right, adjust for the removal
                 if (_draggedTabIndex < targetIndex)
                 {
                     targetIndex--;
                 }
-                
+
                 if (_draggedTabIndex != targetIndex && DataContext is PlaylistTabsViewModel viewModel)
                 {
                     viewModel.ReorderTabsCommand.Execute((_draggedTabIndex, targetIndex));
                 }
             }
         }
-        
+
         e.Handled = true;
     }
 

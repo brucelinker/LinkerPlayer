@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
@@ -9,15 +9,11 @@ using ManagedBass;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PlaylistsNET.Content;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -175,7 +171,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         var tab = TabList[SelectedTabIndex];
 
-        if (_dataGrid == null || tab == null) return;
+        if (_dataGrid == null || tab == null)
+            return;
 
         // FIX: Clear SelectedTracks when switching tabs to prevent "stuck" Properties window
         // This ensures any open PropertiesViewModel isn't listening to the old tab's selections
@@ -278,9 +275,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 object? propX = x.GetType().GetProperty(propertyName)?.GetValue(x);
                 object? propY = y.GetType().GetProperty(propertyName)?.GetValue(y);
 
-                if (propX == null && propY == null) return 0;
-                if (propX == null) return direction == ListSortDirection.Ascending ? -1 : 1;
-                if (propY == null) return direction == ListSortDirection.Ascending ? 1 : -1;
+                if (propX == null && propY == null)
+                    return 0;
+                if (propX == null)
+                    return direction == ListSortDirection.Ascending ? -1 : 1;
+                if (propY == null)
+                    return direction == ListSortDirection.Ascending ? 1 : -1;
 
                 int comparison = Comparer.Default.Compare(propX, propY);
                 return direction == ListSortDirection.Ascending ? comparison : -comparison;

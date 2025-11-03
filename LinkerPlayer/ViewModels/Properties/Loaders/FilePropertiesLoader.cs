@@ -1,9 +1,6 @@
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using File = TagLib.File;
 
 namespace LinkerPlayer.ViewModels.Properties.Loaders;

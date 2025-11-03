@@ -1,4 +1,3 @@
-﻿using System;
 using System.ComponentModel;
 using System.Windows.Media.Imaging;
 
@@ -23,9 +22,18 @@ public class TagItem : INotifyPropertyChanged
         }
     }
 
-    public bool IsEditable { get; set; }
-    public Action<string>? UpdateAction { get; set; }
-    public BitmapImage? AlbumCoverSource { get; set; }
+    public bool IsEditable
+    {
+        get; set;
+    }
+    public Action<string>? UpdateAction
+    {
+        get; set;
+    }
+    public BitmapImage? AlbumCoverSource
+    {
+        get; set;
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

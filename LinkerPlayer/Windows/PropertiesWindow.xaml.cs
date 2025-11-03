@@ -1,6 +1,5 @@
-﻿using LinkerPlayer.ViewModels;
 using LinkerPlayer.Models;
-using System;
+using LinkerPlayer.ViewModels;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -188,7 +187,8 @@ public partial class PropertiesWindow
     private void ClosePropertiesWindow()
     {
         Window? win = GetWindow(this);
-        if (win != null) win.Close();
+        if (win != null)
+            win.Close();
     }
 
     private void LyricsTextBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)

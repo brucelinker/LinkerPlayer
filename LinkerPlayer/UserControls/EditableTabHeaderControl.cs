@@ -1,8 +1,7 @@
-﻿using LinkerPlayer.Models;
+using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -61,7 +60,8 @@ public class EditableTabHeaderControl : ContentControl
         {
             if (_textBox != null && string.IsNullOrEmpty(_textBox.Text))
             {
-                if (_oldText != null) _textBox.Text = _oldText;
+                if (_oldText != null)
+                    _textBox.Text = _oldText;
             }
 
             SetValue(IsInEditModeProperty, value);
@@ -128,7 +128,8 @@ public class EditableTabHeaderControl : ContentControl
     {
         if (e.Key == Key.Escape)
         {
-            if (_oldText != null) _textBox!.Text = _oldText;
+            if (_oldText != null)
+                _textBox!.Text = _oldText;
             IsInEditMode = false;
         }
         else if (e.Key == Key.Enter)

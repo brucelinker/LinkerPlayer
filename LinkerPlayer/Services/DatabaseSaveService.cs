@@ -1,7 +1,5 @@
 using LinkerPlayer.Core;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Threading;
 
 namespace LinkerPlayer.Services;
 
@@ -17,7 +15,7 @@ public class DatabaseSaveService : IDatabaseSaveService
     private readonly object _lock = new object();
     private bool _saveRequested;
     private bool _disposed;
-    
+
     // Debounce delay: Wait 2 seconds after last change before saving
     private const int DebounceDelayMs = 2000;
 
@@ -27,7 +25,7 @@ public class DatabaseSaveService : IDatabaseSaveService
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        
+
         // Create timer but don't start it yet
         _debounceTimer = new Timer(OnTimerElapsed, null, Timeout.Infinite, Timeout.Infinite);
     }
@@ -38,12 +36,13 @@ public class DatabaseSaveService : IDatabaseSaveService
     /// </summary>
     public void RequestSave()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         lock (_lock)
         {
             _saveRequested = true;
-            
+
             // Reset the timer - this delays the save by another 2 seconds
             _debounceTimer.Change(DebounceDelayMs, Timeout.Infinite);
         }
@@ -54,13 +53,14 @@ public class DatabaseSaveService : IDatabaseSaveService
     /// </summary>
     public void SaveImmediately()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         lock (_lock)
         {
             // Cancel any pending debounced save
             _debounceTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            
+
             if (_saveRequested)
             {
                 ExecuteSave();
@@ -101,19 +101,20 @@ public class DatabaseSaveService : IDatabaseSaveService
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
 
         lock (_lock)
         {
             _disposed = true;
-            
+
             // Save any pending changes before disposing
             if (_saveRequested)
             {
                 _logger.LogInformation("Disposing DatabaseSaveService - saving pending changes");
                 ExecuteSave();
             }
-            
+
             _debounceTimer?.Dispose();
             _logger.LogInformation("DatabaseSaveService disposed");
         }

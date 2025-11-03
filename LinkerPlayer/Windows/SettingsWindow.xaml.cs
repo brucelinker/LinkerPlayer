@@ -1,11 +1,8 @@
-﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -255,7 +252,7 @@ public partial class SettingsWindow
     {
         // Use strings in the ComboBox; map back to Device only for engine/settings
         string selectedName = (OutputDeviceCombo.SelectedItem as string) ?? DefaultDeviceName;
-        
+
         // Determine current mode (HandleOutputModeChange is called before this)
         OutputMode currentMode = _settingsManager.Settings.SelectedOutputMode;
 
@@ -296,7 +293,7 @@ public partial class SettingsWindow
         if (outputModeChanged || deviceChanged)
         {
             _audioEngine.SetOutputMode(newMode, newDevice);
-           
+
             //if (newMode == OutputMode.DirectSound)
             //{
             //    _logger.LogInformation("DirectSound device changed to {Device}", newDevice.Name);
@@ -433,7 +430,8 @@ public partial class SettingsWindow
     private void CloseButton_Click(object sender, RoutedEventArgs e)
     {
         Window? win = Window.GetWindow(this);
-        if (win != null) win.Hide();
+        if (win != null)
+            win.Hide();
     }
 
     private void Window_Closing(object sender, EventArgs e)

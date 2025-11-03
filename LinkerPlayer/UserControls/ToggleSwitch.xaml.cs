@@ -1,6 +1,5 @@
-﻿using LinkerPlayer.Core;
+using LinkerPlayer.Core;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -88,7 +87,7 @@ public partial class ToggleSwitch
             {
                 return true;
             }
-            
+
             return false;
         }
         set

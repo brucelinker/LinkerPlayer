@@ -3,12 +3,8 @@ using LinkerPlayer.Database;
 using LinkerPlayer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace LinkerPlayer.Services;
 
@@ -94,12 +90,12 @@ public class PlaylistManagerService : IPlaylistManagerService
         }
 
         string uniqueName = GetUniquePlaylistName(name);
-        
+
         try
         {
             Playlist playlist = await _musicLibrary.AddNewPlaylistAsync(uniqueName);
             IEnumerable<MediaFile> tracks = LoadPlaylistTracks(uniqueName);
-            
+
             PlaylistTab tab = new PlaylistTab
             {
                 Name = uniqueName,
@@ -133,7 +129,7 @@ public class PlaylistManagerService : IPlaylistManagerService
         try
         {
             // Check if new name already exists
-            if (_musicLibrary.Playlists.Any(p => p.Name.Equals(newName, StringComparison.OrdinalIgnoreCase) && 
+            if (_musicLibrary.Playlists.Any(p => p.Name.Equals(newName, StringComparison.OrdinalIgnoreCase) &&
                                                  !p.Name.Equals(oldName, StringComparison.OrdinalIgnoreCase)))
             {
                 _logger.LogWarning("Cannot rename playlist - name already exists: {NewName}", newName);
@@ -202,7 +198,7 @@ public class PlaylistManagerService : IPlaylistManagerService
                     _logger.LogError(ex, "Failed to remove playlist '{Name}' after {MaxRetries} retries - database locked", name, maxRetries);
                     return false;
                 }
-                
+
                 _logger.LogWarning("Database locked during playlist removal, retrying ({RetryCount}/{MaxRetries})", retryCount + 1, maxRetries);
                 await Task.Delay(1000 * (retryCount + 1)); // Exponential backoff
             }
@@ -241,7 +237,7 @@ public class PlaylistManagerService : IPlaylistManagerService
             await _musicLibrary.AddTracksToPlaylistAsync(trackIds, playlistName, saveImmediately: false);
 
             await _musicLibrary.SaveToDatabaseAsync();
-            
+
             _logger.LogInformation("Successfully added {Count} tracks to playlist: {PlaylistName}", trackList.Count, playlistName);
             return true;
         }
@@ -302,7 +298,7 @@ public class PlaylistManagerService : IPlaylistManagerService
         try
         {
             List<MediaFile> tracks = _musicLibrary.GetTracksFromPlaylist(playlistName);
-            
+
             // Update metadata for all tracks
             foreach (MediaFile track in tracks)
             {
@@ -341,7 +337,7 @@ public class PlaylistManagerService : IPlaylistManagerService
 
             // Save to database to persist the new order
             await _musicLibrary.SaveToDatabaseAsync();
-            
+
             _logger.LogInformation("Successfully reordered playlist from index {FromIndex} to {ToIndex}", fromIndex, toIndex);
             return true;
         }

@@ -1,4 +1,4 @@
-﻿using LinkerPlayer.Database;
+using LinkerPlayer.Database;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.Data.Sqlite;
@@ -6,20 +6,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace LinkerPlayer.Core;
 
 public interface IMusicLibrary
 {
-    ObservableCollection<MediaFile> MainLibrary { get; }
-    ObservableCollection<Playlist> Playlists { get; }
+    ObservableCollection<MediaFile> MainLibrary
+    {
+        get;
+    }
+    ObservableCollection<Playlist> Playlists
+    {
+        get;
+    }
     Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true, bool skipMetadata = false);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
     Task<Playlist> AddNewPlaylistAsync(string playlistName);
@@ -32,12 +34,12 @@ public interface IMusicLibrary
     List<MediaFile> GetTracksFromPlaylist(string? playlistName);
     Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks);
     Task SaveToDatabaseAsync();
-    
+
     /// <summary>
     /// Synchronous wrapper for SaveToDatabaseAsync - for use in shutdown/cleanup scenarios
     /// </summary>
     void SaveToDatabase();
-    
+
     Task LoadFromDatabaseAsync();
     Task CleanOrphanedTracksAsync();
     Task SaveMetadataCacheAsync();
@@ -93,14 +95,14 @@ public class MusicLibrary : IMusicLibrary
                 context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS idx_playlisttracks_playlistid ON PlaylistTracks(PlaylistId);");
                 //_logger.LogInformation("Creating MetadataCache table");
                 context.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS MetadataCache (Path TEXT PRIMARY KEY, LastModified INTEGER, Metadata TEXT NOT NULL);");
-                
+
                 // Add Order column to Playlists table if it doesn't exist (for existing databases)
                 try
                 {
                     // Check if the Order column already exists
                     var result = context.Database.SqlQueryRaw<int>(
                         "SELECT COUNT(*) FROM pragma_table_info('Playlists') WHERE name='Order'").ToList();
-                    
+
                     if (result.FirstOrDefault() == 0)
                     {
                         context.Database.ExecuteSqlRaw("ALTER TABLE Playlists ADD COLUMN \"Order\" INTEGER NOT NULL DEFAULT 0;");
@@ -207,7 +209,7 @@ public class MusicLibrary : IMusicLibrary
                     .Select(pt => pt.TrackId!)
                     .ToList();
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
-                
+
                 // DIAGNOSTIC: Log what we loaded from database
                 //_logger.LogInformation(
                 //    $"Loaded playlist {playlist.Name}, SelectedTrackId from DB: {playlist.SelectedTrackId ?? "null"}");
@@ -219,7 +221,7 @@ public class MusicLibrary : IMusicLibrary
                         $"Invalid SelectedTrack {playlist.SelectedTrackId} in playlist {playlist.Name}, clearing");
                     playlist.SelectedTrackId = null;
                 }
-                
+
                 // Only set to first track if SelectedTrackId is actually null
                 if (playlist.SelectedTrackId == null && playlist.TrackIds.Any())
                 {
@@ -425,10 +427,10 @@ public class MusicLibrary : IMusicLibrary
             List<MediaFile> orphanedTracks = await context.Tracks
                 .Where(t => !referencedTrackIds.Contains(t.Id))
                 .ToListAsync();
-            
+
             // Check if there are any tracks left in the database
             int totalTracksCount = await context.Tracks.CountAsync();
-            
+
             if (orphanedTracks.Any())
             {
                 // Remove MetadataCache entries for orphaned tracks
@@ -439,7 +441,7 @@ public class MusicLibrary : IMusicLibrary
                 await context.SaveChangesAsync();
                 _logger.LogInformation($"Removed {orphanedTracks.Count} orphaned tracks and {orphanedPaths.Count} metadata cache entries from database");
             }
-            
+
             // If no tracks exist at all, clean up all metadata cache entries
             if (totalTracksCount == 0)
             {
@@ -567,7 +569,7 @@ public class MusicLibrary : IMusicLibrary
             return existingPlaylist;
         }
 
-        Playlist playlist = new() 
+        Playlist playlist = new()
         {
             Name = playlistName,
             TrackIds = new ObservableCollection<string>(),

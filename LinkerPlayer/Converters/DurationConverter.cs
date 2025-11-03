@@ -1,4 +1,3 @@
-﻿using System;
 using System.Windows.Data;
 
 namespace LinkerPlayer.Converters;
@@ -15,7 +14,7 @@ public class DurationConverter : IValueConverter
 
             return output;
         }
-        
+
         return TimeSpan.Zero;
     }
 

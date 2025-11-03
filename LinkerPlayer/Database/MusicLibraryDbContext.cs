@@ -1,14 +1,26 @@
-﻿using Microsoft.EntityFrameworkCore;
 using LinkerPlayer.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace LinkerPlayer.Database;
 
 public class MusicLibraryDbContext : DbContext
 {
-    public DbSet<MediaFile> Tracks { get; set; }
-    public DbSet<Playlist> Playlists { get; set; }
-    public DbSet<PlaylistTrack> PlaylistTracks { get; set; }
-    public DbSet<MetadataCache> MetadataCache { get; set; }
+    public DbSet<MediaFile> Tracks
+    {
+        get; set;
+    }
+    public DbSet<Playlist> Playlists
+    {
+        get; set;
+    }
+    public DbSet<PlaylistTrack> PlaylistTracks
+    {
+        get; set;
+    }
+    public DbSet<MetadataCache> MetadataCache
+    {
+        get; set;
+    }
 
     public MusicLibraryDbContext(DbContextOptions<MusicLibraryDbContext> options)
         : base(options)

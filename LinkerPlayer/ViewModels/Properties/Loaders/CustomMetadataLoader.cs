@@ -1,9 +1,6 @@
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reflection;
 using TagLib.Id3v2;
 using TagLib.Mpeg4;

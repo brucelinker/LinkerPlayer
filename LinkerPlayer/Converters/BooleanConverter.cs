@@ -1,4 +1,3 @@
-﻿using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -12,7 +11,7 @@ public class BooleanConverter : Freezable, IValueConverter
 
     public object TrueValue
     {
-        get => (object) this.GetValue(TrueValueProperty);
+        get => (object)this.GetValue(TrueValueProperty);
         set => this.SetValue(TrueValueProperty, value);
     }
 
@@ -21,7 +20,7 @@ public class BooleanConverter : Freezable, IValueConverter
 
     public object FalseValue
     {
-        get => (object) this.GetValue(FalseValueProperty);
+        get => (object)this.GetValue(FalseValueProperty);
         set => this.SetValue(FalseValueProperty, value);
     }
 

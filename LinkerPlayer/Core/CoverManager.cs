@@ -1,9 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
 using System.Windows.Media.Imaging;
 using TagLib;
 using File = TagLib.File;
@@ -23,12 +21,12 @@ public class CoverManager
         {
             using File? file = File.Create(fileName);
             IPicture[]? pictures = file.Tag.Pictures;
-            IPicture? pic = pictures?.FirstOrDefault(p => p.Type is 
-                PictureType.FrontCover or 
-                PictureType.BackCover or 
-                PictureType.FileIcon or 
-                PictureType.OtherFileIcon or 
-                PictureType.Media or 
+            IPicture? pic = pictures?.FirstOrDefault(p => p.Type is
+                PictureType.FrontCover or
+                PictureType.BackCover or
+                PictureType.FileIcon or
+                PictureType.OtherFileIcon or
+                PictureType.Media or
                 PictureType.Other);
 
             if (pic != null)

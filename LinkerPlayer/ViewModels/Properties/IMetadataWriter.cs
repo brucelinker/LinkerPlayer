@@ -1,5 +1,4 @@
 using LinkerPlayer.Models;
-using System.Collections.Generic;
 using File = TagLib.File;
 
 namespace LinkerPlayer.ViewModels.Properties;
@@ -10,9 +9,9 @@ namespace LinkerPlayer.ViewModels.Properties;
 public interface IMetadataWriter
 {
     /// <summary>
-  /// Apply all pending changes and save to a single file
+    /// Apply all pending changes and save to a single file
     /// </summary>
-/// <param name="audioFile">File to save</param>
+    /// <param name="audioFile">File to save</param>
     /// <param name="metadataItems">Metadata items with potential changes</param>
     /// <returns>True if save was successful</returns>
     bool Save(File audioFile, IEnumerable<TagItem> metadataItems);
@@ -23,5 +22,5 @@ public interface IMetadataWriter
     /// <param name="audioFiles">Files to save</param>
     /// <param name="metadataItems">Metadata items with potential changes</param>
     /// <returns>True if all saves were successful</returns>
-  bool SaveMultiple(IReadOnlyList<File> audioFiles, IEnumerable<TagItem> metadataItems);
+    bool SaveMultiple(IReadOnlyList<File> audioFiles, IEnumerable<TagItem> metadataItems);
 }

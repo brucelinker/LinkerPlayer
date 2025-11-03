@@ -1,4 +1,4 @@
-﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Audio;
 using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -41,7 +41,8 @@ public partial class TitlebarButtons
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)
     {
         Window? win = Window.GetWindow(this);
-        if (win != null) win.WindowState = WindowState.Minimized;
+        if (win != null)
+            win.WindowState = WindowState.Minimized;
     }
 
     private void MaximizeButton_Click(object sender, RoutedEventArgs e)

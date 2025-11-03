@@ -4,13 +4,9 @@ using LinkerPlayer.BassLibs;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels.Properties.Loaders;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -389,7 +385,10 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex) { _logger.LogError(ex, "Error loading custom metadata"); }
 
-        try { _filePropertiesLoader.Load(audioFile, PropertyItems); }
+        try
+        {
+            _filePropertiesLoader.Load(audioFile, PropertyItems);
+        }
         catch (Exception ex) { _logger.LogError(ex, "Error loading file properties"); }
 
         try
@@ -467,7 +466,10 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex) { _logger.LogError(ex, "Error loading custom metadata (multiple)"); }
 
-        try { _filePropertiesLoader.LoadMultiple(audioFiles, PropertyItems); }
+        try
+        {
+            _filePropertiesLoader.LoadMultiple(audioFiles, PropertyItems);
+        }
         catch (Exception ex) { _logger.LogError(ex, "Error loading file properties (multiple)"); }
 
         try

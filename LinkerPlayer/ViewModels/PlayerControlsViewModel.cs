@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
@@ -7,7 +7,6 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using ManagedBass;
 using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
 
 namespace LinkerPlayer.ViewModels;
@@ -21,6 +20,9 @@ public partial class PlayerControlsViewModel : ObservableObject
     private readonly ILogger<PlayerControlsViewModel> _logger;
 
     private double _volumeBeforeMute;
+
+    // Guard to prevent re-entrant Next/Prev during transitions
+    private bool _isNavigatingTrack = false;
 
     public PlayerControlsViewModel(
         AudioEngine audioEngine,
@@ -214,48 +216,48 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void PlayTrack()
     {
-        _logger.LogInformation("PlayTrack called - ActiveTrack: {ActiveTrack}, SelectedTrack: {SelectedTrack}", 
+        _logger.LogInformation("PlayTrack called - ActiveTrack: {ActiveTrack}, SelectedTrack: {SelectedTrack}",
             ActiveTrack?.Title ?? "null", SelectedTrack?.Title ?? "null");
-        
-        if (ActiveTrack != null)
-        {
-            _logger.LogInformation("Playing ActiveTrack: {Path}", ActiveTrack.Path);
-            _audioEngine.PathToMusic = ActiveTrack.Path;
-            _audioEngine.Play();
-            
-            // Check if play actually started
-            if (!_audioEngine.IsPlaying)
-            {
-                _logger.LogError("AudioEngine.Play() completed but IsPlaying is still false for ActiveTrack");
-            }
- 
-            ActiveTrack.State = PlaybackState.Playing;
-            State = PlaybackState.Playing;
-        }
-        else if (SelectedTrack != null)
-        {
-            _logger.LogInformation("Playing SelectedTrack: {Path}", SelectedTrack.Path);
-            _audioEngine.PathToMusic = SelectedTrack.Path;
-            _audioEngine.Play();
 
-            // Check if play actually started
-            if (!_audioEngine.IsPlaying)
+        try
+        {
+            if (ActiveTrack != null)
             {
-                _logger.LogError("AudioEngine.Play() completed but IsPlaying is still false for SelectedTrack");
-            }
+                _logger.LogInformation("Playing ActiveTrack: {Path}", ActiveTrack.Path);
+                _audioEngine.PathToMusic = ActiveTrack.Path;
 
-            if (ActiveTrack == null)
-            {
-                ActiveTrack = SelectedTrack;
+                // Offload heavy audio start to background to keep UI responsive
+                _ = Task.Run(() => _audioEngine.Play());
+
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
-        
-                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack));
+            }
+            else if (SelectedTrack != null)
+            {
+                _logger.LogInformation("Playing SelectedTrack: {Path}", SelectedTrack.Path);
+                _audioEngine.PathToMusic = SelectedTrack.Path;
+
+                // Offload heavy audio start to background to keep UI responsive
+                _ = Task.Run(() => _audioEngine.Play());
+
+                if (ActiveTrack == null)
+                {
+                    ActiveTrack = SelectedTrack;
+                    ActiveTrack.State = PlaybackState.Playing;
+                    State = PlaybackState.Playing;
+
+                    WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack));
+                }
+            }
+            else
+            {
+                _logger.LogWarning("Cannot play: Both ActiveTrack and SelectedTrack are null");
             }
         }
-        else
+        finally
         {
-            _logger.LogWarning("Cannot play: Both ActiveTrack and SelectedTrack are null");
+            // Always clear navigation guard after attempting to start playback
+            _isNavigatingTrack = false;
         }
 
         WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
@@ -283,6 +285,9 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void StopTrack()
     {
+        // Push zeroed FFT first to drop visuals immediately across Next/Prev
+        _audioEngine.NextTrackPreStopVisuals();
+
         _audioEngine.Stop();
         State = PlaybackState.Stopped;
 
@@ -304,6 +309,13 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void PreviousTrack()
     {
+        if (_isNavigatingTrack)
+        {
+            _logger.LogDebug("PreviousTrack ignored: navigation in progress");
+            return;
+        }
+        _isNavigatingTrack = true;
+
         StopTrack();
 
         MediaFile? prevMediaFile = _playlistTabsViewModel.PreviousMediaFile();
@@ -311,6 +323,7 @@ public partial class PlayerControlsViewModel : ObservableObject
         if (prevMediaFile == null || !File.Exists(prevMediaFile.Path))
         {
             _logger.LogError("MediaFile not found for previous track.");
+            _isNavigatingTrack = false;
             return;
         }
 
@@ -326,6 +339,13 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     public void NextTrack()
     {
+        if (_isNavigatingTrack)
+        {
+            _logger.LogDebug("NextTrack ignored: navigation in progress");
+            return;
+        }
+        _isNavigatingTrack = true;
+
         StopTrack();
 
         MediaFile? nextMediaFile = _playlistTabsViewModel.NextMediaFile();
@@ -333,6 +353,7 @@ public partial class PlayerControlsViewModel : ObservableObject
         if (nextMediaFile == null || !File.Exists(nextMediaFile.Path))
         {
             _logger.LogError("MediaFile not found for next track.");
+            _isNavigatingTrack = false;
             return;
         }
 
@@ -368,6 +389,12 @@ public partial class PlayerControlsViewModel : ObservableObject
 
     private void MonitorNextTrack()
     {
+        if (_isNavigatingTrack)
+            return; // avoid re-entrancy during transitions
+
+        if (!_audioEngine.IsPlaying)
+            return; // only auto-advance while actually playing
+
         double length = _audioEngine.CurrentTrackLength;
         double position = _audioEngine.CurrentTrackPosition;
 

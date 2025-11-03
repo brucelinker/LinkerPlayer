@@ -1,14 +1,11 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Core;
 using ManagedBass;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 using System.Windows.Media.Imaging;
 using TagLib;
 using File = TagLib.File;
@@ -17,28 +14,94 @@ namespace LinkerPlayer.Models;
 
 public interface IMediaFile
 {
-    string Id { get; }
-    string Path { get; }
-    string FileName { get; }
-    uint Track { get; }
-    uint TrackCount { get; }
-    uint Disc { get; }
-    uint DiscCount { get; }
-    uint Year { get; }
-    string Title { get; }
-    string Artist { get; }
-    string Album { get; }
-    string Performers { get; }
-    string Composers { get; }
-    string Genres { get; }
-    TimeSpan Duration { get; }
-    string Comment { get; }
-    int Bitrate { get; }
-    int SampleRate { get; }
-    int Channels { get; }
-    string Copyright { get; }
-    BitmapImage? AlbumCover { get; }
-    PlaybackState State { get; set; }
+    string Id
+    {
+        get;
+    }
+    string Path
+    {
+        get;
+    }
+    string FileName
+    {
+        get;
+    }
+    uint Track
+    {
+        get;
+    }
+    uint TrackCount
+    {
+        get;
+    }
+    uint Disc
+    {
+        get;
+    }
+    uint DiscCount
+    {
+        get;
+    }
+    uint Year
+    {
+        get;
+    }
+    string Title
+    {
+        get;
+    }
+    string Artist
+    {
+        get;
+    }
+    string Album
+    {
+        get;
+    }
+    string Performers
+    {
+        get;
+    }
+    string Composers
+    {
+        get;
+    }
+    string Genres
+    {
+        get;
+    }
+    TimeSpan Duration
+    {
+        get;
+    }
+    string Comment
+    {
+        get;
+    }
+    int Bitrate
+    {
+        get;
+    }
+    int SampleRate
+    {
+        get;
+    }
+    int Channels
+    {
+        get;
+    }
+    string Copyright
+    {
+        get;
+    }
+    BitmapImage? AlbumCover
+    {
+        get;
+    }
+    PlaybackState State
+    {
+        get; set;
+    }
 }
 
 [Index(nameof(Id), nameof(Path), IsUnique = true)]
@@ -155,7 +218,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [NotMapped]
     public List<PlaylistTrack> PlaylistTracks { get; set; } = new();
 
-    public MediaFile() { }
+    public MediaFile()
+    {
+    }
 
     public MediaFile(string fileName, MediaFileHelper? mediaFileHelper = null, ILogger<MediaFile>? logger = null)
     {
@@ -180,7 +245,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             {
                 Id = ValidateStringLength(Guid.NewGuid().ToString(), 36, nameof(Id));
             }
-            
+
             FileName = ValidateStringLength(System.IO.Path.GetFileName(Path), 255, nameof(FileName));
             Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
             Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
@@ -270,7 +335,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         SampleRate = 0;
         Channels = 0;
         Duration = TimeSpan.FromSeconds(1);
-        
+
         if (raisePropertyChanged)
         {
             ValidateAllProperties();
@@ -410,19 +475,31 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (TagLib.CorruptFileException ex)
         {
-            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Corrupted file: {ex.Message}" });
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Error = $"Corrupted file: {ex.Message}"
+            });
         }
         catch (TagLib.UnsupportedFormatException ex)
         {
-            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Unsupported format: {ex.Message}" });
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Error = $"Unsupported format: {ex.Message}"
+            });
         }
         catch (ArgumentException ex) when (ex.ParamName == "ident" && ex.Message.Contains("identifier must be four bytes long"))
         {
-            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Invalid metadata identifiers: {ex.Message}" });
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Error = $"Invalid metadata identifiers: {ex.Message}"
+            });
         }
         catch (Exception ex)
         {
-            return System.Text.Json.JsonSerializer.Serialize(new { Error = $"Error reading file: {ex.Message}" });
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Error = $"Error reading file: {ex.Message}"
+            });
         }
     }
 }

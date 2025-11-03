@@ -1,11 +1,7 @@
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace LinkerPlayer.Services;
 
@@ -65,7 +61,7 @@ public class FileImportService : IFileImportService
     public async Task<List<MediaFile>> ImportFilesAsync(string[] filePaths, IProgress<ProgressData>? progress = null)
     {
         List<MediaFile> importedFiles = new List<MediaFile>();
-        
+
         if (filePaths == null || filePaths.Length == 0)
         {
             _logger.LogWarning("ImportFilesAsync called with null or empty file paths");
@@ -113,7 +109,7 @@ public class FileImportService : IFileImportService
                 }
 
                 processedItems++;
-                
+
                 progress?.Report(new ProgressData
                 {
                     IsProcessing = true,
@@ -127,7 +123,7 @@ public class FileImportService : IFileImportService
             {
                 _logger.LogError(ex, "Failed to import file: {Path}", filePath);
                 processedItems++;
-                
+
                 string fileName = Path.GetFileName(filePath);
                 progress?.Report(new ProgressData
                 {
@@ -158,9 +154,9 @@ public class FileImportService : IFileImportService
                 List<MediaFile> folderFiles = await ImportFolderAsync(folderPath, progress);
                 importedFiles.AddRange(folderFiles);
                 processedItems++;
-                
+
                 //_logger.LogDebug("Successfully imported {Count} files from folder: {Path}", folderFiles.Count, folderPath);
-                
+
                 progress?.Report(new ProgressData
                 {
                     IsProcessing = true,
@@ -174,7 +170,7 @@ public class FileImportService : IFileImportService
             {
                 _logger.LogError(ex, "Failed to import folder: {Path}", folderPath);
                 processedItems++;
-                
+
                 string folderName = Path.GetFileName(folderPath);
                 progress?.Report(new ProgressData
                 {
@@ -228,7 +224,7 @@ public class FileImportService : IFileImportService
     public async Task<List<MediaFile>> ImportFolderAsync(string folderPath, IProgress<ProgressData>? progress = null)
     {
         List<MediaFile> importedFiles = new List<MediaFile>();
-        
+
         if (!Directory.Exists(folderPath))
         {
             _logger.LogError("Folder does not exist: {FolderPath}", folderPath);
@@ -237,7 +233,7 @@ public class FileImportService : IFileImportService
 
         List<string> audioFiles = GetAudioFilesFromFolder(folderPath);
         int totalFiles = audioFiles.Count;
-        
+
         if (totalFiles == 0)
         {
             _logger.LogInformation("No audio files found in folder: {FolderPath}", folderPath);
@@ -264,7 +260,7 @@ public class FileImportService : IFileImportService
             try
             {
                 string fileName = Path.GetFileName(filePath);
-                
+
                 // Report progress before processing each file
                 progress?.Report(new ProgressData
                 {
@@ -330,7 +326,7 @@ public class FileImportService : IFileImportService
             });
         }
 
-        _logger.LogInformation("Folder import completed. {ImportedCount}/{TotalFiles} files imported successfully", 
+        _logger.LogInformation("Folder import completed. {ImportedCount}/{TotalFiles} files imported successfully",
             importedFiles.Count, totalFiles);
 
         return importedFiles;

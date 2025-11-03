@@ -1,6 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Messaging.Messages;
+using CommunityToolkit.Mvvm.Messaging.Messages;
 using LinkerPlayer.Models;
-using ManagedBass;
 
 namespace LinkerPlayer.Messages;
 

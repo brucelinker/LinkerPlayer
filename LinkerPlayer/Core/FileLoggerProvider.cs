@@ -1,9 +1,6 @@
-﻿using Microsoft.Extensions.Logging;
-using System;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace LinkerPlayer.Core;
 
@@ -18,7 +15,7 @@ public class FileLoggerProvider : ILoggerProvider
         _filePath = filePath;
         _formatLogEntry = formatLogEntry;
         Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
-        
+
         _writer = new BackgroundLogWriter(filePath);
     }
 
@@ -66,7 +63,7 @@ public class BackgroundLogWriter : IDisposable
         {
             // Flush every 100ms OR when queue has 10+ items
             using Timer flushTimer = new Timer(_ => FlushWriter(), null, 100, 100);
-            
+
             foreach (string message in _logQueue.GetConsumingEnumerable())
             {
                 await _writer.WriteAsync(message);
@@ -88,9 +85,10 @@ public class BackgroundLogWriter : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
+        if (_disposed)
+            return;
         _disposed = true;
-        
+
         _logQueue.CompleteAdding();
         _writerTask.Wait(TimeSpan.FromSeconds(2)); // Wait for queue to finish
         _writer.Flush();
@@ -119,7 +117,8 @@ public class FileLogger : ILogger
 
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
     {
-        if (!IsEnabled(logLevel)) return;
+        if (!IsEnabled(logLevel))
+            return;
 
         LogEntry entry = new LogEntry
         {
@@ -130,7 +129,7 @@ public class FileLogger : ILogger
         };
 
         string logMessage = _formatLogEntry(entry);
-        
+
         // NEW: Queue the log message - NO BLOCKING!
         _writer.Enqueue(logMessage);
     }
@@ -138,10 +137,19 @@ public class FileLogger : ILogger
 
 public class LogEntry
 {
-    public DateTime Timestamp { get; set; }
-    public LogLevel LogLevel { get; set; }
+    public DateTime Timestamp
+    {
+        get; set;
+    }
+    public LogLevel LogLevel
+    {
+        get; set;
+    }
     public string Message { get; set; } = string.Empty;
-    public Exception? Exception { get; set; }
+    public Exception? Exception
+    {
+        get; set;
+    }
 }
 
 public static class FileLoggerExtensions
@@ -157,6 +165,9 @@ public static class FileLoggerExtensions
 
 public class FileLoggerOptions
 {
-    public Func<LogEntry, string> FormatLogEntry { get; set; } = entry =>
+    public Func<LogEntry, string> FormatLogEntry
+    {
+        get; set;
+    } = entry =>
         $"{entry.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{entry.LogLevel}] {entry.Message}{entry.Exception}";
 }

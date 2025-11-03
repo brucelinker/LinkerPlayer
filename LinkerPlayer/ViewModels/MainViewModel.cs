@@ -1,10 +1,8 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -27,7 +25,8 @@ public class MainViewModel : ObservableObject
 
         try
         {
-            _logger.Log(LogLevel.Information, "Initializing MainViewModel"); _settingsManager = settingsManager;
+            _logger.Log(LogLevel.Information, "Initializing MainViewModel");
+            _settingsManager = settingsManager;
             PlayerControlsViewModel = playerControlsViewModel;
             PlaylistTabsViewModel = playlistTabsViewModel;
 
@@ -58,9 +57,15 @@ public class MainViewModel : ObservableObject
         }
     }
 
-    public PlayerControlsViewModel PlayerControlsViewModel { get; }
+    public PlayerControlsViewModel PlayerControlsViewModel
+    {
+        get;
+    }
 
-    public PlaylistTabsViewModel PlaylistTabsViewModel { get; }
+    public PlaylistTabsViewModel PlaylistTabsViewModel
+    {
+        get;
+    }
 
     public void OnWindowLoaded()
     {
