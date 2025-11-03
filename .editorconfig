@@ -45,7 +45,12 @@ csharp_preserve_single_line_statements = false
 # Prefer file-scoped namespaces
 csharp_style_namespace_declarations = file_scoped:warning
 
-# Var preferences (optional defaults)
-csharp_style_var_elsewhere = true:suggestion
-csharp_style_var_for_built_in_types = true:suggestion
-csharp_style_var_when_type_is_apparent = true:suggestion
+# Var preferences (prefer explicit types)
+csharp_style_var_elsewhere = false:warning
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = false:warning
+
+# Analyzer severities to align with explicit types preference
+# Disable 'use var' suggestions and enable 'use explicit type'
+dotnet_diagnostic.IDE0007.severity = none
+dotnet_diagnostic.IDE0008.severity = warning

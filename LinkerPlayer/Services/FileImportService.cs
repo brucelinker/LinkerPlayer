@@ -101,7 +101,10 @@ public class FileImportService : IFileImportService
                     Phase = "Importing"
                 });
 
-                MediaFile? importedFile = await ImportFileAsync(filePath);
+                // Allow UI to render progress updates before heavy work
+                await Task.Delay(25).ConfigureAwait(false);
+
+                MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
                 if (importedFile != null)
                 {
                     importedFiles.Add(importedFile);
@@ -151,7 +154,7 @@ public class FileImportService : IFileImportService
                     Phase = "Importing"
                 });
 
-                List<MediaFile> folderFiles = await ImportFolderAsync(folderPath, progress);
+                List<MediaFile> folderFiles = await ImportFolderAsync(folderPath, progress).ConfigureAwait(false);
                 importedFiles.AddRange(folderFiles);
                 processedItems++;
 
@@ -205,7 +208,7 @@ public class FileImportService : IFileImportService
         {
             _ = Task.Run(async () =>
             {
-                await Task.Delay(2000);
+                await Task.Delay(2000).ConfigureAwait(false);
                 progress.Report(new ProgressData
                 {
                     IsProcessing = false,
@@ -272,9 +275,9 @@ public class FileImportService : IFileImportService
                 });
 
                 // Add a small delay to allow UI to show the "Importing" message
-                await Task.Delay(25);
+                await Task.Delay(25).ConfigureAwait(false);
 
-                MediaFile? importedFile = await ImportFileAsync(filePath);
+                MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
                 if (importedFile != null)
                 {
                     importedFiles.Add(importedFile);
@@ -314,7 +317,7 @@ public class FileImportService : IFileImportService
         {
             _ = Task.Run(async () =>
             {
-                await Task.Delay(2000);
+                await Task.Delay(2000).ConfigureAwait(false);
                 progress.Report(new ProgressData
                 {
                     IsProcessing = false,
@@ -360,7 +363,7 @@ public class FileImportService : IFileImportService
             }
 
             // Add new track to library
-            MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false);
+            MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false).ConfigureAwait(false);
             if (addedTrack != null)
             {
                 //_logger.LogDebug("Successfully added new track to library: {FilePath}", filePath);

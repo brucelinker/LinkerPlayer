@@ -14,6 +14,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -52,8 +54,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private DataGrid? _dataGrid;
 
     private bool _shuffleMode;
-    //private bool _isUpdatingSelection; // Flag to prevent recursive selection updates
-    //private bool _isSwitchingTabs; // Flag to indicate we're in the middle of a tab switch
 
     private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
@@ -80,7 +80,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
         try
         {
-            //_logger.LogInformation("Initializing PlaylistTabsViewModel");
             SharedDataModel = sharedDataModel ?? throw new ArgumentNullException(nameof(sharedDataModel));
             _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
@@ -174,8 +173,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (_dataGrid == null || tab == null)
             return;
 
-        // FIX: Clear SelectedTracks when switching tabs to prevent "stuck" Properties window
-        // This ensures any open PropertiesViewModel isn't listening to the old tab's selections
+        // Clear SelectedTracks when switching tabs
         SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
 
         SelectedPlaylist = GetSelectedPlaylist();
@@ -185,11 +183,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)
     {
-        //if (_isUpdatingSelection || _isSwitchingTabs)
-        //{
-        //    return;
-        //}
-
         _dataGrid = sender as DataGrid;
 
         // Handle multi-selection
@@ -602,8 +595,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     _settingsManager.Settings.SelectedTabIndex = SelectedTabIndex;
                     _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
                 });
-
-                //_logger.LogInformation("Successfully removed playlist: {PlaylistName}", playlistTab.Name);
             }
             else
             {
@@ -651,9 +642,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         _dataGrid.Items.Refresh();
                         _dataGrid.UpdateLayout();
                     });
-
-                    //_logger.LogInformation("Removed track {TrackTitle} from playlist {PlaylistName}",
-                    //    trackToRemove.Title, SelectedPlaylist.Name);
                 }
                 else
                 {
@@ -788,20 +776,101 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             foreach (string path in paths)
             {
-                string mediaFilePath = Path.Combine(directoryName, path);
-                if (File.Exists(mediaFilePath))
+                try
                 {
-                    validPaths.Add(Uri.UnescapeDataString(mediaFilePath));
+                    string candidatePath = path;
+
+                    // Convert file:// URIs to local paths
+                    if (Uri.TryCreate(candidatePath, UriKind.Absolute, out var uri) && uri.IsFile)
+                    {
+                        candidatePath = uri.LocalPath;
+                      }
+
+                    // Unescape any percent-encoded characters
+                    candidatePath = Uri.UnescapeDataString(candidatePath);
+
+                    // If relative, combine with playlist directory
+                    if (!Path.IsPathRooted(candidatePath))
+                    {
+                        candidatePath = Path.GetFullPath(Path.Combine(directoryName, candidatePath));
+                    }
+
+                    if (File.Exists(candidatePath))
+                    {
+                        validPaths.Add(candidatePath);
+                        continue;
+                    }
+
+                    // Fallbacks: fuzzy recovery
+                    string? fileNameOnly = Path.GetFileName(candidatePath);
+                    string? immediateDir = null;
+                    try { immediateDir = Path.GetDirectoryName(candidatePath); } catch { /* ignore */ }
+
+                    // Case A: directory exists but file name is wrong -> fuzzy file match in the directory
+                    if (!string.IsNullOrEmpty(immediateDir) && Directory.Exists(immediateDir))
+                    {
+                        string? recovered = TryFindClosestFileInDirectory(immediateDir, fileNameOnly);
+                        if (!string.IsNullOrEmpty(recovered))
+                        {
+                            _logger.LogInformation("Recovered missing file by fuzzy match: '{Orig}' => '{Match}'", candidatePath, recovered);
+                            validPaths.Add(recovered);
+                            continue;
+                        }
+                    }
+                    else
+                    {
+                        // Case B: the directory segment itself is wrong (e.g., diacritics replaced by '?')
+                        // Try recover the album directory within its parent (one level up), then search recursively for the file
+                        try
+                        {
+                            // candidatePath = ...\\<AlbumDir>\\<SubDir?>\\<FileName>
+                            // albumDirPath = ...\\<AlbumDir>
+                            string? albumDirPath = string.IsNullOrEmpty(immediateDir) ? null : Path.GetDirectoryName(immediateDir);
+                            if (!string.IsNullOrEmpty(albumDirPath))
+                            {
+                                string? artistDir = Path.GetDirectoryName(albumDirPath);
+                                string albumDirName = Path.GetFileName(albumDirPath);
+
+                                if (!string.IsNullOrEmpty(artistDir) && Directory.Exists(artistDir))
+                                {
+                                    string? recoveredAlbum = TryFindClosestDirectoryInParent(artistDir, albumDirName);
+                                    if (!string.IsNullOrEmpty(recoveredAlbum) && Directory.Exists(recoveredAlbum))
+                                    {
+                                        // Search recursively under the recovered album directory for the closest file
+                                        string? recoveredDeep = TryFindClosestFileRecursively(recoveredAlbum, fileNameOnly);
+                                        if (!string.IsNullOrEmpty(recoveredDeep))
+                                        {
+                                            _logger.LogInformation("Recovered missing file by directory+file fuzzy match: '{Orig}' => '{Match}'", candidatePath, recoveredDeep);
+                                            validPaths.Add(recoveredDeep);
+                                            continue;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Directory fuzzy recovery failed for {Path}", candidatePath);
+                        }
+                    }
+
+                    _logger.LogWarning("Playlist file references missing file: {FilePath}", candidatePath);
                 }
-                else
+                catch (Exception ex)
                 {
-                    _logger.LogWarning("Playlist file references missing file: {FilePath}", mediaFilePath);
+                    _logger.LogWarning(ex, "Failed to resolve path from playlist entry: {Entry}", path);
                 }
             }
 
             if (validPaths.Any())
             {
-                List<MediaFile> importedTracks = await _fileImportService.ImportFilesAsync(validPaths.ToArray());
+                // Create progress callback to send ProgressValueMessage so the bottom progress bar updates
+                Progress<ProgressData> progress = new Progress<ProgressData>(data =>
+                {
+                    WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
+                });
+
+                List<MediaFile> importedTracks = await _fileImportService.ImportFilesAsync(validPaths.ToArray(), progress);
 
                 if (importedTracks.Any())
                 {
@@ -824,20 +893,227 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
+    // Helpers restored and used across the class
     private static List<string> ExtractPathsFromPlaylistFile(string fileName)
     {
         string extension = Path.GetExtension(fileName).ToLowerInvariant();
+
+        // Prefer robust manual parsing for M3U/M3U8 with encoding detection
+        if (extension is ".m3u" or ".m3u8")
+        {
+            return ExtractPathsFromM3u(fileName);
+        }
 
         using FileStream stream = File.OpenRead(fileName);
 
         return extension switch
         {
-            ".m3u" => new M3uContent().GetFromStream(stream).GetTracksPaths(),
             ".pls" => new PlsContent().GetFromStream(stream).GetTracksPaths(),
             ".wpl" => new WplContent().GetFromStream(stream).GetTracksPaths(),
             ".zpl" => new ZplContent().GetFromStream(stream).GetTracksPaths(),
             _ => new List<string>()
         };
+    }
+
+    private static List<string> ExtractPathsFromM3u(string fileName)
+    {
+        var results = new List<string>();
+
+        try
+        {
+            // Try UTF-8 with BOM detection, then Latin1, then UTF-16
+            foreach (var encoding in new[] { new UTF8Encoding(false, false), Encoding.Latin1, Encoding.Unicode })
+            {
+                try
+                {
+                    using var reader = new StreamReader(fileName, encoding, detectEncodingFromByteOrderMarks: true);
+                    string? line;
+                    results.Clear();
+
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        line = line.Trim();
+                        if (string.IsNullOrEmpty(line))
+                            continue;
+                        if (line.StartsWith("#"))
+                            continue; // comment or directive
+
+                        results.Add(line);
+                    }
+
+                    // If we successfully read any entries, break
+                    if (results.Count > 0)
+                        break;
+                }
+                catch
+                {
+                    // Try next encoding
+                    results.Clear();
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to PlaylistsNET if manual parsing fails
+            try
+            {
+                using var stream = File.OpenRead(fileName);
+                results = new M3uContent().GetFromStream(stream).GetTracksPaths();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
+
+        return results;
+    }
+
+    // --- String normalization and distance helpers ---
+    private static string NormalizeForCompare(string input)
+    {
+     if (string.IsNullOrEmpty(input)) return string.Empty;
+
+     // Lowercase
+     string s = input.ToLowerInvariant();
+
+     // Replace curly quotes and similar punctuation with ASCII
+     s = s.Replace('\u2019', '\'')
+         .Replace('\u2018', '\'')
+         .Replace('\u201C', '"')
+         .Replace('\u201D', '"');
+
+     // Remove diacritics
+     var formD = s.Normalize(NormalizationForm.FormD);
+     var sb = new StringBuilder(formD.Length);
+     foreach (var ch in formD)
+     {
+     var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+     if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+     {
+     sb.Append(ch);
+     }
+     }
+     s = sb.ToString().Normalize(NormalizationForm.FormC);
+
+     // Remove punctuation (keep letters, digits, spaces), collapse spaces
+     s = Regex.Replace(s, "[^a-z0-9 ]", string.Empty);
+     s = Regex.Replace(s, "\\s+", " ").Trim();
+     return s;
+    }
+
+    // Correct small spacing issues in helpers
+    private static int LevenshteinDistance(string a, string b)
+    {
+     if (a == b) return 0;
+     if (a.Length ==0) return b.Length;
+     if (b.Length ==0) return a.Length;
+
+     int[,] d = new int[a.Length +1, b.Length +1];
+     for (int i =0; i <= a.Length; i++) d[i,0] = i;
+     for (int j =0; j <= b.Length; j++) d[0, j] = j;
+
+     for (int i =1; i <= a.Length; i++)
+     {
+     for (int j =1; j <= b.Length; j++)
+     {
+     int cost = a[i -1] == b[j -1] ?0 :1;
+     d[i, j] = Math.Min(
+                 Math.Min(d[i -1, j] +1, d[i, j -1] +1),
+                 d[i -1, j -1] + cost);
+     }
+     }
+     return d[a.Length, b.Length];
+    }
+
+
+    private static string? TryFindClosestFileInDirectory(string directory, string targetFileName)
+    {
+        try
+        {
+            string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
+            string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
+            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
+            ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
+            string? bestPath = null;
+            int bestScore = int.MaxValue;
+            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+            {
+                string ext = Path.GetExtension(file);
+                if (!allowed.Contains(ext)) continue;
+                string name = Path.GetFileName(file);
+                string nameNorm = NormalizeForCompare(name);
+                string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
+                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm) return file;
+                int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
+                if (dist < bestScore)
+                {
+                    bestScore = dist;
+                    bestPath = file;
+                    if (bestScore <=2) return bestPath;
+                }
+            }
+            return bestScore <=3 ? bestPath : null;
+        }
+        catch { return null; }
+    }
+
+    private static string? TryFindClosestFileRecursively(string baseDir, string targetFileName)
+    {
+        try
+        {
+            string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
+            string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
+            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
+            ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
+            string? bestPath = null;
+            int bestScore = int.MaxValue;
+            foreach (var file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
+            {
+                string ext = Path.GetExtension(file);
+                if (!allowed.Contains(ext)) continue;
+                string name = Path.GetFileName(file);
+                string nameNorm = NormalizeForCompare(name);
+                string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
+                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm) return file;
+                int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
+                if (dist < bestScore)
+                {
+                    bestScore = dist;
+                    bestPath = file;
+                    if (bestScore <=1) return bestPath;
+                }
+            }
+            return bestScore <=2 ? bestPath : null;
+        }
+        catch { return null; }
+    }
+
+    private static string? TryFindClosestDirectoryInParent(string parentDir, string targetDirName)
+    {
+        try
+        {
+            string targetNorm = NormalizeForCompare(targetDirName);
+            string? bestPath = null;
+            int bestScore = int.MaxValue;
+            foreach (var dir in Directory.EnumerateDirectories(parentDir))
+            {
+                string name = Path.GetFileName(dir);
+                string nameNorm = NormalizeForCompare(name);
+                if (nameNorm == targetNorm) return dir;
+                int dist = LevenshteinDistance(nameNorm, targetNorm);
+                if (dist < bestScore)
+                {
+                    bestScore = dist;
+                    bestPath = dir;
+                    if (bestScore <=2) return bestPath;
+                }
+            }
+            return bestScore <=3 ? bestPath : null;
+        }
+        catch { return null; }
     }
 
     private void UpdateDataGridAfterTabChange()
@@ -926,12 +1202,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 string? currentTrackId = ActiveTrack?.Id ?? SelectedTrack?.Id;
                 _trackNavigationService.InitializeShuffle(currentTracks, currentTrackId);
-                //_logger.LogInformation("Shuffle mode enabled with {Count} tracks", currentTracks.Count);
             }
             else
             {
                 _trackNavigationService.ClearShuffle();
-                //_logger.LogInformation("Shuffle mode disabled");
             }
         }
     }
@@ -1023,9 +1297,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     {
                         playlist.SelectedTrackId = importedTracks.First().Id;
                     }
-
-                    //_logger.LogInformation("Created playlist '{PlaylistName}' with {Count} tracks",
-                    //    uniqueName, importedTracks.Count);
                 }
                 else
                 {
@@ -1068,189 +1339,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error selecting tab by right-click: {TabName}", tabName);
-        }
-    }
-
-    [RelayCommand]
-    private void DragOver(DragEventArgs args)
-    {
-        if (args.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            args.Effects = DragDropEffects.Copy;
-            args.Handled = true;
-        }
-        else
-        {
-            args.Effects = DragDropEffects.None;
-            args.Handled = true;
-        }
-    }
-
-    [RelayCommand]
-    private async Task Drop(DragEventArgs args)
-    {
-        if (!args.Data.GetDataPresent(DataFormats.FileDrop))
-        {
-            args.Handled = true;
-            _logger.LogWarning("Drop event triggered without FileDrop data");
-            return;
-        }
-
-        string[] droppedItems = (string[])args.Data.GetData(DataFormats.FileDrop)!;
-        bool isControlPressed = (args.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
-
-        Progress<ProgressData> progress = new Progress<ProgressData>(data =>
-        {
-            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
-        });
-
-        await HandleDropAsync(droppedItems, isControlPressed, progress);
-        args.Handled = true;
-    }
-
-    private async Task HandleDropAsync(string[] droppedItems, bool createNewPlaylist, IProgress<ProgressData> progress)
-    {
-        try
-        {
-            foreach (string item in droppedItems)
-            {
-                if (File.Exists(item) && _fileImportService.IsAudioFile(item))
-                {
-                    await HandleSingleFileDropAsync(item);
-                }
-                else if (Directory.Exists(item))
-                {
-                    await HandleFolderDropAsync(item, createNewPlaylist, progress);
-                }
-                else
-                {
-                    _logger.LogWarning("Invalid drop item: {Item}", item);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process dropped items");
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                progress.Report(new ProgressData
-                {
-                    IsProcessing = false,
-                    Status = "Error processing dropped items"
-                });
-            });
-        }
-    }
-
-    private async Task HandleSingleFileDropAsync(string filePath)
-    {
-        try
-        {
-            MediaFile? importedFile = await _fileImportService.ImportFileAsync(filePath);
-            if (importedFile != null)
-            {
-                await EnsureSelectedTabExistsAsync();
-
-                if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-                {
-                    var tab = TabList[SelectedTabIndex];
-                    await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, [importedFile]);
-
-                    await _uiDispatcher.InvokeAsync(() =>
-                    {
-                        tab.Tracks.Add(importedFile); // ObservableCollection auto-notifies!
-                    });
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process dropped file: {FilePath}", filePath);
-        }
-    }
-
-    private async Task HandleFolderDropAsync(string folderPath, bool createNewPlaylist, IProgress<ProgressData> progress)
-    {
-        if (createNewPlaylist)
-        {
-            await CreatePlaylistFromFolderAsync(folderPath, progress);
-        }
-        else
-        {
-            await AddFolderToCurrentPlaylistAsync(folderPath, progress);
-        }
-    }
-
-    private async Task AddFolderToCurrentPlaylistAsync(string folderPath, IProgress<ProgressData>? progress = null)
-    {
-        if (_dataGrid == null)
-        {
-            _logger.LogError("DataGrid is null, cannot add folder to current playlist");
-            return;
-        }
-
-        try
-        {
-            await EnsureSelectedTabExistsAsync();
-
-            List<MediaFile> importedTracks = await _fileImportService.ImportFolderAsync(folderPath, progress);
-
-            if (!importedTracks.Any())
-            {
-                _logger.LogWarning("No tracks imported from folder: {FolderPath}", folderPath);
-                return;
-            }
-
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-            {
-                var tab = TabList[SelectedTabIndex];
-                bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, importedTracks);
-
-                if (success)
-                {
-                    await _uiDispatcher.InvokeAsync(() =>
-                    {
-                        foreach (MediaFile track in importedTracks)
-                        {
-                            if (tab.Tracks.All(t => t.Id != track.Id))
-                            {
-                                tab.Tracks.Add(track); // ObservableCollection auto-notifies!
-                            }
-                        }
-
-                        // Set selected track if needed
-                        if (_dataGrid.SelectedItem == null && tab.Tracks.Any())
-                        {
-                            _dataGrid.SelectedIndex = 0;
-                            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
-                        }
-                    });
-                }
-                else
-                {
-                    _logger.LogError("Failed to add tracks to playlist");
-                    await _uiDispatcher.InvokeAsync(() =>
-                    {
-                        progress?.Report(new ProgressData
-                        {
-                            IsProcessing = false,
-                            Status = "Error adding tracks to playlist"
-                        });
-                    });
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process folder: {FolderPath}", folderPath);
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                progress?.Report(new ProgressData
-                {
-                    IsProcessing = false,
-                    Status = "Error processing folder"
-                });
-            });
         }
     }
 
@@ -1359,40 +1447,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
         }
     }
 
-    // Add CanExecute methods for commands that should be conditionally enabled
-    private bool CanRemoveTrack() => _dataGrid?.SelectedItem != null && SelectedPlaylist != null;
-
-    private bool CanRemovePlaylist(PlaylistTab? playlistTab) => playlistTab != null && TabList.Count > 1;
-
-    private bool CanPlayTrack() => _dataGrid?.SelectedItem is MediaFile;
-
-    private bool CanSelectFirstTrack() => TabList.Any() && SelectedTab?.Tracks.Any() == true;
-
-    // Method to refresh command states when selection changes
-    private void RefreshCommandStates()
-    {
-        RemoveTrackCommand.NotifyCanExecuteChanged();
-        PlayTrackCommand.NotifyCanExecuteChanged();
-        SelectFirstTrackCommandCommand.NotifyCanExecuteChanged();
-    }
-
-    // Override the OnPropertyChanged to refresh command states when relevant properties change
-    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
-    {
-        base.OnPropertyChanged(e);
-
-        if (e.PropertyName is nameof(SelectedTrack) or nameof(SelectedPlaylist) or nameof(SelectedTab))
-        {
-            RefreshCommandStates();
-        }
-    }
-
-    // Add these methods that are called by PlayerControlsViewModel
+    // PlayerControlsViewModel helpers
     public MediaFile? PreviousMediaFile()
     {
         try
         {
-            // NEW: Use TabList instead of PlaylistViewModel
             if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
             {
                 _logger.LogWarning("PreviousMediaFile: Invalid SelectedTabIndex {Index} (TabList count: {Count})",
@@ -1439,7 +1498,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
     {
         try
         {
-            // NEW: Use TabList instead of PlaylistViewModel
             if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
             {
                 _logger.LogWarning("NextMediaFile: Invalid SelectedTabIndex {Index} (TabList count: {Count})",
