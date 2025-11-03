@@ -1,8 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Globalization;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -223,7 +221,8 @@ public partial class VuMeter : Control
     #region Public Methods
     public void RegisterSoundPlayer(ISpectrumPlayer soundPlayer)
     {
-        if (_isShuttingDown) return;
+        if (_isShuttingDown)
+            return;
 
         if (_soundPlayer != null)
         {
@@ -311,7 +310,8 @@ public partial class VuMeter : Control
     #region Private Methods
     private void SafeUpdateLayout()
     {
-        if (_isShuttingDown) return;
+        if (_isShuttingDown)
+            return;
 
         if (!Dispatcher.CheckAccess())
         {
@@ -347,7 +347,8 @@ public partial class VuMeter : Control
 
     private void CreateScaleMarkings(double canvasWidth, double topOffset)
     {
-        if (_vuCanvas == null) return;
+        if (_vuCanvas == null)
+            return;
 
         // Create dB scale markings from -60dB to +10dB in 10dB increments
         for (double db = MinDbValue; db <= MaxDbValue; db += 10)
@@ -383,7 +384,8 @@ public partial class VuMeter : Control
 
     private void CreateChannelBars(double canvasWidth, double channelHeight, double labelOffset)
     {
-        if (_vuCanvas == null) return;
+        if (_vuCanvas == null)
+            return;
 
         // Left channel bar
         _leftChannelBar = new Rectangle
@@ -436,7 +438,8 @@ public partial class VuMeter : Control
 
     private void UpdateVuBars()
     {
-        if (_isShuttingDown) return;
+        if (_isShuttingDown)
+            return;
 
         if (!Dispatcher.CheckAccess())
         {
@@ -473,7 +476,8 @@ public partial class VuMeter : Control
 
     private void UpdateAudioLevels()
     {
-        if (_isShuttingDown) return;
+        if (_isShuttingDown)
+            return;
 
         // Only update levels when actually playing
         if (!_isPlayerPlaying || _audioEngine == null)
@@ -487,7 +491,7 @@ public partial class VuMeter : Control
             var (leftDb, rightDb) = _audioEngine.GetStereoDecibelLevels();
 
             // If we can't get levels, don't update
-            if (double.IsNaN(leftDb) || double.IsInfinity(leftDb) || 
+            if (double.IsNaN(leftDb) || double.IsInfinity(leftDb) ||
                 double.IsNaN(rightDb) || double.IsInfinity(rightDb))
             {
                 return;
@@ -524,9 +528,10 @@ public partial class VuMeter : Control
     #region Event Handlers
     private void SoundPlayer_OnFftCalculated(float[] fftData)
     {
-        if (_isShuttingDown) return;
+        if (_isShuttingDown)
+            return;
 
-        // FIXED: Only update levels when actually playing AND add extra safety check
+        // Only update levels when actually playing AND add extra safety check
         if (_isPlayerPlaying && _soundPlayer != null && _soundPlayer.IsPlaying)
         {
             try
@@ -543,18 +548,15 @@ public partial class VuMeter : Control
         }
         else
         {
-            // Log when we're getting FFT events but not playing
-            if (!_isShuttingDown)
-            {
-                _logger.LogDebug("VuMeter: Ignoring FFT event - not playing (isPlayerPlaying={IsPlayerPlaying}, soundPlayer.IsPlaying={SoundPlayerIsPlaying})",
-                    _isPlayerPlaying, _soundPlayer?.IsPlaying);
-            }
+            // Removed per-FFT debug logging to avoid overwhelming the logger/output window
+            // This log was too chatty and could affect responsiveness during Next/Prev
         }
     }
 
     private void SoundPlayer_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (_isShuttingDown) return;
+        if (_isShuttingDown)
+            return;
 
         if (e.PropertyName == "IsPlaying" && _soundPlayer != null)
         {

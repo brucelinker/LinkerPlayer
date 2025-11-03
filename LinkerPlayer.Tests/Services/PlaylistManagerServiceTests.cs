@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Xunit;
 
 namespace LinkerPlayer.Tests.Services;
 
@@ -9,7 +8,7 @@ public class PlaylistManagerServiceTests
     public void BasicTest_ShouldPass()
     {
         // This is a placeholder test while we work on making the complex dependencies testable
-        
+
         bool result = true;
         result.Should().BeTrue();
     }

@@ -3,7 +3,6 @@ using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
-using Xunit;
 
 namespace LinkerPlayer.Tests.Services;
 

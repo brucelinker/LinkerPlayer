@@ -1,4 +1,4 @@
-﻿using LinkerPlayer.Audio;
+using LinkerPlayer.Audio;
 using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
@@ -10,10 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RestoreWindowPlace;
-using System;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 
 namespace LinkerPlayer;
@@ -21,7 +18,10 @@ namespace LinkerPlayer;
 public partial class App
 {
     public static IHost AppHost { get; set; } = null!;
-    public WindowPlace WindowPlace { get; }
+    public WindowPlace WindowPlace
+    {
+        get;
+    }
     private readonly ILogger<App> _logger;
     private SplashWindow? _splashWindow;
 
@@ -35,7 +35,7 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders(); // Clear default providers to avoid duplicate logs
-                logging.SetMinimumLevel(LogLevel.Trace);
+                logging.SetMinimumLevel(LogLevel.Warning);
                 logging.AddSimpleConsole(options =>
                 {
                     options.IncludeScopes = false;
@@ -59,6 +59,7 @@ public partial class App
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
                 services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
+                services.AddSingleton<IUiNotifier, WpfUiNotifier>();
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<ISettingsManager, SettingsManager>();

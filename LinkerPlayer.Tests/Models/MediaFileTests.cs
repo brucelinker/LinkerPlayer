@@ -1,7 +1,3 @@
-﻿using LinkerPlayer.Models;
-using Shouldly;
-using Xunit;
-
 namespace LinkerPlayer.Tests.Models;
 
 public class MediaFileTests

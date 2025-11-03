@@ -19,7 +19,7 @@ public class WpfUiDispatcherTests
         // Note: This test may not work as expected in a unit test environment
         // because Application.Current might be null or the Dispatcher might not be available
         // In a real WPF application, this would behave differently
-        
+
         // Act
         bool result = _uiDispatcher.CheckAccess();
 
@@ -41,7 +41,7 @@ public class WpfUiDispatcherTests
         // Act & Assert
         // In a unit test environment, this will likely throw because there's no WPF application
         Exception? exception = await Record.ExceptionAsync(() => _uiDispatcher.InvokeAsync(testAction));
-        
+
         // In unit tests, we expect this to throw InvalidOperationException
         // because there's no Application.Current.Dispatcher
         exception.Should().BeOfType<InvalidOperationException>();
@@ -56,7 +56,7 @@ public class WpfUiDispatcherTests
 
         // Act & Assert
         Exception? exception = await Record.ExceptionAsync(() => _uiDispatcher.InvokeAsync(testFunc));
-        
+
         exception.Should().BeOfType<InvalidOperationException>();
         exception!.Message.Should().Contain("Application dispatcher is not available");
     }
@@ -69,7 +69,7 @@ public class WpfUiDispatcherTests
 
         // Act & Assert
         Exception? exception = await Record.ExceptionAsync(() => _uiDispatcher.InvokeAsync(asyncAction));
-        
+
         exception.Should().BeOfType<InvalidOperationException>();
         exception!.Message.Should().Contain("Application dispatcher is not available");
     }
@@ -82,7 +82,7 @@ public class WpfUiDispatcherTests
 
         // Act & Assert
         Exception? exception = await Record.ExceptionAsync(() => _uiDispatcher.InvokeAsync(asyncFunc));
-        
+
         exception.Should().BeOfType<InvalidOperationException>();
         exception!.Message.Should().Contain("Application dispatcher is not available");
     }
@@ -108,13 +108,13 @@ public class WpfUiDispatcherIntegrationTests : IDisposable
     //[Fact(Skip = "Requires STA thread and WPF application context")]
     //public async Task InvokeAsync_WithWpfContext_ShouldExecuteSuccessfully()
     //{
-        // This test would require:
-        // 1. Running in STA thread ([STAFact] instead of [Fact])
-        // 2. Creating a WPF Application instance
-        // 3. Setting up the dispatcher properly
-        
-        // For now, this is skipped as an example of what you'd need
-        // for full WPF integration testing
+    // This test would require:
+    // 1. Running in STA thread ([STAFact] instead of [Fact])
+    // 2. Creating a WPF Application instance
+    // 3. Setting up the dispatcher properly
+
+    // For now, this is skipped as an example of what you'd need
+    // for full WPF integration testing
     //}
 }
 

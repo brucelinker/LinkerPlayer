@@ -2,8 +2,6 @@ using FluentAssertions;
 using LinkerPlayer.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
-using System.IO;
-using Xunit;
 
 namespace LinkerPlayer.Tests.Services;
 
@@ -15,7 +13,7 @@ public class FileImportServiceTests : IDisposable
     public FileImportServiceTests()
     {
         _mockLogger = new Mock<ILogger<FileImportService>>();
-        
+
         // Create a temporary test directory
         _testDirectory = Path.Combine(Path.GetTempPath(), "FileImportServiceTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);
@@ -43,7 +41,7 @@ public class FileImportServiceTests : IDisposable
     {
         // Arrange
         string filePath = $"test{extension}";
-        
+
         // We create a real FileImportService with a null MusicLibrary just for this test
         // since IsAudioFile doesn't use MusicLibrary
         TestableFileImportService fileImportService = new TestableFileImportService(_mockLogger.Object);
@@ -139,7 +137,7 @@ public class TestableFileImportService
             return false;
 
         string extension = Path.GetExtension(path);
-        return !string.IsNullOrEmpty(extension) && 
+        return !string.IsNullOrEmpty(extension) &&
                _supportedAudioExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 

@@ -1,4 +1,4 @@
-﻿using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -7,7 +7,6 @@ using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -138,9 +137,12 @@ public partial class PlayerControls
 
     private string GetChannelsString(int channels)
     {
-        if (channels == 1) return "Mono";
-        if (channels == 2) return "stereo";
-        if (channels > 2) return "multichannel";
+        if (channels == 1)
+            return "Mono";
+        if (channels == 2)
+            return "stereo";
+        if (channels > 2)
+            return "multichannel";
 
         return "";
     }
@@ -220,7 +222,8 @@ public partial class PlayerControls
 
     private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_vm!.SelectedTrack == null) return;
+        if (_vm!.SelectedTrack == null)
+            return;
         double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";

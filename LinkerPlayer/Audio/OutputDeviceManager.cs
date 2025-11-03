@@ -1,10 +1,7 @@
-﻿using LinkerPlayer.Models;
+using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace LinkerPlayer.Audio;
 
@@ -101,7 +98,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
             RefreshOutputDeviceList();
         }
 
-        if(_devices == null)
+        if (_devices == null)
             return Enumerable.Empty<Device>();
 
         return _devices.Where(d => d.Type == OutputDeviceType.DirectSound);
@@ -148,9 +145,12 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         // 1: Any Speakers
         // 2: Other non-headset devices
         // 3: Headset-style devices
-        if (isSpeaker && isDefault) return 0;
-        if (isSpeaker) return 1;
-        if (isHeadset) return 3;
+        if (isSpeaker && isDefault)
+            return 0;
+        if (isSpeaker)
+            return 1;
+        if (isHeadset)
+            return 3;
         return 2;
     }
 }

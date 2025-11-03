@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Xunit;
 
 namespace LinkerPlayer.Tests.ViewModels;
 
@@ -10,7 +9,7 @@ public class PlaylistTabsViewModelTests
     {
         // This is a placeholder test while we work on making the complex dependencies testable
         // In the future, these classes should be refactored to use dependency injection properly
-        
+
         bool result = true;
         result.Should().BeTrue();
     }
