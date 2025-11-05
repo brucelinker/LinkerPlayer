@@ -118,7 +118,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public MediaFile? SelectedTrack
     {
         get => SharedDataModel.SelectedTrack;
-        set => SharedDataModel.UpdateSelectedTrack(value!);
+        set
+        {
+            SharedDataModel.UpdateSelectedTrack(value!);
+            OnPropertyChanged(nameof(SelectedTrack));
+        }
     }
 
     public MediaFile? ActiveTrack
@@ -218,11 +222,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         // Avoid Items.Refresh to prevent scroll jumps
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
-    }
-
-    private void UpdateDataGridAfterTabChange()
-    {
-        // No-op by design to preserve scroll offset when switching tabs
     }
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)

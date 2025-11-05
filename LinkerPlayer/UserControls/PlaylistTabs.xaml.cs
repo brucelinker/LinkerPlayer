@@ -36,6 +36,7 @@ public partial class PlaylistTabs
         _logger = App.AppHost.Services.GetRequiredService<ILogger<PlaylistTabs>>();
 
         Loaded += PlaylistTabs_Loaded;
+        Unloaded += PlaylistTabs_Unloaded;
     }
 
     private void PlaylistTabs_Loaded(object sender, RoutedEventArgs e)
@@ -70,6 +71,15 @@ public partial class PlaylistTabs
         {
             _logger.LogError("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
         }
+
+        // Subscribe to view model property changes to center track on selection change
+        if (DataContext is PlaylistTabsViewModel vm)
+        {
+            vm.PropertyChanged += ViewModel_PropertyChanged;
+        }
+
+        // Center the selected track on app start
+        Dispatcher.BeginInvoke((Action)CenterSelectedTrack, null);
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
@@ -108,6 +118,8 @@ public partial class PlaylistTabs
                         viewModel.OnTabSelectionChanged(sender, e);
                     }
                 }, null);
+                // Center the selected track when switching tabs
+                Dispatcher.BeginInvoke((Action)CenterSelectedTrack, null);
                 Console.WriteLine("Tab selection changed.");
             }
         }
@@ -621,6 +633,34 @@ public partial class PlaylistTabs
                     sv?.ScrollToVerticalOffset(offset);
                 }));
             }
+        }
+    }
+
+    private void CenterSelectedTrack()
+    {
+        if (DataContext is PlaylistTabsViewModel viewModel && viewModel.SelectedTrack != null)
+        {
+            DataGrid? dataGrid = GetActiveDataGrid();
+            if (dataGrid != null)
+            {
+                CenterItemInDataGrid(dataGrid, viewModel.SelectedTrack);
+            }
+        }
+    }
+
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PlaylistTabsViewModel.SelectedTrack))
+        {
+            Dispatcher.BeginInvoke((Action)CenterSelectedTrack, null);
+        }
+    }
+
+    private void PlaylistTabs_Unloaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is PlaylistTabsViewModel vm)
+        {
+            vm.PropertyChanged -= ViewModel_PropertyChanged;
         }
     }
 
