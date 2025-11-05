@@ -13,6 +13,7 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -140,12 +141,45 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
             {
-                var tab = TabList[SelectedTabIndex];
+                PlaylistTab tab = TabList[SelectedTabIndex];
 
                 SelectedPlaylist = GetSelectedPlaylist();
 
                 WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
             }
+        }
+    }
+
+    partial void OnSelectedTabIndexChanged(int value)
+    {
+        try
+        {
+            if (value < 0 || value >= TabList.Count)
+            {
+                return;
+            }
+
+            // Keep TabControl selection in sync if available
+            if (_tabControl != null && _tabControl.SelectedIndex != value)
+            {
+                _tabControl.SelectedIndex = value;
+            }
+
+            // Update selection-sensitive state
+            SelectedTab = TabList[value];
+            SelectedPlaylist = GetSelectedPlaylist();
+            // Do not force DataGrid refresh here; preserves scroll/selection
+
+            // Persist setting asynchronously to avoid blocking UI
+            _ = Task.Run(() =>
+            {
+                _settingsManager.Settings.SelectedTabIndex = value;
+                _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OnSelectedTabIndexChanged failed for value {Value}", value);
         }
     }
 
@@ -168,17 +202,27 @@ public partial class PlaylistTabsViewModel : ObservableObject
             return;
         }
 
-        var tab = TabList[SelectedTabIndex];
+        PlaylistTab tab = TabList[SelectedTabIndex];
 
         if (_dataGrid == null || tab == null)
+        {
+            // Even if _dataGrid is not yet available, update playlist and return
+            SelectedPlaylist = GetSelectedPlaylist();
             return;
+        }
 
         // Clear SelectedTracks when switching tabs
         SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
 
         SelectedPlaylist = GetSelectedPlaylist();
+        // Avoid Items.Refresh to prevent scroll jumps
 
         WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+    }
+
+    private void UpdateDataGridAfterTabChange()
+    {
+        // No-op by design to preserve scroll offset when switching tabs
     }
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)
@@ -188,7 +232,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         // Handle multi-selection
         if (_dataGrid != null && _dataGrid.SelectedItems.Count > 0)
         {
-            var selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
+            List<MediaFile> selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
             SharedDataModel.UpdateSelectedTracks(selectedTracks);
 
             // Use the first selected item as the primary selection for backward compatibility
@@ -211,7 +255,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
             {
-                var tab = TabList[SelectedTabIndex];
+                PlaylistTab tab = TabList[SelectedTabIndex];
                 tab.SelectedTrack = SelectedTrack;
                 tab.SelectedIndex = SelectedTrackIndex;
             }
@@ -286,8 +330,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 TabList[SelectedTabIndex].Tracks.Add(track);
             }
 
-            // Restore selection
-            _dataGrid.ItemsSource = TabList[SelectedTabIndex].Tracks;
+            // Restore selection (no ItemsSource override)
             int newSelectedIndex = TabList[SelectedTabIndex].Tracks.ToList()
                 .FindIndex(t => t.FileName.Equals(saveSelectedItem.FileName, StringComparison.OrdinalIgnoreCase));
 
@@ -380,7 +423,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
             if (TabList.Any())
             {
-                var firstTab = TabList[0];
+                PlaylistTab firstTab = TabList[0];
                 //_logger.LogInformation(
                 //    "First Tab: Name='{Name}', Tracks={TrackCount}, SelectedTrack='{SelectedTrack}', SelectedIndex={SelectedIndex}",
                 //    firstTab.Name,
@@ -455,7 +498,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                     if (success && SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
                     {
-                        var tab = TabList[SelectedTabIndex];
+                        PlaylistTab tab = TabList[SelectedTabIndex];
                         await _uiDispatcher.InvokeAsync(() =>
                         {
                             foreach (MediaFile track in importedTracks)
@@ -499,7 +542,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
                 if (importedTracks.Any() && SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
                 {
-                    var tab = TabList[SelectedTabIndex];
+                    PlaylistTab tab = TabList[SelectedTabIndex];
                     bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, importedTracks);
 
                     if (success)
@@ -583,7 +626,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         {
                             _tabControl.SelectedIndex = 0;
                         }
-                        UpdateDataGridAfterTabChange();
                         SelectedPlaylist = GetSelectedPlaylist();
                     }
                     else
@@ -639,7 +681,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         }
 
                         tracks.RemoveAt(SelectedTrackIndex);
-                        _dataGrid.Items.Refresh();
+                        // Rely on ObservableCollection change; no Items.Refresh to avoid scroll jump
                         _dataGrid.UpdateLayout();
                     });
                 }
@@ -781,10 +823,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     string candidatePath = path;
 
                     // Convert file:// URIs to local paths
-                    if (Uri.TryCreate(candidatePath, UriKind.Absolute, out var uri) && uri.IsFile)
+                    if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
                     {
                         candidatePath = uri.LocalPath;
-                      }
+                    }
 
                     // Unescape any percent-encoded characters
                     candidatePath = Uri.UnescapeDataString(candidatePath);
@@ -882,7 +924,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
                         {
                             SelectedTab!.Tracks.Add(track);
                         }
-                        UpdateDataGridAfterTabChange();
                     });
                 }
             }
@@ -917,16 +958,16 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     private static List<string> ExtractPathsFromM3u(string fileName)
     {
-        var results = new List<string>();
+        List<string> results = new List<string>();
 
         try
         {
             // Try UTF-8 with BOM detection, then Latin1, then UTF-16
-            foreach (var encoding in new[] { new UTF8Encoding(false, false), Encoding.Latin1, Encoding.Unicode })
+            foreach (Encoding? encoding in new[] { new UTF8Encoding(false, false), Encoding.Latin1, Encoding.Unicode })
             {
                 try
                 {
-                    using var reader = new StreamReader(fileName, encoding, detectEncodingFromByteOrderMarks: true);
+                    using StreamReader reader = new StreamReader(fileName, encoding, detectEncodingFromByteOrderMarks: true);
                     string? line;
                     results.Clear();
 
@@ -957,7 +998,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             // Fallback to PlaylistsNET if manual parsing fails
             try
             {
-                using var stream = File.OpenRead(fileName);
+                using FileStream stream = File.OpenRead(fileName);
                 results = new M3uContent().GetFromStream(stream).GetTracksPaths();
             }
             catch
@@ -972,58 +1013,58 @@ public partial class PlaylistTabsViewModel : ObservableObject
     // --- String normalization and distance helpers ---
     private static string NormalizeForCompare(string input)
     {
-     if (string.IsNullOrEmpty(input)) return string.Empty;
+        if (string.IsNullOrEmpty(input)) return string.Empty;
 
-     // Lowercase
-     string s = input.ToLowerInvariant();
+        // Lowercase
+        string s = input.ToLowerInvariant();
 
-     // Replace curly quotes and similar punctuation with ASCII
-     s = s.Replace('\u2019', '\'')
-         .Replace('\u2018', '\'')
-         .Replace('\u201C', '"')
-         .Replace('\u201D', '"');
+        // Replace curly quotes and similar punctuation with ASCII
+        s = s.Replace('\u2019', '\'')
+            .Replace('\u2018', '\'')
+            .Replace('\u201C', '"')
+            .Replace('\u201D', '"');
 
-     // Remove diacritics
-     var formD = s.Normalize(NormalizationForm.FormD);
-     var sb = new StringBuilder(formD.Length);
-     foreach (var ch in formD)
-     {
-     var uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
-     if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
-     {
-     sb.Append(ch);
-     }
-     }
-     s = sb.ToString().Normalize(NormalizationForm.FormC);
+        // Remove diacritics
+        string formD = s.Normalize(NormalizationForm.FormD);
+        StringBuilder sb = new StringBuilder(formD.Length);
+        foreach (char ch in formD)
+        {
+            UnicodeCategory uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(ch);
+            }
+        }
+        s = sb.ToString().Normalize(NormalizationForm.FormC);
 
-     // Remove punctuation (keep letters, digits, spaces), collapse spaces
-     s = Regex.Replace(s, "[^a-z0-9 ]", string.Empty);
-     s = Regex.Replace(s, "\\s+", " ").Trim();
-     return s;
+        // Remove punctuation (keep letters, digits, spaces), collapse spaces
+        s = Regex.Replace(s, "[^a-z0-9 ]", string.Empty);
+        s = Regex.Replace(s, "\\s+", " ").Trim();
+        return s;
     }
 
     // Correct small spacing issues in helpers
     private static int LevenshteinDistance(string a, string b)
     {
-     if (a == b) return 0;
-     if (a.Length ==0) return b.Length;
-     if (b.Length ==0) return a.Length;
+        if (a == b) return 0;
+        if (a.Length == 0) return b.Length;
+        if (b.Length == 0) return a.Length;
 
-     int[,] d = new int[a.Length +1, b.Length +1];
-     for (int i =0; i <= a.Length; i++) d[i,0] = i;
-     for (int j =0; j <= b.Length; j++) d[0, j] = j;
+        int[,] d = new int[a.Length + 1, b.Length + 1];
+        for (int i = 0; i <= a.Length; i++) d[i, 0] = i;
+        for (int j = 0; j <= b.Length; j++) d[0, j] = j;
 
-     for (int i =1; i <= a.Length; i++)
-     {
-     for (int j =1; j <= b.Length; j++)
-     {
-     int cost = a[i -1] == b[j -1] ?0 :1;
-     d[i, j] = Math.Min(
-                 Math.Min(d[i -1, j] +1, d[i, j -1] +1),
-                 d[i -1, j -1] + cost);
-     }
-     }
-     return d[a.Length, b.Length];
+        for (int i = 1; i <= a.Length; i++)
+        {
+            for (int j = 1; j <= b.Length; j++)
+            {
+                int cost = a[i - 1] == b[j - 1] ? 0 : 1;
+                d[i, j] = Math.Min(
+                            Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
+                            d[i - 1, j - 1] + cost);
+            }
+        }
+        return d[a.Length, b.Length];
     }
 
 
@@ -1033,12 +1074,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
             string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
             ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
             string? bestPath = null;
             int bestScore = int.MaxValue;
-            foreach (var file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
+            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
             {
                 string ext = Path.GetExtension(file);
                 if (!allowed.Contains(ext)) continue;
@@ -1051,10 +1092,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     bestScore = dist;
                     bestPath = file;
-                    if (bestScore <=2) return bestPath;
+                    if (bestScore <= 2) return bestPath;
                 }
             }
-            return bestScore <=3 ? bestPath : null;
+            return bestScore <= 3 ? bestPath : null;
         }
         catch { return null; }
     }
@@ -1065,12 +1106,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
             string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
             ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
             string? bestPath = null;
             int bestScore = int.MaxValue;
-            foreach (var file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
+            foreach (string file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
             {
                 string ext = Path.GetExtension(file);
                 if (!allowed.Contains(ext)) continue;
@@ -1083,10 +1124,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     bestScore = dist;
                     bestPath = file;
-                    if (bestScore <=1) return bestPath;
+                    if (bestScore <= 1) return bestPath;
                 }
             }
-            return bestScore <=2 ? bestPath : null;
+            return bestScore <= 2 ? bestPath : null;
         }
         catch { return null; }
     }
@@ -1098,7 +1139,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             string targetNorm = NormalizeForCompare(targetDirName);
             string? bestPath = null;
             int bestScore = int.MaxValue;
-            foreach (var dir in Directory.EnumerateDirectories(parentDir))
+            foreach (string dir in Directory.EnumerateDirectories(parentDir))
             {
                 string name = Path.GetFileName(dir);
                 string nameNorm = NormalizeForCompare(name);
@@ -1108,22 +1149,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     bestScore = dist;
                     bestPath = dir;
-                    if (bestScore <=2) return bestPath;
+                    if (bestScore <= 2) return bestPath;
                 }
             }
-            return bestScore <=3 ? bestPath : null;
+            return bestScore <= 3 ? bestPath : null;
         }
         catch { return null; }
-    }
-
-    private void UpdateDataGridAfterTabChange()
-    {
-        if (_dataGrid != null && SelectedTab != null)
-        {
-            _dataGrid.ItemsSource = SelectedTab.Tracks;
-            _dataGrid.Items.Refresh();
-            _dataGrid.UpdateLayout();
-        }
     }
 
     private PlaylistTab CreatePlaylistTabFromPlaylist(Playlist playlist)
@@ -1265,7 +1296,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 SelectedTab = newTab;
                 SelectedTabIndex = TabList.Count - 1;
                 _tabControl!.SelectedIndex = SelectedTabIndex;
-                _dataGrid!.ItemsSource = SelectedTab.Tracks;
+                // Do not override ItemsSource; XAML binding will pick up Tracks automatically
             });
 
             List<MediaFile> importedTracks = await _fileImportService.ImportFolderAsync(folderPath, progress);
@@ -1459,7 +1490,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 return null;
             }
 
-            var tab = TabList[SelectedTabIndex];
+            PlaylistTab tab = TabList[SelectedTabIndex];
 
             if (tab?.Tracks == null || !tab.Tracks.Any())
             {
@@ -1505,7 +1536,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 return null;
             }
 
-            var tab = TabList[SelectedTabIndex];
+            PlaylistTab tab = TabList[SelectedTabIndex];
 
             if (tab?.Tracks == null || !tab.Tracks.Any())
             {

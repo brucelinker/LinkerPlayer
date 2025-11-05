@@ -126,6 +126,7 @@
         <Setter Property="AllowDrop" Value="True" />
         <EventSetter Event="DragOver" Handler="TabItem_DragOver" />
         <EventSetter Event="Drop" Handler="TabItem_Drop" />
+        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="TabItem_PreviewMouseLeftButtonDown" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="TabItem">
@@ -241,7 +242,7 @@
             CanUserReorderColumns="True"
             CellStyle="{StaticResource SharedDataGridCellStyle}"
             ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
-            EnableColumnVirtualization="False"
+            EnableColumnVirtualization="True"
             EnableRowVirtualization="True"
             GridLinesVisibility="None"
             HorizontalScrollBarVisibility="Visible"
@@ -252,8 +253,9 @@
             RowHeaderWidth="0"
             RowHeight="20"
             RowStyle="{StaticResource SharedDataGridRowStyle}"
-            ScrollViewer.CanContentScroll="False"
-            ScrollViewer.IsDeferredScrollingEnabled="False"
+            ScrollViewer.CanContentScroll="True"
+            ScrollViewer.IsDeferredScrollingEnabled="True"
+            ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
@@ -261,8 +263,15 @@
             Style="{StaticResource SharedDataGridStyle}"
             ToolTipService.IsEnabled="False"
             VerticalScrollBarVisibility="Visible"
-            VirtualizingStackPanel.IsVirtualizing="True"
-            VirtualizingStackPanel.VirtualizationMode="Recycling">
+            VirtualizingPanel.CacheLength="1"
+            VirtualizingPanel.CacheLengthUnit="Page"
+            VirtualizingPanel.IsVirtualizing="True"
+            VirtualizingPanel.VirtualizationMode="Recycling">
+
+            <DataGrid.Resources>
+              <!--  Apply custom scrollbars implicitly within the DataGrid scope  -->
+              <Style BasedOn="{StaticResource CustomScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
+            </DataGrid.Resources>
 
             <b:Interaction.Triggers>
               <b:EventTrigger EventName="DragOver">
@@ -272,56 +281,7 @@
                 <b:InvokeCommandAction Command="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
               </b:EventTrigger>
             </b:Interaction.Triggers>
-            <DataGrid.Template>
-              <ControlTemplate TargetType="{x:Type DataGrid}">
-                <Border
-                  Background="{TemplateBinding Background}"
-                  BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}">
-                  <ScrollViewer x:Name="DG_ScrollViewer" Focusable="False">
-                    <ScrollViewer.Template>
-                      <ControlTemplate TargetType="{x:Type ScrollViewer}">
-                        <Grid>
-                          <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                          </Grid.ColumnDefinitions>
-                          <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                          </Grid.RowDefinitions>
-                          <DataGridColumnHeadersPresenter
-                            Grid.Row="0"
-                            Grid.Column="0"
-                            Grid.ColumnSpan="2" />
-                          <ScrollContentPresenter Grid.Row="1" Grid.Column="0" />
-                          <ScrollBar
-                            x:Name="PART_VerticalScrollBar"
-                            Grid.Row="1"
-                            Grid.Column="1"
-                            Maximum="{TemplateBinding ScrollableHeight}"
-                            Orientation="Vertical"
-                            Style="{StaticResource CustomScrollBarStyle}"
-                            ViewportSize="{TemplateBinding ViewportHeight}"
-                            Value="{TemplateBinding VerticalOffset}" />
-                          <ScrollBar
-                            x:Name="PART_HorizontalScrollBar"
-                            Grid.Row="2"
-                            Grid.Column="0"
-                            Maximum="{TemplateBinding ScrollableWidth}"
-                            Orientation="Horizontal"
-                            Style="{StaticResource CustomScrollBarStyle}"
-                            ViewportSize="{TemplateBinding ViewportWidth}"
-                            Value="{TemplateBinding HorizontalOffset}" />
-                        </Grid>
-                      </ControlTemplate>
-                    </ScrollViewer.Template>
-                    <ItemsPresenter />
-                  </ScrollViewer>
-                </Border>
-              </ControlTemplate>
-            </DataGrid.Template>
+
             <DataGrid.Columns>
               <DataGridTextColumn
                 Width="40"
@@ -339,6 +299,7 @@
                   </Style>
                 </DataGridTextColumn.ElementStyle>
               </DataGridTextColumn>
+
               <DataGridTemplateColumn
                 Width="20"
                 MinWidth="{DynamicResource TrackTableImageSize}"
@@ -370,6 +331,7 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
+
               <DataGridTemplateColumn
                 Width="51"
                 Header="Track"
@@ -385,6 +347,7 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
+
               <DataGridTemplateColumn
                 Width="300"
                 Header="Title"
@@ -399,6 +362,7 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
+
               <DataGridTemplateColumn
                 Width="200"
                 Header="Artist"
@@ -413,6 +377,7 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
+
               <DataGridTemplateColumn
                 Width="300"
                 Header="Album"
@@ -427,6 +392,7 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
+
               <DataGridTemplateColumn
                 Width="72"
                 Header="Duration"
@@ -442,6 +408,7 @@
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
             </DataGrid.Columns>
+
             <DataGrid.ContextMenu>
               <ContextMenu>
                 <MenuItem Click="MenuItem_PlayTrack" Header="Play" />

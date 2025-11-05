@@ -26,6 +26,7 @@ public partial class PlaylistTabs
     private int _draggedTabIndex = -1;
     private DropIndicatorAdorner? _dropIndicatorAdorner;
     private TabItem? _lastHighlightedTab;
+    private readonly Dictionary<PlaylistTab, double> _tabVerticalOffsets = new();
 
 
     public PlaylistTabs()
@@ -57,7 +58,7 @@ public partial class PlaylistTabs
                 else
                 {
                     viewModel.SelectedTabIndex = 0;
-                    //_logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
+                    //_logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default0");
                 }
             }
             else
@@ -73,7 +74,7 @@ public partial class PlaylistTabs
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        Dispatcher.BeginInvoke((Action)delegate
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
@@ -84,7 +85,7 @@ public partial class PlaylistTabs
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        Dispatcher.BeginInvoke((Action)delegate
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
@@ -100,7 +101,7 @@ public partial class PlaylistTabs
             bool isTabChange = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
             if (isTabChange)
             {
-                this.Dispatcher.BeginInvoke((Action)delegate
+                Dispatcher.BeginInvoke((Action)delegate
                 {
                     if (DataContext is PlaylistTabsViewModel viewModel)
                     {
@@ -112,13 +113,13 @@ public partial class PlaylistTabs
         }
         //else
         //{
-        //    Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
+        // Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
         //}
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        Dispatcher.BeginInvoke((Action)delegate
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
@@ -147,7 +148,7 @@ public partial class PlaylistTabs
 
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        Dispatcher.BeginInvoke((Action)delegate
         {
             if (_selectedEditableTabHeaderControl != null)
             {
@@ -163,7 +164,7 @@ public partial class PlaylistTabs
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke(async () =>
+        Dispatcher.BeginInvoke(async () =>
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
@@ -190,7 +191,7 @@ public partial class PlaylistTabs
 
     private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        Dispatcher.BeginInvoke((Action)delegate
         {
             if (DataContext is PlayerControlsViewModel viewModel)
             {
@@ -229,7 +230,7 @@ public partial class PlaylistTabs
 
     private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        this.Dispatcher.BeginInvoke((Action)delegate
+        Dispatcher.BeginInvoke((Action)delegate
         {
             _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
         }, null);
@@ -249,10 +250,11 @@ public partial class PlaylistTabs
         if (e.Column is DataGridColumn column)
         {
             ListSortDirection direction = (column.SortDirection != ListSortDirection.Ascending)
-                ? ListSortDirection.Ascending
-                : ListSortDirection.Descending;
+            ? ListSortDirection.Ascending
+            : ListSortDirection.Descending;
             string propertyName = (column.SortMemberPath ?? column.Header.ToString())!;
-            this.Dispatcher.BeginInvoke((Action)delegate
+
+            Dispatcher.BeginInvoke((Action)delegate
             {
                 if (DataContext is PlaylistTabsViewModel viewModel)
                 {
@@ -344,7 +346,7 @@ public partial class PlaylistTabs
             {
                 Point position = e.GetPosition(tabItem);
                 if (position.X < 0 || position.X > tabItem.ActualWidth ||
-                    position.Y < 0 || position.Y > tabItem.ActualHeight)
+                position.Y < 0 || position.Y > tabItem.ActualHeight)
                 {
                     ClearTabHighlight();
                 }
@@ -450,7 +452,9 @@ public partial class PlaylistTabs
             while (hitElement != null && hitElement != tabControl)
             {
                 if (hitElement is TabItem tabItem)
+                {
                     return tabItem;
+                }
                 hitElement = VisualTreeHelper.GetParent(hitElement);
             }
         }
@@ -574,6 +578,131 @@ public partial class PlaylistTabs
             return viewModel.TabList.IndexOf(tab);
         }
         return -1;
+    }
+
+    private void PlaylistDataGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (DataContext is PlaylistTabsViewModel viewModel && viewModel.SelectedTab != null)
+        {
+            _tabVerticalOffsets[viewModel.SelectedTab] = e.VerticalOffset;
+        }
+    }
+
+    private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is PlaylistTabsViewModel viewModel)
+        {
+            MediaFile? selected = viewModel.SelectedTrack;
+            if (selected != null)
+            {
+                // Defer until after any internal header handling/layout
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    DataGrid? dataGrid = GetActiveDataGrid();
+                    if (dataGrid == null)
+                    {
+                        return;
+                    }
+
+                    CenterItemInDataGrid(dataGrid, selected);
+                }), System.Windows.Threading.DispatcherPriority.Background);
+            }
+            else if (viewModel.SelectedTab != null && _tabVerticalOffsets.TryGetValue(viewModel.SelectedTab, out double offset))
+            {
+                // Fallback: restore last known offset if no selected item
+                Dispatcher.BeginInvoke((Action)(() =>
+                {
+                    DataGrid? dataGrid = GetActiveDataGrid();
+                    if (dataGrid == null)
+                    {
+                        return;
+                    }
+                    ScrollViewer? sv = FindDescendant<ScrollViewer>(dataGrid);
+                    sv?.ScrollToVerticalOffset(offset);
+                }));
+            }
+        }
+    }
+
+    private static void CenterItemInDataGrid(DataGrid dataGrid, object item)
+    {
+        // Ensure the row exists
+        dataGrid.UpdateLayout();
+        dataGrid.ScrollIntoView(item);
+        dataGrid.UpdateLayout();
+
+        ScrollViewer? sv = FindDescendant<ScrollViewer>(dataGrid);
+        if (sv == null)
+        {
+            return;
+        }
+
+        bool logicalScroll = ScrollViewer.GetCanContentScroll(dataGrid);
+        if (logicalScroll)
+        {
+            int index = dataGrid.Items.IndexOf(item);
+            if (index < 0)
+            {
+                return;
+            }
+
+            // ViewportHeight is in item units when logical scrolling is enabled
+            int itemsInViewport = (int)Math.Round(sv.ViewportHeight);
+            int targetTopIndex = Math.Max(0, index - (itemsInViewport / 2));
+            sv.ScrollToVerticalOffset(targetTopIndex);
+        }
+        else
+        {
+            // Pixel-based scrolling: center the row visually
+            DataGridRow? row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+            if (row == null)
+            {
+                // Try to realize the row and fetch again
+                dataGrid.ScrollIntoView(item);
+                dataGrid.UpdateLayout();
+                row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+                if (row == null)
+                {
+                    return;
+                }
+            }
+
+            GeneralTransform transform = row.TransformToAncestor(sv);
+            Point rowPos = transform.Transform(new Point(0, 0));
+            double rowCenter = rowPos.Y + (row.ActualHeight / 2.0);
+            double targetCenter = sv.ViewportHeight / 2.0;
+            double delta = rowCenter - targetCenter;
+            sv.ScrollToVerticalOffset(sv.VerticalOffset + delta);
+        }
+    }
+
+    private DataGrid? GetActiveDataGrid()
+    {
+        // Find the DataGrid in the currently selected tab content
+        return FindDescendant<DataGrid>(Tabs123);
+    }
+
+    private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
+    {
+        if (root == null)
+        {
+            return null;
+        }
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+            if (child is T t)
+            {
+                return t;
+            }
+            T? result = FindDescendant<T>(child);
+            if (result != null)
+            {
+                return result;
+            }
+        }
+        return null;
     }
 }
 
