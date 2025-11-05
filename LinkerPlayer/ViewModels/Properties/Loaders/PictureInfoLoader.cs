@@ -29,18 +29,18 @@ public class PictureInfoLoader : IMetadataLoader
 
         targetCollection.Clear();
 
-        var tag = audioFile.Tag;
+        TagLib.Tag tag = audioFile.Tag;
 
         if (tag.Pictures is { Length: > 0 })
         {
-            var pic = tag.Pictures[0];
+            TagLib.IPicture pic = tag.Pictures[0];
             BitmapImage? albumCover = null;
 
             if (pic.Data?.Data is { Length: > 0 })
             {
                 try
                 {
-                    using var ms = new MemoryStream(pic.Data.Data);
+                    using MemoryStream ms = new MemoryStream(pic.Data.Data);
                     albumCover = new BitmapImage();
                     albumCover.BeginInit();
                     albumCover.CacheOption = BitmapCacheOption.OnLoad;
@@ -78,11 +78,11 @@ public class PictureInfoLoader : IMetadataLoader
             AddPictureInfoItem(targetCollection, "Picture Description", tag.Pictures[0].Description ?? "", true, v =>
      {
          // Update the picture description in the tag
-         var pictures = tag.Pictures;
+         TagLib.IPicture[] pictures = tag.Pictures;
          if (pictures.Length > 0)
          {
-             var existingPic = pictures[0];
-             var newPic = new TagLib.Picture(existingPic.Data)
+             TagLib.IPicture existingPic = pictures[0];
+             TagLib.Picture newPic = new TagLib.Picture(existingPic.Data)
              {
                  Type = existingPic.Type,
                  MimeType = existingPic.MimeType,
@@ -100,15 +100,15 @@ public class PictureInfoLoader : IMetadataLoader
         }
 
         // Sort picture items: keep regular tags in original order, move custom tags (with angle brackets) to bottom
-        var regularPictureTags = targetCollection.Where(item => !item.Name.StartsWith("<")).ToList();
-        var customPictureTags = targetCollection.Where(item => item.Name.StartsWith("<")).ToList();
+        List<TagItem> regularPictureTags = targetCollection.Where(item => !item.Name.StartsWith("<")).ToList();
+        List<TagItem> customPictureTags = targetCollection.Where(item => item.Name.StartsWith("<")).ToList();
 
         targetCollection.Clear();
-        foreach (var item in regularPictureTags)
+        foreach (TagItem item in regularPictureTags)
         {
             targetCollection.Add(item);
         }
-        foreach (var item in customPictureTags)
+        foreach (TagItem item in customPictureTags)
         {
             targetCollection.Add(item);
         }
@@ -125,29 +125,29 @@ public class PictureInfoLoader : IMetadataLoader
         targetCollection.Clear();
 
         // Aggregate picture metadata across all files
-        var pictureCountValues = new Dictionary<int, int>();
-        var pictureTypeValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var pictureMimeTypeValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var pictureFilenameValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var pictureDescriptionValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var pictureSizeValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var pictureDimensionsValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<int, int> pictureCountValues = new Dictionary<int, int>();
+        Dictionary<string, int> pictureTypeValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> pictureMimeTypeValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> pictureFilenameValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> pictureDescriptionValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> pictureSizeValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> pictureDimensionsValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         // NEW: Track unique picture data hashes to detect if covers are identical
-        var pictureDataHashes = new HashSet<int>();
+        HashSet<int> pictureDataHashes = new HashSet<int>();
         bool anyFileHasPictures = false;
         bool allCoversSame = true;
 
-        foreach (var audioFile in audioFiles)
+        foreach (File audioFile in audioFiles)
         {
             if (audioFile?.Tag == null)
                 continue;
 
-            var tag = audioFile.Tag;
+            TagLib.Tag tag = audioFile.Tag;
 
             if (tag.Pictures is { Length: > 0 })
             {
                 anyFileHasPictures = true;
-                var pic = tag.Pictures[0];
+                TagLib.IPicture pic = tag.Pictures[0];
 
                 // Track picture count
                 int count = tag.Pictures.Length;
@@ -196,8 +196,8 @@ public class PictureInfoLoader : IMetadataLoader
                     // Try to get dimensions
                     try
                     {
-                        using var ms = new MemoryStream(pic.Data.Data);
-                        var tempImage = new BitmapImage();
+                        using MemoryStream ms = new MemoryStream(pic.Data.Data);
+                        BitmapImage tempImage = new BitmapImage();
                         tempImage.BeginInit();
                         tempImage.CacheOption = BitmapCacheOption.OnLoad;
                         tempImage.StreamSource = ms;
@@ -308,7 +308,7 @@ public class PictureInfoLoader : IMetadataLoader
     private static void AddPictureInfoItem(ObservableCollection<TagItem> collection, string name, string value,
         bool isEditable, Action<string>? updateAction)
     {
-        var item = new TagItem
+        TagItem item = new TagItem
         {
             Name = name,
             Value = value,

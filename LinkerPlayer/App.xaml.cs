@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using RestoreWindowPlace;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace LinkerPlayer;
 
@@ -151,7 +152,7 @@ public partial class App
             _logger.LogInformation("MetadataCache loaded");
 
             // Initialize BassAudioEngine
-            var bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
+            BassAudioEngine bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
             bassEngine.Initialize(new BassInitializationOptions());
             _logger.LogInformation("BassAudioEngine initialized successfully");
 
@@ -173,7 +174,7 @@ public partial class App
                     _logger.LogInformation("MainWindow.Show() called");
 
                     // Wait longer before closing splash to ensure main window is fully rendered
-                    var timer = new System.Windows.Threading.DispatcherTimer
+                    DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
                     {
                         Interval = TimeSpan.FromMilliseconds(2000) // Increased to 2 seconds
                     };

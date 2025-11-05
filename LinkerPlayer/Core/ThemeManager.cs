@@ -1,6 +1,7 @@
 using LinkerPlayer.Models;
 using LinkerPlayer.Windows;
 using System.Windows;
+using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.Core;
 
@@ -25,7 +26,7 @@ public class ThemeManager
     private void CacheFontStyles()
     {
         // Save font styles before they get cleared
-        var appResources = Application.Current.Resources;
+        ResourceDictionary appResources = Application.Current.Resources;
 
         if (appResources.Contains(typeof(Window)))
         {
@@ -122,19 +123,19 @@ public class ThemeManager
         // Re-add MahApps.Metro.IconPacks dictionaries
         try
         {
-            var octiconsDict = new ResourceDictionary
+            ResourceDictionary octiconsDict = new ResourceDictionary
             {
                 Source = new Uri("pack://application:,,,/MahApps.Metro.IconPacks.Octicons;component/Themes/packiconocticons.xaml", UriKind.Absolute)
             };
             AddDict(octiconsDict);
 
-            var materialDict = new ResourceDictionary
+            ResourceDictionary materialDict = new ResourceDictionary
             {
                 Source = new Uri("pack://application:,,,/MahApps.Metro.IconPacks.Material;component/Themes/packiconmaterial.xaml", UriKind.Absolute)
             };
             AddDict(materialDict);
 
-            var entypoDict = new ResourceDictionary
+            ResourceDictionary entypoDict = new ResourceDictionary
             {
                 Source = new Uri("pack://application:,,,/MahApps.Metro.IconPacks.Entypo;component/Themes/packiconentypo.xaml", UriKind.Absolute)
             };
@@ -150,14 +151,14 @@ public class ThemeManager
     {
         // Get the original App.xaml resources before they were cleared
         // We need to re-add font styles and other application-level resources
-        var app = Application.Current;
+        Application app = Application.Current;
 
         // Re-add AppIcon if it exists in original resources
         if (!app.Resources.Contains("AppIcon"))
         {
             try
             {
-                var appIcon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/LinkerPlayer;component/Images/app64.ico", UriKind.Absolute));
+                BitmapImage appIcon = new System.Windows.Media.Imaging.BitmapImage(new Uri("pack://application:,,,/LinkerPlayer;component/Images/app64.ico", UriKind.Absolute));
                 app.Resources["AppIcon"] = appIcon;
             }
             catch

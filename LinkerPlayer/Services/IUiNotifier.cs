@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Threading;
 
 namespace LinkerPlayer.Services;
 
@@ -22,7 +23,7 @@ public class WpfUiNotifier : IUiNotifier
 
     private static void Show(string title, string message, MessageBoxImage image)
     {
-        var dispatcher = Application.Current?.Dispatcher;
+        Dispatcher? dispatcher = Application.Current?.Dispatcher;
         if (dispatcher == null)
         {
             // Fallback if no dispatcher available
@@ -32,7 +33,7 @@ public class WpfUiNotifier : IUiNotifier
 
         if (dispatcher.CheckAccess())
         {
-            var owner = Application.Current?.MainWindow;
+            Window? owner = Application.Current?.MainWindow;
             if (owner != null)
             {
                 MessageBox.Show(owner, message, title, MessageBoxButton.OK, image);
@@ -46,7 +47,7 @@ public class WpfUiNotifier : IUiNotifier
         {
             dispatcher.BeginInvoke(new Action(() =>
             {
-                var owner = Application.Current?.MainWindow;
+                Window? owner = Application.Current?.MainWindow;
                 if (owner != null)
                 {
                     MessageBox.Show(owner, message, title, MessageBoxButton.OK, image);

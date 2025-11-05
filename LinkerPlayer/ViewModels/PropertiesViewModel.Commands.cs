@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.Input;
+using LinkerPlayer.BassLibs;
+using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.Windows;
 
@@ -34,7 +36,7 @@ public partial class PropertiesViewModel
 
             _bpmDetectionCts = new CancellationTokenSource();
 
-            var progress = new Progress<double>(value =>
+            Progress<double> progress = new Progress<double>(value =>
          {
              BpmDetectionProgress = value * 100;
              BpmDetectionStatus = $"Detecting BPM... {BpmDetectionProgress:F0}%";
@@ -50,7 +52,7 @@ public partial class PropertiesViewModel
 
             if (detectedBpm.HasValue)
             {
-                var bpmItem = MetadataItems.FirstOrDefault(item => item.Name == "Beats Per Minute");
+                TagItem? bpmItem = MetadataItems.FirstOrDefault(item => item.Name == "Beats Per Minute");
                 if (bpmItem != null)
                 {
                     bpmItem.Value = ((uint)detectedBpm.Value).ToString();
@@ -120,13 +122,13 @@ public partial class PropertiesViewModel
 
             _replayGainCalculationCts = new CancellationTokenSource();
 
-            var progress = new Progress<double>(value =>
+            Progress<double> progress = new Progress<double>(value =>
           {
               ReplayGainCalculationProgress = value * 100;
               ReplayGainCalculationStatus = $"Calculating ReplayGain... {ReplayGainCalculationProgress:F0}%";
           });
 
-            var result = await _replayGainCalculator.CalculateReplayGainAsync(filePath, progress, _replayGainCalculationCts.Token);
+            ReplayGainResult result = await _replayGainCalculator.CalculateReplayGainAsync(filePath, progress, _replayGainCalculationCts.Token);
 
             if (_replayGainCalculationCts.Token.IsCancellationRequested)
             {
@@ -136,9 +138,9 @@ public partial class PropertiesViewModel
 
             if (result.Success)
             {
-                var trackGainItem = ReplayGainItems.FirstOrDefault(item =>
+                TagItem? trackGainItem = ReplayGainItems.FirstOrDefault(item =>
                   item.Name == "ReplayGain Track Gain" || item.Name == "Track Gain");
-                var trackPeakItem = ReplayGainItems.FirstOrDefault(item =>
+                TagItem? trackPeakItem = ReplayGainItems.FirstOrDefault(item =>
              item.Name == "ReplayGain Track Peak" || item.Name == "Track Peak");
 
                 if (trackGainItem != null && trackPeakItem != null)

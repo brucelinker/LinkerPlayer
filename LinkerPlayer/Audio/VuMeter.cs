@@ -356,7 +356,7 @@ public partial class VuMeter : Control
             double position = (db - MinDbValue) / DbRange * canvasWidth;
 
             // Create tick mark
-            var tickLine = new Line
+            Line tickLine = new Line
             {
                 X1 = position,
                 Y1 = topOffset,
@@ -368,7 +368,7 @@ public partial class VuMeter : Control
             _vuCanvas.Children.Add(tickLine);
 
             // Create label
-            var label = new TextBlock
+            TextBlock label = new TextBlock
             {
                 Text = db == 0 ? "0" : db.ToString("+0;-0", CultureInfo.InvariantCulture),
                 FontSize = 9,
@@ -412,7 +412,7 @@ public partial class VuMeter : Control
         // Channel labels
         if (ShowLabels)
         {
-            var leftLabel = new TextBlock
+            TextBlock leftLabel = new TextBlock
             {
                 Text = "L",
                 FontSize = 10,
@@ -423,7 +423,7 @@ public partial class VuMeter : Control
             Canvas.SetTop(leftLabel, labelOffset + (channelHeight / 2) - 6);
             _vuCanvas.Children.Add(leftLabel);
 
-            var rightLabel = new TextBlock
+            TextBlock rightLabel = new TextBlock
             {
                 Text = "R",
                 FontSize = 10,
@@ -488,7 +488,7 @@ public partial class VuMeter : Control
         try
         {
             // Get real stereo audio levels from BASS
-            var (leftDb, rightDb) = _audioEngine.GetStereoDecibelLevels();
+            (double leftDb, double rightDb) = _audioEngine.GetStereoDecibelLevels();
 
             // If we can't get levels, don't update
             if (double.IsNaN(leftDb) || double.IsInfinity(leftDb) ||
@@ -643,7 +643,7 @@ public partial class VuMeter : Control
     #region Gradient Brush Creator
     private Brush CreateGradientBrush(double barHeight, double dbLevel)
     {
-        var gradient = new LinearGradientBrush
+        LinearGradientBrush gradient = new LinearGradientBrush
         {
             StartPoint = new Point(0, 0),
             EndPoint = new Point(1, 0) // Left to right gradient (horizontal)

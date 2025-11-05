@@ -50,7 +50,7 @@ public class CustomMetadataLoader : IMetadataLoader
         // targetCollection.Clear();
 
         // Collect all custom fields from all tag formats
-        var customFields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, List<string>> customFields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         LoadApeCustomTags(audioFile, customFields);
         LoadVorbisCustomTags(audioFile, customFields);
@@ -58,10 +58,10 @@ public class CustomMetadataLoader : IMetadataLoader
         LoadId3v2CustomTags(audioFile, customFields);
 
         // Add collected custom fields to UI
-        foreach (var kvp in customFields.OrderBy(x => x.Key))
+        foreach (KeyValuePair<string, List<string>> kvp in customFields.OrderBy(x => x.Key))
         {
             string fieldName = kvp.Key;
-            var values = kvp.Value;
+            List<string> values = kvp.Value;
 
             // Skip picture-related fields
             if (PictureFields.Contains(fieldName))
@@ -101,17 +101,17 @@ public class CustomMetadataLoader : IMetadataLoader
         }
 
         // Aggregate custom fields across all files, showing "<various>" when values differ
-        var allCustomFields = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, Dictionary<string, int>> allCustomFields = new Dictionary<string, Dictionary<string, int>>(StringComparer.OrdinalIgnoreCase);
         // Track which files have each field (to detect missing fields)
-        var fieldPresenceByFile = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, HashSet<int>> fieldPresenceByFile = new Dictionary<string, HashSet<int>>(StringComparer.OrdinalIgnoreCase);
 
         for (int fileIndex = 0; fileIndex < audioFiles.Count; fileIndex++)
         {
-            var audioFile = audioFiles[fileIndex];
+            File audioFile = audioFiles[fileIndex];
             if (audioFile?.Tag == null)
                 continue;
 
-            var customFields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, List<string>> customFields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
             LoadApeCustomTags(audioFile, customFields);
             LoadVorbisCustomTags(audioFile, customFields);
@@ -119,7 +119,7 @@ public class CustomMetadataLoader : IMetadataLoader
             LoadId3v2CustomTags(audioFile, customFields);
 
             // Aggregate into allCustomFields
-            foreach (var kvp in customFields)
+            foreach (KeyValuePair<string, List<string>> kvp in customFields)
             {
                 string fieldName = kvp.Key;
 
@@ -148,11 +148,11 @@ public class CustomMetadataLoader : IMetadataLoader
         }
 
         // Add aggregated custom fields to UI
-        foreach (var kvp in allCustomFields.OrderBy(x => x.Key))
+        foreach (KeyValuePair<string, Dictionary<string, int>> kvp in allCustomFields.OrderBy(x => x.Key))
         {
             string fieldName = kvp.Key;
-            var valueOccurrences = kvp.Value;
-            var filesWithField = fieldPresenceByFile[fieldName];
+            Dictionary<string, int> valueOccurrences = kvp.Value;
+            HashSet<int> filesWithField = fieldPresenceByFile[fieldName];
 
             string displayValue;
 
@@ -195,7 +195,7 @@ public class CustomMetadataLoader : IMetadataLoader
             {
                 try
                 {
-                    var item = apeTag.GetItem(key);
+                    TagLib.Ape.Item item = apeTag.GetItem(key);
                     if (item != null)
                     {
                         string value = item.ToString();
@@ -263,15 +263,15 @@ public class CustomMetadataLoader : IMetadataLoader
                 return;
 
             // Use reflection to find the internal text dictionary
-            var textFields = mp4Tag.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
+            IEnumerable<FieldInfo> textFields = mp4Tag.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
   .Where(f => f.FieldType == typeof(Dictionary<string, string[]>));
 
-            foreach (var field in textFields)
+            foreach (FieldInfo? field in textFields)
             {
                 if (field.GetValue(mp4Tag) is not Dictionary<string, string[]> dict)
                     continue;
 
-                foreach (var kvp in dict)
+                foreach (KeyValuePair<string, string[]> kvp in dict)
                 {
                     string value = kvp.Value.FirstOrDefault() ?? "";
 
@@ -318,7 +318,7 @@ public class CustomMetadataLoader : IMetadataLoader
                             continue;
                         }
 
-                        var (displayName, frameValue) = GetId3v2FrameInfo(frame);
+                        (string? displayName, string? frameValue) = GetId3v2FrameInfo(frame);
                         if (!string.IsNullOrWhiteSpace(frameValue))
                         {
                             string fieldName = displayName.Equals("USER_TEXT", StringComparison.OrdinalIgnoreCase)

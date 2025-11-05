@@ -86,7 +86,7 @@ public partial class AudioEngine
             BassWasapi.Free();
             _wasapiInitialized = false;
 
-            if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+            if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out WasapiDeviceInfo deviceInfo))
             {
                 _logger.LogError($"Failed to get WASAPI device info for device {_currentDevice.Index}: {Bass.LastError}");
                 return false;

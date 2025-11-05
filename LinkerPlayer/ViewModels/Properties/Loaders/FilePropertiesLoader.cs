@@ -1,6 +1,7 @@
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
+using TagLib.Id3v2;
 using File = TagLib.File;
 
 namespace LinkerPlayer.ViewModels.Properties.Loaders;
@@ -28,7 +29,7 @@ public class FilePropertiesLoader : IMetadataLoader
         // DON'T clear - ViewModel handles this
         // targetCollection.Clear();
 
-        var props = audioFile.Properties;
+        TagLib.Properties props = audioFile.Properties;
 
         // Technical file properties
         AddPropertyItem(targetCollection, "Duration", props.Duration.ToString(@"mm\:ss"));
@@ -105,8 +106,8 @@ public class FilePropertiesLoader : IMetadataLoader
 
     private static void AddPropertyItemMultiple(ObservableCollection<TagItem> collection, IReadOnlyList<File> files, string name, Func<File, string> getValue)
     {
-        var values = files.Select(getValue).ToList();
-        var distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string> values = files.Select(getValue).ToList();
+        List<string> distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
 
         string displayValue = distinctValues.Count switch
         {
@@ -163,7 +164,7 @@ public class FilePropertiesLoader : IMetadataLoader
             {
                 try
                 {
-                    var tencFrames = id3v2Tag.GetFrames("TENC").ToList();
+                    List<Frame> tencFrames = id3v2Tag.GetFrames("TENC").ToList();
                     if (tencFrames.Any())
                     {
                         return tencFrames.First().ToString();

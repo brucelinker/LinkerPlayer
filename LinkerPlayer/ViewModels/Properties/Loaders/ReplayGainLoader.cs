@@ -31,7 +31,7 @@ public class ReplayGainLoader : IMetadataLoader
         // DON'T clear - ViewModel handles this
         // targetCollection.Clear();
 
-        var tag = audioFile.Tag;
+        TagLib.Tag tag = audioFile.Tag;
 
         // Format-specific ReplayGain handling
         if (audioFile.Tag is Tag)

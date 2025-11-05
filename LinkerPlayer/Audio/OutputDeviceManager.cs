@@ -37,7 +37,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         {
             for (int i = 1; i < Bass.DeviceCount; i++) // Start from 1 to skip "No sound"
             {
-                var dsDevice = Bass.GetDeviceInfo(i);
+                DeviceInfo dsDevice = Bass.GetDeviceInfo(i);
                 //_logger.LogDebug("DirectSound Device {Index}: Name='{Name}', IsEnabled={IsEnabled}, IsDefault={IsDefault}", i, dsDevice.Name, dsDevice.IsEnabled, dsDevice.IsDefault);
                 if (string.IsNullOrEmpty(dsDevice.Name) || !dsDevice.IsEnabled)
                     continue;
@@ -48,7 +48,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
 
                 _devices.Add(new Device(dsDevice.Name, OutputDeviceType.DirectSound, i));
             }
-            var dsCount = _devices.Count(d => d.Type == OutputDeviceType.DirectSound) - 1; // -1 for our synthetic default
+            int dsCount = _devices.Count(d => d.Type == OutputDeviceType.DirectSound) - 1; // -1 for our synthetic default
             //_logger.LogInformation("Found {Count} DirectSound devices (excluding synthetic Default)", dsCount);
         }
         catch (Exception ex)
@@ -59,8 +59,8 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         // Get WASAPI devices
         try
         {
-            var wasapiList = new List<Device>();
-            for (int i = 0; BassWasapi.GetDeviceInfo(i, out var wasapiDevice); i++) // WASAPI devices start from 0
+            List<Device> wasapiList = new List<Device>();
+            for (int i = 0; BassWasapi.GetDeviceInfo(i, out WasapiDeviceInfo wasapiDevice); i++) // WASAPI devices start from 0
             {
                 //_logger.LogDebug("WASAPI Device {Index}: Name='{Name}', IsEnabled={IsEnabled}, IsInput={IsInput}, IsDefault={IsDefault}", i, wasapiDevice.Name, wasapiDevice.IsEnabled, wasapiDevice.IsInput, wasapiDevice.IsDefault);
                 if (wasapiDevice.IsEnabled && !wasapiDevice.IsInput && !string.IsNullOrEmpty(wasapiDevice.Name))
@@ -71,12 +71,12 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
             }
 
             // Order WASAPI devices so that default Speakers (or any speakers) come first, headsets last
-            var orderedWasapi = wasapiList
+            List<Device> orderedWasapi = wasapiList
                 .OrderBy(d => GetWasapiPriority(d.Name, d.IsDefault))
                 .ThenBy(d => d.Name)
                 .ToList();
 
-            foreach (var dev in orderedWasapi)
+            foreach (Device dev in orderedWasapi)
             {
                 _devices.Add(dev);
             }
@@ -135,7 +135,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
     // Heuristics to push speaker devices to the top and headset-style devices to the bottom
     private static int GetWasapiPriority(string name, bool isDefault)
     {
-        var n = name?.ToLowerInvariant() ?? string.Empty;
+        string n = name?.ToLowerInvariant() ?? string.Empty;
 
         bool isSpeaker = n.Contains("speaker"); // matches "Speakers" as well
         bool isHeadset = n.Contains("headset") || n.Contains("headphone") || n.Contains("earphone") || n.Contains("hands-free") || n.Contains("earbud") || n.Contains("ear buds") || n.Contains("bt700");

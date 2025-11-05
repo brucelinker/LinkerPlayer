@@ -195,11 +195,11 @@ public partial class SettingsWindow
                 ? _audioEngine.DirectSoundDevices
                 : _audioEngine.WasapiDevices;
 
-            var deviceList = devices.ToList();
+            List<Device> deviceList = devices.ToList();
             //_logger.LogInformation("Refreshing device list for {OutputMode}: {Count} devices found", outputMode, deviceList.Count);
 
             // Populate ComboBox with strings only
-            foreach (var device in deviceList)
+            foreach (Device device in deviceList)
             {
                 OutputDeviceCombo.Items.Add(device.Name);
                 //_logger.LogInformation("Added device to UI: '{DeviceName}'", device.Name);
@@ -322,7 +322,7 @@ public partial class SettingsWindow
             {
                 if (OutputModeCombo.Items[i] is ComboBoxItem item &&
                     item.Tag is string tag &&
-                    Enum.TryParse<OutputMode>(tag, out var tagMode) &&
+                    Enum.TryParse<OutputMode>(tag, out OutputMode tagMode) &&
                     tagMode == OutputMode)
                 {
                     OutputModeCombo.SelectedIndex = i;

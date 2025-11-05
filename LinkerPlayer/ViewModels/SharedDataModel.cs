@@ -32,7 +32,7 @@ public partial class SharedDataModel : ObservableRecipient
         Application.Current.Dispatcher.Invoke(() =>
         {
             SelectedTracks.Clear();
-            foreach (var track in tracks)
+            foreach (MediaFile track in tracks)
             {
                 SelectedTracks.Add(track);
             }

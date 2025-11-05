@@ -167,7 +167,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 else
                 {
                     // WASAPI modes: initialize BASS for decoding
-                    if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+                    if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out WasapiDeviceInfo deviceInfo))
                     {
                         _logger.LogError($"Failed to get device info: {Bass.LastError}");
                         return;
@@ -284,7 +284,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 else
                 {
                     // WASAPI: create decode stream and mixer
-                    if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out var deviceInfo))
+                    if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out WasapiDeviceInfo deviceInfo))
                     {
                         _logger.LogError($"Failed to get device info for mixer creation: {Bass.LastError}");
                         return;
@@ -301,7 +301,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                         return;
                     }
 
-                    Bass.ChannelGetInfo(_decodeStream, out var decodeInfo);
+                    Bass.ChannelGetInfo(_decodeStream, out ChannelInfo decodeInfo);
                     int decodeChans = decodeInfo.Channels;
 
                     _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float | BassFlags.Decode);

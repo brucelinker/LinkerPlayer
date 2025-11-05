@@ -225,7 +225,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
             // Cleanup
             _audioFile?.Dispose();
             _audioFile = null;
-            foreach (var file in _audioFiles)
+            foreach (File file in _audioFiles)
             {
                 file?.Dispose();
             }
@@ -302,20 +302,20 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
             // Cleanup
             _audioFile?.Dispose();
             _audioFile = null;
-            foreach (var file in _audioFiles)
+            foreach (File file in _audioFiles)
             {
                 file?.Dispose();
             }
             _audioFiles.Clear();
 
-            var trackList = tracks.ToList();
+            List<MediaFile> trackList = tracks.ToList();
             IsMultipleSelection = true;
             SelectedFilesCount = trackList.Count;
 
             _logger.LogDebug("LoadMultipleTracksData: Loading {Count} tracks", trackList.Count);
 
             // Load all files
-            foreach (var track in trackList)
+            foreach (MediaFile track in trackList)
             {
                 if (!System.IO.File.Exists(track.Path))
                 {
@@ -325,7 +325,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
 
                 try
                 {
-                    var audioFile = File.Create(track.Path);
+                    File audioFile = File.Create(track.Path);
                     _audioFiles.Add(audioFile);
                     _logger.LogDebug("LoadMultipleTracksData: Loaded file {Path}", track.Path);
                 }
@@ -371,7 +371,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
             _logger.LogDebug("LoadAllSections: Loaded {Count} core metadata items", MetadataItems.Count);
 
             // Subscribe to PropertyChanged for all editable items
-            foreach (var item in MetadataItems.Where(i => i.IsEditable))
+            foreach (TagItem? item in MetadataItems.Where(i => i.IsEditable))
             {
                 item.PropertyChanged += TagItem_PropertyChanged!;
             }
@@ -395,7 +395,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         {
             _replayGainLoader.Load(audioFile, ReplayGainItems);
             // Subscribe to PropertyChanged for editable ReplayGain items
-            foreach (var item in ReplayGainItems.Where(i => i.IsEditable))
+            foreach (TagItem? item in ReplayGainItems.Where(i => i.IsEditable))
             {
                 item.PropertyChanged += TagItem_PropertyChanged!;
             }
@@ -406,7 +406,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         {
             _pictureInfoLoader.Load(audioFile, PictureInfoItems);
             // Subscribe to PropertyChanged for editable picture items
-            foreach (var item in PictureInfoItems.Where(i => i.IsEditable))
+            foreach (TagItem? item in PictureInfoItems.Where(i => i.IsEditable))
             {
                 item.PropertyChanged += TagItem_PropertyChanged!;
             }
@@ -452,7 +452,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
             _logger.LogDebug("LoadAllSectionsMultiple: Loaded {Count} core metadata items", MetadataItems.Count);
 
             // Subscribe to PropertyChanged for all editable items
-            foreach (var item in MetadataItems.Where(i => i.IsEditable))
+            foreach (TagItem? item in MetadataItems.Where(i => i.IsEditable))
             {
                 item.PropertyChanged += TagItem_PropertyChanged!;
             }
@@ -476,7 +476,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         {
             _replayGainLoader.LoadMultiple(audioFiles, ReplayGainItems);
             // Subscribe to PropertyChanged for editable ReplayGain items
-            foreach (var item in ReplayGainItems.Where(i => i.IsEditable))
+            foreach (TagItem? item in ReplayGainItems.Where(i => i.IsEditable))
             {
                 item.PropertyChanged += TagItem_PropertyChanged!;
             }
@@ -538,7 +538,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
     {
         try
         {
-            var reelImage = new BitmapImage();
+            BitmapImage reelImage = new BitmapImage();
             reelImage.BeginInit();
             reelImage.UriSource = new Uri("pack://application:,,,/LinkerPlayer;component/Images/reel.png", UriKind.Absolute);
             reelImage.CacheOption = BitmapCacheOption.OnLoad;
@@ -558,8 +558,8 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         {
             if (picture.Data?.Data is { Length: > 0 })
             {
-                using var ms = new MemoryStream(picture.Data.Data);
-                var albumCover = new BitmapImage();
+                using MemoryStream ms = new MemoryStream(picture.Data.Data);
+                BitmapImage albumCover = new BitmapImage();
                 albumCover.BeginInit();
                 albumCover.CacheOption = BitmapCacheOption.OnLoad;
                 albumCover.StreamSource = ms;
@@ -580,8 +580,8 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         _logger.LogDebug("SortMetadataItems: Sorting {Count} items", MetadataItems.Count);
 
         // Split into core and custom tags
-        var coreTags = MetadataItems.Where(item => !item.Name.StartsWith("<")).ToList();
-        var customTags = MetadataItems.Where(item => item.Name.StartsWith("<"))
+        List<TagItem> coreTags = MetadataItems.Where(item => !item.Name.StartsWith("<")).ToList();
+        List<TagItem> customTags = MetadataItems.Where(item => item.Name.StartsWith("<"))
           .OrderBy(item => item.Name)
             .ToList();
 
@@ -589,7 +589,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         MetadataItems.Clear();
 
         // Add core tags first (in original order from CoreMetadataLoader)
-        foreach (var item in coreTags)
+        foreach (TagItem item in coreTags)
         {
             MetadataItems.Add(item);
             // Re-subscribe to PropertyChanged if editable
@@ -602,7 +602,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         }
 
         // Add custom tags second (alphabetically sorted)
-        foreach (var item in customTags)
+        foreach (TagItem item in customTags)
         {
             MetadataItems.Add(item);
             // Custom tags are typically not editable, but check anyway
@@ -629,7 +629,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
             if (IsMultipleSelection)
             {
                 // Save all files
-                foreach (var file in _audioFiles)
+                foreach (File file in _audioFiles)
                 {
                     file.Save();
                 }
@@ -687,7 +687,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
     {
         if (IsMultipleSelection)
         {
-            foreach (var track in _sharedDataModel.SelectedTracks)
+            foreach (MediaFile track in _sharedDataModel.SelectedTracks)
             {
                 track.UpdateFromFileMetadata();
             }
@@ -733,7 +733,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
 
         // Dispose audio files
         _audioFile?.Dispose();
-        foreach (var file in _audioFiles)
+        foreach (File file in _audioFiles)
         {
             file?.Dispose();
         }

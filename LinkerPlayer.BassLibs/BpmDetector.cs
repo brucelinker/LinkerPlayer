@@ -48,7 +48,7 @@ public class BpmDetector : IBpmDetector
 
            if (stream == 0)
            {
-               var error = Bass.LastError;
+               Errors error = Bass.LastError;
                _logger.LogError("Failed to create stream for BPM detection. Error: {Error}", error);
                return (double?)null;
            }
@@ -62,7 +62,7 @@ public class BpmDetector : IBpmDetector
                double seconds = Bass.ChannelBytes2Seconds(stream, length);
 
                // Get channel info for debugging
-               Bass.ChannelGetInfo(stream, out var channelInfo);
+               Bass.ChannelGetInfo(stream, out ChannelInfo channelInfo);
                _logger.LogInformation("Stream Info - Length: {Seconds:F2}s, Frequency: {Freq}Hz, Channels: {Channels}, Flags: {Flags}",
                 seconds, channelInfo.Frequency, channelInfo.Channels, channelInfo.Flags);
 
@@ -118,7 +118,7 @@ public class BpmDetector : IBpmDetector
                }
                else
                {
-                   var lastError = Bass.LastError;
+                   Errors lastError = Bass.LastError;
                    _logger.LogError("BPM detection failed - Returned: {BPM}, Bass.LastError: {Error}, File: {FilePath}", bpm, lastError, filePath);
 
                    // Try to get more info about why it failed

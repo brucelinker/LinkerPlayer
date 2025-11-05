@@ -27,7 +27,7 @@ public class LyricsCommentLoader
             return CreatePlaceholderComment();
         }
 
-        var tag = audioFile.Tag;
+        TagLib.Tag tag = audioFile.Tag;
         string commentValue = tag.Comment ?? "[ No comment available. ]";
 
         return new TagItem
@@ -58,9 +58,9 @@ public class LyricsCommentLoader
         }
 
         // Aggregate comment values
-        var commentValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> commentValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var audioFile in audioFiles)
+        foreach (File audioFile in audioFiles)
         {
             if (audioFile?.Tag == null)
                 continue;
@@ -115,7 +115,7 @@ public class LyricsCommentLoader
             return CreatePlaceholderLyrics();
         }
 
-        var tag = audioFile.Tag;
+        TagLib.Tag tag = audioFile.Tag;
         string lyricsValue = tag.Lyrics ?? "[ No lyrics available. ]";
 
         return new TagItem
@@ -146,9 +146,9 @@ public class LyricsCommentLoader
         }
 
         // Aggregate lyrics values
-        var lyricsValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, int> lyricsValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var audioFile in audioFiles)
+        foreach (File audioFile in audioFiles)
         {
             if (audioFile?.Tag == null)
                 continue;

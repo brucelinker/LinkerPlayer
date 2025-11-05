@@ -201,8 +201,8 @@ public class CoreMetadataLoader : IMetadataLoader
     private void AddMetadataItemMultiple(ObservableCollection<TagItem> collection, IReadOnlyList<File> files,
         string name, Func<File, string?> getValue)
     {
-        var values = files.Select(getValue).ToList();
-        var distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string?> values = files.Select(getValue).ToList();
+        List<string?> distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
 
         string displayValue = distinctValues.Count switch
         {
@@ -229,9 +229,9 @@ public class CoreMetadataLoader : IMetadataLoader
 
     private void UpdateAllFiles(IReadOnlyList<File> files, string fieldName, string value)
     {
-        foreach (var file in files)
+        foreach (File file in files)
         {
-            var tag = file.Tag;
+            Tag tag = file.Tag;
 
             switch (fieldName)
             {

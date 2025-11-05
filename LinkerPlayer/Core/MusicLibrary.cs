@@ -100,7 +100,7 @@ public class MusicLibrary : IMusicLibrary
                 try
                 {
                     // Check if the Order column already exists
-                    var result = context.Database.SqlQueryRaw<int>(
+                    List<int> result = context.Database.SqlQueryRaw<int>(
                         "SELECT COUNT(*) FROM pragma_table_info('Playlists') WHERE name='Order'").ToList();
 
                     if (result.FirstOrDefault() == 0)

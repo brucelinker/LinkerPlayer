@@ -109,7 +109,7 @@ public class ReplayGainCalculator : IReplayGainCalculator
 
                 if (stream == 0)
                 {
-                    var error = Bass.LastError;
+                    Errors error = Bass.LastError;
                     result.ErrorMessage = $"Failed to create stream: {error}";
                     _logger.LogError(result.ErrorMessage);
                     return result;
@@ -123,7 +123,7 @@ public class ReplayGainCalculator : IReplayGainCalculator
                     long lengthBytes = Bass.ChannelGetLength(stream);
                     double seconds = Bass.ChannelBytes2Seconds(stream, lengthBytes);
 
-                    Bass.ChannelGetInfo(stream, out var channelInfo);
+                    Bass.ChannelGetInfo(stream, out ChannelInfo channelInfo);
                     _logger.LogInformation("Stream Info - Length: {Seconds:F2}s, Frequency: {Freq}Hz, Channels: {Channels}",
                         seconds, channelInfo.Frequency, channelInfo.Channels);
 

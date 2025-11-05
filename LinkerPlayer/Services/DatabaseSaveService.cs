@@ -1,5 +1,6 @@
 using LinkerPlayer.Core;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace LinkerPlayer.Services;
 
@@ -89,7 +90,7 @@ public class DatabaseSaveService : IDatabaseSaveService
     {
         try
         {
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
             _musicLibrary.SaveToDatabase();
             stopwatch.Stop();
         }
