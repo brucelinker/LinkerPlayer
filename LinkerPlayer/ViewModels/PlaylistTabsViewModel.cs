@@ -845,7 +845,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     // Fallbacks: fuzzy recovery
                     string? fileNameOnly = Path.GetFileName(candidatePath);
                     string? immediateDir = null;
-                    try { immediateDir = Path.GetDirectoryName(candidatePath); } catch { /* ignore */ }
+                    try
+                    {
+                        immediateDir = Path.GetDirectoryName(candidatePath);
+                    }
+                    catch { /* ignore */ }
 
                     // Case A: directory exists but file name is wrong -> fuzzy file match in the directory
                     if (!string.IsNullOrEmpty(immediateDir) && Directory.Exists(immediateDir))
@@ -1012,7 +1016,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
     // --- String normalization and distance helpers ---
     private static string NormalizeForCompare(string input)
     {
-        if (string.IsNullOrEmpty(input)) return string.Empty;
+        if (string.IsNullOrEmpty(input))
+            return string.Empty;
 
         // Lowercase
         string s = input.ToLowerInvariant();
@@ -1045,13 +1050,18 @@ public partial class PlaylistTabsViewModel : ObservableObject
     // Correct small spacing issues in helpers
     private static int LevenshteinDistance(string a, string b)
     {
-        if (a == b) return 0;
-        if (a.Length == 0) return b.Length;
-        if (b.Length == 0) return a.Length;
+        if (a == b)
+            return 0;
+        if (a.Length == 0)
+            return b.Length;
+        if (b.Length == 0)
+            return a.Length;
 
         int[,] d = new int[a.Length + 1, b.Length + 1];
-        for (int i = 0; i <= a.Length; i++) d[i, 0] = i;
-        for (int j = 0; j <= b.Length; j++) d[0, j] = j;
+        for (int i = 0; i <= a.Length; i++)
+            d[i, 0] = i;
+        for (int j = 0; j <= b.Length; j++)
+            d[0, j] = j;
 
         for (int i = 1; i <= a.Length; i++)
         {
@@ -1081,17 +1091,20 @@ public partial class PlaylistTabsViewModel : ObservableObject
             foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
             {
                 string ext = Path.GetExtension(file);
-                if (!allowed.Contains(ext)) continue;
+                if (!allowed.Contains(ext))
+                    continue;
                 string name = Path.GetFileName(file);
                 string nameNorm = NormalizeForCompare(name);
                 string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
-                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm) return file;
+                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm)
+                    return file;
                 int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
                 if (dist < bestScore)
                 {
                     bestScore = dist;
                     bestPath = file;
-                    if (bestScore <= 2) return bestPath;
+                    if (bestScore <= 2)
+                        return bestPath;
                 }
             }
             return bestScore <= 3 ? bestPath : null;
@@ -1113,17 +1126,20 @@ public partial class PlaylistTabsViewModel : ObservableObject
             foreach (string file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
             {
                 string ext = Path.GetExtension(file);
-                if (!allowed.Contains(ext)) continue;
+                if (!allowed.Contains(ext))
+                    continue;
                 string name = Path.GetFileName(file);
                 string nameNorm = NormalizeForCompare(name);
                 string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
-                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm) return file;
+                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm)
+                    return file;
                 int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
                 if (dist < bestScore)
                 {
                     bestScore = dist;
                     bestPath = file;
-                    if (bestScore <= 1) return bestPath;
+                    if (bestScore <= 1)
+                        return bestPath;
                 }
             }
             return bestScore <= 2 ? bestPath : null;
@@ -1142,13 +1158,15 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 string name = Path.GetFileName(dir);
                 string nameNorm = NormalizeForCompare(name);
-                if (nameNorm == targetNorm) return dir;
+                if (nameNorm == targetNorm)
+                    return dir;
                 int dist = LevenshteinDistance(nameNorm, targetNorm);
                 if (dist < bestScore)
                 {
                     bestScore = dist;
                     bestPath = dir;
-                    if (bestScore <= 2) return bestPath;
+                    if (bestScore <= 2)
+                        return bestPath;
                 }
             }
             return bestScore <= 3 ? bestPath : null;

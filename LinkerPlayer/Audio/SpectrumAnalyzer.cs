@@ -480,24 +480,23 @@ public partial class SpectrumAnalyzer : Control
         if (_spectrumCanvas == null)
             return;
 
-        bool allZero = true;
-        double fftBucketHeight =0;
-        double barHeight =0;
-        double lastPeakHeight =0;
+        double fftBucketHeight = 0;
+        double barHeight = 0;
+        double lastPeakHeight = 0;
         double height = _spectrumCanvas.RenderSize.Height;
-        int barIndex =0;
-        double peakDotHeight = Math.Max(PeakHeight,1.0);
+        int barIndex = 0;
+        double peakDotHeight = Math.Max(PeakHeight, 1.0);
         double barHeightScale = height - peakDotHeight;
 
         double[] barHeights = new double[_barShapes.Count];
-        for (int i =0; i < barHeights.Length; i++)
+        for (int i = 0; i < barHeights.Length; i++)
             barHeights[i] = _barShapes[i].Height;
 
-        int maxFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MaximumFrequency) +1 ??2047;
-        int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ??0;
-        maxFreqIndex = Math.Min(maxFreqIndex, _channelData.Length -1);
+        int maxFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MaximumFrequency) + 1 ?? 2047;
+        int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ?? 0;
+        maxFreqIndex = Math.Min(maxFreqIndex, _channelData.Length - 1);
         if (maxFreqIndex <= minFreqIndex)
-            maxFreqIndex = minFreqIndex +1;
+            maxFreqIndex = minFreqIndex + 1;
 
         // Copy channel data under lock to avoid race conditions
         float[] channelDataCopy;
@@ -509,20 +508,17 @@ public partial class SpectrumAnalyzer : Control
         if (_soundPlayer == null || !_soundPlayer.IsPlaying)
         {
             // Apply decay to all bars and peaks
-            for (barIndex =0; barIndex < _barShapes.Count; barIndex++)
+            for (barIndex = 0; barIndex < _barShapes.Count; barIndex++)
             {
-                barHeight = barHeights[barIndex] = (float)(barHeights[barIndex] * BarDecaySpeed) / (BarDecaySpeed +1);
+                barHeight = barHeights[barIndex] = (float)(barHeights[barIndex] * BarDecaySpeed) / (BarDecaySpeed + 1);
                 double peakYPos = barHeight;
-                _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay +1);
+                _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay + 1);
 
-                double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex +1;
-                _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight,0,0);
+                double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex + 1;
+                _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight, 0, 0);
                 _barShapes[barIndex].Height = barHeight;
-                _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight,0,0);
+                _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight, 0, 0);
                 _peakShapes[barIndex].Height = peakDotHeight;
-
-                if (_channelPeakData[barIndex] >0.05 || barHeights[barIndex] >0.05)
-                    allZero = false;
             }
         }
         else
@@ -533,7 +529,7 @@ public partial class SpectrumAnalyzer : Control
                 switch (BarHeightScaling)
                 {
                     case BarHeightScalingStyles.Decibel:
-                        dbValue =20 * Math.Log10(channelDataCopy[i] >0 ? channelDataCopy[i] :1e-5);
+                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
                         fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Linear:
@@ -543,21 +539,21 @@ public partial class SpectrumAnalyzer : Control
                         fftBucketHeight = Math.Sqrt(channelDataCopy[i]) * ScaleFactorSqr * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Mel:
-                        dbValue =20 * Math.Log10(channelDataCopy[i] >0 ? channelDataCopy[i] :1e-5);
+                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
                         fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Bark:
-                        dbValue =20 * Math.Log10(channelDataCopy[i] >0 ? channelDataCopy[i] :1e-5);
+                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
                         fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Power:
-                        fftBucketHeight = channelDataCopy[i] * channelDataCopy[i] *20 * barHeightScale;
+                        fftBucketHeight = channelDataCopy[i] * channelDataCopy[i] * 20 * barHeightScale;
                         break;
                     case BarHeightScalingStyles.LogFrequency:
                         fftBucketHeight = channelDataCopy[i] * ScaleFactorLinear * barHeightScale;
                         break;
                 }
-                fftBucketHeight = Math.Max(fftBucketHeight,0);
+                fftBucketHeight = Math.Max(fftBucketHeight, 0);
                 fftBucketHeight = Math.Min(fftBucketHeight, height);
                 barHeight = Math.Max(barHeight, fftBucketHeight);
 
@@ -565,38 +561,29 @@ public partial class SpectrumAnalyzer : Control
                 if (i >= currentIndexMax)
                 {
                     barHeight = Math.Min(barHeight, height);
-                    if (AveragePeaks && barIndex >0)
-                        barHeight = (lastPeakHeight + barHeight) /2;
+                    if (AveragePeaks && barIndex > 0)
+                        barHeight = (lastPeakHeight + barHeight) / 2;
 
                     // Apply smoothing to bar height
-                    barHeight = (barHeight + BarSmoothingFactor * barHeights[barIndex]) / (BarSmoothingFactor +1);
+                    barHeight = (barHeight + BarSmoothingFactor * barHeights[barIndex]) / (BarSmoothingFactor + 1);
                     barHeights[barIndex] = barHeight;
 
                     double peakYPos = barHeight;
                     _channelPeakData[barIndex] = (float)Math.Max(_channelPeakData[barIndex], peakYPos);
-                    _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay +1);
+                    _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay + 1);
 
-                    double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex +1;
-                    _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight,0,0);
+                    double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex + 1;
+                    _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight, 0, 0);
                     _barShapes[barIndex].Height = barHeight;
-                    _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight,0,0);
+                    _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight, 0, 0);
                     _peakShapes[barIndex].Height = peakDotHeight;
 
-                    if (_channelPeakData[barIndex] >0.05 || barHeights[barIndex] >0.05)
-                        allZero = false;
-
                     lastPeakHeight = barHeight;
-                    barHeight =0;
+                    barHeight = 0;
                     barIndex++;
                 }
             }
         }
-
-        // Do not stop timer automatically; keep it running to avoid race with Next/Prev
-        // if (allZero && (_soundPlayer == null || !_soundPlayer.IsPlaying))
-        // {
-        // StopTimer();
-        // }
 
         BarValuesChanged?.Invoke(this, _channelPeakData);
     }
@@ -610,23 +597,23 @@ public partial class SpectrumAnalyzer : Control
         try
         {
             double height = _spectrumCanvas.RenderSize.Height;
-            double peakDotHeight = Math.Max(PeakHeight,1.0);
+            double peakDotHeight = Math.Max(PeakHeight, 1.0);
 
             lock (_updateLock)
             {
-                Array.Clear(_channelData,0, _channelData.Length);
-                if (_channelPeakData != null && _channelPeakData.Length >0)
-                    Array.Clear(_channelPeakData,0, _channelPeakData.Length);
+                Array.Clear(_channelData, 0, _channelData.Length);
+                if (_channelPeakData != null && _channelPeakData.Length > 0)
+                    Array.Clear(_channelPeakData, 0, _channelPeakData.Length);
             }
 
-            for (int i =0; i < _barShapes.Count; i++)
+            for (int i = 0; i < _barShapes.Count; i++)
             {
-                double xCoord = BarSpacing + ActualBarWidth * i + BarSpacing * i +1;
+                double xCoord = BarSpacing + ActualBarWidth * i + BarSpacing * i + 1;
 
-                _barShapes[i].Margin = new Thickness(xCoord, height,0,0);
-                _barShapes[i].Height =0;
+                _barShapes[i].Margin = new Thickness(xCoord, height, 0, 0);
+                _barShapes[i].Height = 0;
 
-                _peakShapes[i].Margin = new Thickness(xCoord, height - peakDotHeight,0,0);
+                _peakShapes[i].Margin = new Thickness(xCoord, height - peakDotHeight, 0, 0);
                 _peakShapes[i].Height = peakDotHeight;
             }
         }

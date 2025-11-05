@@ -27,7 +27,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     [ObservableProperty] private string _pathToMusic = string.Empty;
     [ObservableProperty] private double _currentTrackLength;
     [ObservableProperty] private double _currentTrackPosition;
-    [ObservableProperty] private float _musicVolume =0.5f;
+    [ObservableProperty] private float _musicVolume = 0.5f;
     [ObservableProperty] private bool _isPlaying;
 
     private OutputMode _currentMode;
@@ -38,8 +38,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     private readonly System.Timers.Timer _positionTimer;
 
-    private int _decodeStream =0; // decode stream (file)
-    private int _mixerStream =0; // mixer stream (WASAPI output)
+    private int _decodeStream = 0; // decode stream (file)
+    private int _mixerStream = 0; // mixer stream (WASAPI output)
     private int _endSyncHandle; // track end-of-stream sync handle
 
     // Native add-on library handles
@@ -48,8 +48,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     // Audio device error tracking
     private Errors _lastAudioError = Errors.OK;
-    private int _consecutiveAudioErrors =0;
-    private const int MAX_AUDIO_ERROR_COUNT =10;
+    private int _consecutiveAudioErrors = 0;
+    private const int MAX_AUDIO_ERROR_COUNT = 10;
     private bool _audioDeviceLost = false;
 
     // Track mixer format
@@ -152,11 +152,11 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
                 if (_currentMode == OutputMode.DirectSound)
                 {
-                    success = Bass.Init(-1,44100, DeviceInitFlags.DirectSound);
+                    success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
                     if (success || Bass.LastError == Errors.Already)
                     {
                         IsBassInitialized = true;
-                        _sampleRate =44100;
+                        _sampleRate = 44100;
                         _logger.LogDebug("Initialized DirectSound on first play");
                     }
                     else
@@ -178,7 +178,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
                     _sampleRate = deviceInfo.MixFrequency;
 
-                    int[] ratesToTry = { deviceInfo.MixFrequency,44100,48000 };
+                    int[] ratesToTry = { deviceInfo.MixFrequency, 44100, 48000 };
                     foreach (int rate in ratesToTry)
                     {
                         success = Bass.Init(0, rate, DeviceInitFlags.Default);
@@ -259,27 +259,27 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             {
                 // Free previous streams and clean up EQ
                 CleanupEqualizer();
-                if (_mixerStream !=0)
+                if (_mixerStream != 0)
                 {
                     Bass.StreamFree(_mixerStream);
-                    _mixerStream =0;
+                    _mixerStream = 0;
                 }
-                if (_decodeStream !=0)
+                if (_decodeStream != 0)
                 {
                     Bass.StreamFree(_decodeStream);
-                    _decodeStream =0;
+                    _decodeStream = 0;
                 }
-                if (CurrentStream !=0)
+                if (CurrentStream != 0)
                 {
                     Bass.StreamFree(CurrentStream);
-                    CurrentStream =0;
+                    CurrentStream = 0;
                 }
 
                 if (_currentMode == OutputMode.DirectSound)
                 {
-                    CurrentStream = Bass.CreateStream(pathToMusic,0,0, Flags: BassFlags.Default);
-                    _decodeStream =0;
-                    _mixerStream =0;
+                    CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Default);
+                    _decodeStream = 0;
+                    _mixerStream = 0;
                 }
                 else
                 {
@@ -293,9 +293,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     int deviceFreq = deviceInfo.MixFrequency;
                     int deviceChans = deviceInfo.MixChannels;
 
-                    _decodeStream = Bass.CreateStream(pathToMusic,0,0, Flags: BassFlags.Decode);
+                    _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode);
                     _logger.LogDebug($"WASAPI: _decodeStream handle: {_decodeStream}, Bass.LastError: {Bass.LastError}");
-                    if (_decodeStream ==0)
+                    if (_decodeStream == 0)
                     {
                         _logger.LogError($"Failed to load file: {Bass.LastError}. File: {pathToMusic}");
                         return;
@@ -305,17 +305,17 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     int decodeChans = decodeInfo.Channels;
 
                     _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float | BassFlags.Decode);
-                    bool mixerIsFloat = _mixerStream !=0;
-                    if (_mixerStream ==0)
+                    bool mixerIsFloat = _mixerStream != 0;
+                    if (_mixerStream == 0)
                     {
                         _logger.LogWarning("Falling back to16-bit PCM mixer");
                         _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Decode);
                         mixerIsFloat = false;
-                        if (_mixerStream ==0)
+                        if (_mixerStream == 0)
                         {
                             _logger.LogError($"Failed to create mixer: {Bass.LastError}");
                             Bass.StreamFree(_decodeStream);
-                            _decodeStream =0;
+                            _decodeStream = 0;
                             return;
                         }
                     }
@@ -330,9 +330,9 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                     {
                         _logger.LogError($"Failed to add decode stream to mixer: {Bass.LastError}");
                         Bass.StreamFree(_mixerStream);
-                        _mixerStream =0;
+                        _mixerStream = 0;
                         Bass.StreamFree(_decodeStream);
-                        _decodeStream =0;
+                        _decodeStream = 0;
                         return;
                     }
 
@@ -347,7 +347,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 }
 
                 long lengthBytes = Bass.ChannelGetLength(CurrentStream);
-                if (lengthBytes <0)
+                if (lengthBytes < 0)
                 {
                     _logger.LogError($"Failed to get track length: {Bass.LastError}");
                     Bass.StreamFree(CurrentStream);
@@ -356,7 +356,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 }
 
                 CurrentTrackLength = Bass.ChannelBytes2Seconds(CurrentStream, lengthBytes);
-                CurrentTrackPosition =0;
+                CurrentTrackPosition = 0;
 
                 if (EqEnabled)
                 {
@@ -366,17 +366,17 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             catch (Exception ex)
             {
                 _logger.LogError($"Error loading file: {ex.Message}");
-                if (_mixerStream !=0)
+                if (_mixerStream != 0)
                 {
                     Bass.StreamFree(_mixerStream);
-                    _mixerStream =0;
+                    _mixerStream = 0;
                 }
-                if (_decodeStream !=0)
+                if (_decodeStream != 0)
                 {
                     Bass.StreamFree(_decodeStream);
-                    _decodeStream =0;
+                    _decodeStream = 0;
                 }
-                if (CurrentStream !=0)
+                if (CurrentStream != 0)
                 {
                     try
                     {
@@ -403,7 +403,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
     }
 
-    public void Play(string pathToMusic, double position =0)
+    public void Play(string pathToMusic, double position = 0)
     {
         lock (_engineSync)
         {
@@ -420,7 +420,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             {
                 _logger.LogDebug("Resetting audio device lost flag - user is attempting to play again");
                 _audioDeviceLost = false;
-                _consecutiveAudioErrors =0;
+                _consecutiveAudioErrors = 0;
                 _lastAudioError = Errors.OK;
             }
 
@@ -453,19 +453,19 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _logger.LogDebug("Loading audio file: {FileName}", Path.GetFileName(pathToMusic));
             LoadAudioFile(pathToMusic);
 
-            if (CurrentStream !=0)
+            if (CurrentStream != 0)
             {
                 _logger.LogDebug("CurrentStream is valid ({StreamHandle}), starting playback", CurrentStream);
 
                 // Set end-of-track sync
-                _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End,0, EndTrackSyncProc);
-                if (_endSyncHandle ==0)
+                _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
+                if (_endSyncHandle == 0)
                 {
                     _logger.LogWarning($"Failed to set end-of-track sync: {Bass.LastError}");
                 }
 
                 // Set position if specified
-                if (position >0)
+                if (position > 0)
                 {
                     long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
                     if (!Bass.ChannelSetPosition(CurrentStream, bytePosition))
@@ -506,24 +506,24 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             // Push an immediate zeroed FFT frame so UI drops instantly
             try
             {
-                int zeroLen = Math.Max(1, ExpectedFftSize /2);
+                int zeroLen = Math.Max(1, ExpectedFftSize / 2);
                 OnFftCalculated?.Invoke(new float[zeroLen]);
             }
             catch { /* ignore UI listeners exceptions */ }
 
-            if (CurrentStream !=0)
+            if (CurrentStream != 0)
             {
-                if (_endSyncHandle !=0)
+                if (_endSyncHandle != 0)
                 {
                     Bass.ChannelRemoveSync(CurrentStream, _endSyncHandle);
-                    _endSyncHandle =0;
+                    _endSyncHandle = 0;
                 }
 
                 Bass.ChannelStop(CurrentStream);
-                Bass.ChannelSetPosition(CurrentStream,0);
+                Bass.ChannelSetPosition(CurrentStream, 0);
 
                 IsPlaying = false;
-                CurrentTrackPosition =0;
+                CurrentTrackPosition = 0;
 
                 // Stop WASAPI but DON'T free it (keep it initialized for next track)
                 if (_wasapiInitialized)
@@ -549,13 +549,13 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         {
             // Free all streams - Bass.StreamFree handles invalid handles gracefully
             Bass.StreamFree(_mixerStream);
-            _mixerStream =0;
+            _mixerStream = 0;
 
             Bass.StreamFree(_decodeStream);
-            _decodeStream =0;
+            _decodeStream = 0;
 
             Bass.StreamFree(CurrentStream);
-            CurrentStream =0;
+            CurrentStream = 0;
 
             // Free WASAPI - these calls are safe even if not initialized
             _logger.LogDebug("FreeResources: Freeing WASAPI");
@@ -573,7 +573,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         lock (_engineSync)
         {
-            if (CurrentStream !=0 && IsPlaying)
+            if (CurrentStream != 0 && IsPlaying)
             {
                 if (_currentMode == OutputMode.DirectSound)
                 {
@@ -593,7 +593,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         lock (_engineSync)
         {
-            if (CurrentStream !=0 && !IsPlaying)
+            if (CurrentStream != 0 && !IsPlaying)
             {
                 bool resumed = _currentMode == OutputMode.DirectSound
                 ? ResumeDirectSound()
@@ -606,8 +606,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
                 IsPlaying = true;
 
-                _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End,0, EndTrackSyncProc);
-                if (_endSyncHandle ==0)
+                _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
+                if (_endSyncHandle == 0)
                 {
                     _logger.LogWarning($"Failed to set end-of-track sync: {Bass.LastError}");
                 }
@@ -648,7 +648,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             else
             {
                 _lastAudioError = currentError;
-                _consecutiveAudioErrors =1;
+                _consecutiveAudioErrors = 1;
             }
 
             if (_consecutiveAudioErrors >= MAX_AUDIO_ERROR_COUNT)
@@ -662,7 +662,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
         }
         else
         {
-            _consecutiveAudioErrors =0;
+            _consecutiveAudioErrors = 0;
             _lastAudioError = Errors.OK;
         }
 
@@ -687,7 +687,7 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         if (_currentMode == OutputMode.DirectSound)
         {
-            if (CurrentStream !=0)
+            if (CurrentStream != 0)
             {
                 Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, value);
             }
@@ -830,13 +830,13 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
     {
         lock (_engineSync)
         {
-            if (CurrentStream ==0)
+            if (CurrentStream == 0)
             {
                 _logger.LogError("Cannot seek: Current stream is invalid");
                 return;
             }
 
-            if (position <0 || position > CurrentTrackLength)
+            if (position < 0 || position > CurrentTrackLength)
             {
                 _logger.LogError($"Invalid seek position {position}: must be between0 and {CurrentTrackLength} seconds");
                 return;
