@@ -218,6 +218,35 @@ public partial class PlaylistTabsViewModel : ObservableObject
         // Clear SelectedTracks when switching tabs
         SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
 
+        // ✅ LAZY LOAD on tab switch - async on background thread, NO BLOCKING
+        if (tab.Tracks.Count == 0)
+        {
+            _logger.LogInformation("OnTabSelectionChanged: Tab '{TabName}' not yet loaded, will load in background", tab.Name);
+            // Fire and forget - load on background thread async
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogInformation("OnTabSelectionChanged: Loading tracks for tab '{TabName}'", tab.Name);
+                    IEnumerable<MediaFile> tracks = _playlistManagerService.LoadPlaylistTracks(tab.Name);
+                    
+                    // Add to UI thread
+                    await Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        foreach (MediaFile track in tracks)
+                        {
+                            tab.Tracks.Add(track);
+                        }
+                        _logger.LogInformation("Loaded {Count} tracks for tab '{TabName}'", tab.Tracks.Count, tab.Name);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to load tracks for tab '{TabName}'", tab.Name);
+                }
+            });
+        }
+
         SelectedPlaylist = GetSelectedPlaylist();
         // Avoid Items.Refresh to prevent scroll jumps
 
@@ -411,29 +440,109 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 if (string.IsNullOrWhiteSpace(playlist.Name))
                     continue;
 
-                PlaylistTab tab = CreatePlaylistTabFromPlaylist(playlist);
+                // Create tab with EMPTY tracks list initially
+                PlaylistTab tab = new PlaylistTab
+                {
+                    Name = playlist.Name,
+                    Tracks = new ObservableCollection<MediaFile>()
+                };
                 TabList.Add(tab);
             }
 
-            //_logger.LogInformation(
-            //    "Loaded {Count} playlists in UI (TabList: {TabCount})",
-            //TabList.Count,
-            //TabList.Count);
-
-            if (TabList.Any())
-            {
-                PlaylistTab firstTab = TabList[0];
-                //_logger.LogInformation(
-                //    "First Tab: Name='{Name}', Tracks={TrackCount}, SelectedTrack='{SelectedTrack}', SelectedIndex={SelectedIndex}",
-                //    firstTab.Name,
-                //    firstTab.Tracks.Count,
-                //    firstTab.SelectedTrack?.Title ?? "null",
-                //    firstTab.SelectedIndex);
-            }
+            _logger.LogInformation("Created {Count} playlist tabs (tracks not yet loaded)", TabList.Count);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load playlist tabs");
+        }
+    }
+
+    /// <summary>
+    /// Loads tracks for the selected playlist (called when SelectedTabIndex changes)
+    /// </summary>
+    public async Task LoadSelectedPlaylistTracksAsync()
+    {
+        try
+        {
+            if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
+            {
+                return;
+            }
+
+            PlaylistTab selectedTab = TabList[SelectedTabIndex];
+            
+            // Skip if already loaded
+            if (selectedTab.Tracks.Count > 0)
+            {
+                return;
+            }
+
+            // Load on background thread to avoid blocking UI
+            IEnumerable<MediaFile> tracks = await Task.Run(() =>
+                _playlistManagerService.LoadPlaylistTracks(selectedTab.Name)
+            );
+            
+            foreach (MediaFile track in tracks)
+            {
+                selectedTab.Tracks.Add(track);
+            }
+
+            _logger.LogInformation("Loaded {Count} tracks for playlist '{Name}'", selectedTab.Tracks.Count, selectedTab.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load selected playlist tracks");
+        }
+    }
+
+    /// <summary>
+    /// Loads tracks for non-selected playlists in the background
+    /// </summary>
+    public async Task LoadOtherPlaylistTracksAsync()
+    {
+        try
+        {
+            for (int i = 0; i < TabList.Count; i++)
+            {
+                // Skip the selected playlist (already loaded)
+                if (i == SelectedTabIndex)
+                {
+                    continue;
+                }
+
+                PlaylistTab tab = TabList[i];
+
+                // Skip if already loaded
+                if (tab.Tracks.Count > 0)
+                {
+                    continue;
+                }
+
+                // Load on background thread
+                IEnumerable<MediaFile> tracks = await Task.Run(() =>
+                    _playlistManagerService.LoadPlaylistTracks(tab.Name)
+                );
+                
+                // Use Dispatcher to add tracks on UI thread
+                await _uiDispatcher.InvokeAsync(() =>
+                {
+                    foreach (MediaFile track in tracks)
+                    {
+                        tab.Tracks.Add(track);
+                    }
+                });
+
+                _logger.LogInformation("Loaded {Count} tracks for background playlist '{Name}'", tab.Tracks.Count, tab.Name);
+                
+                // Yield to UI thread occasionally
+                await Task.Delay(10);
+            }
+
+            _logger.LogInformation("Finished loading all playlist tracks in background");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load other playlist tracks");
         }
     }
 
@@ -825,7 +934,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
                     {
                         candidatePath = uri.LocalPath;
-                    }
+                      }
 
                     // Unescape any percent-encoded characters
                     candidatePath = Uri.UnescapeDataString(candidatePath);

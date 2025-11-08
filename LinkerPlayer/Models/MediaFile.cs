@@ -126,84 +126,66 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private string _path = string.Empty;
 
-    [NotMapped]
     [StringLength(255, ErrorMessage = "FileName cannot exceed 255 characters")]
     [ObservableProperty]
     private string _fileName = string.Empty;
 
-    [NotMapped]
     [StringLength(128, ErrorMessage = "Title cannot exceed 128 characters")]
     [ObservableProperty]
     private string _title = string.Empty;
 
-    [NotMapped]
     [StringLength(128, ErrorMessage = "Artist cannot exceed 128 characters")]
     [ObservableProperty]
     private string _artist = string.Empty;
 
-    [NotMapped]
     [StringLength(128, ErrorMessage = "Album cannot exceed 128 characters")]
     [ObservableProperty]
     private string _album = string.Empty;
 
-    [NotMapped]
     [StringLength(256, ErrorMessage = "Performers cannot exceed 256 characters")]
     [ObservableProperty]
     private string _performers = string.Empty;
 
-    [NotMapped]
     [StringLength(256, ErrorMessage = "Composers cannot exceed 256 characters")]
     [ObservableProperty]
     private string _composers = string.Empty;
 
-    [NotMapped]
     [StringLength(128, ErrorMessage = "Genres cannot exceed 128 characters")]
     [ObservableProperty]
     private string _genres = string.Empty;
 
-    [NotMapped]
     [StringLength(128, ErrorMessage = "Copyright cannot exceed 128 characters")]
     [ObservableProperty]
     private string _copyright = string.Empty;
 
-    [NotMapped]
     //[StringLength(256, ErrorMessage = $"Comment cannot exceed 256 characters")]
     [ObservableProperty]
     private string _comment = string.Empty;
 
-    [NotMapped]
     [ObservableProperty]
     private uint _track;
 
-    [NotMapped]
     [ObservableProperty]
     private uint _trackCount;
 
-    [NotMapped]
     [ObservableProperty]
     private uint _disc;
 
-    [NotMapped]
     [ObservableProperty]
     private uint _discCount;
 
-    [NotMapped]
     [ObservableProperty]
     private uint _year;
 
-    [NotMapped]
     [ObservableProperty]
     private TimeSpan _duration;
 
-    [NotMapped]
     [ObservableProperty]
     private int _bitrate;
 
-    [NotMapped]
     [ObservableProperty]
     private int _sampleRate;
 
-    [NotMapped]
     [ObservableProperty]
     private int _channels;
 

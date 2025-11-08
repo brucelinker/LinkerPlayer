@@ -8,21 +8,15 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Text.Json;
 
 namespace LinkerPlayer.Core;
 
 public interface IMusicLibrary
 {
-    ObservableCollection<MediaFile> MainLibrary
-    {
-        get;
-    }
-    ObservableCollection<Playlist> Playlists
-    {
-        get;
-    }
-    Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true, bool skipMetadata = false);
+    ObservableCollection<MediaFile> MainLibrary { get; }
+    ObservableCollection<Playlist> Playlists { get; }
+    
+    Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
     Task<Playlist> AddNewPlaylistAsync(string playlistName);
     Task<bool> AddPlaylistAsync(Playlist newPlaylist);
@@ -34,17 +28,9 @@ public interface IMusicLibrary
     List<MediaFile> GetTracksFromPlaylist(string? playlistName);
     Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks);
     Task SaveToDatabaseAsync();
-
-    /// <summary>
-    /// Synchronous wrapper for SaveToDatabaseAsync - for use in shutdown/cleanup scenarios
-    /// </summary>
     void SaveToDatabase();
-
     Task LoadFromDatabaseAsync();
     Task CleanOrphanedTracksAsync();
-    Task SaveMetadataCacheAsync();
-    Task LoadMetadataCacheAsync();
-    Task ClearAllMetadataCacheAsync();
     void ClearPlayState();
 }
 
@@ -60,8 +46,6 @@ public class MusicLibrary : IMusicLibrary
     public ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
     public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
-    private readonly Dictionary<string, (DateTime LastModified, MediaFile Metadata)> _metadataCache =
-        new(StringComparer.OrdinalIgnoreCase);
 
     public MusicLibrary(ILogger<MusicLibrary> logger)
     {
@@ -70,6 +54,7 @@ public class MusicLibrary : IMusicLibrary
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_dbPath)!);
+            
             DbContextOptions<MusicLibraryDbContext> options = new DbContextOptionsBuilder<MusicLibraryDbContext>()
                 .UseSqlite($"Data Source={_dbPath};Pooling=True;")
                 .Options;
@@ -79,7 +64,6 @@ public class MusicLibrary : IMusicLibrary
             {
                 try
                 {
-                    //_logger.LogInformation("Ensuring database is created");
                     context.Database.EnsureCreated();
                 }
                 catch (SqliteException ex)
@@ -87,19 +71,13 @@ public class MusicLibrary : IMusicLibrary
                     _logger.LogInformation($"Database not found. Creating a new one: {ex.Message}");
                 }
 
-                //_logger.LogInformation("Setting WAL mode");
                 context.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
-                //_logger.LogInformation("Creating index idx_tracks_path");
                 context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS idx_tracks_path ON Tracks(Path);");
-                //_logger.LogInformation("Creating index idx_playlisttracks_playlistid");
                 context.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS idx_playlisttracks_playlistid ON PlaylistTracks(PlaylistId);");
-                //_logger.LogInformation("Creating MetadataCache table");
-                context.Database.ExecuteSqlRaw("CREATE TABLE IF NOT EXISTS MetadataCache (Path TEXT PRIMARY KEY, LastModified INTEGER, Metadata TEXT NOT NULL);");
 
                 // Add Order column to Playlists table if it doesn't exist (for existing databases)
                 try
                 {
-                    // Check if the Order column already exists
                     List<int> result = context.Database.SqlQueryRaw<int>(
                         "SELECT COUNT(*) FROM pragma_table_info('Playlists') WHERE name='Order'").ToList();
 
@@ -123,63 +101,6 @@ public class MusicLibrary : IMusicLibrary
         }
     }
 
-    public async Task SaveMetadataCacheAsync()
-    {
-        try
-        {
-            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
-            await using IDbContextTransaction transaction = await context.Database.BeginTransactionAsync();
-            foreach (KeyValuePair<string, (DateTime LastModified, MediaFile Metadata)> entry in _metadataCache)
-            {
-                await context.Database.ExecuteSqlRawAsync(
-                    "INSERT OR REPLACE INTO MetadataCache (Path, LastModified, Metadata) VALUES (@p0, @p1, @p2)",
-                    entry.Key, entry.Value.LastModified.Ticks, JsonSerializer.Serialize(entry.Value.Metadata));
-            }
-            await transaction.CommitAsync();
-            //_logger.LogInformation("Saved MetadataCache with {Count} entries", _metadataCache.Count);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to save metadata cache");
-        }
-    }
-
-    public async Task LoadMetadataCacheAsync()
-    {
-        try
-        {
-            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
-
-            await context.Database.EnsureCreatedAsync(); // Creates database if it does not exist
-            await context.MetadataCache.ToListAsync();
-
-            List<MetadataCache> entries = await context.MetadataCache.ToListAsync(); // Query MetadataCache entity
-            _metadataCache.Clear();
-            foreach (MetadataCache entry in entries)
-            {
-                try
-                {
-                    _metadataCache[entry.Path] = (new DateTime(entry.LastModified),
-                        JsonSerializer.Deserialize<MediaFile>(entry.Metadata)!);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Failed to deserialize metadata for {entry.Path}");
-                }
-            }
-            //_logger.LogInformation("Loaded MetadataCache with {Count} entries", _metadataCache.Count);
-        }
-        catch (SqliteException ex)
-        {
-            _logger.LogError(ex, "SQLite error during metadata cache load");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load metadata cache");
-        }
-    }
-
     public async Task LoadFromDatabaseAsync()
     {
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
@@ -188,6 +109,7 @@ public class MusicLibrary : IMusicLibrary
             Playlists.Clear();
             MainLibrary.Clear();
 
+            // Load all tracks from database with all their metadata
             List<MediaFile> tracks = await context.Tracks.AsNoTracking().ToListAsync();
             foreach (MediaFile track in tracks)
             {
@@ -210,10 +132,6 @@ public class MusicLibrary : IMusicLibrary
                     .ToList();
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
 
-                // DIAGNOSTIC: Log what we loaded from database
-                //_logger.LogInformation(
-                //    $"Loaded playlist {playlist.Name}, SelectedTrackId from DB: {playlist.SelectedTrackId ?? "null"}");
-
                 // Validate that SelectedTrackId exists in the TrackIds list (not MainLibrary)
                 if (playlist.SelectedTrackId != null && !validTrackIds.Contains(playlist.SelectedTrackId))
                 {
@@ -226,8 +144,6 @@ public class MusicLibrary : IMusicLibrary
                 if (playlist.SelectedTrackId == null && playlist.TrackIds.Any())
                 {
                     playlist.SelectedTrackId = playlist.TrackIds.First();
-                    //_logger.LogInformation(
-                    //    $"Set SelectedTrack to {playlist.SelectedTrackId} for playlist {playlist.Name} during load");
                 }
 
                 Playlists.Add(playlist);
@@ -292,7 +208,6 @@ public class MusicLibrary : IMusicLibrary
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
-            //_logger.LogInformation($"Using database file: {Path.GetFullPath(_dbPath)}");
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
             ClearPlayState();
@@ -374,27 +289,10 @@ public class MusicLibrary : IMusicLibrary
                         });
                     }
                 }
-                else
-                {
-                    //_logger.LogWarning($"Playlist '{playlist.Name}' is empty, no PlaylistTracks to save");
-                }
             }
 
             await context.SaveChangesAsync();
             context.ChangeTracker.AutoDetectChangesEnabled = true;
-
-            // Log database state for debugging
-            List<Playlist> savedPlaylists = await context.Playlists.ToListAsync();
-            foreach (Playlist p in savedPlaylists)
-            {
-                List<string?> trackIds = await context.PlaylistTracks
-                    .Where(pt => pt.PlaylistId == p.Id)
-                    .OrderBy(pt => pt.Position)
-                    .Select(pt => pt.TrackId)
-                    .ToListAsync();
-                //_logger.LogInformation(
-                //    $"Database state for playlist {p.Name}: SelectedTrack={p.SelectedTrackId}, TrackIds={string.Join(", ", trackIds)}");
-            }
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 5)
         {
@@ -408,10 +306,6 @@ public class MusicLibrary : IMusicLibrary
         }
     }
 
-    /// <summary>
-    /// Synchronous wrapper for SaveToDatabaseAsync - blocks the calling thread.
-    /// Use only for shutdown/cleanup scenarios where async is not possible.
-    /// </summary>
     public void SaveToDatabase()
     {
         SaveToDatabaseAsync().GetAwaiter().GetResult();
@@ -428,30 +322,11 @@ public class MusicLibrary : IMusicLibrary
                 .Where(t => !referencedTrackIds.Contains(t.Id))
                 .ToListAsync();
 
-            // Check if there are any tracks left in the database
-            int totalTracksCount = await context.Tracks.CountAsync();
-
             if (orphanedTracks.Any())
             {
-                // Remove MetadataCache entries for orphaned tracks
-                List<string> orphanedPaths = orphanedTracks.Select(t => t.Path).ToList();
-                IQueryable<MetadataCache> orphanedCacheEntries = context.MetadataCache.Where(mc => orphanedPaths.Contains(mc.Path));
-                context.MetadataCache.RemoveRange(orphanedCacheEntries);
                 context.Tracks.RemoveRange(orphanedTracks);
                 await context.SaveChangesAsync();
-                _logger.LogInformation($"Removed {orphanedTracks.Count} orphaned tracks and {orphanedPaths.Count} metadata cache entries from database");
-            }
-
-            // If no tracks exist at all, clean up all metadata cache entries
-            if (totalTracksCount == 0)
-            {
-                List<MetadataCache> allCacheEntries = await context.MetadataCache.ToListAsync();
-                if (allCacheEntries.Any())
-                {
-                    context.MetadataCache.RemoveRange(allCacheEntries);
-                    await context.SaveChangesAsync();
-                    //_logger.LogInformation($"Removed all {allCacheEntries.Count} metadata cache entries since no tracks exist in database");
-                }
+                _logger.LogInformation($"Removed {orphanedTracks.Count} orphaned tracks from database");
             }
         }
         catch (Exception ex)
@@ -467,16 +342,13 @@ public class MusicLibrary : IMusicLibrary
             s.Path.Equals(mediaFile.Path, StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true,
-        bool skipMetadata = false)
+    public async Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true)
     {
-        //_logger.LogDebug($"Entering AddTrackToLibraryAsync for {mediaFile.Path}");
         try
         {
             MediaFile? existingTrack = IsTrackInLibrary(mediaFile);
             if (existingTrack != null)
             {
-                //_logger.LogDebug($"Track already in library: {mediaFile.Path}");
                 return existingTrack;
             }
 
@@ -484,47 +356,7 @@ public class MusicLibrary : IMusicLibrary
                 _supportedAudioExtensions.Any(s =>
                     s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
             {
-                if (!skipMetadata)
-                {
-                    FileInfo fileInfo = new(mediaFile.Path);
-                    if (_metadataCache.TryGetValue(mediaFile.Path, out (DateTime LastModified, MediaFile Metadata) cached) &&
-                        cached.LastModified == fileInfo.LastWriteTime)
-                    {
-                        mediaFile.Duration = cached.Metadata.Duration;
-                        mediaFile.Title = cached.Metadata.Title;
-                        mediaFile.Album = cached.Metadata.Album;
-                        mediaFile.Artist = cached.Metadata.Artist;
-                        mediaFile.Bitrate = cached.Metadata.Bitrate;
-                        mediaFile.SampleRate = cached.Metadata.SampleRate;
-                        mediaFile.Channels = cached.Metadata.Channels;
-                        mediaFile.Performers = cached.Metadata.Performers;
-                        mediaFile.Composers = cached.Metadata.Composers;
-                        mediaFile.Genres = cached.Metadata.Genres;
-                        mediaFile.Track = cached.Metadata.Track;
-                        mediaFile.TrackCount = cached.Metadata.TrackCount;
-                        mediaFile.Disc = cached.Metadata.Disc;
-                        mediaFile.DiscCount = cached.Metadata.DiscCount;
-                        mediaFile.Year = cached.Metadata.Year;
-                        mediaFile.Copyright = cached.Metadata.Copyright;
-                        mediaFile.Comment = cached.Metadata.Comment;
-                        //_logger.LogDebug($"Metadata cache hit for {mediaFile.Path}");
-                    }
-                    else
-                    {
-                        try
-                        {
-                            mediaFile.UpdateFromFileMetadata(false);
-                            //_logger.LogDebug($"Extracted metadata for {mediaFile.Path}: Artist={mediaFile.Artist}, Title={mediaFile.Title}");
-                            _metadataCache[mediaFile.Path] = (fileInfo.LastWriteTime, mediaFile.Clone());
-                            //_logger.LogDebug($"Added {mediaFile.Path} to MetadataCache. Cache size: {_metadataCache.Count}");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, $"Failed to extract metadata for {mediaFile.Path}");
-                            return null;
-                        }
-                    }
-                }
+                // Metadata is already extracted and set on the mediaFile object
                 MediaFile clonedTrack = mediaFile.Clone();
                 MainLibrary.Add(clonedTrack);
                 if (saveImmediately)
@@ -556,7 +388,6 @@ public class MusicLibrary : IMusicLibrary
             }
             await SaveToDatabaseAsync();
             await CleanOrphanedTracksAsync();
-            //_logger.LogInformation($"Track {trackId} removed from playlist {playlistName}");
         }
     }
 
@@ -574,10 +405,9 @@ public class MusicLibrary : IMusicLibrary
             Name = playlistName,
             TrackIds = new ObservableCollection<string>(),
             SelectedTrackId = null,
-            Order = Playlists.Count  // Set order to the end
+            Order = Playlists.Count
         };
         await AddPlaylistAsync(playlist);
-        //_logger.LogInformation($"Created new playlist {playlistName} with Id {playlist.Id}");
         return playlist;
     }
 
@@ -593,12 +423,10 @@ public class MusicLibrary : IMusicLibrary
         if (newPlaylist.SelectedTrackId != null && MainLibrary.All(t => t.Id != newPlaylist.SelectedTrackId))
         {
             newPlaylist.SelectedTrackId = null;
-            //_logger.LogInformation($"Cleared invalid SelectedTrack for playlist {newPlaylist.Name}");
         }
 
         Playlists.Add(newPlaylist);
         await SaveToDatabaseAsync();
-        //_logger.LogInformation($"New playlist '{newPlaylist.Name}' added");
         return true;
     }
 
@@ -619,11 +447,8 @@ public class MusicLibrary : IMusicLibrary
                     context.PlaylistTracks.RemoveRange(dbPlaylist.PlaylistTracks);
                     context.Playlists.Remove(dbPlaylist);
                     await context.SaveChangesAsync();
-                    //_logger.LogInformation(
-                    //    $"Removed playlist '{playlistName}' and {dbPlaylist.PlaylistTracks.Count} tracks from database");
                 }
                 await CleanOrphanedTracksAsync();
-                //_logger.LogInformation($"Playlist '{playlistName}' removed");
             }
         }
         catch (Exception ex)
@@ -647,7 +472,6 @@ public class MusicLibrary : IMusicLibrary
             .Where(id => !playlist.TrackIds.Contains(id) && MainLibrary.Any(t => t.Id == id)).ToList();
         if (!validTrackIds.Any())
         {
-            //_logger.LogInformation($"No new valid tracks to add to playlist {playlistName}");
             return;
         }
 
@@ -659,10 +483,8 @@ public class MusicLibrary : IMusicLibrary
         if (playlist.SelectedTrackId == null && playlist.TrackIds.Any())
         {
             playlist.SelectedTrackId = playlist.TrackIds.First();
-            //_logger.LogInformation($"Set SelectedTrack to {playlist.SelectedTrackId} for playlist {playlistName}");
         }
 
-        //_logger.LogInformation($"Added {validTrackIds.Count} tracks to playlist {playlistName}");
         if (saveImmediately)
         {
             await SaveToDatabaseAsync();
@@ -686,9 +508,7 @@ public class MusicLibrary : IMusicLibrary
             if (playlist.SelectedTrackId == null && playlist.TrackIds.Any())
             {
                 playlist.SelectedTrackId = playlist.TrackIds.First();
-                //_logger.LogInformation("Set SelectedTrack to {PlaylistSelectedTrack} for playlist {PlaylistName}.", playlist.SelectedTrackId, playlistName);
             }
-            //_logger.LogInformation("Track {TrackId} added to playlist {PlaylistName} at position {Position}.", trackId, playlistName, position);
             if (saveImmediately)
             {
                 await SaveToDatabaseAsync();
@@ -707,7 +527,6 @@ public class MusicLibrary : IMusicLibrary
 
     public List<MediaFile> GetTracksFromPlaylist(string? playlistName)
     {
-        //_logger.LogInformation("MusicLibrary - GetTracksFromPlaylist");
         Playlist? playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
         if (playlist == null)
         {
@@ -719,31 +538,6 @@ public class MusicLibrary : IMusicLibrary
             .Where(t => t != null)
             .Select(t => t!)
             .ToList();
-    }
-
-    public async Task ClearAllMetadataCacheAsync()
-    {
-        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
-        try
-        {
-            List<MetadataCache> allCacheEntries = await context.MetadataCache.ToListAsync();
-            if (allCacheEntries.Any())
-            {
-                context.MetadataCache.RemoveRange(allCacheEntries);
-                await context.SaveChangesAsync();
-                _metadataCache.Clear(); // Also clear the in-memory cache
-                //_logger.LogInformation($"Cleared all {allCacheEntries.Count} metadata cache entries from database and memory");
-            }
-            else
-            {
-                _logger.LogInformation("No metadata cache entries to clear");
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to clear metadata cache");
-            throw;
-        }
     }
 
     public void ClearPlayState()

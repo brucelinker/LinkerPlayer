@@ -198,20 +198,25 @@ public class BassAudioEngine : IDisposable
     private void LoadEssentialPlugins(BassInitializationResult result)
     {
         // Load only essential plugins that require explicit loading
+        // Defer codec loading to background task for faster startup
         string[] essentialPlugins = new[]
         {
-            "bass_aac.dll",   // AAC - may need explicit loading
-            "bass_mpc.dll",   // MPC - may need explicit loading
-            "bassalac.dll",   // Apple Lossless - requires explicit loading
-            "bassape.dll",    // Monkey's Audio - requires explicit loading
-            "bassflac.dll",   // FLAC support - may need explicit loading
-            "bassopus.dll",   // Opus - requires explicit loading
-            "basswebm.dll",   // WebM/Opus - requires explicit loading
-            // basswma.dll - deliberately omitted - let Windows Media Foundation handle WMA
-            "basswv.dll",     // WavPack - requires explicit loading
+            "bass_aac.dll",   // AAC
+            "bass_mpc.dll",   // MPC
+            "bassalac.dll",   // Apple Lossless
+            "bassape.dll",    // Monkey's Audio
+            "bassflac.dll",   // FLAC support
+            "bassopus.dll",   // Opus
+            "basswebm.dll",   // WebM/Opus
+            "basswv.dll",     // WavPack
         };
 
-        LoadSpecificPlugins(essentialPlugins, result);
+        // Start plugin loading in background without blocking
+        Task.Run(() =>
+        {
+            _logger.LogInformation("Loading plugins in background");
+            LoadSpecificPluginsBackground(essentialPlugins, result);
+        });
     }
 
     private void LoadAllPlugins(BassInitializationResult result)
@@ -221,7 +226,12 @@ public class BassAudioEngine : IDisposable
             .Where(dll => dll != "bass.dll") // Don't try to load the main BASS library as a plugin
             .ToArray();
 
-        LoadSpecificPlugins(allPlugins, result);
+        // Start plugin loading in background without blocking
+        Task.Run(() =>
+        {
+            _logger.LogInformation("Loading all plugins in background");
+            LoadSpecificPluginsBackground(allPlugins, result);
+        });
     }
 
     private void LoadSpecificPlugins(string[] pluginNames, BassInitializationResult result)
@@ -262,6 +272,44 @@ public class BassAudioEngine : IDisposable
         }
 
         _logger.LogInformation($"Plugin loading complete. Loaded: {result.LoadedPlugins.Count}, Failed: {result.FailedPlugins.Count}");
+    }
+
+    private void LoadSpecificPluginsBackground(string[] pluginNames, BassInitializationResult result)
+    {
+        foreach (string pluginName in pluginNames)
+        {
+            try
+            {
+                if (!BassNativeLibraryManager.IsDllAvailable(pluginName))
+                {
+                    _logger.LogWarning($"Plugin not available: {pluginName}");
+                    result.FailedPlugins.Add($"{pluginName} (not available)");
+                    continue;
+                }
+
+                string pluginPath = BassNativeLibraryManager.GetDllPath(pluginName);
+                int handle = Bass.PluginLoad(pluginPath);
+
+                if (handle != 0)
+                {
+                    result.LoadedPlugins.Add(pluginName);
+                    _logger.LogDebug($"Loaded plugin in background: {pluginName}; Handle: {handle}");
+                }
+                else
+                {
+                    Errors error = Bass.LastError;
+                    result.FailedPlugins.Add($"{pluginName} ({error})");
+                    _logger.LogDebug($"Failed to load plugin in background: {pluginName}, Error: {error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                result.FailedPlugins.Add($"{pluginName} (exception: {ex.Message})");
+                _logger.LogError(ex, $"Exception loading plugin in background: {pluginName}");
+            }
+        }
+
+        _logger.LogInformation($"Background plugin loading complete. Loaded: {result.LoadedPlugins.Count}, Failed: {result.FailedPlugins.Count}");
     }
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]

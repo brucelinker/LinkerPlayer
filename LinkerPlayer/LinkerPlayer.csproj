@@ -20,7 +20,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="MahApps.Metro.IconPacks" Version="6.1.0" />
+		<PackageReference Include="MahApps.Metro.IconPacks" Version="6.2.1" />
 		<PackageReference Include="ManagedBass" Version="4.0.2" />
 		<PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
 		<PackageReference Include="ManagedBass.Mix" Version="4.0.2" />

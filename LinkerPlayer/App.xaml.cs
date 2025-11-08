@@ -36,7 +36,7 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders(); // Clear default providers to avoid duplicate logs
-                logging.SetMinimumLevel(LogLevel.Warning);
+                logging.SetMinimumLevel(LogLevel.Trace);
                 logging.AddSimpleConsole(options =>
                 {
                     options.IncludeScopes = false;
@@ -145,18 +145,23 @@ public partial class App
             await AppHost.StartAsync();
             _logger.LogInformation("AppHost started successfully");
 
-            // Load metadata cache
-            IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
-            _logger.LogInformation("Loading MetadataCache");
-            await musicLibrary.LoadMetadataCacheAsync();
-            _logger.LogInformation("MetadataCache loaded");
-
-            // Initialize BassAudioEngine
+            // Initialize BassAudioEngine in the background (don't wait for it on splash screen)
             BassAudioEngine bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
-            bassEngine.Initialize(new BassInitializationOptions());
-            _logger.LogInformation("BassAudioEngine initialized successfully");
+            Task bassInitTask = Task.Run(() =>
+            {
+                try
+                {
+                    _logger.LogInformation("Initializing BassAudioEngine in background");
+                    bassEngine.Initialize(new BassInitializationOptions());
+                    _logger.LogInformation("BassAudioEngine initialized successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error initializing BassAudioEngine in background");
+                }
+            });
 
-            // Switch to UI thread to create and show main window
+            // Switch to UI thread to create and show main window (don't wait for BASS/metadata)
             await Dispatcher.BeginInvoke(new Action(() =>
             {
                 try
@@ -173,27 +178,18 @@ public partial class App
                     mainWindow.Show();
                     _logger.LogInformation("MainWindow.Show() called");
 
-                    // Wait longer before closing splash to ensure main window is fully rendered
-                    DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
+                    // Close splash screen immediately when main window is shown
+                    try
                     {
-                        Interval = TimeSpan.FromMilliseconds(2000) // Increased to 2 seconds
-                    };
-                    timer.Tick += (_, _) =>
+                        _logger.LogInformation("Closing splash screen");
+                        _splashWindow?.CloseSplash();
+                        _splashWindow = null;
+                        _logger.LogInformation("Splash screen closed, MainWindow is visible");
+                    }
+                    catch (Exception ex)
                     {
-                        timer.Stop();
-                        try
-                        {
-                            _logger.LogInformation("Closing splash screen");
-                            _splashWindow?.CloseSplash();
-                            _splashWindow = null;
-                            _logger.LogInformation("Splash screen closed, MainWindow should be visible");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error closing splash screen");
-                        }
-                    };
-                    timer.Start();
+                        _logger.LogError(ex, "Error closing splash screen");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -202,6 +198,11 @@ public partial class App
                     throw;
                 }
             }));
+
+            // Now wait for BASS and metadata to finish loading in the background
+            _logger.LogInformation("Waiting for background tasks to complete");
+            await Task.WhenAll(bassInitTask);
+            _logger.LogInformation("All background initialization tasks complete");
         }
         catch (Exception ex)
         {
@@ -231,8 +232,6 @@ public partial class App
                 _logger.LogInformation("Database saved on shutdown");
 
                 IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
-                musicLibrary.SaveMetadataCacheAsync().GetAwaiter().GetResult(); // Save metadata cache on exit
-                _logger.LogInformation("Metadata cache saved successfully");
             }
             catch (Exception ex)
             {

@@ -17,10 +17,6 @@ public class MusicLibraryDbContext : DbContext
     {
         get; set;
     }
-    public DbSet<MetadataCache> MetadataCache
-    {
-        get; set;
-    }
 
     public MusicLibraryDbContext(DbContextOptions<MusicLibraryDbContext> options)
         : base(options)
@@ -29,7 +25,7 @@ public class MusicLibraryDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        // MediaFile: Only Id and Path are mapped
+        // MediaFile: Configure all properties to persist to database
         modelBuilder.Entity<MediaFile>()
             .HasKey(m => m.Id);
         modelBuilder.Entity<MediaFile>()
@@ -42,25 +38,52 @@ public class MusicLibraryDbContext : DbContext
             .Property(m => m.Path)
             .HasMaxLength(256)
             .IsRequired();
-        // Ignore all other properties
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.FileName);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Title);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Artist);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Album);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Performers);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Composers);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Genres);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Copyright);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Comment);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Track);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.TrackCount);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Disc);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.DiscCount);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Year);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Duration);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Bitrate);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.SampleRate);
-        modelBuilder.Entity<MediaFile>().Ignore(m => m.Channels);
+        
+        // Metadata columns - all persisted
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.FileName)
+            .HasMaxLength(255);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Title)
+            .HasMaxLength(128);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Artist)
+            .HasMaxLength(128);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Album)
+            .HasMaxLength(128);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Performers)
+            .HasMaxLength(256);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Composers)
+            .HasMaxLength(256);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Genres)
+            .HasMaxLength(128);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Copyright)
+            .HasMaxLength(128);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Track);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.TrackCount);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Disc);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.DiscCount);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Year);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Duration);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Bitrate);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.SampleRate);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Channels);
+        
+        // Runtime-only properties - ignored for database
         modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);
         modelBuilder.Entity<MediaFile>().Ignore(m => m.State);
         modelBuilder.Entity<MediaFile>().Ignore(m => m.PlaylistTracks);
@@ -103,21 +126,5 @@ public class MusicLibraryDbContext : DbContext
             .WithMany(t => t.PlaylistTracks)
             .HasForeignKey(pt => pt.TrackId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        // MetadataCache (optional)
-        modelBuilder.Entity<MetadataCache>()
-            .HasKey(mc => mc.Path);
-        modelBuilder.Entity<MetadataCache>()
-            .Property(mc => mc.Path)
-            .HasMaxLength(256);
-        modelBuilder.Entity<MetadataCache>()
-            .Property(mc => mc.Metadata)
-            .HasMaxLength(4096);
-        modelBuilder.Entity<MetadataCache>()
-            .Property(mc => mc.LastModified)
-            .IsRequired();
-        modelBuilder.Entity<MetadataCache>()
-            .Property(mc => mc.Metadata)
-            .IsRequired();
     }
 }

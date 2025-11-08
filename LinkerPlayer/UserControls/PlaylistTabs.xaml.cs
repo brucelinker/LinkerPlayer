@@ -43,29 +43,46 @@ public partial class PlaylistTabs
     {
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
+            // PHASE 1: Load empty playlist tabs immediately (just names, no tracks)
+            _logger.LogInformation("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
             viewModel.LoadPlaylistTabs();
-            //_logger.LogInformation("PlaylistTabs: Loaded {Count} playlists", viewModel.TabList.Count);
 
-            if (viewModel.TabList.Any())
+            // PHASE 2: After window is shown, load the selected playlist's tracks asynchronously
+            Dispatcher.BeginInvoke(async () =>
             {
-                // Get the saved tab index and set it if valid
-                int savedTabIndex = App.AppHost.Services.GetRequiredService<ISettingsManager>().Settings.SelectedTabIndex;
-
-                if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
+                _logger.LogInformation("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks");
+                
+                if (viewModel.TabList.Any())
                 {
-                    viewModel.SelectedTabIndex = savedTabIndex;
-                    //_logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to saved value {Index}", savedTabIndex);
+                    // Get the saved tab index and set it if valid
+                    int savedTabIndex = App.AppHost.Services.GetRequiredService<ISettingsManager>().Settings.SelectedTabIndex;
+
+                    if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
+                    {
+                        viewModel.SelectedTabIndex = savedTabIndex;
+                        _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to saved value {Index}", savedTabIndex);
+                    }
+                    else
+                    {
+                        viewModel.SelectedTabIndex = 0;
+                        _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
+                    }
+
+                    // Load tracks for selected playlist asynchronously on background thread
+                    await viewModel.LoadSelectedPlaylistTracksAsync();
                 }
                 else
                 {
-                    viewModel.SelectedTabIndex = 0;
-                    //_logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default0");
+                    _logger.LogWarning("PlaylistTabs: No playlists loaded");
                 }
-            }
-            else
+            }, System.Windows.Threading.DispatcherPriority.Normal);
+
+            // PHASE 3: After selected playlist is ready, load other playlists in background
+            Dispatcher.BeginInvoke(async () =>
             {
-                _logger.LogWarning("PlaylistTabs: No playlists loaded");
-            }
+                _logger.LogInformation("PlaylistTabs_Loaded: PHASE 3 - Loading other playlists in background");
+                await viewModel.LoadOtherPlaylistTracksAsync();
+            }, System.Windows.Threading.DispatcherPriority.Background);
         }
         else
         {
@@ -78,8 +95,8 @@ public partial class PlaylistTabs
             vm.PropertyChanged += ViewModel_PropertyChanged;
         }
 
-        // Center the selected track on app start
-        Dispatcher.BeginInvoke((Action)CenterSelectedTrack, null);
+        // Center the selected track on app start (deferred)
+        Dispatcher.BeginInvoke((Action)CenterSelectedTrack, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)

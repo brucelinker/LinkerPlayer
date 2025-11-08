@@ -90,8 +90,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _currentDevice = _settingsManager.Settings.SelectedOutputDevice
             ?? new Device("Default", OutputDeviceType.DirectSound, -1, true);
 
-            // Initialize BASS Native Library Manager
-            BassNativeLibraryManager.Initialize(_logger);
+            // Note: BassNativeLibraryManager.Initialize is already called by BassAudioEngine
+            // We only need to set DLL directory and load add-ons here
 
             // Set DLL directory so native DLLs are found
             string bassLibPath = BassNativeLibraryManager.GetNativeLibraryPath();
@@ -101,11 +101,11 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
                 _logger.LogWarning("Failed to set DLL directory for BASS libraries");
             }
 
-            // Load add-ons (bass_fx, bassmix)
+            // Load add-ons (bass_fx, bassmix) - these are loaded synchronously as they're needed for playback
             LoadBassAddOns();
 
-            // Refresh device list (doesn't open devices)
-            _ = _outputDeviceManager.RefreshOutputDeviceList();
+            // Refresh device list - do this lazily on first use, not at startup
+            // _ = _outputDeviceManager.RefreshOutputDeviceList();
 
             // Create WASAPI callback
             _wasapiProc = new WasapiProcedure(WasapiProc);
@@ -213,6 +213,16 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
     public IEnumerable<Device> DirectSoundDevices => _outputDeviceManager.GetDirectSoundDevices();
     public IEnumerable<Device> WasapiDevices => _outputDeviceManager.GetWasapiDevices();
+
+    private IEnumerable<Device>? _devices;
+
+    private void RefreshDevicesCached()
+    {
+        if (_devices == null || !_devices.Any())
+        {
+            _devices = _outputDeviceManager.RefreshOutputDeviceList().ToList();
+        }
+    }
 
     public OutputMode GetCurrentOutputMode() => _currentMode;
     public Device GetCurrentOutputDevice() => _currentDevice;
