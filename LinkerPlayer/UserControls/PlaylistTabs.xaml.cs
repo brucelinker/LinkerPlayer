@@ -51,7 +51,7 @@ public partial class PlaylistTabs
             Dispatcher.BeginInvoke(async () =>
             {
                 _logger.LogInformation("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks");
-                
+
                 if (viewModel.TabList.Any())
                 {
                     // Get the saved tab index and set it if valid

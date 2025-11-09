@@ -229,7 +229,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     _logger.LogInformation("OnTabSelectionChanged: Loading tracks for tab '{TabName}'", tab.Name);
                     IEnumerable<MediaFile> tracks = _playlistManagerService.LoadPlaylistTracks(tab.Name);
-                    
+
                     // Add to UI thread
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
@@ -470,7 +470,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
 
             PlaylistTab selectedTab = TabList[SelectedTabIndex];
-            
+
             // Skip if already loaded
             if (selectedTab.Tracks.Count > 0)
             {
@@ -481,7 +481,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             IEnumerable<MediaFile> tracks = await Task.Run(() =>
                 _playlistManagerService.LoadPlaylistTracks(selectedTab.Name)
             );
-            
+
             foreach (MediaFile track in tracks)
             {
                 selectedTab.Tracks.Add(track);
@@ -522,7 +522,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 IEnumerable<MediaFile> tracks = await Task.Run(() =>
                     _playlistManagerService.LoadPlaylistTracks(tab.Name)
                 );
-                
+
                 // Use Dispatcher to add tracks on UI thread
                 await _uiDispatcher.InvokeAsync(() =>
                 {
@@ -533,7 +533,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 });
 
                 _logger.LogInformation("Loaded {Count} tracks for background playlist '{Name}'", tab.Tracks.Count, tab.Name);
-                
+
                 // Yield to UI thread occasionally
                 await Task.Delay(10);
             }
@@ -934,7 +934,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
                     {
                         candidatePath = uri.LocalPath;
-                      }
+                    }
 
                     // Unescape any percent-encoded characters
                     candidatePath = Uri.UnescapeDataString(candidatePath);

@@ -38,7 +38,7 @@ public class MusicLibraryDbContext : DbContext
             .Property(m => m.Path)
             .HasMaxLength(256)
             .IsRequired();
-        
+
         // Metadata columns - all persisted
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.FileName)
@@ -82,7 +82,7 @@ public class MusicLibraryDbContext : DbContext
             .Property(m => m.SampleRate);
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.Channels);
-        
+
         // Runtime-only properties - ignored for database
         modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);
         modelBuilder.Entity<MediaFile>().Ignore(m => m.State);

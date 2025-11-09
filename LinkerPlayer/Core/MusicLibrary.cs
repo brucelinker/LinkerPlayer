@@ -13,9 +13,15 @@ namespace LinkerPlayer.Core;
 
 public interface IMusicLibrary
 {
-    ObservableCollection<MediaFile> MainLibrary { get; }
-    ObservableCollection<Playlist> Playlists { get; }
-    
+    ObservableCollection<MediaFile> MainLibrary
+    {
+        get;
+    }
+    ObservableCollection<Playlist> Playlists
+    {
+        get;
+    }
+
     Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
     Task<Playlist> AddNewPlaylistAsync(string playlistName);
@@ -54,7 +60,7 @@ public class MusicLibrary : IMusicLibrary
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_dbPath)!);
-            
+
             DbContextOptions<MusicLibraryDbContext> options = new DbContextOptionsBuilder<MusicLibraryDbContext>()
                 .UseSqlite($"Data Source={_dbPath};Pooling=True;")
                 .Options;
@@ -149,7 +155,8 @@ public class MusicLibrary : IMusicLibrary
                 Playlists.Add(playlist);
             }
 
-            ClearPlayState();
+            // Do not clear play state here. New MediaFile instances default to Stopped, and clearing can disrupt UI state.
+            //ClearPlayState();
 
             if (!Playlists.Any())
             {
@@ -210,7 +217,8 @@ public class MusicLibrary : IMusicLibrary
         {
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            ClearPlayState();
+            // IMPORTANT: Do not clear play state here; it breaks UI indicators of currently playing track.
+            //ClearPlayState();
 
             // Ensure all MainLibrary tracks have their database Id set
             foreach (MediaFile track in MainLibrary)
@@ -542,6 +550,7 @@ public class MusicLibrary : IMusicLibrary
 
     public void ClearPlayState()
     {
+        // Keep as a utility for any future explicit UI reset, but avoid calling it during persistence.
         foreach (MediaFile file in MainLibrary)
         {
             file.State = PlaybackState.Stopped;

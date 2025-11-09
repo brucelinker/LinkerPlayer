@@ -302,10 +302,10 @@ public class PlaylistManagerService : IPlaylistManagerService
             // ✅ DO NOT update metadata here - that will block for 19+ seconds!
             // Metadata is already in the database from when tracks were added.
             // Only update if cache is stale (file was modified after last load).
-            
+
             // For now, just return tracks with cached metadata.
             // Lazy loading will happen when DataGrid needs to display them.
-            
+
             return tracks;
         }
         catch (Exception ex)

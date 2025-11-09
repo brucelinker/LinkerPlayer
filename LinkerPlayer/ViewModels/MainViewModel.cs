@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services; // for IDatabaseSaveService
 using Microsoft.Extensions.Logging;
 using System.IO;
 
@@ -11,6 +12,7 @@ public class MainViewModel : ObservableObject
     private static readonly ThemeManager ThemeMgr = new();
     private readonly ISettingsManager _settingsManager;
     private readonly IMusicLibrary _musicLibrary;
+    private readonly IDatabaseSaveService _databaseSaveService; // flush pending debounced saves
     private readonly ILogger<MainViewModel> _logger;
 
     public MainViewModel(
@@ -18,9 +20,11 @@ public class MainViewModel : ObservableObject
         PlayerControlsViewModel playerControlsViewModel,
         PlaylistTabsViewModel playlistTabsViewModel,
         IMusicLibrary musicLibrary,
+        IDatabaseSaveService databaseSaveService,
         ILogger<MainViewModel> logger)
     {
         _musicLibrary = musicLibrary;
+        _databaseSaveService = databaseSaveService;
         _logger = logger;
 
         try
@@ -73,12 +77,13 @@ public class MainViewModel : ObservableObject
 
     public void OnWindowClosing()
     {
-        _musicLibrary.ClearPlayState();
-        Task.Run(async () =>
-        {
-            await _musicLibrary.SaveToDatabaseAsync();
-        }).Wait();
+        // Flush any pending debounced playlist/selection changes first.
+        _databaseSaveService.SaveImmediately();
 
+        // Perform a final synchronous save to ensure persistence before process exit.
+        _musicLibrary.SaveToDatabase();
+
+        // Persist last selected output device (and any other immediate settings).
         _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
     }
 }
