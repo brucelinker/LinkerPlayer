@@ -277,6 +277,20 @@ public partial class PlayerControls
         }
     }
 
+    private void StatusText_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_vm.ActiveTrack == null || string.IsNullOrEmpty(StatusText.Text))
+        {
+            return;
+        }
+
+        if (e.ClickCount == 2)
+        {
+            // Handle double-click event on StatusText
+            WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
+        }
+    }
+
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
     {
         _vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);

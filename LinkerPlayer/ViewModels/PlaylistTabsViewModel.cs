@@ -120,6 +120,10 @@ public partial class PlaylistTabsViewModel : ObservableObject
         get => SharedDataModel.SelectedTrack;
         set
         {
+            if (ReferenceEquals(SharedDataModel.SelectedTrack, value))
+            {
+                return; // avoid redundant updates that can cause re-entrant UI work
+            }
             SharedDataModel.UpdateSelectedTrack(value!);
             OnPropertyChanged(nameof(SelectedTrack));
         }
@@ -291,7 +295,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedTrackId));
 
-            _dataGrid.ScrollIntoView(SelectedTrack);
+            //_dataGrid.ScrollIntoView(SelectedTrack);
 
             if (ActiveTrack == null)
             {
@@ -886,12 +890,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 _dataGrid.SelectedItem = SelectedTrack;
                 SelectedTrackIndex = _dataGrid.SelectedIndex;
-
-                // Scroll into view at lower priority to avoid blocking
-                _dataGrid.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    _dataGrid.ScrollIntoView(SelectedTrack);
-                }), System.Windows.Threading.DispatcherPriority.Background);
+                // Do not auto-scroll here to avoid unexpected jumps on tab clicks
             }
         }
 
@@ -1373,10 +1372,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             return null;
 
         if (!TabList[SelectedTabIndex].Tracks.Any())
-        {
-            // Empty Playlist
             return null;
-        }
 
         try
         {

@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
   x:Class="LinkerPlayer.UserControls.PlayerControls"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -308,7 +308,8 @@
             VerticalAlignment="Top"
             FontSize="13"
             FontWeight="Light"
-            Text="{Binding Status}" />
+            Text="{Binding Status}"
+            MouseDown="StatusText_MouseDown" />
 
           <Border
             Grid.Row="0"

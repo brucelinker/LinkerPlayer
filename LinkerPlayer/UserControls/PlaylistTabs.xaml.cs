@@ -28,6 +28,8 @@ public partial class PlaylistTabs
     private TabItem? _lastHighlightedTab;
     private readonly Dictionary<PlaylistTab, double> _tabVerticalOffsets = new();
 
+    // Flag to allow explicit centering to bypass BringIntoView suppression
+    private bool _isExplicitCentering;
 
     public PlaylistTabs()
     {
@@ -36,7 +38,12 @@ public partial class PlaylistTabs
         _logger = App.AppHost.Services.GetRequiredService<ILogger<PlaylistTabs>>();
 
         Loaded += PlaylistTabs_Loaded;
-        Unloaded += PlaylistTabs_Unloaded;
+        //Unloaded += PlaylistTabs_Unloaded;
+
+        WeakReferenceMessenger.Default.Register<GoToActiveTrackMessage>(this, (_, m) =>
+        {
+            OnGoToActiveTrack(m.Value);
+        });
     }
 
     private void PlaylistTabs_Loaded(object sender, RoutedEventArgs e)
@@ -89,14 +96,8 @@ public partial class PlaylistTabs
             _logger.LogError("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
         }
 
-        // Subscribe to view model property changes to center track on selection change
-        if (DataContext is PlaylistTabsViewModel vm)
-        {
-            vm.PropertyChanged += ViewModel_PropertyChanged;
-        }
-
-        // Center the selected track on app start (deferred)
-        Dispatcher.BeginInvoke((Action)CenterSelectedTrack, System.Windows.Threading.DispatcherPriority.Background);
+        // Center the selected track on app start (force)
+        Dispatcher.BeginInvoke(() => CenterSelectedTrack(force: true), System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
@@ -108,6 +109,15 @@ public partial class PlaylistTabs
                 viewModel.OnDataGridLoaded(sender, e);
             }
         }, null);
+    }
+
+    private void PlaylistDataGrid_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
+    {
+        // Suppress WPF default scrolling unless we’re explicitly centering
+        if (!_isExplicitCentering)
+        {
+            e.Handled = true;
+        }
     }
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -123,6 +133,7 @@ public partial class PlaylistTabs
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        // Only react to real tab changes (ignore internal content selection changes)
         if (e.Source is TabControl && (e.AddedItems.Count > 0 || e.RemovedItems.Count > 0))
         {
             bool isTabChange = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
@@ -135,15 +146,10 @@ public partial class PlaylistTabs
                         viewModel.OnTabSelectionChanged(sender, e);
                     }
                 }, null);
-                // Center the selected track when switching tabs
-                Dispatcher.BeginInvoke((Action)CenterSelectedTrack, null);
-                Console.WriteLine("Tab selection changed.");
+                // Center the selected track when switching tabs (force center)
+                Dispatcher.BeginInvoke(() => CenterSelectedTrack(force: true), System.Windows.Threading.DispatcherPriority.Background);
             }
         }
-        //else
-        //{
-        // Console.WriteLine($"Event from child control {e.OriginalSource}, ignoring.");
-        //}
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -617,68 +623,55 @@ public partial class PlaylistTabs
         }
     }
 
-    private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void OnGoToActiveTrack(bool value)
     {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            MediaFile? selected = viewModel.SelectedTrack;
-            if (selected != null)
-            {
-                // Defer until after any internal header handling/layout
-                Dispatcher.BeginInvoke((Action)(() =>
-                {
-                    DataGrid? dataGrid = GetActiveDataGrid();
-                    if (dataGrid == null)
-                    {
-                        return;
-                    }
-
-                    CenterItemInDataGrid(dataGrid, selected);
-                }), System.Windows.Threading.DispatcherPriority.Background);
-            }
-            else if (viewModel.SelectedTab != null && _tabVerticalOffsets.TryGetValue(viewModel.SelectedTab, out double offset))
-            {
-                // Fallback: restore last known offset if no selected item
-                Dispatcher.BeginInvoke((Action)(() =>
-                {
-                    DataGrid? dataGrid = GetActiveDataGrid();
-                    if (dataGrid == null)
-                    {
-                        return;
-                    }
-                    ScrollViewer? sv = FindDescendant<ScrollViewer>(dataGrid);
-                    sv?.ScrollToVerticalOffset(offset);
-                }));
-            }
-        }
+        // Force centering when invoked explicitly (StatusText double-click)
+        CenterSelectedTrack(force: true);
     }
 
-    private void CenterSelectedTrack()
+    private void CenterSelectedTrack(bool force = false)
     {
         if (DataContext is PlaylistTabsViewModel viewModel && viewModel.SelectedTrack != null)
         {
             DataGrid? dataGrid = GetActiveDataGrid();
             if (dataGrid != null)
             {
-                CenterItemInDataGrid(dataGrid, viewModel.SelectedTrack);
+                if (force || !IsItemFullyVisible(dataGrid, viewModel.SelectedTrack))
+                {
+                    try
+                    {
+                        _isExplicitCentering = true;
+                        CenterItemInDataGrid(dataGrid, viewModel.SelectedTrack);
+                    }
+                    finally
+                    {
+                        _isExplicitCentering = false;
+                    }
+                }
             }
         }
     }
 
-    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private static bool IsItemFullyVisible(DataGrid dataGrid, object item)
     {
-        if (e.PropertyName == nameof(PlaylistTabsViewModel.SelectedTrack))
+        ScrollViewer? sv = FindDescendant<ScrollViewer>(dataGrid);
+        if (sv == null)
         {
-            Dispatcher.BeginInvoke((Action)CenterSelectedTrack, null);
+            return false;
         }
-    }
 
-    private void PlaylistTabs_Unloaded(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is PlaylistTabsViewModel vm)
+        DataGridRow? row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
+        if (row == null || row.ActualHeight <= 0)
         {
-            vm.PropertyChanged -= ViewModel_PropertyChanged;
+            return false; // not realized or no height => not visible
         }
+
+        GeneralTransform transform = row.TransformToAncestor(sv);
+        Point rowPos = transform.Transform(new Point(0, 0));
+        double top = rowPos.Y;
+        double bottom = top + row.ActualHeight;
+
+        return top >= 0 && bottom <= sv.ViewportHeight;
     }
 
     private static void CenterItemInDataGrid(DataGrid dataGrid, object item)
