@@ -1184,7 +1184,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         return d[a.Length, b.Length];
     }
 
-
     private static string? TryFindClosestFileInDirectory(string directory, string targetFileName)
     {
         try
@@ -1368,11 +1367,15 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public MediaFile? SelectFirstTrack()
     {
-        if (_dataGrid?.ItemsSource.Cast<MediaFile>().Any() != true || !TabList.Any())
+        if (_dataGrid?.ItemsSource?.Cast<MediaFile>().Any() != true || !TabList.Any())
+        {
             return null;
+        }
 
         if (!TabList[SelectedTabIndex].Tracks.Any())
+        {
             return null;
+        }
 
         try
         {
