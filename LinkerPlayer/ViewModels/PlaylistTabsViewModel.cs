@@ -1537,15 +1537,23 @@ public partial class PlaylistTabsViewModel : ObservableObject
     [RelayCommand]
     private async Task ReorderTabs((int FromIndex, int ToIndex) indices)
     {
-        if (indices.FromIndex < 0 || indices.ToIndex < 0 ||
-            indices.FromIndex >= TabList.Count || indices.ToIndex >= TabList.Count)
+        int count = TabList.Count;
+        if (count == 0)
         {
-            _logger.LogWarning("ReorderTabs called with invalid indices: from {FromIndex} to {ToIndex}",
-                indices.FromIndex, indices.ToIndex);
             return;
         }
 
-        if (indices.FromIndex == indices.ToIndex)
+        // Normalize indices into valid bounds; allow ToIndex == count (drop after last) by clamping to last
+        int fromIndex = Math.Clamp(indices.FromIndex, 0, count - 1);
+        int toIndex = Math.Clamp(indices.ToIndex, 0, count - 1);
+
+        if (fromIndex != indices.FromIndex || (indices.ToIndex < 0 || indices.ToIndex > count))
+        {
+            _logger.LogDebug("ReorderTabs normalized indices: from {From} to {To} (requested {ReqFrom} -> {ReqTo}, count {Count})",
+                fromIndex, toIndex, indices.FromIndex, indices.ToIndex, count);
+        }
+
+        if (fromIndex == toIndex)
         {
             return; // Nothing to do
         }
@@ -1553,20 +1561,20 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             // Remember the currently selected tab
-            PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count
+            PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < count
                 ? TabList[SelectedTabIndex]
                 : null;
 
             // Reorder in the UI
-            PlaylistTab movedTab = TabList[indices.FromIndex];
+            PlaylistTab movedTab = TabList[fromIndex];
             await _uiDispatcher.InvokeAsync(() =>
             {
-                TabList.RemoveAt(indices.FromIndex);
-                TabList.Insert(indices.ToIndex, movedTab);
+                TabList.RemoveAt(fromIndex);
+                TabList.Insert(toIndex, movedTab);
             });
 
             // Reorder in the database/service
-            bool success = await _playlistManagerService.ReorderPlaylistsAsync(indices.FromIndex, indices.ToIndex);
+            bool success = await _playlistManagerService.ReorderPlaylistsAsync(fromIndex, toIndex);
 
             if (success)
             {
@@ -1583,7 +1591,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 }
 
                 _logger.LogInformation("Successfully reordered tab from index {FromIndex} to {ToIndex}",
-                    indices.FromIndex, indices.ToIndex);
+                    fromIndex, toIndex);
             }
             else
             {
@@ -1591,15 +1599,15 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 _logger.LogError("Failed to reorder tabs in database, reverting UI changes");
                 await _uiDispatcher.InvokeAsync(() =>
                 {
-                    TabList.RemoveAt(indices.ToIndex);
-                    TabList.Insert(indices.FromIndex, movedTab);
+                    TabList.RemoveAt(toIndex);
+                    TabList.Insert(fromIndex, movedTab);
                 });
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reordering tabs from {FromIndex} to {ToIndex}",
-                indices.FromIndex, indices.ToIndex);
+                fromIndex, toIndex);
         }
     }
 

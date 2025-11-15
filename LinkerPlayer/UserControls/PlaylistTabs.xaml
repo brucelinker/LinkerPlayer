@@ -47,6 +47,7 @@
         <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
         <Setter Property="FontStyle" Value="Normal" />
         <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Focusable" Value="True" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type userControls:EditableTabHeaderControl}">
@@ -78,7 +79,7 @@
                   <Setter TargetName="PART_TabHeader" Property="Visibility" Value="Visible" />
                   <Setter TargetName="PART_TextBlock" Property="Visibility" Value="Collapsed" />
                 </Trigger>
-                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType={x:Type TabItem}}, Path=IsSelected}" Value="True">
                   <Setter Property="Background" Value="{DynamicResource PlaylistTabSelectedBackgroundBrush}" />
                   <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
                 </DataTrigger>
@@ -118,15 +119,13 @@
         </Setter>
       </Style>
 
+      <!-- Keep the keyed TabItemContainerStyle but do not apply it to Dragablz, since Dragablz handles dragging internally -->
       <Style x:Key="TabItemContainerStyle" TargetType="TabItem">
         <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Margin" Value="0,0" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="AllowDrop" Value="True" />
-        <EventSetter Event="DragOver" Handler="TabItem_DragOver" />
-        <EventSetter Event="Drop" Handler="TabItem_Drop" />
-        <!--<EventSetter Event="PreviewMouseLeftButtonDown" Handler="TabItem_PreviewMouseLeftButtonDown" />-->
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="TabItem">
@@ -157,12 +156,11 @@
                 Margin="0"
                 Padding="0"
                 AllowDrop="True"
-                DragLeave="TabHeader_DragLeave"
-                DragOver="TabHeader_DragOver"
-                Drop="TabHeader_Drop"
-                MouseLeftButtonDown="TabHeader_MouseLeftButtonDown"
-                MouseRightButtonDown="TabHeader_MouseRightButtonDown"
-                PreviewMouseMove="TabHeader_PreviewMouseMove"
+                PreviewMouseLeftButtonDown="TabItem_PreviewMouseLeftButtonDown"
+                PreviewMouseMove="TabItem_PreviewMouseMove"
+                DragOver="TabItem_DragOver"
+                DragLeave="TabItem_DragLeave"
+                Drop="TabItem_Drop"
                 Style="{StaticResource EditableTabHeaderControl}">
                 <userControls:EditableTabHeaderControl.ContextMenu>
                   <ContextMenu>
@@ -185,6 +183,11 @@
             </DataTemplate>
           </Setter.Value>
         </Setter>
+        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="TabItem_PreviewMouseLeftButtonDown" />
+        <EventSetter Event="PreviewMouseMove" Handler="TabItem_PreviewMouseMove" />
+        <EventSetter Event="DragOver" Handler="TabItem_DragOver" />
+        <EventSetter Event="DragLeave" Handler="TabItem_DragLeave" />
+        <EventSetter Event="Drop" Handler="TabItem_Drop" />
       </Style>
 
       <Style TargetType="MenuItem">
@@ -436,15 +439,15 @@
       Padding="0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
-      AllowDrop="True"
       BorderThickness="0"
-      ContentTemplate="{StaticResource TabContentTemplate}"
-      DragOver="TabControl_DragOver"
-      Drop="TabControl_Drop"
-      ItemContainerStyle="{StaticResource TabItemContainerStyle}"
+      Background="{DynamicResource PlaylistTabBackgroundBrush}"
       ItemsSource="{Binding TabList}"
       SelectedIndex="{Binding SelectedTabIndex}"
+      ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       SelectionChanged="TabControl_SelectionChanged">
+      <TabControl.ContentTemplate>
+        <StaticResource ResourceKey="TabContentTemplate" />
+      </TabControl.ContentTemplate>
       <TabControl.ContextMenu>
         <ContextMenu>
           <MenuItem Click="MenuItem_NewPlaylist" Header="New Playlist" />

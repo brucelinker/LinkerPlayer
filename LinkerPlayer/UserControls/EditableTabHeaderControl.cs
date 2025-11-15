@@ -17,25 +17,22 @@ public class EditableTabHeaderControl : ContentControl
     private TextBox? _textBox;
     private string? _oldText;
     private DispatcherTimer? _timer;
-    private bool _isShuttingDown;
-    private delegate void FocusTextBox();
     private readonly ILogger<EditableTabHeaderControl> _logger;
-
 
     public EditableTabHeaderControl()
     {
-        // Subscribe to MainWindow.Closing
-        if (Application.Current?.MainWindow != null)
-        {
-            Application.Current.MainWindow.Closing += (_, _) => _isShuttingDown = true;
-        }
-
         _logger = App.AppHost.Services.GetRequiredService<ILogger<EditableTabHeaderControl>>();
     }
 
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
+
+        if (_textBox != null)
+        {
+            _textBox.KeyDown -= TextBoxKeyDown;
+        }
+
         _textBox = Template.FindName("PART_TabHeader", this) as TextBox;
 
         if (_textBox != null)
@@ -43,14 +40,14 @@ public class EditableTabHeaderControl : ContentControl
             _timer = new DispatcherTimer();
             _timer.Tick += TimerTick!;
             _timer.Interval = TimeSpan.FromMilliseconds(1);
-            LostFocus += TextBoxLostFocus;
             _textBox.KeyDown += TextBoxKeyDown;
-            MouseDoubleClick += EditableTabHeaderControlMouseDoubleClick;
             if (DataContext is PlaylistTab tab)
             {
                 _oldText = tab.Name;
             }
         }
+
+        _logger.LogDebug("EditableTabHeaderControl: Template applied. DataContext={DataType}", DataContext?.GetType().FullName ?? "null");
     }
 
     public bool IsInEditMode
@@ -76,20 +73,11 @@ public class EditableTabHeaderControl : ContentControl
             {
                 _oldText = tab.Name;
             }
-            else
-            {
-                _logger.LogWarning("EditableTabHeaderControl: DataContext is not PlaylistTab in SetEditMode");
-            }
 
             PlaylistTabsViewModel? viewModel = FindAncestorViewModel(this);
-
             if (viewModel != null)
             {
                 Tag = viewModel;
-            }
-            else
-            {
-                _logger.LogError("EditableTabHeaderControl: Could not find PlaylistTabsViewModel in SetEditMode");
             }
         }
 
@@ -114,13 +102,12 @@ public class EditableTabHeaderControl : ContentControl
             if (!string.IsNullOrEmpty(_textBox.Text))
             {
                 _textBox.SelectAll();
-                //_textBox.CaretIndex = _textBox.Text.Length;
                 _textBox.Focus();
             }
         }
         else
         {
-            _textBox.Dispatcher.BeginInvoke(DispatcherPriority.Render, new FocusTextBox(MoveTextBoxInFocus));
+            _textBox.Dispatcher.BeginInvoke(DispatcherPriority.Render, (Action)MoveTextBoxInFocus);
         }
     }
 
@@ -136,70 +123,20 @@ public class EditableTabHeaderControl : ContentControl
         {
             if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel)
             {
-                // Store the new text value
                 string newText = _textBox!.Text;
-
-                // Update _oldText so the TextBlock shows the new value when we exit edit mode
                 string? previousOldText = _oldText;
                 _oldText = newText;
-
                 IsInEditMode = false;
-
-                // Call rename with the previous old text
                 viewModel.RenamePlaylistAsync((tab, previousOldText)).GetAwaiter().GetResult();
             }
             else
             {
                 IsInEditMode = false;
-                _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxKeyDown, DataContext: {DataType}, Tag: {TagType}",
-                    DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
             }
         }
     }
 
-    private void TextBoxLostFocus(object sender, RoutedEventArgs e)
-    {
-        if (_isShuttingDown)
-        {
-            _logger.LogInformation("EditableTabHeaderControl: Skipping TextBoxLostFocus during app shutdown");
-            IsInEditMode = false;
-            return;
-        }
-
-        if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel && _textBox!.Text != _oldText)
-        {
-            // Store the new text value
-            string newText = _textBox.Text;
-            string? previousOldText = _oldText;
-
-            // Update _oldText so the TextBlock shows the new value when we exit edit mode
-            _oldText = newText;
-
-            IsInEditMode = false;
-
-            // Call rename with the previous old text
-            _ = viewModel.RenamePlaylistAsync((tab, previousOldText));
-        }
-        else
-        {
-            IsInEditMode = false;
-            if (_textBox!.Text != _oldText)
-            {
-                _logger.LogError("EditableTabHeaderControl: Invalid DataContext or Tag in TextBoxLostFocus, DataContext: {DataType}, Tag: {TagType}",
-                    DataContext?.GetType().FullName ?? "null", Tag?.GetType().FullName ?? "null");
-            }
-        }
-    }
-
-    private void EditableTabHeaderControlMouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed)
-        {
-            SetEditMode(true);
-        }
-    }
-
-    private PlaylistTabsViewModel? FindAncestorViewModel(DependencyObject obj)
+    private static PlaylistTabsViewModel? FindAncestorViewModel(DependencyObject obj)
     {
         while (obj != null!)
         {

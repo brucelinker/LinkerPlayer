@@ -23,9 +23,7 @@ public partial class PlaylistTabs
     private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
     private readonly ILogger<PlaylistTabs> _logger;
     private PlaylistTab? _draggedTab;
-    private int _draggedTabIndex = -1;
     private DropIndicatorAdorner? _dropIndicatorAdorner;
-    private TabItem? _lastHighlightedTab;
     private readonly Dictionary<PlaylistTab, double> _tabVerticalOffsets = new();
 
     // Flag to allow explicit centering to bypass BringIntoView suppression
@@ -38,7 +36,6 @@ public partial class PlaylistTabs
         _logger = App.AppHost.Services.GetRequiredService<ILogger<PlaylistTabs>>();
 
         Loaded += PlaylistTabs_Loaded;
-        //Unloaded += PlaylistTabs_Unloaded;
 
         WeakReferenceMessenger.Default.Register<GoToActiveTrackMessage>(this, (_, m) =>
         {
@@ -50,18 +47,15 @@ public partial class PlaylistTabs
     {
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            // PHASE 1: Load empty playlist tabs immediately (just names, no tracks)
             _logger.LogInformation("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
             viewModel.LoadPlaylistTabs();
 
-            // PHASE 2: After window is shown, load the selected playlist's tracks asynchronously
             Dispatcher.BeginInvoke(async () =>
             {
                 _logger.LogInformation("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks");
 
                 if (viewModel.TabList.Any())
                 {
-                    // Get the saved tab index and set it if valid
                     int savedTabIndex = App.AppHost.Services.GetRequiredService<ISettingsManager>().Settings.SelectedTabIndex;
 
                     if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
@@ -75,7 +69,6 @@ public partial class PlaylistTabs
                         _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
                     }
 
-                    // Load tracks for selected playlist asynchronously on background thread
                     await viewModel.LoadSelectedPlaylistTracksAsync();
                 }
                 else
@@ -84,7 +77,6 @@ public partial class PlaylistTabs
                 }
             }, System.Windows.Threading.DispatcherPriority.Normal);
 
-            // PHASE 3: After selected playlist is ready, load other playlists in background
             Dispatcher.BeginInvoke(async () =>
             {
                 _logger.LogInformation("PlaylistTabs_Loaded: PHASE 3 - Loading other playlists in background");
@@ -96,8 +88,18 @@ public partial class PlaylistTabs
             _logger.LogError("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
         }
 
-        // Center the selected track on app start (force)
-        Dispatcher.BeginInvoke(() => CenterSelectedTrack(force: true), System.Windows.Threading.DispatcherPriority.Background);
+        // Center once at startup if item not fully visible
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (DataContext is PlaylistTabsViewModel vm && vm.SelectedTrack != null)
+            {
+                DataGrid? dg = GetActiveDataGrid();
+                if (dg != null && !IsItemFullyVisible(dg, vm.SelectedTrack))
+                {
+                    CenterSelectedTrack();
+                }
+            }
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
@@ -113,7 +115,6 @@ public partial class PlaylistTabs
 
     private void PlaylistDataGrid_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
     {
-        // Suppress WPF default scrolling unless we’re explicitly centering
         if (!_isExplicitCentering)
         {
             e.Handled = true;
@@ -133,8 +134,7 @@ public partial class PlaylistTabs
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Only react to real tab changes (ignore internal content selection changes)
-        if (e.Source is TabControl && (e.AddedItems.Count > 0 || e.RemovedItems.Count > 0))
+        if (e.AddedItems.Count > 0 || e.RemovedItems.Count > 0)
         {
             bool isTabChange = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
             if (isTabChange)
@@ -146,8 +146,18 @@ public partial class PlaylistTabs
                         viewModel.OnTabSelectionChanged(sender, e);
                     }
                 }, null);
-                // Center the selected track when switching tabs (force center)
-                Dispatcher.BeginInvoke(() => CenterSelectedTrack(force: true), System.Windows.Threading.DispatcherPriority.Background);
+                // Center only if needed when switching tabs
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (DataContext is PlaylistTabsViewModel vm && vm.SelectedTrack != null)
+                    {
+                        DataGrid? dg = GetActiveDataGrid();
+                        if (dg != null && !IsItemFullyVisible(dg, vm.SelectedTrack))
+                        {
+                            CenterSelectedTrack();
+                        }
+                    }
+                }, System.Windows.Threading.DispatcherPriority.Background);
             }
         }
     }
@@ -183,18 +193,33 @@ public partial class PlaylistTabs
 
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
     {
-        Dispatcher.BeginInvoke((Action)delegate
+        EditableTabHeaderControl? targetHeader = null;
+        if (sender is MenuItem mi)
         {
-            if (_selectedEditableTabHeaderControl != null)
+            ContextMenu? ctx = mi.Parent as ContextMenu;
+            if (ctx == null)
             {
-                _selectedEditableTabHeaderControl.SetEditMode(true);
-                // Pass PlaylistTab to enable command binding
-                if (_selectedEditableTabHeaderControl.DataContext is PlaylistTab && DataContext is PlaylistTabsViewModel viewModel)
-                {
-                    _selectedEditableTabHeaderControl.Tag = viewModel; // Store view model for command access
-                }
+                ctx = FindAncestor<ContextMenu>(mi);
             }
-        }, null);
+            if (ctx != null && ctx.PlacementTarget is EditableTabHeaderControl header)
+            {
+                targetHeader = header;
+            }
+        }
+
+        if (targetHeader == null)
+        {
+            targetHeader = _selectedEditableTabHeaderControl;
+        }
+
+        if (targetHeader != null)
+        {
+            if (targetHeader.Tag is not PlaylistTabsViewModel && DataContext is PlaylistTabsViewModel vm)
+            {
+                targetHeader.Tag = vm;
+            }
+            targetHeader.SetEditMode(true);
+        }
     }
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
@@ -253,7 +278,6 @@ public partial class PlaylistTabs
 
     private void MenuItem_Properties(object sender, RoutedEventArgs e)
     {
-        // Use DI to create PropertiesViewModel with all its dependencies
         PropertiesViewModel propertiesViewModel = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
 
         PropertiesWindow dialog = new PropertiesWindow
@@ -263,20 +287,19 @@ public partial class PlaylistTabs
         dialog.Show();
     }
 
-    private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void TabHeader_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        Dispatcher.BeginInvoke((Action)delegate
-        {
-            _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
-        }, null);
+        // Removed: allow normal bubbling so EditableTabHeaderControl.MouseDoubleClick works
     }
 
-    private void TabHeader_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        _selectedEditableTabHeaderControl = (EditableTabHeaderControl)sender;
-        if (DataContext is PlaylistTabsViewModel viewModel)
+        EditableTabHeaderControl header = (EditableTabHeaderControl)sender;
+        _selectedEditableTabHeaderControl = header;
+        // No double-click handling here; double-click handled by control's own MouseDoubleClick
+        if (header.Tag is not PlaylistTabsViewModel && DataContext is PlaylistTabsViewModel vm)
         {
-            viewModel.RightMouseDownTabSelect((string)_selectedEditableTabHeaderControl.Content);
+            header.Tag = vm; // ensure rename works from context menu
         }
     }
 
@@ -299,322 +322,6 @@ public partial class PlaylistTabs
         }
     }
 
-    private void TabHeader_PreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed && sender is EditableTabHeaderControl tabHeader)
-        {
-            // Don't start drag if the tab header is in edit mode
-            if (tabHeader.IsInEditMode)
-            {
-                return;
-            }
-
-            if (tabHeader.DataContext is PlaylistTab playlistTab)
-            {
-                _draggedTab = playlistTab;
-                _draggedTabIndex = GetTabIndex(playlistTab);
-
-                if (_draggedTabIndex >= 0)
-                {
-                    // Set custom cursor for drag operation
-                    Mouse.SetCursor(Cursors.Hand);
-
-                    DragDropEffects effects = DragDrop.DoDragDrop(tabHeader, playlistTab, DragDropEffects.Move);
-
-                    // Reset after drag completes
-                    RemoveDropIndicator();
-                    _draggedTab = null;
-                    _draggedTabIndex = -1;
-                    Mouse.SetCursor(Cursors.Arrow);
-                }
-            }
-        }
-    }
-
-    private void TabHeader_DragOver(object sender, DragEventArgs e)
-    {
-        if (!e.Data.GetDataPresent(typeof(PlaylistTab)))
-        {
-            e.Effects = DragDropEffects.None;
-            return;
-        }
-
-        e.Effects = DragDropEffects.Move;
-        e.Handled = true;
-
-        // Find the TabItem that contains this header
-        if (sender is EditableTabHeaderControl targetHeader)
-        {
-            TabItem? targetTabItem = FindParent<TabItem>(targetHeader);
-            if (targetTabItem != null && targetTabItem.DataContext is PlaylistTab targetTab)
-            {
-                // Get mouse position relative to the tab
-                Point mousePos = e.GetPosition(targetTabItem);
-                double tabWidth = targetTabItem.ActualWidth;
-
-                // Determine if we're on the left or right half of the tab
-                bool dropOnLeft = mousePos.X < tabWidth / 2;
-
-                int targetIndex = GetTabIndex(targetTab);
-
-                // Show drop indicator
-                ShowDropIndicator(targetTabItem, dropOnLeft);
-
-                // Highlight the target tab
-                if (_lastHighlightedTab != targetTabItem)
-                {
-                    ClearTabHighlight();
-                    _lastHighlightedTab = targetTabItem;
-                    HighlightTab(targetTabItem, true);
-                }
-            }
-        }
-    }
-
-    private void TabHeader_DragLeave(object sender, DragEventArgs e)
-    {
-        // Only clear if we're actually leaving the tab control area
-        if (sender is EditableTabHeaderControl header)
-        {
-            TabItem? tabItem = FindParent<TabItem>(header);
-            if (tabItem != null)
-            {
-                Point position = e.GetPosition(tabItem);
-                if (position.X < 0 || position.X > tabItem.ActualWidth ||
-                position.Y < 0 || position.Y > tabItem.ActualHeight)
-                {
-                    ClearTabHighlight();
-                }
-            }
-        }
-        e.Handled = true;
-    }
-
-    private void TabItem_DragOver(object sender, DragEventArgs e)
-    {
-        if (!e.Data.GetDataPresent(typeof(PlaylistTab)))
-        {
-            e.Effects = DragDropEffects.None;
-            return;
-        }
-
-        e.Effects = DragDropEffects.Move;
-        e.Handled = true;
-
-        if (sender is TabItem targetTabItem && targetTabItem.DataContext is PlaylistTab targetTab)
-        {
-            // Get mouse position relative to the tab
-            Point mousePos = e.GetPosition(targetTabItem);
-            double tabWidth = targetTabItem.ActualWidth;
-
-            // Determine if we're on the left or right half of the tab
-            bool dropOnLeft = mousePos.X < tabWidth / 2;
-
-            // Show drop indicator
-            ShowDropIndicator(targetTabItem, dropOnLeft);
-
-            // Highlight the target tab
-            if (_lastHighlightedTab != targetTabItem)
-            {
-                ClearTabHighlight();
-                _lastHighlightedTab = targetTabItem;
-                HighlightTab(targetTabItem, true);
-            }
-        }
-    }
-
-    private void TabItem_Drop(object sender, DragEventArgs e)
-    {
-        ProcessDrop(sender as TabItem, e);
-    }
-
-    private void TabControl_DragOver(object sender, DragEventArgs e)
-    {
-        if (!e.Data.GetDataPresent(typeof(PlaylistTab)))
-        {
-            e.Effects = DragDropEffects.None;
-            return;
-        }
-
-        e.Effects = DragDropEffects.Move;
-        e.Handled = true;
-
-        // Find which tab we're over based on mouse position
-        if (sender is TabControl tabControl)
-        {
-            Point mousePos = e.GetPosition(tabControl);
-            TabItem? targetTabItem = GetTabItemAtPosition(tabControl, mousePos);
-
-            if (targetTabItem != null && targetTabItem.DataContext is PlaylistTab)
-            {
-                // Get mouse position relative to the tab
-                Point tabMousePos = e.GetPosition(targetTabItem);
-                double tabWidth = targetTabItem.ActualWidth;
-
-                // Determine if we're on the left or right half of the tab
-                bool dropOnLeft = tabMousePos.X < tabWidth / 2;
-
-                // Show drop indicator
-                ShowDropIndicator(targetTabItem, dropOnLeft);
-
-                // Highlight the target tab
-                if (_lastHighlightedTab != targetTabItem)
-                {
-                    ClearTabHighlight();
-                    _lastHighlightedTab = targetTabItem;
-                    HighlightTab(targetTabItem, true);
-                }
-            }
-        }
-    }
-
-    private void TabControl_Drop(object sender, DragEventArgs e)
-    {
-        if (sender is TabControl tabControl)
-        {
-            Point mousePos = e.GetPosition(tabControl);
-            TabItem? targetTabItem = GetTabItemAtPosition(tabControl, mousePos);
-            ProcessDrop(targetTabItem, e);
-        }
-    }
-
-    private TabItem? GetTabItemAtPosition(TabControl tabControl, Point position)
-    {
-        HitTestResult? result = VisualTreeHelper.HitTest(tabControl, position);
-        if (result != null)
-        {
-            DependencyObject? hitElement = result.VisualHit;
-            while (hitElement != null && hitElement != tabControl)
-            {
-                if (hitElement is TabItem tabItem)
-                {
-                    return tabItem;
-                }
-                hitElement = VisualTreeHelper.GetParent(hitElement);
-            }
-        }
-        return null;
-    }
-
-    private void TabHeader_Drop(object sender, DragEventArgs e)
-    {
-        if (sender is EditableTabHeaderControl targetHeader)
-        {
-            TabItem? targetTabItem = FindParent<TabItem>(targetHeader);
-            ProcessDrop(targetTabItem, e);
-        }
-    }
-
-    private void ProcessDrop(TabItem? targetTabItem, DragEventArgs e)
-    {
-        RemoveDropIndicator();
-        ClearTabHighlight();
-
-        if (!e.Data.GetDataPresent(typeof(PlaylistTab)) || targetTabItem == null)
-        {
-            e.Handled = true;
-            return;
-        }
-
-        if (targetTabItem.DataContext is PlaylistTab targetTab && _draggedTab != null)
-        {
-            // Get mouse position relative to the tab to determine drop position
-            Point mousePos = e.GetPosition(targetTabItem);
-            double tabWidth = targetTabItem.ActualWidth;
-            bool dropOnLeft = mousePos.X < tabWidth / 2;
-
-            int targetIndex = GetTabIndex(targetTab);
-
-            if (targetIndex >= 0 && _draggedTabIndex >= 0 && _draggedTabIndex != targetIndex)
-            {
-                // Adjust target index based on drop position
-                // If dropping on the right side, we want to insert after this tab
-                if (!dropOnLeft)
-                {
-                    targetIndex++;
-                }
-
-                // If we're moving from left to right, adjust for the removal
-                if (_draggedTabIndex < targetIndex)
-                {
-                    targetIndex--;
-                }
-
-                if (_draggedTabIndex != targetIndex && DataContext is PlaylistTabsViewModel viewModel)
-                {
-                    viewModel.ReorderTabsCommand.Execute((_draggedTabIndex, targetIndex));
-                }
-            }
-        }
-
-        e.Handled = true;
-    }
-
-    private void ShowDropIndicator(TabItem tabItem, bool onLeft)
-    {
-        RemoveDropIndicator();
-
-        AdornerLayer? adornerLayer = AdornerLayer.GetAdornerLayer(tabItem);
-        if (adornerLayer != null)
-        {
-            _dropIndicatorAdorner = new DropIndicatorAdorner(tabItem, onLeft);
-            adornerLayer.Add(_dropIndicatorAdorner);
-        }
-    }
-
-    private void RemoveDropIndicator()
-    {
-        if (_dropIndicatorAdorner != null)
-        {
-            AdornerLayer? adornerLayer = AdornerLayer.GetAdornerLayer(_dropIndicatorAdorner.AdornedElement);
-            adornerLayer?.Remove(_dropIndicatorAdorner);
-            _dropIndicatorAdorner = null;
-        }
-    }
-
-    private void HighlightTab(TabItem tabItem, bool highlight)
-    {
-        if (highlight)
-        {
-            tabItem.Opacity = 0.7;
-        }
-        else
-        {
-            tabItem.Opacity = 1.0;
-        }
-    }
-
-    private void ClearTabHighlight()
-    {
-        if (_lastHighlightedTab != null)
-        {
-            HighlightTab(_lastHighlightedTab, false);
-            _lastHighlightedTab = null;
-        }
-    }
-
-    private static T? FindParent<T>(DependencyObject child) where T : DependencyObject
-    {
-        DependencyObject? parentObject = VisualTreeHelper.GetParent(child);
-
-        if (parentObject == null)
-            return null;
-
-        if (parentObject is T parent)
-            return parent;
-
-        return FindParent<T>(parentObject);
-    }
-
-    private int GetTabIndex(PlaylistTab tab)
-    {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            return viewModel.TabList.IndexOf(tab);
-        }
-        return -1;
-    }
-
     private void PlaylistDataGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (DataContext is PlaylistTabsViewModel viewModel && viewModel.SelectedTab != null)
@@ -625,18 +332,18 @@ public partial class PlaylistTabs
 
     private void OnGoToActiveTrack(bool value)
     {
-        // Force centering when invoked explicitly (StatusText double-click)
-        CenterSelectedTrack(force: true);
+        // Explicit user action: allow forced centering
+        CenterSelectedTrack();
     }
 
-    private void CenterSelectedTrack(bool force = false)
+    private void CenterSelectedTrack()
     {
         if (DataContext is PlaylistTabsViewModel viewModel && viewModel.SelectedTrack != null)
         {
             DataGrid? dataGrid = GetActiveDataGrid();
             if (dataGrid != null)
             {
-                if (force || !IsItemFullyVisible(dataGrid, viewModel.SelectedTrack))
+                if (!IsItemFullyVisible(dataGrid, viewModel.SelectedTrack))
                 {
                     try
                     {
@@ -663,7 +370,7 @@ public partial class PlaylistTabs
         DataGridRow? row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
         if (row == null || row.ActualHeight <= 0)
         {
-            return false; // not realized or no height => not visible
+            return false;
         }
 
         GeneralTransform transform = row.TransformToAncestor(sv);
@@ -676,7 +383,6 @@ public partial class PlaylistTabs
 
     private static void CenterItemInDataGrid(DataGrid dataGrid, object item)
     {
-        // Ensure the row exists
         dataGrid.UpdateLayout();
         dataGrid.ScrollIntoView(item);
         dataGrid.UpdateLayout();
@@ -696,18 +402,15 @@ public partial class PlaylistTabs
                 return;
             }
 
-            // ViewportHeight is in item units when logical scrolling is enabled
             int itemsInViewport = (int)Math.Round(sv.ViewportHeight);
             int targetTopIndex = Math.Max(0, index - (itemsInViewport / 2));
             sv.ScrollToVerticalOffset(targetTopIndex);
         }
         else
         {
-            // Pixel-based scrolling: center the row visually
             DataGridRow? row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
             if (row == null)
             {
-                // Try to realize the row and fetch again
                 dataGrid.ScrollIntoView(item);
                 dataGrid.UpdateLayout();
                 row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
@@ -728,7 +431,6 @@ public partial class PlaylistTabs
 
     private DataGrid? GetActiveDataGrid()
     {
-        // Find the DataGrid in the currently selected tab content
         return FindDescendant<DataGrid>(Tabs123);
     }
 
@@ -754,9 +456,173 @@ public partial class PlaylistTabs
         }
         return null;
     }
+
+    private static TAncestor? FindAncestor<TAncestor>(DependencyObject? child) where TAncestor : DependencyObject
+    {
+        DependencyObject? current = child;
+        while (current != null)
+        {
+            DependencyObject? parent = LogicalTreeHelper.GetParent(current) ?? VisualTreeHelper.GetParent(current);
+            if (parent is TAncestor ancestor)
+            {
+                return ancestor;
+            }
+            current = parent;
+        }
+        return null;
+    }
+
+    // --- Tab drag & drop reordering ---
+    private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        DependencyObject source = (DependencyObject)sender;
+        TabItem? tabItem = source as TabItem ?? FindAncestor<TabItem>(source);
+        if (tabItem == null)
+        {
+            return;
+        }
+
+        if (tabItem.DataContext is PlaylistTab tab)
+        {
+            _draggedTab = tab;
+        }
+    }
+
+    private void TabItem_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _draggedTab == null)
+        {
+            return;
+        }
+
+        DependencyObject source = (DependencyObject)sender;
+        TabItem? tabItem = source as TabItem ?? FindAncestor<TabItem>(source);
+        DependencyObject dragSource = tabItem ?? source;
+
+        DataObject data = new DataObject(typeof(PlaylistTab), _draggedTab);
+        DragDrop.DoDragDrop(dragSource, data, DragDropEffects.Move);
+    }
+
+    private void TabItem_DragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(typeof(PlaylistTab)))
+        {
+            e.Effects = DragDropEffects.None;
+            return;
+        }
+
+        e.Effects = DragDropEffects.Move;
+
+        DependencyObject source = (DependencyObject)sender;
+        TabItem? targetTabItem = source as TabItem ?? FindAncestor<TabItem>(source);
+        if (targetTabItem != null && targetTabItem.DataContext is PlaylistTab)
+        {
+            ShowDropIndicator(targetTabItem, e);
+        }
+    }
+
+    private void TabItem_DragLeave(object sender, DragEventArgs e)
+    {
+        ClearDropIndicator();
+    }
+
+    private async void TabItem_Drop(object sender, DragEventArgs e)
+    {
+        ClearDropIndicator();
+
+        if (!e.Data.GetDataPresent(typeof(PlaylistTab)) || _draggedTab == null)
+        {
+            return;
+        }
+
+        if (DataContext is not PlaylistTabsViewModel viewModel)
+        {
+            return;
+        }
+
+        PlaylistTab droppedTab = (PlaylistTab)e.Data.GetData(typeof(PlaylistTab))!;
+        DependencyObject source = (DependencyObject)sender;
+        TabItem? targetTabItem = source as TabItem ?? FindAncestor<TabItem>(source);
+        if (targetTabItem == null || targetTabItem.DataContext is not PlaylistTab targetTab)
+        {
+            return;
+        }
+
+        int fromIndex = FindTabIndex(droppedTab);
+        int targetIndex = FindTabIndex(targetTab);
+        if (fromIndex < 0 || targetIndex < 0)
+        {
+            return;
+        }
+
+        // Determine intended insertion position relative to target (before/after)
+        Point pos = e.GetPosition(targetTabItem);
+        bool insertAfter = pos.X > targetTabItem.ActualWidth / 2.0;
+        int count = viewModel.TabList.Count;
+
+        // Intended index in original list (can be equal to count when inserting after last)
+        int intended = targetIndex + (insertAfter ? 1 : 0);
+        if (intended > count)
+            intended = count;
+
+        // Adjust for removal shifting indices when moving forward
+        int adjusted = fromIndex < intended ? intended - 1 : intended;
+
+        // Clamp to valid range [0, count-1]
+        if (adjusted < 0)
+            adjusted = 0;
+        if (adjusted >= count)
+            adjusted = count - 1;
+
+        if (fromIndex == adjusted)
+        {
+            _draggedTab = null;
+            return;
+        }
+
+        await viewModel.ReorderTabsCommand.ExecuteAsync((fromIndex, adjusted));
+
+        _draggedTab = null;
+    }
+
+    private int FindTabIndex(PlaylistTab tab)
+    {
+        if (DataContext is PlaylistTabsViewModel vm)
+        {
+            for (int i = 0; i < vm.TabList.Count; i++)
+            {
+                if (ReferenceEquals(vm.TabList[i], tab))
+                {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private void ShowDropIndicator(TabItem target, DragEventArgs e)
+    {
+        ClearDropIndicator();
+
+        Point pos = e.GetPosition(target);
+        bool onLeft = pos.X <= target.ActualWidth / 2.0;
+        _dropIndicatorAdorner = new DropIndicatorAdorner(target, onLeft);
+        AdornerLayer? adornerLayer = AdornerLayer.GetAdornerLayer(target);
+        adornerLayer?.Add(_dropIndicatorAdorner);
+    }
+
+    private void ClearDropIndicator()
+    {
+        if (_dropIndicatorAdorner != null)
+        {
+            AdornerLayer? adornerLayer = AdornerLayer.GetAdornerLayer(_dropIndicatorAdorner.AdornedElement);
+            adornerLayer?.Remove(_dropIndicatorAdorner);
+            _dropIndicatorAdorner = null;
+        }
+    }
 }
 
-// Adorner class for the drop indicator
+// Adorner class for the drop indicator (unused with Dragablz, kept for reference)
 internal class DropIndicatorAdorner : Adorner
 {
     private readonly bool _onLeft;

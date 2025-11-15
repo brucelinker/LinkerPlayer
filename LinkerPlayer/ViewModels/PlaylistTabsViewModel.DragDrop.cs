@@ -2,7 +2,6 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Services;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Windows;

@@ -185,18 +185,33 @@ public class MusicLibrary : IMusicLibrary
         {
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            IEnumerable<MediaFile> mediaFiles = tracks.ToList();
+            // De-duplicate incoming tracks by Path to avoid adding the same file multiple times in one batch
+            List<MediaFile> mediaFiles = tracks
+                .Where(t => !string.IsNullOrWhiteSpace(t.Path))
+                .GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+
             foreach (MediaFile track in mediaFiles)
             {
-                // Only check by Path for uniqueness
-                MediaFile? existingTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Path == track.Path);
+                // If another instance with the same Id is already tracked in this DbContext, skip it
+                if (context.ChangeTracker.Entries<MediaFile>().Any(e => e.Entity.Id == track.Id))
+                {
+                    continue;
+                }
+
+                // Only check by Path for uniqueness in the database; use AsNoTracking to avoid tracking the query result
+                MediaFile? existingTrack = await context.Tracks
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(t => t.Path == track.Path);
                 if (existingTrack == null)
                 {
                     context.Tracks.Add(track);
-                    MainLibrary.Add(track);
+                    // Do not add to MainLibrary here; callers manage MainLibrary separately
                 }
                 else
                 {
+                    // Align Id with the persisted entity so downstream references use the canonical Id
                     track.Id = existingTrack.Id;
                 }
             }
