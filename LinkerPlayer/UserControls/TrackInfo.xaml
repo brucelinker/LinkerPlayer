@@ -1,4 +1,4 @@
-﻿<UserControl
+<UserControl
   x:Class="LinkerPlayer.UserControls.TrackInfo"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -6,6 +6,7 @@
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:persist="clr-namespace:LinkerPlayer"
   d:DesignHeight="450"
   d:DesignWidth="250"
   DataContext="{Binding RelativeSource={RelativeSource Self}}"
@@ -18,12 +19,23 @@
   </UserControl.Resources>
   <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="Auto" />
-      <RowDefinition />
+      <!--  Album cover  -->
+      <RowDefinition Height="2*" MinHeight="200" />
+      <!--  Splitter  -->
+      <RowDefinition Height="5" />
+      <!--  Track info  -->
+      <RowDefinition Height="*" MinHeight="120" />
+      <!--  Splitter  -->
+      <RowDefinition Height="5" />
+      <!--  SpectrumAnalyzer  -->
+      <RowDefinition Height="*" MinHeight="100" />
+      <!--  Splitter  -->
+      <RowDefinition Height="5" />
+      <!--  VuMeter  -->
+      <RowDefinition Height="*" MinHeight="60" />
     </Grid.RowDefinitions>
 
-    <!--  AlbumCover  -->
+    <!--  AlbumCover Section  -->
     <Grid
       x:Name="CoverGrid"
       Grid.Row="0"
@@ -59,12 +71,21 @@
       </Grid>
     </Grid>
 
-    <!--  Rest of the XAML remains unchanged  -->
-    <Grid
+    <GridSplitter
       Grid.Row="1"
+      Height="5"
+      HorizontalAlignment="Stretch"
+      Background="Transparent"
+      ResizeBehavior="PreviousAndNext"
+      ResizeDirection="Rows"
+      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows" />
+
+    <!--  TrackInfo Section  -->
+    <Grid
+      Grid.Row="2"
       Margin="0,0,0,0"
       HorizontalAlignment="Stretch"
-      VerticalAlignment="Center">
+      VerticalAlignment="Stretch">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
@@ -149,56 +170,68 @@
         TextTrimming="CharacterEllipsis" />
     </Grid>
 
-    <Grid
-      Grid.Row="2"
-      Margin="8,5,8,0"
+    <GridSplitter
+      Grid.Row="3"
+      Height="5"
       HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch">
-      <Grid.RowDefinitions>
-        <RowDefinition Height="*" />
-        <RowDefinition Height="Auto" />
-      </Grid.RowDefinitions>
+      Background="Transparent"
+      ResizeBehavior="PreviousAndNext"
+      ResizeDirection="Rows"
+      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows" />
 
-      <audio:SpectrumAnalyzer
-        x:Name="Spectrum"
-        Grid.Row="0"
-        AveragePeaks="False"
-        BarDecaySpeed="2.0"
-        BarHeightScaling="Decibel"
-        BarSmoothingFactor="2.0"
-        MaximumFrequency="20000"
-        MinimumFrequency="20"
-        PeakFallDelay="10"
-        PeakHeight="3.0"
-        RefreshInterval="25"
-        Style="{StaticResource SpectrumAnalyzerStyle}" />
+    <!--  SpectrumAnalyzer Section  -->
+    <audio:SpectrumAnalyzer
+      x:Name="Spectrum"
+      Grid.Row="4"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Stretch"
+      AveragePeaks="False"
+      BarDecaySpeed="2.0"
+      BarHeightScaling="Decibel"
+      BarSmoothingFactor="2.0"
+      MaximumFrequency="20000"
+      MinimumFrequency="20"
+      PeakFallDelay="10"
+      PeakHeight="3.0"
+      RefreshInterval="25"
+      Style="{StaticResource SpectrumAnalyzerStyle}" />
 
-      <Button
-        Name="SpectrumButton"
-        Grid.Row="0"
-        Width="86"
-        Height="25"
-        HorizontalAlignment="Right"
-        VerticalAlignment="Top"
-        d:Foreground="White"
-        Click="SpectrumButton_Click"
-        FontSize="{DynamicResource FontSizeButton}"
-        FontWeight="Normal"
-        Foreground="{DynamicResource ControlForegroundBrush}"
-        Style="{StaticResource LinkerRectangleButton}"
-        ToolTip="Spectrum Style" />
+    <Button
+      Name="SpectrumButton"
+      Grid.Row="4"
+      Width="86"
+      Height="25"
+      HorizontalAlignment="Right"
+      VerticalAlignment="Top"
+      d:Foreground="White"
+      Click="SpectrumButton_Click"
+      FontSize="{DynamicResource FontSizeSmall}"
+      FontWeight="Normal"
+      Foreground="{DynamicResource ControlForegroundBrush}"
+      Style="{StaticResource LinkerRectangleButton}"
+      ToolTip="Spectrum Style" />
 
-      <audio:VuMeter
-        x:Name="VuMeter"
-        Grid.Row="1"
-        Height="50"
-        Margin="0,5,0,0"
-        ChannelHeight="15"
-        ChannelSpacing="3"
-        DecaySpeed="0.95"
-        ShowLabels="True"
-        Style="{StaticResource VuMeterStyle}" />
+    <GridSplitter
+      Grid.Row="5"
+      Height="5"
+      HorizontalAlignment="Stretch"
+      Background="Transparent"
+      ResizeBehavior="PreviousAndNext"
+      ResizeDirection="Rows"
+      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows" />
 
-    </Grid>
+    <!--  VuMeter Section  -->
+    <audio:VuMeter
+      x:Name="VuMeter"
+      Grid.Row="6"
+      MinHeight="60"
+      Margin="0,5,0,0"
+      HorizontalAlignment="Stretch"
+      VerticalAlignment="Stretch"
+      ChannelSpacing="3"
+      DecaySpeed="0.95"
+      ShowLabels="True"
+      Style="{StaticResource VuMeterStyle}" />
+
   </Grid>
 </UserControl>

@@ -13,14 +13,8 @@ namespace LinkerPlayer.Core;
 
 public interface IMusicLibrary
 {
-    ObservableCollection<MediaFile> MainLibrary
-    {
-        get;
-    }
-    ObservableCollection<Playlist> Playlists
-    {
-        get;
-    }
+    ObservableCollection<MediaFile> MainLibrary { get; }
+    ObservableCollection<Playlist> Playlists { get; }
 
     Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
@@ -98,6 +92,8 @@ public class MusicLibrary : IMusicLibrary
                     _logger.LogError(ex, "Error checking/adding Order column to Playlists table");
                 }
             }
+
+            // Synchronous load to populate UI immediately
             LoadFromDatabaseAsync().GetAwaiter().GetResult();
         }
         catch (Exception ex)
@@ -155,8 +151,7 @@ public class MusicLibrary : IMusicLibrary
                 Playlists.Add(playlist);
             }
 
-            // Do not clear play state here. New MediaFile instances default to Stopped, and clearing can disrupt UI state.
-            //ClearPlayState();
+            // Do not clear play state here.
 
             if (!Playlists.Any())
             {

@@ -50,32 +50,34 @@ public partial class PlaylistTabs
             _logger.LogInformation("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
             viewModel.LoadPlaylistTabs();
 
+            // Force initial SelectionChanged after tabs & SelectedTabIndex set to restore selection & center
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (Tabs123.Items.Count > 0)
+                {
+                    // Ensure TabControl reflects view model index (binding usually does this; explicit assign for startup)
+                    Tabs123.SelectedIndex = viewModel.SelectedTabIndex;
+                    // Manually invoke handler logic once
+                    viewModel.OnTabSelectionChanged(Tabs123, new SelectionChangedEventArgs(TabControl.SelectionChangedEvent, new List<object>(), new List<object>()));
+                    if (viewModel.SelectedTrack != null)
+                    {
+                        WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
+                    }
+                }
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+
             Dispatcher.BeginInvoke(async () =>
             {
-                _logger.LogInformation("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks");
-
+                _logger.LogInformation("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks lazily");
                 if (viewModel.TabList.Any())
                 {
-                    int savedTabIndex = App.AppHost.Services.GetRequiredService<ISettingsManager>().Settings.SelectedTabIndex;
-
-                    if (savedTabIndex >= 0 && savedTabIndex < viewModel.TabList.Count)
-                    {
-                        viewModel.SelectedTabIndex = savedTabIndex;
-                        _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to saved value {Index}", savedTabIndex);
-                    }
-                    else
-                    {
-                        viewModel.SelectedTabIndex = 0;
-                        _logger.LogInformation("PlaylistTabs: Set SelectedTabIndex to default 0");
-                    }
-
                     await viewModel.LoadSelectedPlaylistTracksAsync();
                 }
                 else
                 {
                     _logger.LogWarning("PlaylistTabs: No playlists loaded");
                 }
-            }, System.Windows.Threading.DispatcherPriority.Normal);
+            }, System.Windows.Threading.DispatcherPriority.Background);
 
             Dispatcher.BeginInvoke(async () =>
             {
@@ -87,19 +89,6 @@ public partial class PlaylistTabs
         {
             _logger.LogError("PlaylistTabs: DataContext is not PlaylistTabsViewModel, type: {Type}", DataContext?.GetType().FullName ?? "null");
         }
-
-        // Center once at startup if item not fully visible
-        Dispatcher.BeginInvoke(() =>
-        {
-            if (DataContext is PlaylistTabsViewModel vm && vm.SelectedTrack != null)
-            {
-                DataGrid? dg = GetActiveDataGrid();
-                if (dg != null && !IsItemFullyVisible(dg, vm.SelectedTrack))
-                {
-                    CenterSelectedTrack();
-                }
-            }
-        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void DataGrid_Loaded(object sender, RoutedEventArgs e)
@@ -109,6 +98,23 @@ public partial class PlaylistTabs
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
                 viewModel.OnDataGridLoaded(sender, e);
+
+                if (sender is DataGrid dg && viewModel.SelectedTrack != null)
+                {
+                    // Force centering explicitly against this DataGrid after layout
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            _isExplicitCentering = true;
+                            CenterItemInDataGrid(dg, viewModel.SelectedTrack);
+                        }
+                        finally
+                        {
+                            _isExplicitCentering = false;
+                        }
+                    }), System.Windows.Threading.DispatcherPriority.Render);
+                }
             }
         }, null);
     }

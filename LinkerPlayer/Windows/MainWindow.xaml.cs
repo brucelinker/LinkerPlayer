@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,7 @@ public partial class MainWindow : Window
     }
     private readonly MainViewModel _mainViewModel;
     private readonly ILogger<MainWindow> _logger;
+    private readonly ISettingsManager _settingsManager;
 
     public MainWindow(IServiceProvider serviceProvider, ILogger<MainWindow> logger)
     {
@@ -30,9 +32,15 @@ public partial class MainWindow : Window
             _logger.LogInformation("MainWindow: Regular WPF Window initialized");
 
             _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
+            _settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
             DataContext = _mainViewModel;
 
             ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
+
+            // Track monitor changes to persist which display MainWindow is on
+            Loaded += (_, _) => UpdateCurrentMonitorSetting();
+            LocationChanged += (_, _) => UpdateCurrentMonitorSetting();
+            StateChanged += (_, _) => UpdateCurrentMonitorSetting();
         }
         catch (IOException ex)
         {
@@ -43,6 +51,24 @@ public partial class MainWindow : Window
         {
             _logger.LogError(ex, "Unexpected error in MainWindow constructor: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
             throw;
+        }
+    }
+
+    private void UpdateCurrentMonitorSetting()
+    {
+        try
+        {
+            string? deviceName = Interop.MonitorHelper.GetDeviceName(this);
+            if (!string.IsNullOrWhiteSpace(deviceName) &&
+                !string.Equals(_settingsManager.Settings.LastMainWindowMonitorDeviceName, deviceName, StringComparison.OrdinalIgnoreCase))
+            {
+                _settingsManager.Settings.LastMainWindowMonitorDeviceName = deviceName;
+                _settingsManager.SaveSettings(nameof(Models.AppSettings.LastMainWindowMonitorDeviceName));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update last monitor device name");
         }
     }
 

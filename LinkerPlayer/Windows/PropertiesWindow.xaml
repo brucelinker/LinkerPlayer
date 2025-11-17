@@ -213,7 +213,8 @@
               RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
               SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled"
+              HeadersVisibility="None">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
@@ -416,7 +417,8 @@
               RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
               SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled"
+              HeadersVisibility="None">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
@@ -545,7 +547,8 @@
               RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
               SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled">
+              VerticalScrollBarVisibility="Disabled"
+              HeadersVisibility="None">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
@@ -621,7 +624,8 @@
                 RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
                 SelectionChanged="DataGrid_SelectionChanged"
                 Style="{StaticResource SharedDataGridStyle}"
-                VerticalScrollBarVisibility="Disabled">
+                VerticalScrollBarVisibility="Disabled"
+                HeadersVisibility="None">
 
                 <DataGrid.Columns>
                   <DataGridTextColumn

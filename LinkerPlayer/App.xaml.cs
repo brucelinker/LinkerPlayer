@@ -5,7 +5,7 @@ using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.ViewModels.Properties.Loaders;
-using LinkerPlayer.Windows;
+using LinkerPlayer.Windows; // restore windows namespace for window types
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -19,23 +19,18 @@ namespace LinkerPlayer;
 public partial class App
 {
     public static IHost AppHost { get; set; } = null!;
-    public WindowPlace WindowPlace
-    {
-        get;
-    }
+    public WindowPlace WindowPlace { get; }
     private readonly ILogger<App> _logger;
-    private SplashWindow? _splashWindow;
 
     public App()
     {
         WindowPlace = new WindowPlace("placement.config");
-
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
         AppHost = Host.CreateDefaultBuilder()
             .ConfigureLogging(logging =>
             {
-                logging.ClearProviders(); // Clear default providers to avoid duplicate logs
+                logging.ClearProviders();
                 logging.SetMinimumLevel(LogLevel.Trace);
                 logging.AddSimpleConsole(options =>
                 {
@@ -55,7 +50,6 @@ public partial class App
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<IMusicLibrary, MusicLibrary>();
-
                 services.AddSingleton<IFileImportService, FileImportService>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
@@ -64,14 +58,9 @@ public partial class App
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<ISettingsManager, SettingsManager>();
-
-                // NEW: Database save service for debouncing saves
                 services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
-
-                // BASS audio services
                 services.AddSingleton<IBpmDetector, BpmDetector>();
                 services.AddSingleton<IReplayGainCalculator, ReplayGainCalculator>();
-
                 services.AddSingleton<PlaylistTabsViewModel>();
                 services.AddSingleton<PlayerControlsViewModel>();
                 services.AddSingleton<EqualizerWindow>();
@@ -80,16 +69,12 @@ public partial class App
                 services.AddSingleton<BassAudioEngine>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
-
-                // Metadata loaders
                 services.AddTransient<CoreMetadataLoader>();
                 services.AddTransient<CustomMetadataLoader>();
                 services.AddTransient<FilePropertiesLoader>();
                 services.AddTransient<ReplayGainLoader>();
                 services.AddTransient<PictureInfoLoader>();
                 services.AddTransient<LyricsCommentLoader>();
-
-                // PropertiesViewModel - transient since it's created per Properties window
                 services.AddTransient<PropertiesViewModel>();
             })
             .Build();
@@ -109,19 +94,8 @@ public partial class App
 
         try
         {
-            _logger.LogInformation("Starting AppHost");
-
-            // Show splash screen first
-            _splashWindow = new SplashWindow();
-            _splashWindow.Show();
-            _logger.LogInformation("Splash screen shown");
-
-            // Start async initialization
-            Task.Run(async () =>
-            {
-                await InitializeApplicationAsync();
-            });
-
+            _logger.LogInformation("Starting AppHost (no splash timing test)");
+            Task.Run(async () => await InitializeApplicationAsync());
             base.OnStartup(e);
         }
         catch (IOException ex)
@@ -139,78 +113,41 @@ public partial class App
     {
         try
         {
-            _logger.LogInformation("Starting background initialization");
-
-            // Start the host
+            _logger.LogInformation("Background init started");
             await AppHost.StartAsync();
-            _logger.LogInformation("AppHost started successfully");
+            _logger.LogInformation("Host started");
 
-            // Initialize BassAudioEngine in the background (don't wait for it on splash screen)
-            BassAudioEngine bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
-            Task bassInitTask = Task.Run(() =>
-            {
-                try
-                {
-                    _logger.LogInformation("Initializing BassAudioEngine in background");
-                    bassEngine.Initialize(new BassInitializationOptions());
-                    _logger.LogInformation("BassAudioEngine initialized successfully");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error initializing BassAudioEngine in background");
-                }
-            });
-
-            // Switch to UI thread to create and show main window (don't wait for BASS/metadata)
+            // Show MainWindow immediately after host start
             await Dispatcher.BeginInvoke(new Action(() =>
             {
-                try
-                {
-                    _logger.LogInformation("Creating MainWindow");
-                    MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
-
-                    // IMPORTANT: Set MainWindow and ShutdownMode BEFORE showing the window
-                    MainWindow = mainWindow;
-                    ShutdownMode = ShutdownMode.OnMainWindowClose;
-                    _logger.LogInformation("MainWindow set as application MainWindow");
-
-                    // Show main window (it starts hidden and will show itself when ready)
-                    mainWindow.Show();
-                    _logger.LogInformation("MainWindow.Show() called");
-
-                    // Close splash screen immediately when main window is shown
-                    try
-                    {
-                        _logger.LogInformation("Closing splash screen");
-                        _splashWindow?.CloseSplash();
-                        _splashWindow = null;
-                        _logger.LogInformation("Splash screen closed, MainWindow is visible");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error closing splash screen");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error creating MainWindow");
-                    _splashWindow?.CloseSplash();
-                    throw;
-                }
+                MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
+                MainWindow = mainWindow;
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+                mainWindow.Show();
+                _logger.LogInformation("MainWindow shown early (splash disabled)");
             }));
 
-            // Now wait for BASS and metadata to finish loading in the background
-            _logger.LogInformation("Waiting for background tasks to complete");
-            await Task.WhenAll(bassInitTask);
-            _logger.LogInformation("All background initialization tasks complete");
+            // Fire off background tasks (do not await before showing UI)
+            BassAudioEngine bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
+            IMusicLibrary library = AppHost.Services.GetRequiredService<IMusicLibrary>();
+
+            Task bassInit = Task.Run(() =>
+            {
+                try { bassEngine.Initialize(new BassInitializationOptions()); } catch (Exception ex) { _logger.LogError(ex, "BASS init failed"); }
+            });
+            Task libLoad = Task.Run(async () =>
+            {
+                try { await library.LoadFromDatabaseAsync(); } catch (Exception ex) { _logger.LogError(ex, "Library load failed"); }
+            });
+            await Task.WhenAll(bassInit, libLoad);
+            _logger.LogInformation("Background init complete");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during background initialization");
+            _logger.LogError(ex, "Initialization error");
             await Dispatcher.BeginInvoke(new Action(() =>
             {
-                _splashWindow?.CloseSplash();
-                MessageBox.Show($"Failed to initialize application: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Failed to initialize: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
             }));
         }
@@ -220,65 +157,39 @@ public partial class App
     {
         try
         {
-            // Save settings and data BEFORE stopping the host
             try
             {
                 ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
-                _logger.LogInformation("SettingsManager retrieved for shutdown");
-
-                // NEW: Force immediate database save on shutdown
                 IDatabaseSaveService databaseSaveService = AppHost.Services.GetRequiredService<IDatabaseSaveService>();
                 databaseSaveService.SaveImmediately();
-                _logger.LogInformation("Database saved on shutdown");
-
-                IMusicLibrary musicLibrary = AppHost.Services.GetRequiredService<IMusicLibrary>();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving data during shutdown - continuing with cleanup");
+                _logger.LogError(ex, "Error saving during shutdown");
             }
-
-            // Cleanup AudioEngine first to avoid RPC timeouts
             try
             {
                 AudioEngine audioEngine = AppHost.Services.GetRequiredService<AudioEngine>();
                 audioEngine.Dispose();
-                _logger.LogInformation("AudioEngine disposed successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error disposing AudioEngine - continuing with cleanup");
+                _logger.LogError(ex, "Error disposing AudioEngine");
             }
-
-            _logger.LogInformation("Application shutdown complete");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during application shutdown");
+            _logger.LogError(ex, "Shutdown error");
         }
-
         try
         {
-            // Stop and dispose the host
             AppHost.StopAsync().GetAwaiter().GetResult();
             AppHost.Dispose();
-            _logger.LogInformation("AppHost stopped and disposed successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error disposing AppHost");
+            _logger.LogError(ex, "Host dispose error");
         }
-
-        try
-        {
-            WindowPlace.Save();
-            _logger.LogInformation("Window placement saved successfully");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error saving window placement");
-        }
-
         base.OnExit(e);
     }
 }

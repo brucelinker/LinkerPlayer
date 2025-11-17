@@ -31,7 +31,7 @@ LinkerPlayer is a modern, WPF, feature-rich audio player for Windows. It provide
 ### Prerequisites
 
 - Windows 10/11
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
 - Visual Studio 2022 or later (recommended)
 
 ### Building the Project

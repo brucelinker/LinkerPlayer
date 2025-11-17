@@ -19,6 +19,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System; // added for Action
 
 namespace LinkerPlayer.ViewModels;
 
@@ -140,20 +141,39 @@ public partial class PlaylistTabsViewModel : ObservableObject
         if (sender is DataGrid dataGrid)
         {
             _dataGrid = dataGrid;
-            SelectedTabIndex = _settingsManager.Settings.SelectedTabIndex;
 
-            if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
+            // Apply selection to the DataGrid now that containers exist
+            if (SelectedTrack != null)
             {
-                SelectedTabIndex = TabList.Count > 0 ? 0 : -1;
+                if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+                {
+                    if (SelectedTrackIndex < 0)
+                    {
+                        SelectedTrackIndex = TabList[SelectedTabIndex].Tracks.IndexOf(SelectedTrack);
+                    }
+                    _dataGrid.SelectedItem = SelectedTrack;
+                    _dataGrid.SelectedIndex = SelectedTrackIndex;
+                }
+
+                // Center after rows are generated
+                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
+                }), System.Windows.Threading.DispatcherPriority.Background);
             }
-
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+            else
             {
-                PlaylistTab tab = TabList[SelectedTabIndex];
-
+                // If selection wasn't resolved yet (SelectionChanged fired before DataGrid existed), resolve now
                 SelectedPlaylist = GetSelectedPlaylist();
-
-                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+                if (SelectedTrack != null)
+                {
+                    _dataGrid.SelectedItem = SelectedTrack;
+                    _dataGrid.SelectedIndex = SelectedTrackIndex;
+                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                }
             }
         }
     }
@@ -436,15 +456,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             TabList.Clear();
-
             List<Playlist> playlists = _musicLibrary.GetPlaylists();
-
             foreach (Playlist playlist in playlists)
             {
                 if (string.IsNullOrWhiteSpace(playlist.Name))
+                {
                     continue;
-
-                // Create tab with EMPTY tracks list initially
+                }
                 PlaylistTab tab = new PlaylistTab
                 {
                     Name = playlist.Name,
@@ -452,8 +470,51 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 };
                 TabList.Add(tab);
             }
-
             _logger.LogInformation("Created {Count} playlist tabs (tracks not yet loaded)", TabList.Count);
+
+            int savedIndex = _settingsManager.Settings.SelectedTabIndex;
+            if (savedIndex < 0 || savedIndex >= TabList.Count)
+            {
+                savedIndex = TabList.Count > 0 ? 0 : -1;
+            }
+
+            if (savedIndex >= 0)
+            {
+                PlaylistTab initialTab = TabList[savedIndex];
+
+                // Preload tracks for initial tab synchronously so selection can resolve before DataGrid loads
+                if (initialTab.Tracks.Count == 0)
+                {
+                    IEnumerable<MediaFile> preloadTracks = _playlistManagerService.LoadPlaylistTracks(initialTab.Name);
+                    foreach (MediaFile track in preloadTracks)
+                    {
+                        initialTab.Tracks.Add(track);
+                    }
+                    _logger.LogInformation("Preloaded {Count} tracks for initial tab '{Name}'", initialTab.Tracks.Count, initialTab.Name);
+                }
+
+                // Restore previously selected track (by Id) if possible, else fallback to first
+                string? selectedTrackId = _musicLibrary.Playlists[savedIndex].SelectedTrackId;
+                MediaFile? restored = null;
+                if (!string.IsNullOrWhiteSpace(selectedTrackId))
+                {
+                    restored = initialTab.Tracks.FirstOrDefault(t => string.Equals(t.Id, selectedTrackId, StringComparison.Ordinal));
+                }
+
+                SelectedTabIndex = savedIndex;
+                if (restored != null)
+                {
+                    SelectedTrack = restored;
+                    SelectedTrackIndex = initialTab.Tracks.IndexOf(restored);
+                }
+                else if (initialTab.Tracks.Any())
+                {
+                    SelectedTrackIndex = 0;
+                    SelectedTrack = initialTab.Tracks[0];
+                    // keep model in sync
+                    _musicLibrary.Playlists[savedIndex].SelectedTrackId = SelectedTrack.Id;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -868,32 +929,44 @@ public partial class PlaylistTabsViewModel : ObservableObject
             _logger.LogWarning("GetSelectedPlaylist: Invalid SelectedTabIndex or empty TabList");
             return null;
         }
-
         SelectedTab = TabList[SelectedTabIndex];
         SelectedPlaylist = _musicLibrary.Playlists.FirstOrDefault(x => x.Name == SelectedTab.Name);
-
         if (SelectedPlaylist == null)
         {
             _logger.LogWarning("GetSelectedPlaylist: Playlist '{TabName}' not found in _musicLibrary.Playlists", SelectedTab.Name);
             return null;
         }
-
-        // Make sure it is not an empty playlist
-        if (SelectedPlaylist.PlaylistTracks.Count > 0)
+        if (SelectedTab.Tracks.Any())
         {
-            string selectedTrackId = _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId!;
-
-            SelectedTrack = _musicLibrary.GetTracksFromPlaylist(SelectedTab.Name)
-                .FirstOrDefault(s => s.Id == selectedTrackId) ?? SelectFirstTrack();
-
-            if (SelectedTrack != null && _dataGrid != null)
+            string? selectedTrackId = SelectedPlaylist.SelectedTrackId;
+            MediaFile? trackInTab = null;
+            if (!string.IsNullOrWhiteSpace(selectedTrackId))
             {
-                _dataGrid.SelectedItem = SelectedTrack;
-                SelectedTrackIndex = _dataGrid.SelectedIndex;
-                // Do not auto-scroll here to avoid unexpected jumps on tab clicks
+                trackInTab = SelectedTab.Tracks.FirstOrDefault(t => t.Id == selectedTrackId);
+            }
+            if (trackInTab != null)
+            {
+                SelectedTrack = trackInTab;
+                SelectedTrackIndex = SelectedTab.Tracks.IndexOf(trackInTab);
+                if (_dataGrid != null)
+                {
+                    _dataGrid.SelectedItem = SelectedTrack;
+                    _dataGrid.SelectedIndex = SelectedTrackIndex;
+                }
+            }
+            // Fallback: select first track if nothing selected
+            if (SelectedTrack == null)
+            {
+                SelectedTrack = SelectedTab.Tracks[0];
+                SelectedTrackIndex = 0;
+                SelectedPlaylist.SelectedTrackId = SelectedTrack.Id;
+                if (_dataGrid != null)
+                {
+                    _dataGrid.SelectedItem = SelectedTrack;
+                    _dataGrid.SelectedIndex = 0;
+                }
             }
         }
-
         return SelectedPlaylist;
     }
 
@@ -933,7 +1006,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
                     {
                         candidatePath = uri.LocalPath;
-                    }
+                      }
 
                     // Unescape any percent-encoded characters
                     candidatePath = Uri.UnescapeDataString(candidatePath);
@@ -1547,67 +1620,59 @@ public partial class PlaylistTabsViewModel : ObservableObject
         int fromIndex = Math.Clamp(indices.FromIndex, 0, count - 1);
         int toIndex = Math.Clamp(indices.ToIndex, 0, count - 1);
 
-        if (fromIndex != indices.FromIndex || (indices.ToIndex < 0 || indices.ToIndex > count))
+        if (fromIndex != toIndex)
         {
-            _logger.LogDebug("ReorderTabs normalized indices: from {From} to {To} (requested {ReqFrom} -> {ReqTo}, count {Count})",
-                fromIndex, toIndex, indices.FromIndex, indices.ToIndex, count);
-        }
-
-        if (fromIndex == toIndex)
-        {
-            return; // Nothing to do
-        }
-
-        try
-        {
-            // Remember the currently selected tab
-            PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < count
-                ? TabList[SelectedTabIndex]
-                : null;
-
-            // Reorder in the UI
-            PlaylistTab movedTab = TabList[fromIndex];
-            await _uiDispatcher.InvokeAsync(() =>
+            try
             {
-                TabList.RemoveAt(fromIndex);
-                TabList.Insert(toIndex, movedTab);
-            });
+                // Remember the currently selected tab
+                PlaylistTab? currentlySelectedTab = SelectedTabIndex >= 0 && SelectedTabIndex < count
+                    ? TabList[SelectedTabIndex]
+                    : null;
 
-            // Reorder in the database/service
-            bool success = await _playlistManagerService.ReorderPlaylistsAsync(fromIndex, toIndex);
-
-            if (success)
-            {
-                // Update the selected tab index if needed
-                if (currentlySelectedTab != null)
-                {
-                    int newSelectedIndex = TabList.IndexOf(currentlySelectedTab);
-                    if (newSelectedIndex >= 0)
-                    {
-                        SelectedTabIndex = newSelectedIndex;
-                        _settingsManager.Settings.SelectedTabIndex = newSelectedIndex;
-                        _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
-                    }
-                }
-
-                _logger.LogInformation("Successfully reordered tab from index {FromIndex} to {ToIndex}",
-                    fromIndex, toIndex);
-            }
-            else
-            {
-                // Revert the UI change if database update failed
-                _logger.LogError("Failed to reorder tabs in database, reverting UI changes");
+                // Reorder in the UI
+                PlaylistTab movedTab = TabList[fromIndex];
                 await _uiDispatcher.InvokeAsync(() =>
                 {
-                    TabList.RemoveAt(toIndex);
-                    TabList.Insert(fromIndex, movedTab);
+                    TabList.RemoveAt(fromIndex);
+                    TabList.Insert(toIndex, movedTab);
                 });
+
+                // Reorder in the database/service
+                bool success = await _playlistManagerService.ReorderPlaylistsAsync(fromIndex, toIndex);
+
+                if (success)
+                {
+                    // Update the selected tab index if needed
+                    if (currentlySelectedTab != null)
+                    {
+                        int newSelectedIndex = TabList.IndexOf(currentlySelectedTab);
+                        if (newSelectedIndex >= 0)
+                        {
+                            SelectedTabIndex = newSelectedIndex;
+                            _settingsManager.Settings.SelectedTabIndex = newSelectedIndex;
+                            _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
+                        }
+                    }
+
+                    _logger.LogInformation("Successfully reordered tab from index {FromIndex} to {ToIndex}",
+                        fromIndex, toIndex);
+                }
+                else
+                {
+                    // Revert the UI change if database update failed
+                    _logger.LogError("Failed to reorder tabs in database, reverting UI changes");
+                    await _uiDispatcher.InvokeAsync(() =>
+                    {
+                        TabList.RemoveAt(toIndex);
+                        TabList.Insert(fromIndex, movedTab);
+                    });
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error reordering tabs from {FromIndex} to {ToIndex}",
-                fromIndex, toIndex);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reordering tabs from {FromIndex} to {ToIndex}",
+                    fromIndex, toIndex);
+            }
         }
     }
 

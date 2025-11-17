@@ -90,8 +90,8 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
             _currentDevice = _settingsManager.Settings.SelectedOutputDevice
             ?? new Device("Default", OutputDeviceType.DirectSound, -1, true);
 
-            // Note: BassNativeLibraryManager.Initialize is already called by BassAudioEngine
-            // We only need to set DLL directory and load add-ons here
+            // Ensure native libs are extracted before any path usage
+            BassNativeLibraryManager.Initialize(_logger);
 
             // Set DLL directory so native DLLs are found
             string bassLibPath = BassNativeLibraryManager.GetNativeLibraryPath();

@@ -308,8 +308,8 @@
             VerticalAlignment="Top"
             FontSize="13"
             FontWeight="Light"
-            Text="{Binding Status}"
-            MouseDown="StatusText_MouseDown" />
+            MouseDown="StatusText_MouseDown"
+            Text="{Binding Status}" />
 
           <Border
             Grid.Row="0"

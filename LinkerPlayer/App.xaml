@@ -1,4 +1,4 @@
-﻿<Application
+<Application
   x:Class="LinkerPlayer.App"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -31,14 +31,14 @@
 
       <Style TargetType="{x:Type Window}">
         <Setter Property="FontFamily" Value="Segoe UI" />
-        <Setter Property="FontWeight" Value="Light" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="FontSize" Value="9" />
       </Style>
 
       <Style TargetType="{x:Type UserControl}">
         <Setter Property="FontFamily" Value="Segoe UI" />
-        <Setter Property="FontWeight" Value="Light" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="Regular" />
+        <Setter Property="FontSize" Value="9" />
       </Style>
     </ResourceDictionary>
   </Application.Resources>

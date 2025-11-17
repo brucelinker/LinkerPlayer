@@ -1,6 +1,7 @@
 using ManagedBass;
 using ManagedBass.Wasapi;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace LinkerPlayer.BassLibs;
 
