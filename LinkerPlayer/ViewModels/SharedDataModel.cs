@@ -12,24 +12,37 @@ public partial class SharedDataModel : ObservableRecipient
     [ObservableProperty] private MediaFile? _activeTrack;
     [ObservableProperty] private ObservableCollection<MediaFile> _selectedTracks = new();
 
+    private static void SafeUiInvoke(Action action)
+    {
+        // Allow execution when no WPF Application/Dispatcher is available (unit tests)
+        if (Application.Current?.Dispatcher == null || Application.Current.Dispatcher.CheckAccess())
+        {
+            action();
+        }
+        else
+        {
+            Application.Current.Dispatcher.Invoke(action);
+        }
+    }
+
     public void UpdateSelectedTrackIndex(int newIndex)
     {
-        Application.Current.Dispatcher.Invoke(() => SelectedTrackIndex = newIndex);
+        SafeUiInvoke(() => SelectedTrackIndex = newIndex);
     }
 
     public void UpdateSelectedTrack(MediaFile track)
     {
-        Application.Current.Dispatcher.Invoke(() => SelectedTrack = track);
+        SafeUiInvoke(() => SelectedTrack = track);
     }
 
     public void UpdateActiveTrack(MediaFile track)
     {
-        Application.Current.Dispatcher.Invoke(() => ActiveTrack = track);
+        SafeUiInvoke(() => ActiveTrack = track);
     }
 
     public void UpdateSelectedTracks(IEnumerable<MediaFile> tracks)
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        SafeUiInvoke(() =>
         {
             SelectedTracks.Clear();
             foreach (MediaFile track in tracks)

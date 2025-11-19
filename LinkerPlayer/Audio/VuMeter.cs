@@ -6,7 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using System.Linq;
 
 namespace LinkerPlayer.Audio;
 
@@ -232,7 +231,9 @@ public partial class VuMeter : Control
     public void RegisterSoundPlayer(ISpectrumPlayer soundPlayer)
     {
         if (_isShuttingDown)
+        {
             return;
+        }
 
         if (_soundPlayer != null)
         {
@@ -322,7 +323,9 @@ public partial class VuMeter : Control
     private void SafeUpdateLayout()
     {
         if (_isShuttingDown)
+        {
             return;
+        }
 
         if (!Dispatcher.CheckAccess())
         {
@@ -335,7 +338,9 @@ public partial class VuMeter : Control
     private void UpdateVuLayout()
     {
         if (_vuCanvas == null || _vuCanvas.RenderSize.Width < 1 || _vuCanvas.RenderSize.Height < 1)
+        {
             return;
+        }
 
         _vuCanvas.Children.Clear();
 
@@ -365,7 +370,9 @@ public partial class VuMeter : Control
     private void CreateScaleMarkings(double canvasWidth, double topOffset)
     {
         if (_vuCanvas == null)
+        {
             return;
+        }
 
         // Create dB scale markings from -60dB to +10dB in 10dB increments
         for (double db = MinDbValue; db <= MaxDbValue; db += 10)
@@ -434,7 +441,9 @@ public partial class VuMeter : Control
     private void UpdateVuBars()
     {
         if (_isShuttingDown)
+        {
             return;
+        }
 
         if (!Dispatcher.CheckAccess())
         {
@@ -447,7 +456,9 @@ public partial class VuMeter : Control
     private void UpdateVuBarsInternal()
     {
         if (_vuCanvas == null || _channelBars.Count == 0)
+        {
             return;
+        }
 
         double canvasWidth = _vuCanvas.RenderSize.Width;
         double[] levels;
@@ -469,7 +480,9 @@ public partial class VuMeter : Control
     private void UpdateAudioLevels()
     {
         if (_isShuttingDown || !_isPlayerPlaying || _audioEngine == null)
+        {
             return;
+        }
 
         try
         {
@@ -483,8 +496,15 @@ public partial class VuMeter : Control
                 // Fallback stereo method
                 (double leftDb, double rightDb) = _audioEngine.GetStereoDecibelLevels();
                 newLevels = Enumerable.Repeat(MinDbValue, _channelCount).ToArray();
-                if (_channelCount >= 1) newLevels[0] = leftDb;
-                if (_channelCount >= 2) newLevels[1] = rightDb;
+                if (_channelCount >= 1)
+                {
+                    newLevels[0] = leftDb;
+                }
+
+                if (_channelCount >= 2)
+                {
+                    newLevels[1] = rightDb;
+                }
             }
 
             lock (_lockObject)
@@ -510,7 +530,10 @@ public partial class VuMeter : Control
     private void SoundPlayer_OnFftCalculated(float[] fftData)
     {
         if (_isShuttingDown)
+        {
             return;
+        }
+
         if (_isPlayerPlaying && _soundPlayer != null && _soundPlayer.IsPlaying)
         {
             UpdateAudioLevels();
@@ -520,7 +543,10 @@ public partial class VuMeter : Control
     private void SoundPlayer_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (_isShuttingDown)
+        {
             return;
+        }
+
         if (e.PropertyName == nameof(ISpectrumPlayer.IsPlaying) && _soundPlayer != null)
         {
             bool wasPlaying = _isPlayerPlaying;
@@ -547,7 +573,9 @@ public partial class VuMeter : Control
     private void AnimationTimer_Tick(object? state)
     {
         if (_isShuttingDown || !_isPlayerPlaying)
+        {
             return;
+        }
 
         try
         {

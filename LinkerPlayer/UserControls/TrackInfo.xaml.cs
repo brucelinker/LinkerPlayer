@@ -1,7 +1,7 @@
-using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
-using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.ViewModels;
+using LinkerPlayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Windows;
@@ -15,16 +15,13 @@ public partial class TrackInfo
 {
     private readonly AudioEngine _audioEngine;
     private readonly ILogger<TrackInfo> _logger;
+    private readonly ISelectionService _selectionService;
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
 
     public MediaFile? SelectedMediaFile
     {
         get => (MediaFile?)GetValue(SelectedMediaFileProperty);
-        set
-        {
-            SetValue(SelectedMediaFileProperty, value);
-            //_logger.LogInformation("TrackInfo.SelectedMediaFile set to: {ValueTitle}", value != null ? value.Title : "null");
-        }
+        set { SetValue(SelectedMediaFileProperty, value); }
     }
 
     public static readonly DependencyProperty SelectedMediaFileProperty =
@@ -34,19 +31,29 @@ public partial class TrackInfo
     {
         _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
         _logger = App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>();
+        _selectionService = App.AppHost.Services.GetRequiredService<ISelectionService>();
 
         InitializeComponent();
         Loaded += TrackInfo_Loaded;
+        Unloaded += TrackInfo_Unloaded;
 
         Spectrum.RegisterSoundPlayer(_audioEngine);
         VuMeter.RegisterSoundPlayer(_audioEngine);
         SpectrumButton.Content = nameof(BarHeightScalingStyles.Decibel);
         Spectrum.BarHeightScaling = BarHeightScalingStyles.Decibel;
 
-        WeakReferenceMessenger.Default.Register<SelectedTrackChangedMessage>(this, (_, m) =>
-        {
-            OnSelectedTrackChanged(m.Value);
-        });
+        // Subscribe to selection changes
+        _selectionService.TrackChanged += SelectionService_TrackChanged;
+    }
+
+    private void TrackInfo_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _selectionService.TrackChanged -= SelectionService_TrackChanged;
+    }
+
+    private void SelectionService_TrackChanged(object? sender, MediaFile? e)
+    {
+        OnSelectedTrackChanged(e);
     }
 
     private void TrackInfo_Loaded(object sender, RoutedEventArgs e)
@@ -54,7 +61,6 @@ public partial class TrackInfo
         if (FindName("Spectrum") is SpectrumAnalyzer spectrum)
         {
             spectrum.RegisterSoundPlayer(_audioEngine);
-            //_logger.LogInformation("TrackInfo: Registered SpectrumAnalyzer with AudioEngine");
         }
         else
         {
@@ -64,11 +70,16 @@ public partial class TrackInfo
         if (FindName("VuMeter") is VuMeter vuMeter)
         {
             vuMeter.RegisterSoundPlayer(_audioEngine);
-            //_logger.LogInformation("TrackInfo: Registered VuMeter with AudioEngine");
         }
         else
         {
             _logger.LogError("TrackInfo: VuMeter control not found");
+        }
+
+        // Initialize from current selection
+        if (_selectionService.CurrentTrack != null)
+        {
+            OnSelectedTrackChanged(_selectionService.CurrentTrack);
         }
     }
 
@@ -78,87 +89,52 @@ public partial class TrackInfo
         {
             SelectedMediaFile = mediaFile;
 
-            // Metadata is already loaded from database cache - no need to reload!
-
-            // NEW: Load album cover asynchronously if not already loaded
             if (mediaFile.AlbumCover == null)
             {
-                // Load album cover on background thread to avoid blocking UI
                 await System.Threading.Tasks.Task.Run(() =>
                 {
-                    try
-                    {
-                        mediaFile.LoadAlbumCover();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to load album cover for {Title}", mediaFile.Title);
-                    }
+                    try { mediaFile.LoadAlbumCover(); }
+                    catch (System.Exception ex) { _logger.LogWarning(ex, "Failed to load album cover for {Title}", mediaFile.Title); }
                 });
             }
 
-            // Check if AlbumCover is null or invalid
             bool isInvalidImage = mediaFile.AlbumCover == null;
             if (mediaFile.AlbumCover is BitmapImage bitmap && !bitmap.IsDownloading)
             {
-                try
-                {
-                    _ = bitmap.PixelWidth; // Force access to detect errors
-                    isInvalidImage = bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Invalid BitmapImage detected for {MediaFileTitle}", mediaFile.Title);
-                    isInvalidImage = true;
-                }
+                try { _ = bitmap.PixelWidth; isInvalidImage = bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0; }
+                catch (System.Exception ex) { _logger.LogWarning(ex, "Invalid BitmapImage detected for {MediaFileTitle}", mediaFile.Title); isInvalidImage = true; }
             }
 
             if (isInvalidImage)
             {
                 mediaFile.AlbumCover = GetDefaultAlbumImage();
-                //_logger.LogInformation("TrackInfo: Set default album cover for {MediaFileTitle}", mediaFile.Title);
-                if (FindName("TrackImageText") is TextBlock trackImageText)
-                {
-                    trackImageText.Text = "[No Image]";
-                }
+                if (FindName("TrackImageText") is TextBlock trackImageText) { trackImageText.Text = "[No Image]"; }
             }
-            else if (FindName("TrackImageText") is TextBlock trackImageText)
+            else if (FindName("TrackImageText") is TextBlock okText)
             {
-                trackImageText.Text = string.Empty; // Clear text for valid image
+                okText.Text = string.Empty;
             }
 
-            // Force the TrackImage.Source to update directly
             if (FindName("TrackImage") is Image trackImage)
             {
                 trackImage.Source = mediaFile.AlbumCover ?? GetDefaultAlbumImage();
-                //_logger.LogInformation("TrackInfo: Set TrackImage.Source to AlbumCover ({0})", mediaFile.AlbumCover != null ? "custom" : "default");
             }
         }
         else
         {
             SelectedMediaFile = null;
-            if (FindName("TrackImage") is Image trackImage)
-            {
-                trackImage.Source = GetDefaultAlbumImage();
-            }
-            if (FindName("TrackImageText") is TextBlock trackImageText)
-            {
-                trackImageText.Text = "[ No Selection ]";
-            }
+            if (FindName("TrackImage") is Image trackImage) { trackImage.Source = GetDefaultAlbumImage(); }
+            if (FindName("TrackImageText") is TextBlock trackImageText) { trackImageText.Text = "[ No Selection ]"; }
         }
     }
 
     private static BitmapImage GetDefaultAlbumImage()
     {
-        try
+        try { return new BitmapImage(new System.Uri(NoAlbumCover, System.UriKind.Absolute)); }
+        catch (System.Exception ex)
         {
-            return new BitmapImage(new Uri(NoAlbumCover, UriKind.Absolute));
-        }
-        catch (Exception ex)
-        {
-            App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>()
-                .LogError(ex, "Failed to load default album image");
-            return new BitmapImage(); // Fallback to empty image
+            App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>().LogError(ex, "Failed to load default album image");
+            return new BitmapImage();
         }
     }
 

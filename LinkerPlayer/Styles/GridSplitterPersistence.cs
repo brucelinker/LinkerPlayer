@@ -1,7 +1,6 @@
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.DependencyInjection;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -23,7 +22,9 @@ public static class GridSplitterPersistence
     {
         GridSplitter? splitter = d as GridSplitter;
         if (splitter == null)
+        {
             return;
+        }
 
         splitter.Loaded -= Splitter_Loaded;
         splitter.DragCompleted -= Splitter_DragCompleted;
@@ -38,10 +39,16 @@ public static class GridSplitterPersistence
     {
         GridSplitter splitter = (GridSplitter)sender;
         string? key = GetPersistKey(splitter);
-        if (string.IsNullOrWhiteSpace(key)) return;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
 
         Grid? grid = splitter.Parent as Grid;
-        if (grid == null) return;
+        if (grid == null)
+        {
+            return;
+        }
 
         if (App.AppHost?.Services == null)
         {
@@ -59,7 +66,9 @@ public static class GridSplitterPersistence
         }
 
         if (!settings.Settings.SplitterLayouts.TryGetValue(key, out List<double>? ratios) || ratios == null || ratios.Count == 0)
+        {
             return;
+        }
 
         if (splitter.ResizeDirection == GridResizeDirection.Rows)
         {
@@ -69,7 +78,11 @@ public static class GridSplitterPersistence
                 if (grid.RowDefinitions[i].Height.IsStar)
                 {
                     double part = ratios[j++];
-                    if (part <= 0) continue;
+                    if (part <= 0)
+                    {
+                        continue;
+                    }
+
                     grid.RowDefinitions[i].Height = new GridLength(part, GridUnitType.Star);
                 }
             }
@@ -82,7 +95,11 @@ public static class GridSplitterPersistence
                 if (grid.ColumnDefinitions[i].Width.IsStar)
                 {
                     double part = ratios[j++];
-                    if (part <= 0) continue;
+                    if (part <= 0)
+                    {
+                        continue;
+                    }
+
                     grid.ColumnDefinitions[i].Width = new GridLength(part, GridUnitType.Star);
                 }
             }
@@ -93,10 +110,16 @@ public static class GridSplitterPersistence
     {
         GridSplitter splitter = (GridSplitter)sender;
         string? key = GetPersistKey(splitter);
-        if (string.IsNullOrWhiteSpace(key)) return;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
 
         Grid? grid = splitter.Parent as Grid;
-        if (grid == null) return;
+        if (grid == null)
+        {
+            return;
+        }
 
         List<double> sizes;
         if (splitter.ResizeDirection == GridResizeDirection.Rows)
@@ -141,7 +164,11 @@ public static class GridSplitterPersistence
     private static void Normalize(List<double> values)
     {
         double sum = values.Sum();
-        if (sum <= 0) return;
+        if (sum <= 0)
+        {
+            return;
+        }
+
         for (int i = 0; i < values.Count; i++)
         {
             values[i] = values[i] / sum;

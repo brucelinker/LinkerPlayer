@@ -7,6 +7,7 @@ using LinkerPlayer.Models;
 using LinkerPlayer.Core;
 using Microsoft.Extensions.Logging;
 using System.Windows.Input;
+using LinkerPlayer.Tests.Mocks;
 
 namespace LinkerPlayer.Tests.ViewModels;
 
@@ -37,17 +38,19 @@ public class PlaylistTabsViewModel_DragDropTests
         ILogger<PlaylistTabsViewModel> logger = Mock.Of<ILogger<PlaylistTabsViewModel>>();
 
         SharedDataModel shared = new SharedDataModel();
+        ISelectionService selection = new TestSelectionService();
 
         return new PlaylistTabsViewModel(
-        musicLibrary.Object,
-        shared,
-        settings.Object,
-        fileImport.Object,
-        playlistManager.Object,
-        trackNav.Object,
-        uiDispatcher.Object,
-        dbSave.Object,
-        logger);
+            musicLibrary.Object,
+            shared,
+            settings.Object,
+            fileImport.Object,
+            playlistManager.Object,
+            trackNav.Object,
+            uiDispatcher.Object,
+            dbSave.Object,
+            selection,
+            logger);
     }
 
     [Fact]

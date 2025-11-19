@@ -1,6 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
-using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
@@ -50,19 +49,12 @@ public partial class PlaylistTabs
             _logger.LogInformation("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
             viewModel.LoadPlaylistTabs();
 
-            // Force initial SelectionChanged after tabs & SelectedTabIndex set to restore selection & center
+            // Rely on binding to apply SelectedTabIndex; no manual SelectionChanged invocation
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (Tabs123.Items.Count > 0)
                 {
-                    // Ensure TabControl reflects view model index (binding usually does this; explicit assign for startup)
                     Tabs123.SelectedIndex = viewModel.SelectedTabIndex;
-                    // Manually invoke handler logic once
-                    viewModel.OnTabSelectionChanged(Tabs123, new SelectionChangedEventArgs(TabControl.SelectionChangedEvent, new List<object>(), new List<object>()));
-                    if (viewModel.SelectedTrack != null)
-                    {
-                        WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
-                    }
                 }
             }), System.Windows.Threading.DispatcherPriority.Loaded);
 
@@ -99,21 +91,39 @@ public partial class PlaylistTabs
             {
                 viewModel.OnDataGridLoaded(sender, e);
 
-                if (sender is DataGrid dg && viewModel.SelectedTrack != null)
+                if (sender is DataGrid dg)
                 {
-                    // Force centering explicitly against this DataGrid after layout
-                    Dispatcher.BeginInvoke(new Action(() =>
+                    // Prefer restoring prior offset for this tab; only center if no known offset
+                    if (viewModel.SelectedTab != null && _tabVerticalOffsets.TryGetValue(viewModel.SelectedTab, out double savedOffset))
                     {
-                        try
+                        ScrollViewer? sv = FindDescendant<ScrollViewer>(dg);
+                        if (sv != null)
                         {
-                            _isExplicitCentering = true;
-                            CenterItemInDataGrid(dg, viewModel.SelectedTrack);
+                            Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                sv.ScrollToVerticalOffset(savedOffset);
+                            }), System.Windows.Threading.DispatcherPriority.Render);
                         }
-                        finally
+                    }
+                    else if (viewModel.SelectedTrack != null)
+                    {
+                        // Force centering explicitly against this DataGrid after layout
+                        Dispatcher.BeginInvoke(new Action(() =>
                         {
-                            _isExplicitCentering = false;
-                        }
-                    }), System.Windows.Threading.DispatcherPriority.Render);
+                            try
+                            {
+                                _isExplicitCentering = true;
+                                CenterItemInDataGrid(dg, viewModel.SelectedTrack);
+                            }
+                            finally
+                            {
+                                _isExplicitCentering = false;
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Render);
+                    }
+
+                    // Ensure ultimately visible once containers are generated
+                    EnsureSelectedTrackVisible();
                 }
             }
         }, null);
@@ -129,43 +139,92 @@ public partial class PlaylistTabs
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        Dispatcher.BeginInvoke((Action)delegate
+        // Update selection immediately so context menu actions (like Properties) see multi-select state
+        if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                viewModel.OnTrackSelectionChanged(sender, e);
-            }
-        }, null);
+            viewModel.OnTrackSelectionChanged(sender, e);
+        }
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (e.AddedItems.Count > 0 || e.RemovedItems.Count > 0)
+        // Only act when the selected tab actually changes; ignore clicks on the already-selected tab
+        bool tabChanged = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
+        if (!tabChanged)
         {
-            bool isTabChange = e.AddedItems.OfType<PlaylistTab>().Any() || e.RemovedItems.OfType<PlaylistTab>().Any();
-            if (isTabChange)
+            return;
+        }
+
+        // Apply target scroll immediately to avoid showing previous tab's offset
+        if (DataContext is PlaylistTabsViewModel vmImmediate)
+        {
+            DataGrid? dgImmediate = GetActiveDataGrid();
+            if (dgImmediate != null && vmImmediate.SelectedTab != null)
             {
-                Dispatcher.BeginInvoke((Action)delegate
+                ScrollViewer? svImmediate = FindDescendant<ScrollViewer>(dgImmediate);
+                if (svImmediate != null)
                 {
-                    if (DataContext is PlaylistTabsViewModel viewModel)
+                    if (_tabVerticalOffsets.TryGetValue(vmImmediate.SelectedTab, out double immOffset))
                     {
-                        viewModel.OnTabSelectionChanged(sender, e);
+                        svImmediate.ScrollToVerticalOffset(immOffset);
                     }
-                }, null);
-                // Center only if needed when switching tabs
-                Dispatcher.BeginInvoke(() =>
-                {
-                    if (DataContext is PlaylistTabsViewModel vm && vm.SelectedTrack != null)
+                    else if (vmImmediate.SelectedTrack != null)
                     {
-                        DataGrid? dg = GetActiveDataGrid();
-                        if (dg != null && !IsItemFullyVisible(dg, vm.SelectedTrack))
-                        {
-                            CenterSelectedTrack();
-                        }
+                        _isExplicitCentering = true;
+                        try { CenterItemInDataGrid(dgImmediate, vmImmediate.SelectedTrack); }
+                        finally { _isExplicitCentering = false; }
                     }
-                }, System.Windows.Threading.DispatcherPriority.Background);
+                }
             }
         }
+
+        Dispatcher.BeginInvoke((Action)delegate
+        {
+            if (DataContext is PlaylistTabsViewModel viewModel)
+            {
+                viewModel.OnTabSelectionChanged(sender, e);
+
+                // Restore scroll offset for the newly selected tab (if previously recorded)
+                DataGrid? dg = GetActiveDataGrid();
+                if (dg != null && viewModel.SelectedTab != null)
+                {
+                    ScrollViewer? sv = FindDescendant<ScrollViewer>(dg);
+                    double targetOffset = 0;
+                    bool hasSaved = false;
+                    if (_tabVerticalOffsets.TryGetValue(viewModel.SelectedTab, out double offset))
+                    {
+                        targetOffset = offset;
+                        hasSaved = true;
+                    }
+
+                    if (sv != null)
+                    {
+                        Dispatcher.BeginInvoke(new Action(() =>
+                        {
+                            if (hasSaved)
+                            {
+                                sv.ScrollToVerticalOffset(targetOffset);
+                            }
+                            else if (viewModel.SelectedTrack != null && !IsItemFullyVisible(dg, viewModel.SelectedTrack))
+                            {
+                                _isExplicitCentering = true;
+                                try
+                                {
+                                    CenterItemInDataGrid(dg, viewModel.SelectedTrack);
+                                }
+                                finally
+                                {
+                                    _isExplicitCentering = false;
+                                }
+                            }
+                        }), System.Windows.Threading.DispatcherPriority.Render);
+                    }
+                }
+
+                // After any restore attempt, verify visibility once containers generate
+                EnsureSelectedTrackVisible();
+            }
+        }, null);
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -302,11 +361,12 @@ public partial class PlaylistTabs
     {
         EditableTabHeaderControl header = (EditableTabHeaderControl)sender;
         _selectedEditableTabHeaderControl = header;
-        // No double-click handling here; double-click handled by control's own MouseDoubleClick
-        if (header.Tag is not PlaylistTabsViewModel && DataContext is PlaylistTabsViewModel vm)
+
+        if (header.Tag is not PlaylistTabsViewModel && DataContext is PlaylistTabsViewModel vmTag)
         {
-            header.Tag = vm; // ensure rename works from context menu
+            header.Tag = vmTag; // ensure rename works from context menu
         }
+        // No same-tab scroll logic here; handled in TabItem_PreviewMouseLeftButtonDown
     }
 
     private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
@@ -362,6 +422,61 @@ public partial class PlaylistTabs
                     }
                 }
             }
+        }
+    }
+
+    private void EnsureSelectedTrackVisible()
+    {
+        if (DataContext is not PlaylistTabsViewModel vm)
+        {
+            return;
+        }
+        DataGrid? dg = GetActiveDataGrid();
+        if (dg == null || vm.SelectedTrack == null)
+        {
+            return;
+        }
+        if (dg.Items.Count == 0)
+        {
+            return;
+        }
+
+        void CenterIfReady()
+        {
+            if (vm.SelectedTrack == null)
+            {
+                return;
+            }
+            if (!IsItemFullyVisible(dg, vm.SelectedTrack))
+            {
+                _isExplicitCentering = true;
+                try
+                {
+                    CenterItemInDataGrid(dg, vm.SelectedTrack);
+                }
+                finally
+                {
+                    _isExplicitCentering = false;
+                }
+            }
+        }
+
+        if (dg.ItemContainerGenerator.ContainerFromItem(vm.SelectedTrack) == null)
+        {
+            EventHandler? handler = null;
+            handler = (s, e) =>
+            {
+                if (dg.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
+                {
+                    dg.ItemContainerGenerator.StatusChanged -= handler;
+                    dg.Dispatcher.BeginInvoke(new Action(CenterIfReady), System.Windows.Threading.DispatcherPriority.Render);
+                }
+            };
+            dg.ItemContainerGenerator.StatusChanged += handler;
+        }
+        else
+        {
+            dg.Dispatcher.BeginInvoke(new Action(CenterIfReady), System.Windows.Threading.DispatcherPriority.Render);
         }
     }
 
@@ -488,9 +603,24 @@ public partial class PlaylistTabs
             return;
         }
 
+        // Suppress scroll jump when clicking the already-selected tab
+        if (tabItem.IsSelected)
+        {
+            e.Handled = true;
+            if (DataContext is PlaylistTabsViewModel vm && vm.SelectedTrack != null)
+            {
+                DataGrid? dg = GetActiveDataGrid();
+                if (dg != null)
+                {
+                    dg.ScrollIntoView(vm.SelectedTrack); // rely on DataGrid layout
+                }
+            }
+            return; // do not initiate drag
+        }
+
         if (tabItem.DataContext is PlaylistTab tab)
         {
-            _draggedTab = tab;
+            _draggedTab = tab; // only set drag when not the already-selected tab
         }
     }
 

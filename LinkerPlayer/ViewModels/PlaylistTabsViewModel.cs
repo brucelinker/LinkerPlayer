@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
+using CommunityToolkit.Mvvm.Messaging; // retained for other messages
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -40,8 +40,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         Status = string.Empty
     };
 
-    public readonly SharedDataModel SharedDataModel;
-    private readonly ISettingsManager _settingsManager;
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<PlaylistTabsViewModel> _logger;
 
@@ -51,15 +49,71 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private readonly ITrackNavigationService _trackNavigationService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IDatabaseSaveService _databaseSaveService; // NEW: Debounced save service
+    private readonly ISelectionService _selectionService; // new
+    private readonly SharedDataModel _sharedDataModel; // wrapped
+    private readonly ISettingsManager _settingsManager; // restore
 
-    private TabControl? _tabControl;
-    private DataGrid? _dataGrid;
+    // Expose SharedDataModel for legacy consumers
+    public SharedDataModel SharedDataModel => _sharedDataModel;
 
-    private bool _shuffleMode;
+    // ADD missing internal UI/state fields
+    private TabControl? _tabControl; // holds TabControl reference
+    private DataGrid? _dataGrid;     // holds current DataGrid reference
+    private bool _shuffleMode;       // shuffle flag
 
+    // ADD back filter constants used by dialogs
     private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
-    private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
+    private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*"; // restore
+
+    // SINGLE canonical selection properties (remove duplicates below)
+    public MediaFile? ActiveTrack
+    {
+        get => _sharedDataModel.ActiveTrack;
+        set
+        {
+            if (!ReferenceEquals(_sharedDataModel.ActiveTrack, value))
+            {
+                _sharedDataModel.UpdateActiveTrack(value!);
+                OnPropertyChanged(nameof(ActiveTrack));
+            }
+        }
+    }
+
+    public int SelectedTrackIndex
+    {
+        get => _sharedDataModel.SelectedTrackIndex;
+        set
+        {
+            _sharedDataModel.UpdateSelectedTrackIndex(value);
+            OnPropertyChanged(nameof(SelectedTrackIndex));
+        }
+    }
+
+    public MediaFile? SelectedTrack
+    {
+        get => _selectionService.CurrentTrack;
+        set
+        {
+            if (value == null)
+            {
+                _selectionService.SetTrack(null, -1);
+                _sharedDataModel.UpdateSelectedTrackIndex(-1);
+            }
+            else
+            {
+                int idx = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count
+                    ? TabList[SelectedTabIndex].Tracks.IndexOf(value)
+                    : -1;
+                _selectionService.SetTrack(value, idx);
+                if (idx >= 0)
+                {
+                    _sharedDataModel.UpdateSelectedTrackIndex(idx);
+                }
+            }
+            OnPropertyChanged(nameof(SelectedTrack));
+        }
+    }
 
     public PlaylistTabsViewModel(
         IMusicLibrary musicLibrary,
@@ -69,7 +123,8 @@ public partial class PlaylistTabsViewModel : ObservableObject
         IPlaylistManagerService playlistManagerService,
         ITrackNavigationService trackNavigationService,
         IUiDispatcher uiDispatcher,
-        IDatabaseSaveService databaseSaveService, // NEW: Inject debounced save service
+        IDatabaseSaveService databaseSaveService,
+        ISelectionService selectionService,
         ILogger<PlaylistTabsViewModel> logger)
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
@@ -77,18 +132,18 @@ public partial class PlaylistTabsViewModel : ObservableObject
         _playlistManagerService = playlistManagerService ?? throw new ArgumentNullException(nameof(playlistManagerService));
         _trackNavigationService = trackNavigationService ?? throw new ArgumentNullException(nameof(trackNavigationService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
-        _databaseSaveService = databaseSaveService ?? throw new ArgumentNullException(nameof(databaseSaveService)); // NEW
+        _databaseSaveService = databaseSaveService ?? throw new ArgumentNullException(nameof(databaseSaveService));
+        _selectionService = selectionService ?? throw new ArgumentNullException(nameof(selectionService));
+        _sharedDataModel = sharedDataModel ?? throw new ArgumentNullException(nameof(sharedDataModel));
+        _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         try
         {
-            SharedDataModel = sharedDataModel ?? throw new ArgumentNullException(nameof(sharedDataModel));
-            _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
             AllowDrop = true;
-
             RegisterMessages();
-            _logger.LogInformation("PlaylistTabsViewModel initialized successfully");
+            _logger.LogInformation("PlaylistTabsViewModel initialized successfully (SelectionService)");
         }
         catch (Exception ex)
         {
@@ -110,69 +165,29 @@ public partial class PlaylistTabsViewModel : ObservableObject
         });
     }
 
-    public int SelectedTrackIndex
-    {
-        get => SharedDataModel.SelectedTrackIndex;
-        set => SharedDataModel.UpdateSelectedTrackIndex(value);
-    }
-
-    public MediaFile? SelectedTrack
-    {
-        get => SharedDataModel.SelectedTrack;
-        set
-        {
-            if (ReferenceEquals(SharedDataModel.SelectedTrack, value))
-            {
-                return; // avoid redundant updates that can cause re-entrant UI work
-            }
-            SharedDataModel.UpdateSelectedTrack(value!);
-            OnPropertyChanged(nameof(SelectedTrack));
-        }
-    }
-
-    public MediaFile? ActiveTrack
-    {
-        get => SharedDataModel.ActiveTrack;
-        set => SharedDataModel.UpdateActiveTrack(value!);
-    }
-
     public void OnDataGridLoaded(object sender, RoutedEventArgs _)
     {
         if (sender is DataGrid dataGrid)
         {
             _dataGrid = dataGrid;
-
-            // Apply selection to the DataGrid now that containers exist
-            if (SelectedTrack != null)
+            if (SelectedTrack != null && SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
             {
-                if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+                if (SelectedTrackIndex < 0)
                 {
-                    if (SelectedTrackIndex < 0)
-                    {
-                        SelectedTrackIndex = TabList[SelectedTabIndex].Tracks.IndexOf(SelectedTrack);
-                    }
-                    _dataGrid.SelectedItem = SelectedTrack;
-                    _dataGrid.SelectedIndex = SelectedTrackIndex;
+                    SelectedTrackIndex = TabList[SelectedTabIndex].Tracks.IndexOf(SelectedTrack);
                 }
-
-                // Center after rows are generated
-                Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
-                }), System.Windows.Threading.DispatcherPriority.Background);
+                _dataGrid.SelectedItem = SelectedTrack;
+                _dataGrid.SelectedIndex = SelectedTrackIndex;
+                _selectionService.SetTrack(SelectedTrack, SelectedTrackIndex);
             }
             else
             {
-                // If selection wasn't resolved yet (SelectionChanged fired before DataGrid existed), resolve now
                 SelectedPlaylist = GetSelectedPlaylist();
                 if (SelectedTrack != null)
                 {
                     _dataGrid.SelectedItem = SelectedTrack;
                     _dataGrid.SelectedIndex = SelectedTrackIndex;
-                    Application.Current.Dispatcher.BeginInvoke(new Action(() =>
-                    {
-                        WeakReferenceMessenger.Default.Send(new GoToActiveTrackMessage(true));
-                    }), System.Windows.Threading.DispatcherPriority.Background);
+                    _selectionService.SetTrack(SelectedTrack, SelectedTrackIndex);
                 }
             }
         }
@@ -213,55 +228,43 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_tabControl == null && sender is TabControl tabControl)
+        if (_tabControl == null && sender is TabControl tc)
         {
-            _tabControl = tabControl;
+            _tabControl = tc;
         }
-
-        if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-        {
-            _settingsManager.Settings.SelectedTabIndex = SelectedTabIndex;
-            _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
-        }
-
         if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
         {
-            _logger.LogWarning("OnTabSelectionChanged: Invalid SelectedTabIndex {Index}", SelectedTabIndex);
             return;
         }
-
         PlaylistTab tab = TabList[SelectedTabIndex];
-
-        if (_dataGrid == null || tab == null)
+        _selectionService.SetTab(tab);
+        if (_dataGrid == null)
         {
-            // Even if _dataGrid is not yet available, update playlist and return
             SelectedPlaylist = GetSelectedPlaylist();
             return;
         }
-
-        // Clear SelectedTracks when switching tabs
-        SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
-
-        // ✅ LAZY LOAD on tab switch - async on background thread, NO BLOCKING
+        _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
         if (tab.Tracks.Count == 0)
         {
-            _logger.LogInformation("OnTabSelectionChanged: Tab '{TabName}' not yet loaded, will load in background", tab.Name);
-            // Fire and forget - load on background thread async
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    _logger.LogInformation("OnTabSelectionChanged: Loading tracks for tab '{TabName}'", tab.Name);
                     IEnumerable<MediaFile> tracks = _playlistManagerService.LoadPlaylistTracks(tab.Name);
-
-                    // Add to UI thread
                     await Application.Current.Dispatcher.InvokeAsync(() =>
                     {
-                        foreach (MediaFile track in tracks)
+                        foreach (MediaFile t in tracks)
                         {
-                            tab.Tracks.Add(track);
+                            tab.Tracks.Add(t);
                         }
-                        _logger.LogInformation("Loaded {Count} tracks for tab '{TabName}'", tab.Tracks.Count, tab.Name);
+
+                        if (tab.Tracks.Any())
+                        {
+                            MediaFile first = tab.Tracks.First();
+                            int idx = 0;
+                            _selectionService.SetTrack(first, idx);
+                            SelectedTrackIndex = idx;
+                        }
                     });
                 }
                 catch (Exception ex)
@@ -270,62 +273,34 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 }
             });
         }
-
         SelectedPlaylist = GetSelectedPlaylist();
-        // Avoid Items.Refresh to prevent scroll jumps
-
-        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
     }
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)
     {
         _dataGrid = sender as DataGrid;
-
-        // Handle multi-selection
         if (_dataGrid != null && _dataGrid.SelectedItems.Count > 0)
         {
             List<MediaFile> selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
-            SharedDataModel.UpdateSelectedTracks(selectedTracks);
-
-            // Use the first selected item as the primary selection for backward compatibility
+            _selectionService.SetMultiSelection(selectedTracks);
             MediaFile selectedTrack = selectedTracks.First();
-
-            if (SelectedTrack?.Id == selectedTrack.Id && selectedTracks.Count == 1)
-            {
-                return;
-            }
-
-            // Save the user's selection
-            if (!SetLastSelectedTrack(selectedTrack))
-            {
-                // SelectedPlaylist is null
-                return;
-            }
-
-            SelectedTrack = selectedTrack;
-            SelectedTrackIndex = _dataGrid.Items.IndexOf(selectedTrack);
-
+            int index = _dataGrid.Items.IndexOf(selectedTrack);
+            _selectionService.SetTrack(selectedTrack, index);
+            SelectedTrack = selectedTrack; // property updates index in shared model
             if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
             {
                 PlaylistTab tab = TabList[SelectedTabIndex];
                 tab.SelectedTrack = SelectedTrack;
-                tab.SelectedIndex = SelectedTrackIndex;
+                tab.SelectedIndex = index;
             }
-
             _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedTrackId));
-
-            //_dataGrid.ScrollIntoView(SelectedTrack);
-
-            if (ActiveTrack == null)
-            {
-                WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
-            }
         }
         else
         {
-            SharedDataModel.UpdateSelectedTracks(Enumerable.Empty<MediaFile>());
-            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(null));
+            _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
+            _selectionService.SetTrack(null, -1);
+            SelectedTrack = null;
         }
     }
 
@@ -427,22 +402,18 @@ public partial class PlaylistTabsViewModel : ObservableObject
         try
         {
             selectedTrack.State = PlaybackState.Playing;
-
             MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == selectedTrack.Id);
             if (libraryTrack != null)
             {
                 libraryTrack.State = PlaybackState.Playing;
             }
-
             if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
             {
                 _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = selectedTrack.Id;
             }
-
+            // Centralize through SelectedTrack property (which invokes SelectionService)
             SelectedTrack = selectedTrack;
             ActiveTrack = selectedTrack;
-
-            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(selectedTrack));
         }
         catch (Exception ex)
         {
@@ -511,9 +482,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     SelectedTrackIndex = 0;
                     SelectedTrack = initialTab.Tracks[0];
-                    // keep model in sync
                     _musicLibrary.Playlists[savedIndex].SelectedTrackId = SelectedTrack.Id;
                 }
+                // Removed SelectedTrackChangedMessage broadcast; TrackInfo now listens to SelectionService
             }
         }
         catch (Exception ex)
@@ -1006,7 +977,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
                     {
                         candidatePath = uri.LocalPath;
-                      }
+                    }
 
                     // Unescape any percent-encoded characters
                     candidatePath = Uri.UnescapeDataString(candidatePath);
@@ -1393,7 +1364,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
         newTrack.State = PlaybackState.Playing;
 
         // Update UI selection
-        SelectedTrack = newTrack;
+        SelectedTrack = newTrack; // triggers selection service
         SelectedTrackIndex = newIndex;
         ActiveTrack = newTrack;
 
@@ -1413,8 +1384,6 @@ public partial class PlaylistTabsViewModel : ObservableObject
         // Update UI
         _dataGrid!.SelectedIndex = newIndex;
         _dataGrid.ScrollIntoView(newTrack);
-
-        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
 
         return newTrack;
     }
@@ -1454,22 +1423,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
         {
             SelectedTrackIndex = 0;
             SelectedTrack = TabList[SelectedTabIndex].Tracks[SelectedTrackIndex];
-
             if (SelectedTabIndex < _musicLibrary.Playlists.Count)
-            {
-                _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = SelectedTrack.Id;
-            }
-
+            { _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = SelectedTrack.Id; }
             _dataGrid.SelectedItem = SelectedTrack;
             _dataGrid.SelectedIndex = SelectedTrackIndex;
-
-            // Scroll into view at lower priority
-            _dataGrid.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                _dataGrid.ScrollIntoView(SelectedTrack);
-            }), System.Windows.Threading.DispatcherPriority.Background);
-
-            WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
+            _dataGrid.Dispatcher.BeginInvoke(new Action(() => { _dataGrid.ScrollIntoView(SelectedTrack); }), System.Windows.Threading.DispatcherPriority.Background);
             return SelectedTrack;
         }
         catch (Exception ex)

@@ -5,6 +5,7 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services; // to potentially interact with selection service later
 using ManagedBass;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -245,8 +246,6 @@ public partial class PlayerControlsViewModel : ObservableObject
                     ActiveTrack = SelectedTrack;
                     ActiveTrack.State = PlaybackState.Playing;
                     State = PlaybackState.Playing;
-
-                    WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(ActiveTrack));
                 }
             }
             else
@@ -298,7 +297,6 @@ public partial class PlayerControlsViewModel : ObservableObject
         }
 
         WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
-        WeakReferenceMessenger.Default.Send(new SelectedTrackChangedMessage(SelectedTrack));
     }
 
     [RelayCommand]

@@ -75,10 +75,10 @@
       Grid.Row="1"
       Height="5"
       HorizontalAlignment="Stretch"
+      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows"
       Background="Transparent"
       ResizeBehavior="PreviousAndNext"
-      ResizeDirection="Rows"
-      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows" />
+      ResizeDirection="Rows" />
 
     <!--  TrackInfo Section  -->
     <Grid
@@ -174,10 +174,10 @@
       Grid.Row="3"
       Height="5"
       HorizontalAlignment="Stretch"
+      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows"
       Background="Transparent"
       ResizeBehavior="PreviousAndNext"
-      ResizeDirection="Rows"
-      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows" />
+      ResizeDirection="Rows" />
 
     <!--  SpectrumAnalyzer Section  -->
     <audio:SpectrumAnalyzer
@@ -215,17 +215,17 @@
       Grid.Row="5"
       Height="5"
       HorizontalAlignment="Stretch"
+      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows"
       Background="Transparent"
       ResizeBehavior="PreviousAndNext"
-      ResizeDirection="Rows"
-      persist:GridSplitterPersistence.PersistKey="TrackInfo.Root.Rows" />
+      ResizeDirection="Rows" />
 
     <!--  VuMeter Section  -->
     <audio:VuMeter
       x:Name="VuMeter"
       Grid.Row="6"
       MinHeight="60"
-      Margin="0,5,0,0"
+      Margin="0,0,0,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
       ChannelSpacing="3"

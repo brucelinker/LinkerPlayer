@@ -69,6 +69,7 @@ public partial class App
                 services.AddSingleton<BassAudioEngine>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
+                services.AddSingleton<ISelectionService, SelectionService>(); // new selection service
                 services.AddTransient<CoreMetadataLoader>();
                 services.AddTransient<CustomMetadataLoader>();
                 services.AddTransient<FilePropertiesLoader>();
@@ -133,11 +134,25 @@ public partial class App
 
             Task bassInit = Task.Run(() =>
             {
-                try { bassEngine.Initialize(new BassInitializationOptions()); } catch (Exception ex) { _logger.LogError(ex, "BASS init failed"); }
+                try
+                {
+                    bassEngine.Initialize(new BassInitializationOptions());
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "BASS init failed");
+                }
             });
             Task libLoad = Task.Run(async () =>
             {
-                try { await library.LoadFromDatabaseAsync(); } catch (Exception ex) { _logger.LogError(ex, "Library load failed"); }
+                try
+                {
+                    await library.LoadFromDatabaseAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Library load failed");
+                }
             });
             await Task.WhenAll(bassInit, libLoad);
             _logger.LogInformation("Background init complete");

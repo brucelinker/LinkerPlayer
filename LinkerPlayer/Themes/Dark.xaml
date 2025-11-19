@@ -31,8 +31,8 @@
   <Color x:Key="TrackListColumnHeaderForegroundColor">#F0F0F0</Color>
   <Color x:Key="TrackListColumnHeaderBackgroundColor">#202020</Color>
   <Color x:Key="TrackListItemForegroundColor">#F0F0F0</Color>
-    <Color x:Key="TrackListItemBackgroundAlt1Color">#383838</Color>
-    <Color x:Key="TrackListItemBackgroundAlt2Color">#4F4F4F</Color>
+  <Color x:Key="TrackListItemBackgroundAlt1Color">#1D1D1D</Color>
+  <Color x:Key="TrackListItemBackgroundAlt2Color">#232323</Color>
   <Color x:Key="TrackListSelectedItemForegroundColor">#F0F0F0</Color>
   <Color x:Key="TrackListSelectedItemBackgroundColor">#186868</Color>
   <Color x:Key="TrackListMouseOverItemForegroundColor">#F0F0F0</Color>
