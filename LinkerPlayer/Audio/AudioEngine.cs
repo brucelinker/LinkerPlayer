@@ -15,7 +15,7 @@ using System.Runtime.InteropServices;
 
 namespace LinkerPlayer.Audio;
 
-public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposable
+public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IAudioEngine, IDisposable
 {
     private readonly IOutputDeviceManager _outputDeviceManager;
     private readonly ISettingsManager _settingsManager;
@@ -332,9 +332,14 @@ public partial class AudioEngine : ObservableObject, ISpectrumPlayer, IDisposabl
 
                     BassFlags addFlags = BassFlags.Default;
                     if (decodeChans != deviceChans)
+                    {
                         addFlags |= BassFlags.MixerChanDownMix;
+                    }
+
                     if (decodeInfo.Frequency != deviceFreq)
+                    {
                         addFlags |= BassFlags.MixerChanNoRampin;
+                    }
 
                     if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, addFlags))
                     {

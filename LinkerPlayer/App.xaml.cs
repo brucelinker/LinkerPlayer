@@ -69,6 +69,7 @@ public partial class App
                 services.AddSingleton<BassAudioEngine>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
+                services.AddSingleton<ISharedDataModel>(sp => sp.GetRequiredService<SharedDataModel>());
                 services.AddSingleton<ISelectionService, SelectionService>(); // new selection service
                 services.AddTransient<CoreMetadataLoader>();
                 services.AddTransient<CustomMetadataLoader>();

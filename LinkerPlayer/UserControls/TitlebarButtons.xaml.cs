@@ -42,14 +42,18 @@ public partial class TitlebarButtons
     {
         Window? win = Window.GetWindow(this);
         if (win != null)
+        {
             win.WindowState = WindowState.Minimized;
+        }
     }
 
     private void MaximizeButton_Click(object sender, RoutedEventArgs e)
     {
         Window? win = Window.GetWindow(this);
         if (win != null)
+        {
             win.WindowState = win.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
     }
 
     private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -64,6 +68,8 @@ public partial class TitlebarButtons
     {
         Window? win = Window.GetWindow(this);
         if (win != null)
+        {
             win.WindowState = win.WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
     }
 }

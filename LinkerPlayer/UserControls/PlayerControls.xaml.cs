@@ -138,11 +138,19 @@ public partial class PlayerControls
     private string GetChannelsString(int channels)
     {
         if (channels == 1)
+        {
             return "Mono";
+        }
+
         if (channels == 2)
+        {
             return "stereo";
+        }
+
         if (channels > 2)
+        {
             return "multichannel";
+        }
 
         return "";
     }
@@ -223,7 +231,10 @@ public partial class PlayerControls
     private void SeekBar_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_vm!.SelectedTrack == null)
+        {
             return;
+        }
+
         double posInSeekBar = (SeekBar.Value * _audioEngine.CurrentTrackLength) / 100;
         TimeSpan ts = TimeSpan.FromSeconds(posInSeekBar);
         CurrentTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";

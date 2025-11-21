@@ -254,7 +254,9 @@ public partial class SpectrumAnalyzer : Control
     private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is SpectrumAnalyzer sa)
+        {
             sa.UpdateBarLayout();
+        }
     }
 
     private static void OnRefreshIntervalChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -273,22 +275,31 @@ public partial class SpectrumAnalyzer : Control
             }
 
             if (sa.Dispatcher.CheckAccess())
+            {
                 apply();
+            }
             else
+            {
                 sa.Dispatcher.BeginInvoke((Action)apply, DispatcherPriority.Send);
+            }
         }
     }
 
     private static void OnFftComplexityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is SpectrumAnalyzer sa)
+        {
             sa._channelData = new float[(int)(FftDataSize)e.NewValue];
+        }
     }
 
     private static object OnCoerceMaximumFrequency(DependencyObject d, object value)
     {
         if (d is SpectrumAnalyzer sa)
+        {
             return Math.Max((int)value, sa.MinimumFrequency + 1);
+        }
+
         return value;
     }
 
@@ -353,7 +364,10 @@ public partial class SpectrumAnalyzer : Control
             _soundPlayer.OnFftCalculated += SoundPlayer_OnFftCalculated;
             UpdateBarLayout();
             if (_soundPlayer.IsPlaying)
+            {
                 StartTimer();
+            }
+
             _logger.LogInformation("SpectrumAnalyzer: Registered sound player");
         }
     }
@@ -366,7 +380,9 @@ public partial class SpectrumAnalyzer : Control
             _soundPlayer.OnFftCalculated -= SoundPlayer_OnFftCalculated;
             _soundPlayer = null;
             if (_spectrumCanvas != null)
+            {
                 UpdateSpectrumShapes();
+            }
             // Immediately clear visual bars when unregistered
             DropSpectrumImmediately();
             StopTimer();
@@ -382,7 +398,10 @@ public partial class SpectrumAnalyzer : Control
     {
         _spectrumCanvas = GetTemplateChild("PART_SpectrumCanvas") as Canvas;
         if (_spectrumCanvas != null)
+        {
             _spectrumCanvas.SizeChanged += SpectrumCanvas_SizeChanged;
+        }
+
         UpdateBarLayout();
     }
 
@@ -413,7 +432,9 @@ public partial class SpectrumAnalyzer : Control
         base.OnRender(dc);
         UpdateBarLayout();
         if (_soundPlayer != null && _soundPlayer.IsPlaying)
+        {
             UpdateSpectrum();
+        }
     }
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
@@ -421,7 +442,9 @@ public partial class SpectrumAnalyzer : Control
         base.OnRenderSizeChanged(sizeInfo);
         UpdateBarLayout();
         if (_soundPlayer != null && _soundPlayer.IsPlaying)
+        {
             UpdateSpectrum();
+        }
     }
     #endregion
 
@@ -478,7 +501,9 @@ public partial class SpectrumAnalyzer : Control
     private void UpdateSpectrumShapes()
     {
         if (_spectrumCanvas == null)
+        {
             return;
+        }
 
         double fftBucketHeight = 0;
         double barHeight = 0;
@@ -490,13 +515,17 @@ public partial class SpectrumAnalyzer : Control
 
         double[] barHeights = new double[_barShapes.Count];
         for (int i = 0; i < barHeights.Length; i++)
+        {
             barHeights[i] = _barShapes[i].Height;
+        }
 
         int maxFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MaximumFrequency) + 1 ?? 2047;
         int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ?? 0;
         maxFreqIndex = Math.Min(maxFreqIndex, _channelData.Length - 1);
         if (maxFreqIndex <= minFreqIndex)
+        {
             maxFreqIndex = minFreqIndex + 1;
+        }
 
         // Copy channel data under lock to avoid race conditions
         float[] channelDataCopy;
@@ -562,7 +591,9 @@ public partial class SpectrumAnalyzer : Control
                 {
                     barHeight = Math.Min(barHeight, height);
                     if (AveragePeaks && barIndex > 0)
+                    {
                         barHeight = (lastPeakHeight + barHeight) / 2;
+                    }
 
                     // Apply smoothing to bar height
                     barHeight = (barHeight + BarSmoothingFactor * barHeights[barIndex]) / (BarSmoothingFactor + 1);
@@ -592,7 +623,9 @@ public partial class SpectrumAnalyzer : Control
     private void DropSpectrumImmediately()
     {
         if (_spectrumCanvas == null)
+        {
             return;
+        }
 
         try
         {
@@ -603,7 +636,9 @@ public partial class SpectrumAnalyzer : Control
             {
                 Array.Clear(_channelData, 0, _channelData.Length);
                 if (_channelPeakData != null && _channelPeakData.Length > 0)
+                {
                     Array.Clear(_channelPeakData, 0, _channelPeakData.Length);
+                }
             }
 
             for (int i = 0; i < _barShapes.Count; i++)
@@ -627,7 +662,9 @@ public partial class SpectrumAnalyzer : Control
     private void UpdateBarLayout()
     {
         if (_spectrumCanvas == null)
+        {
             return;
+        }
 
         double barWidth = Math.Max((_spectrumCanvas.RenderSize.Width - BarSpacing * (BarCount + 1)) / BarCount, 1);
         int actualBarCount = barWidth >= 1.0 ? BarCount : Math.Max((int)((_spectrumCanvas.RenderSize.Width - BarSpacing) / (barWidth + BarSpacing)), 1);
@@ -637,7 +674,9 @@ public partial class SpectrumAnalyzer : Control
         int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ?? 0;
         maxFreqIndex = Math.Min(maxFreqIndex, _channelData.Length - 1);
         if (maxFreqIndex <= minFreqIndex)
+        {
             maxFreqIndex = minFreqIndex + 1;
+        }
 
         int indexCount = maxFreqIndex - minFreqIndex;
         int linearIndexBucketSize = indexCount > 0 ? (int)Math.Round((double)indexCount / actualBarCount) : 1;
@@ -653,9 +692,15 @@ public partial class SpectrumAnalyzer : Control
                 int melIndex = _soundPlayer?.GetFftFrequencyIndex((int)melBins[i]) ?? minFreqIndex + i * linearIndexBucketSize;
                 melIndex = Math.Clamp(melIndex, minFreqIndex, maxFreqIndex);
                 if (i > 0 && melIndex <= lastIndex)
+                {
                     melIndex = lastIndex + 1;
+                }
+
                 if (melIndex > maxFreqIndex)
+                {
                     melIndex = maxFreqIndex;
+                }
+
                 maxIndexList.Add(melIndex);
                 maxLogScaleIndexMax.Add(melIndex);
                 lastIndex = melIndex;
@@ -670,9 +715,15 @@ public partial class SpectrumAnalyzer : Control
                 int barkIndex = _soundPlayer?.GetFftFrequencyIndex((int)barkBins[i]) ?? minFreqIndex + i * linearIndexBucketSize;
                 barkIndex = Math.Clamp(barkIndex, minFreqIndex, maxFreqIndex);
                 if (i > 0 && barkIndex <= lastIndex)
+                {
                     barkIndex = lastIndex + 1;
+                }
+
                 if (barkIndex > maxFreqIndex)
+                {
                     barkIndex = maxFreqIndex;
+                }
+
                 maxIndexList.Add(barkIndex);
                 maxLogScaleIndexMax.Add(barkIndex);
                 lastIndex = barkIndex;
@@ -824,9 +875,13 @@ public partial class SpectrumAnalyzer : Control
         }
 
         if (Dispatcher.CheckAccess())
+        {
             start();
+        }
         else
+        {
             Dispatcher.BeginInvoke((Action)start, DispatcherPriority.Send);
+        }
     }
 
     private void StopTimer()
@@ -840,9 +895,13 @@ public partial class SpectrumAnalyzer : Control
         }
 
         if (Dispatcher.CheckAccess())
+        {
             stop();
+        }
         else
+        {
             Dispatcher.BeginInvoke((Action)stop, DispatcherPriority.Send);
+        }
     }
     #endregion
 }

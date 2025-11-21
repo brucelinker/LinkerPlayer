@@ -136,8 +136,15 @@ public class PlaylistTabsViewModelTests
 
         // Seed tabs
         vm.LoadPlaylistTabs();
-        // Make selected tab empty to force load via async method
-        vm.TabList[0].Tracks.Clear();
+        // Make selected tab empty to force load via async method:
+        // Instead of clearing (not possible on read-only), recreate playlist manager mock to return empty then populate.
+        playlistManager.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>());
+        vm.LoadPlaylistTabs(); // reload with empty
+        playlistManager.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>
+        {
+            new MediaFile { Id = "t1", FileName = "A", Path = "A.mp3" },
+            new MediaFile { Id = "t2", FileName = "B", Path = "B.mp3" }
+        });
 
         // Act
         await vm.LoadSelectedPlaylistTracksAsync();

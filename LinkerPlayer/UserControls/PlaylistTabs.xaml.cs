@@ -171,8 +171,14 @@ public partial class PlaylistTabs
                     else if (vmImmediate.SelectedTrack != null)
                     {
                         _isExplicitCentering = true;
-                        try { CenterItemInDataGrid(dgImmediate, vmImmediate.SelectedTrack); }
-                        finally { _isExplicitCentering = false; }
+                        try
+                        {
+                            CenterItemInDataGrid(dgImmediate, vmImmediate.SelectedTrack);
+                        }
+                        finally
+                        {
+                            _isExplicitCentering = false;
+                        }
                     }
                 }
             }
@@ -699,16 +705,23 @@ public partial class PlaylistTabs
         // Intended index in original list (can be equal to count when inserting after last)
         int intended = targetIndex + (insertAfter ? 1 : 0);
         if (intended > count)
+        {
             intended = count;
+        }
 
         // Adjust for removal shifting indices when moving forward
         int adjusted = fromIndex < intended ? intended - 1 : intended;
 
         // Clamp to valid range [0, count-1]
         if (adjusted < 0)
+        {
             adjusted = 0;
+        }
+
         if (adjusted >= count)
+        {
             adjusted = count - 1;
+        }
 
         if (fromIndex == adjusted)
         {

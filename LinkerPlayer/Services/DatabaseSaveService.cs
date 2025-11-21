@@ -38,7 +38,9 @@ public class DatabaseSaveService : IDatabaseSaveService
     public void RequestSave()
     {
         if (_disposed)
+        {
             return;
+        }
 
         lock (_lock)
         {
@@ -55,7 +57,9 @@ public class DatabaseSaveService : IDatabaseSaveService
     public void SaveImmediately()
     {
         if (_disposed)
+        {
             return;
+        }
 
         lock (_lock)
         {
@@ -103,7 +107,9 @@ public class DatabaseSaveService : IDatabaseSaveService
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         lock (_lock)
         {

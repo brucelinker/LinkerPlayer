@@ -17,7 +17,7 @@ public partial class PlayerControlsViewModel : ObservableObject
     private readonly AudioEngine _audioEngine;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;
     private readonly ISettingsManager _settingsManager;
-    private readonly SharedDataModel _sharedDataModel;
+    private readonly ISharedDataModel _sharedDataModel; // switched to interface
     private readonly ILogger<PlayerControlsViewModel> _logger;
 
     private double _volumeBeforeMute;
@@ -29,7 +29,7 @@ public partial class PlayerControlsViewModel : ObservableObject
         AudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
         ISettingsManager settingsManager,
-        SharedDataModel sharedDataModel,
+        ISharedDataModel sharedDataModel,
         ILogger<PlayerControlsViewModel> logger)
     {
         _audioEngine = audioEngine;
@@ -81,17 +81,19 @@ public partial class PlayerControlsViewModel : ObservableObject
     public MediaFile? SelectedTrack
     {
         get => _sharedDataModel.SelectedTrack;
-        set
-        {
-            _sharedDataModel.UpdateSelectedTrack(value!);
-            UpdateSelectedTrack?.Invoke();
-        }
+        set { if (value != null) { _sharedDataModel.UpdateSelectedTrack(value); } UpdateSelectedTrack?.Invoke(); }
     }
 
     public MediaFile? ActiveTrack
     {
         get => _sharedDataModel.ActiveTrack;
-        set => _sharedDataModel.UpdateActiveTrack(value!);
+        set
+        {
+            if (value != null)
+            {
+                _sharedDataModel.UpdateActiveTrack(value);
+            }
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
@@ -145,7 +147,10 @@ public partial class PlayerControlsViewModel : ObservableObject
     private void OnSettingsChanged(string propertyName)
     {
         if (propertyName == nameof(AppSettings.ShuffleMode))
+        {
             ShuffleMode = _settingsManager.Settings.ShuffleMode;
+        }
+
         if (propertyName == nameof(AppSettings.VolumeSliderValue))
         {
             VolumeSliderValue = _settingsManager.Settings.VolumeSliderValue;
@@ -388,10 +393,14 @@ public partial class PlayerControlsViewModel : ObservableObject
     private void MonitorNextTrack()
     {
         if (_isNavigatingTrack)
+        {
             return; // avoid re-entrancy during transitions
+        }
 
         if (!_audioEngine.IsPlaying)
+        {
             return; // only auto-advance while actually playing
+        }
 
         double length = _audioEngine.CurrentTrackLength;
         double position = _audioEngine.CurrentTrackPosition;
@@ -399,7 +408,9 @@ public partial class PlayerControlsViewModel : ObservableObject
         if (length > 0 && position + 10.0 > length)
         {
             if (_audioEngine.GetDecibelLevel() <= -50 || position + 0.5 > length)
+            {
                 NextTrack();
+            }
         }
     }
 }

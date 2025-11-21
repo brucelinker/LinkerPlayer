@@ -3,7 +3,6 @@ using LinkerPlayer.Database;
 using LinkerPlayer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Collections.ObjectModel;
 using System.IO;
 
 namespace LinkerPlayer.Services;
@@ -98,9 +97,15 @@ public class PlaylistManagerService : IPlaylistManagerService
 
             PlaylistTab tab = new PlaylistTab
             {
-                Name = uniqueName,
-                Tracks = new ObservableCollection<MediaFile>(tracks)
+                Name = uniqueName
             };
+            foreach (MediaFile track in tracks)
+            {
+                if (!tab.Tracks.Any(t => t.Id == track.Id))
+                {
+                    tab.Tracks.Add(track);
+                }
+            } // replaced AddTracks
 
             _logger.LogInformation("Created new playlist tab: {PlaylistName}", uniqueName);
             return tab;

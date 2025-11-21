@@ -174,7 +174,9 @@ public partial class AudioEngine
             foreach (int fxHandle in _eqFxHandles)
             {
                 if (fxHandle != 0)
+                {
                     Bass.ChannelRemoveFX(CurrentStream, fxHandle);
+                }
             }
         }
         _eqFxHandles = [];

@@ -56,11 +56,15 @@ public static class TestDataHelper
     public static PlaylistTab CreateTestPlaylistTab(string name = "Test Tab", int trackCount = 3)
     {
         List<MediaFile> tracks = CreateTestMediaFiles(trackCount);
-        return new PlaylistTab
+        PlaylistTab tab = new PlaylistTab { Name = name };
+        foreach (MediaFile track in tracks)
         {
-            Name = name,
-            Tracks = new ObservableCollection<MediaFile>(tracks)
-        };
+            if (tab.Tracks.All(t => t.Id != track.Id))
+            {
+                tab.Tracks.Add(track);
+            }
+        }
+        return tab;
     }
 
     public static ProgressData CreateTestProgressData(bool isProcessing = false, int processed = 0, int total = 100, string status = "")

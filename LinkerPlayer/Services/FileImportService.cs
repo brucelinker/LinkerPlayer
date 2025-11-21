@@ -381,7 +381,9 @@ public class FileImportService : IFileImportService
     public bool IsAudioFile(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
+        {
             return false;
+        }
 
         string extension = Path.GetExtension(path);
         return MusicLibrary._supportedAudioExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
@@ -390,7 +392,9 @@ public class FileImportService : IFileImportService
     public int GetAudioFileCount(string folderPath)
     {
         if (!Directory.Exists(folderPath))
+        {
             return 0;
+        }
 
         try
         {

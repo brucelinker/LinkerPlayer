@@ -53,7 +53,9 @@ public static class MonitorHelper
     public static string? GetDeviceName(Window window)
     {
         if (window == null)
+        {
             return null;
+        }
 
         try
         {

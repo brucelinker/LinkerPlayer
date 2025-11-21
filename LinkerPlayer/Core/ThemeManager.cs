@@ -14,7 +14,9 @@ public class ThemeManager
     private void ClearStyles()
     {
         if (MainWindow.Instance == null)
+        {
             return;
+        }
 
         // IMPORTANT: Cache font styles BEFORE clearing!
         CacheFontStyles();
@@ -42,7 +44,9 @@ public class ThemeManager
     public static void AddDict(ResourceDictionary resDict)
     {
         if (MainWindow.Instance == null)
+        {
             return;
+        }
 
         Application.Current.Resources.MergedDictionaries.Add(resDict);
         MainWindow.Instance.Resources.MergedDictionaries.Add(resDict);
@@ -192,12 +196,16 @@ public class ThemeManager
     {
         string uri = GetThemeUri(skin);
         if (string.IsNullOrEmpty(uri))
+        {
             return;
+        }
 
         Uri? langDictUri = new(uri, UriKind.Relative);
 
         if (langDictUri == null!)
+        {
             return;
+        }
 
         ResourceDictionary langDict = (Application.LoadComponent(langDictUri) as ResourceDictionary)!;
 

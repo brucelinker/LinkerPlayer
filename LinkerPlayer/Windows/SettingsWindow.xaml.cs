@@ -431,7 +431,9 @@ public partial class SettingsWindow
     {
         Window? win = Window.GetWindow(this);
         if (win != null)
+        {
             win.Hide();
+        }
     }
 
     private void Window_Closing(object sender, EventArgs e)

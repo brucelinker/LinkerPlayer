@@ -160,7 +160,9 @@ public partial class AudioEngine
     private void HandleFftCalculated()
     {
         if (_audioDeviceLost)
+        {
             return;
+        }
 
         if (_currentMode == OutputMode.DirectSound && IsPlaying && CurrentStream != 0)
         {
@@ -198,9 +200,14 @@ public partial class AudioEngine
 
             PlaybackState state = Bass.ChannelIsActive(CurrentStream);
             if (CheckAudioDeviceLost())
+            {
                 return;
+            }
+
             if (state != PlaybackState.Playing)
+            {
                 return;
+            }
         }
         else
         {
@@ -221,7 +228,10 @@ public partial class AudioEngine
         else
         {
             if (_audioDeviceLost)
+            {
                 return;
+            }
+
             bytesRead = BassWasapi.GetData(_fftBuffer, (int)DataFlags.FFT2048);
             if (bytesRead < 0)
             {
@@ -238,7 +248,9 @@ public partial class AudioEngine
                 }
             }
             if (CheckAudioDeviceLost())
+            {
                 return;
+            }
         }
 
         int fftSize;
@@ -272,7 +284,10 @@ public partial class AudioEngine
             float sum = 0f;
             int binCount = endBin - startBin;
             for (int bin = startBin; bin < endBin; bin++)
+            {
                 sum += fftResult[bin];
+            }
+
             barValues[bar] = binCount > 0 ? sum / binCount : 0f;
         }
 

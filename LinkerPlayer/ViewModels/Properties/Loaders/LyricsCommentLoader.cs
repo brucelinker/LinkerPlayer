@@ -39,9 +39,13 @@ public class LyricsCommentLoader
             {
                 // Don't update if the value is the placeholder text
                 if (v == "[ No comment available. ]")
+                {
                     tag.Comment = null;
+                }
                 else
+                {
                     tag.Comment = string.IsNullOrEmpty(v) ? null : v;
+                }
             }
         };
     }
@@ -63,7 +67,9 @@ public class LyricsCommentLoader
         foreach (File audioFile in audioFiles)
         {
             if (audioFile?.Tag == null)
+            {
                 continue;
+            }
 
             string comment = audioFile.Tag.Comment ?? "";
 
@@ -127,9 +133,13 @@ public class LyricsCommentLoader
                   {
                       // Don't update if the value is the placeholder text
                       if (v == "[ No lyrics available. ]")
+                      {
                           tag.Lyrics = null;
+                      }
                       else
+                      {
                           tag.Lyrics = string.IsNullOrEmpty(v) ? null : v;
+                      }
                   }
         };
     }
@@ -151,7 +161,9 @@ public class LyricsCommentLoader
         foreach (File audioFile in audioFiles)
         {
             if (audioFile?.Tag == null)
+            {
                 continue;
+            }
 
             string lyrics = audioFile.Tag.Lyrics ?? "";
 

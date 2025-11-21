@@ -109,7 +109,9 @@ public class CustomMetadataLoader : IMetadataLoader
         {
             File audioFile = audioFiles[fileIndex];
             if (audioFile?.Tag == null)
+            {
                 continue;
+            }
 
             Dictionary<string, List<string>> customFields = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -125,7 +127,9 @@ public class CustomMetadataLoader : IMetadataLoader
 
                 // Skip picture-related fields
                 if (PictureFields.Contains(fieldName))
+                {
                     continue;
+                }
 
                 string combinedValue = string.Join("; ", kvp.Value.Distinct().Where(v => !string.IsNullOrWhiteSpace(v)));
 
@@ -189,7 +193,9 @@ public class CustomMetadataLoader : IMetadataLoader
         try
         {
             if (audioFile.GetTag(TagLib.TagTypes.Ape, false) is not TagLib.Ape.Tag apeTag)
+            {
                 return;
+            }
 
             foreach (string key in apeTag)
             {
@@ -226,7 +232,9 @@ public class CustomMetadataLoader : IMetadataLoader
         try
         {
             if (audioFile.GetTag(TagLib.TagTypes.Xiph, false) is not XiphComment xiphTag)
+            {
                 return;
+            }
 
             foreach (string field in xiphTag)
             {
@@ -260,7 +268,9 @@ public class CustomMetadataLoader : IMetadataLoader
         try
         {
             if (audioFile.GetTag(TagLib.TagTypes.Apple, false) is not AppleTag mp4Tag)
+            {
                 return;
+            }
 
             // Use reflection to find the internal text dictionary
             IEnumerable<FieldInfo> textFields = mp4Tag.GetType().GetFields(BindingFlags.NonPublic | BindingFlags.Instance)
@@ -269,7 +279,9 @@ public class CustomMetadataLoader : IMetadataLoader
             foreach (FieldInfo? field in textFields)
             {
                 if (field.GetValue(mp4Tag) is not Dictionary<string, string[]> dict)
+                {
                     continue;
+                }
 
                 foreach (KeyValuePair<string, string[]> kvp in dict)
                 {
@@ -301,7 +313,9 @@ public class CustomMetadataLoader : IMetadataLoader
         try
         {
             if (audioFile.GetTag(TagLib.TagTypes.Id3v2, false) is not TagLib.Id3v2.Tag id3v2Tag)
+            {
                 return;
+            }
 
             try
             {

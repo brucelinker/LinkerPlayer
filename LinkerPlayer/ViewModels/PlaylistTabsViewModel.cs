@@ -50,11 +50,11 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IDatabaseSaveService _databaseSaveService; // NEW: Debounced save service
     private readonly ISelectionService _selectionService; // new
-    private readonly SharedDataModel _sharedDataModel; // wrapped
+    private readonly ISharedDataModel _sharedDataModel; // switch to interface
     private readonly ISettingsManager _settingsManager; // restore
 
-    // Expose SharedDataModel for legacy consumers
-    public SharedDataModel SharedDataModel => _sharedDataModel;
+    // Expose for legacy consumers if needed
+    public ISharedDataModel SharedDataModel => _sharedDataModel;
 
     // ADD missing internal UI/state fields
     private TabControl? _tabControl; // holds TabControl reference
@@ -70,24 +70,13 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public MediaFile? ActiveTrack
     {
         get => _sharedDataModel.ActiveTrack;
-        set
-        {
-            if (!ReferenceEquals(_sharedDataModel.ActiveTrack, value))
-            {
-                _sharedDataModel.UpdateActiveTrack(value!);
-                OnPropertyChanged(nameof(ActiveTrack));
-            }
-        }
+        set { if (!ReferenceEquals(_sharedDataModel.ActiveTrack, value) && value != null) { _sharedDataModel.UpdateActiveTrack(value); OnPropertyChanged(nameof(ActiveTrack)); } }
     }
 
     public int SelectedTrackIndex
     {
         get => _sharedDataModel.SelectedTrackIndex;
-        set
-        {
-            _sharedDataModel.UpdateSelectedTrackIndex(value);
-            OnPropertyChanged(nameof(SelectedTrackIndex));
-        }
+        set { _sharedDataModel.UpdateSelectedTrackIndex(value); OnPropertyChanged(nameof(SelectedTrackIndex)); }
     }
 
     public MediaFile? SelectedTrack
@@ -102,9 +91,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
             }
             else
             {
-                int idx = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count
-                    ? TabList[SelectedTabIndex].Tracks.IndexOf(value)
-                    : -1;
+                int idx = SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count ? TabList[SelectedTabIndex].Tracks.IndexOf(value) : -1;
                 _selectionService.SetTrack(value, idx);
                 if (idx >= 0)
                 {
@@ -117,7 +104,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
 
     public PlaylistTabsViewModel(
         IMusicLibrary musicLibrary,
-        SharedDataModel sharedDataModel,
+        ISharedDataModel sharedDataModel,
         ISettingsManager settingsManager,
         IFileImportService fileImportService,
         IPlaylistManagerService playlistManagerService,
@@ -307,7 +294,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private bool SetLastSelectedTrack(MediaFile selectedTrack)
     {
         if (SelectedPlaylist == null)
+        {
             return false;
+        }
 
         if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
         {
@@ -329,7 +318,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public void OnDataGridSorted(string propertyName, ListSortDirection direction)
     {
         if (_dataGrid?.SelectedItem is not MediaFile saveSelectedItem)
+        {
             return;
+        }
 
         try
         {
@@ -340,11 +331,19 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 object? propY = y.GetType().GetProperty(propertyName)?.GetValue(y);
 
                 if (propX == null && propY == null)
+                {
                     return 0;
+                }
+
                 if (propX == null)
+                {
                     return direction == ListSortDirection.Ascending ? -1 : 1;
+                }
+
                 if (propY == null)
+                {
                     return direction == ListSortDirection.Ascending ? 1 : -1;
+                }
 
                 int comparison = Comparer.Default.Compare(propX, propY);
                 return direction == ListSortDirection.Ascending ? comparison : -comparison;
@@ -397,7 +396,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public void OnDoubleClickDataGrid()
     {
         if (_dataGrid?.SelectedItem is not MediaFile selectedTrack)
+        {
             return;
+        }
 
         try
         {
@@ -434,11 +435,7 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 {
                     continue;
                 }
-                PlaylistTab tab = new PlaylistTab
-                {
-                    Name = playlist.Name,
-                    Tracks = new ObservableCollection<MediaFile>()
-                };
+                PlaylistTab tab = new PlaylistTab { Name = playlist.Name }; // FIX: removed read-only Tracks assignment
                 TabList.Add(tab);
             }
             _logger.LogInformation("Created {Count} playlist tabs (tracks not yet loaded)", TabList.Count);
@@ -1130,16 +1127,23 @@ public partial class PlaylistTabsViewModel : ObservableObject
                     {
                         line = line.Trim();
                         if (string.IsNullOrEmpty(line))
+                        {
                             continue;
+                        }
+
                         if (line.StartsWith("#"))
+                        {
                             continue; // comment or directive
+                        }
 
                         results.Add(line);
                     }
 
                     // If we successfully read any entries, break
                     if (results.Count > 0)
+                    {
                         break;
+                    }
                 }
                 catch
                 {
@@ -1169,7 +1173,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private static string NormalizeForCompare(string input)
     {
         if (string.IsNullOrEmpty(input))
+        {
             return string.Empty;
+        }
 
         // Lowercase
         string s = input.ToLowerInvariant();
@@ -1203,17 +1209,30 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private static int LevenshteinDistance(string a, string b)
     {
         if (a == b)
+        {
             return 0;
+        }
+
         if (a.Length == 0)
+        {
             return b.Length;
+        }
+
         if (b.Length == 0)
+        {
             return a.Length;
+        }
 
         int[,] d = new int[a.Length + 1, b.Length + 1];
         for (int i = 0; i <= a.Length; i++)
+        {
             d[i, 0] = i;
+        }
+
         for (int j = 0; j <= b.Length; j++)
+        {
             d[0, j] = j;
+        }
 
         for (int i = 1; i <= a.Length; i++)
         {
@@ -1243,19 +1262,27 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 string ext = Path.GetExtension(file);
                 if (!allowed.Contains(ext))
+                {
                     continue;
+                }
+
                 string name = Path.GetFileName(file);
                 string nameNorm = NormalizeForCompare(name);
                 string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
                 if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm)
+                {
                     return file;
+                }
+
                 int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
                 if (dist < bestScore)
                 {
                     bestScore = dist;
                     bestPath = file;
                     if (bestScore <= 2)
+                    {
                         return bestPath;
+                    }
                 }
             }
             return bestScore <= 3 ? bestPath : null;
@@ -1278,19 +1305,27 @@ public partial class PlaylistTabsViewModel : ObservableObject
             {
                 string ext = Path.GetExtension(file);
                 if (!allowed.Contains(ext))
+                {
                     continue;
+                }
+
                 string name = Path.GetFileName(file);
                 string nameNorm = NormalizeForCompare(name);
                 string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
                 if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm)
+                {
                     return file;
+                }
+
                 int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
                 if (dist < bestScore)
                 {
                     bestScore = dist;
                     bestPath = file;
                     if (bestScore <= 1)
+                    {
                         return bestPath;
+                    }
                 }
             }
             return bestScore <= 2 ? bestPath : null;
@@ -1310,14 +1345,19 @@ public partial class PlaylistTabsViewModel : ObservableObject
                 string name = Path.GetFileName(dir);
                 string nameNorm = NormalizeForCompare(name);
                 if (nameNorm == targetNorm)
+                {
                     return dir;
+                }
+
                 int dist = LevenshteinDistance(nameNorm, targetNorm);
                 if (dist < bestScore)
                 {
                     bestScore = dist;
                     bestPath = dir;
                     if (bestScore <= 2)
+                    {
                         return bestPath;
+                    }
                 }
             }
             return bestScore <= 3 ? bestPath : null;
@@ -1328,12 +1368,12 @@ public partial class PlaylistTabsViewModel : ObservableObject
     private PlaylistTab CreatePlaylistTabFromPlaylist(Playlist playlist)
     {
         IEnumerable<MediaFile> tracks = _playlistManagerService.LoadPlaylistTracks(playlist.Name);
-
-        return new PlaylistTab
+        PlaylistTab tab = new PlaylistTab { Name = playlist.Name }; // FIX: removed read-only Tracks assignment
+        foreach (MediaFile track in tracks)
         {
-            Name = playlist.Name,
-            Tracks = new ObservableCollection<MediaFile>(tracks)
-        };
+            tab.Tracks.Add(track);
+        }
+        return tab;
     }
 
     private async Task EnsureSelectedTabExistsAsync()
@@ -1533,7 +1573,9 @@ public partial class PlaylistTabsViewModel : ObservableObject
     public async Task RenamePlaylistAsync((PlaylistTab Tab, string? OldName) args)
     {
         if (string.IsNullOrEmpty(args.Tab.Name) || args.OldName == null)
+        {
             return;
+        }
 
         try
         {

@@ -188,7 +188,9 @@ public partial class PropertiesWindow
     {
         Window? win = GetWindow(this);
         if (win != null)
+        {
             win.Close();
+        }
     }
 
     private void LyricsTextBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -365,14 +367,18 @@ public partial class PropertiesWindow
     private static ScrollViewer? GetScrollViewer(DependencyObject element)
     {
         if (element is ScrollViewer scrollViewer)
+        {
             return scrollViewer;
+        }
 
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(element); i++)
         {
             DependencyObject child = VisualTreeHelper.GetChild(element, i);
             ScrollViewer? result = GetScrollViewer(child);
             if (result != null)
+            {
                 return result;
+            }
         }
         return null;
     }
@@ -381,23 +387,35 @@ public partial class PropertiesWindow
     {
         // Only handle additions (when a row is selected), not removals
         if (e.AddedItems.Count == 0)
+        {
             return;
+        }
 
         DataGrid? currentDataGrid = sender as DataGrid;
         if (currentDataGrid == null)
+        {
             return;
+        }
 
         // Clear selection in all other DataGrids
         if (currentDataGrid != MetadataDataGrid)
+        {
             MetadataDataGrid?.UnselectAll();
+        }
 
         if (currentDataGrid != PropertiesDataGrid)
+        {
             PropertiesDataGrid?.UnselectAll();
+        }
 
         if (currentDataGrid != ReplayGainDataGrid)
+        {
             ReplayGainDataGrid?.UnselectAll();
+        }
 
         if (currentDataGrid != PictureDataGrid)
+        {
             PictureDataGrid?.UnselectAll();
+        }
     }
 }

@@ -1,6 +1,5 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Models;
-using LinkerPlayer.ViewModels;
 using LinkerPlayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -93,7 +92,8 @@ public partial class TrackInfo
             {
                 await System.Threading.Tasks.Task.Run(() =>
                 {
-                    try { mediaFile.LoadAlbumCover(); }
+                    try
+                    { mediaFile.LoadAlbumCover(); }
                     catch (System.Exception ex) { _logger.LogWarning(ex, "Failed to load album cover for {Title}", mediaFile.Title); }
                 });
             }
@@ -101,14 +101,16 @@ public partial class TrackInfo
             bool isInvalidImage = mediaFile.AlbumCover == null;
             if (mediaFile.AlbumCover is BitmapImage bitmap && !bitmap.IsDownloading)
             {
-                try { _ = bitmap.PixelWidth; isInvalidImage = bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0; }
+                try
+                { _ = bitmap.PixelWidth; isInvalidImage = bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0; }
                 catch (System.Exception ex) { _logger.LogWarning(ex, "Invalid BitmapImage detected for {MediaFileTitle}", mediaFile.Title); isInvalidImage = true; }
             }
 
             if (isInvalidImage)
             {
                 mediaFile.AlbumCover = GetDefaultAlbumImage();
-                if (FindName("TrackImageText") is TextBlock trackImageText) { trackImageText.Text = "[No Image]"; }
+                if (FindName("TrackImageText") is TextBlock trackImageText)
+                { trackImageText.Text = "[No Image]"; }
             }
             else if (FindName("TrackImageText") is TextBlock okText)
             {
@@ -123,14 +125,24 @@ public partial class TrackInfo
         else
         {
             SelectedMediaFile = null;
-            if (FindName("TrackImage") is Image trackImage) { trackImage.Source = GetDefaultAlbumImage(); }
-            if (FindName("TrackImageText") is TextBlock trackImageText) { trackImageText.Text = "[ No Selection ]"; }
+            if (FindName("TrackImage") is Image trackImage)
+            {
+                trackImage.Source = GetDefaultAlbumImage();
+            }
+
+            if (FindName("TrackImageText") is TextBlock trackImageText)
+            {
+                trackImageText.Text = "[ No Selection ]";
+            }
         }
     }
 
     private static BitmapImage GetDefaultAlbumImage()
     {
-        try { return new BitmapImage(new System.Uri(NoAlbumCover, System.UriKind.Absolute)); }
+        try
+        {
+            return new BitmapImage(new System.Uri(NoAlbumCover, System.UriKind.Absolute));
+        }
         catch (System.Exception ex)
         {
             App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>().LogError(ex, "Failed to load default album image");

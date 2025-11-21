@@ -133,12 +133,11 @@ public partial class PlaylistTabsViewModel
                 if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
                 {
                     PlaylistTab tab = TabList[SelectedTabIndex];
-                    await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, new[] { importedFile });
-
-                    await _uiDispatcher.InvokeAsync(() =>
+                    bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, new[] { importedFile });
+                    if (success)
                     {
-                        tab.Tracks.Add(importedFile); // ObservableCollection auto-notifies!
-                    });
+                        await _uiDispatcher.InvokeAsync(() => { if (tab.Tracks.All(t => t.Id != importedFile.Id)) { tab.Tracks.Add(importedFile); } });
+                    }
                 }
             }
         }
@@ -250,7 +249,7 @@ public partial class PlaylistTabsViewModel
                         {
                             if (tab.Tracks.All(t => t.Id != track.Id))
                             {
-                                tab.Tracks.Add(track); // ObservableCollection auto-notifies!
+                                tab.Tracks.Add(track);
                             }
                         }
 

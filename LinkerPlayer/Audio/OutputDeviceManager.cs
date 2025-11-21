@@ -40,11 +40,15 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
                 DeviceInfo dsDevice = Bass.GetDeviceInfo(i);
                 //_logger.LogDebug("DirectSound Device {Index}: Name='{Name}', IsEnabled={IsEnabled}, IsDefault={IsDefault}", i, dsDevice.Name, dsDevice.IsEnabled, dsDevice.IsDefault);
                 if (string.IsNullOrEmpty(dsDevice.Name) || !dsDevice.IsEnabled)
+                {
                     continue;
+                }
 
                 // Skip BASS's internal "Default" entry to avoid duplicates
                 if (dsDevice.IsDefault || string.Equals(dsDevice.Name, "Default", StringComparison.OrdinalIgnoreCase))
+                {
                     continue;
+                }
 
                 _devices.Add(new Device(dsDevice.Name, OutputDeviceType.DirectSound, i));
             }
@@ -99,7 +103,9 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         }
 
         if (_devices == null)
+        {
             return Enumerable.Empty<Device>();
+        }
 
         return _devices.Where(d => d.Type == OutputDeviceType.DirectSound);
     }
@@ -112,7 +118,9 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         }
 
         if (_devices == null)
+        {
             return Enumerable.Empty<Device>();
+        }
 
         return _devices.Where(d => d.Type == OutputDeviceType.Wasapi);
     }
@@ -146,11 +154,20 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         // 2: Other non-headset devices
         // 3: Headset-style devices
         if (isSpeaker && isDefault)
+        {
             return 0;
+        }
+
         if (isSpeaker)
+        {
             return 1;
+        }
+
         if (isHeadset)
+        {
             return 3;
+        }
+
         return 2;
     }
 }

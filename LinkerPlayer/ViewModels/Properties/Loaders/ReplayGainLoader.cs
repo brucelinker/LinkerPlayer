@@ -118,14 +118,20 @@ public class ReplayGainLoader : IMetadataLoader
     private static string FormatPeakToString(double peak)
     {
         if (double.IsNaN(peak))
+        {
             return string.Empty;
+        }
+
         return peak.ToString("F6");
     }
 
     private static string FormatGainToString(double gain)
     {
         if (double.IsNaN(gain))
+        {
             return string.Empty;
+        }
+
         return gain.ToString("F") + " dB";
     }
 }

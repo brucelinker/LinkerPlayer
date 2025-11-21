@@ -144,7 +144,9 @@ public class FilePropertiesLoader : IMetadataLoader
                 {
                     string? value = xiphTag.GetFirstField(key);
                     if (!string.IsNullOrWhiteSpace(value))
+                    {
                         return value;
+                    }
                 }
             }
 
@@ -155,7 +157,9 @@ public class FilePropertiesLoader : IMetadataLoader
                 {
                     string? value = mp4Tag.GetText("----:com.apple.iTunes:" + key)?.FirstOrDefault();
                     if (!string.IsNullOrWhiteSpace(value))
+                    {
                         return value;
+                    }
                 }
             }
 

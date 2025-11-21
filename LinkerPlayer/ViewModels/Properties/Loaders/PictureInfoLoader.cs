@@ -140,7 +140,9 @@ public class PictureInfoLoader : IMetadataLoader
         foreach (File audioFile in audioFiles)
         {
             if (audioFile?.Tag == null)
+            {
                 continue;
+            }
 
             TagLib.Tag tag = audioFile.Tag;
 
@@ -152,31 +154,46 @@ public class PictureInfoLoader : IMetadataLoader
                 // Track picture count
                 int count = tag.Pictures.Length;
                 if (!pictureCountValues.ContainsKey(count))
+                {
                     pictureCountValues[count] = 0;
+                }
+
                 pictureCountValues[count]++;
 
                 // Track picture type
                 string type = pic.Type.ToString();
                 if (!pictureTypeValues.ContainsKey(type))
+                {
                     pictureTypeValues[type] = 0;
+                }
+
                 pictureTypeValues[type]++;
 
                 // Track MIME type
                 string mimeType = pic.MimeType ?? "";
                 if (!pictureMimeTypeValues.ContainsKey(mimeType))
+                {
                     pictureMimeTypeValues[mimeType] = 0;
+                }
+
                 pictureMimeTypeValues[mimeType]++;
 
                 // Track filename
                 string filename = string.IsNullOrEmpty(pic.Filename) ? "<Embedded Image>" : pic.Filename;
                 if (!pictureFilenameValues.ContainsKey(filename))
+                {
                     pictureFilenameValues[filename] = 0;
+                }
+
                 pictureFilenameValues[filename]++;
 
                 // Track description
                 string description = pic.Description ?? "";
                 if (!pictureDescriptionValues.ContainsKey(description))
+                {
                     pictureDescriptionValues[description] = 0;
+                }
+
                 pictureDescriptionValues[description]++;
 
                 // NEW: Track picture data hash to detect unique covers
@@ -190,7 +207,10 @@ public class PictureInfoLoader : IMetadataLoader
                     double sizeInKB = pic.Data.Data.Length / 1024.0;
                     string sizeStr = $"{sizeInKB:F2} KB";
                     if (!pictureSizeValues.ContainsKey(sizeStr))
+                    {
                         pictureSizeValues[sizeStr] = 0;
+                    }
+
                     pictureSizeValues[sizeStr]++;
 
                     // Try to get dimensions
@@ -206,7 +226,10 @@ public class PictureInfoLoader : IMetadataLoader
 
                         string dimensions = $"{tempImage.PixelWidth} x {tempImage.PixelHeight}";
                         if (!pictureDimensionsValues.ContainsKey(dimensions))
+                        {
                             pictureDimensionsValues[dimensions] = 0;
+                        }
+
                         pictureDimensionsValues[dimensions]++;
                     }
                     catch (Exception ex)
@@ -285,7 +308,9 @@ public class PictureInfoLoader : IMetadataLoader
     private static int ComputeSimpleHash(byte[] data)
     {
         if (data == null || data.Length == 0)
+        {
             return 0;
+        }
 
         unchecked
         {

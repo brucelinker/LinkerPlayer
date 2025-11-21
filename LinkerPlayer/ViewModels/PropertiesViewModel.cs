@@ -20,7 +20,7 @@ namespace LinkerPlayer.ViewModels;
 public partial class PropertiesViewModel : ObservableObject, IDisposable
 {
     // Dependencies
-    private readonly SharedDataModel _sharedDataModel;
+    private readonly ISharedDataModel _sharedDataModel; // change to interface
     private readonly ILogger<PropertiesViewModel> _logger;
     private readonly IBpmDetector? _bpmDetector;
     private readonly IReplayGainCalculator? _replayGainCalculator;
@@ -71,15 +71,15 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
     public event EventHandler<bool>? CloseRequested;
 
     public PropertiesViewModel(
-        SharedDataModel sharedDataModel,
-      CoreMetadataLoader coreMetadataLoader,
+        ISharedDataModel sharedDataModel,
+        CoreMetadataLoader coreMetadataLoader,
         CustomMetadataLoader customMetadataLoader,
         FilePropertiesLoader filePropertiesLoader,
         ReplayGainLoader replayGainLoader,
         PictureInfoLoader pictureInfoLoader,
         LyricsCommentLoader lyricsCommentLoader,
         ILogger<PropertiesViewModel> logger,
- IBpmDetector? bpmDetector = null,
+        IBpmDetector? bpmDetector = null,
         IReplayGainCalculator? replayGainCalculator = null)
     {
         _sharedDataModel = sharedDataModel;
@@ -101,9 +101,10 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         _selectionDebounceTimer.Tick += SelectionDebounceTimer_Tick;
 
         _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
+        _sharedDataModel.SelectedTracksChanged += SelectedTracks_CollectionChanged!;
 
         // Subscribe to SelectedTracks collection changes
-        _sharedDataModel.SelectedTracks.CollectionChanged += SelectedTracks_CollectionChanged!;
+        //_sharedDataModel.SelectedTracks.CollectionChanged += SelectedTracks_CollectionChanged!;
 
         _logger.LogDebug("PropertiesViewModel constructor: SelectedTracks.Count = {Count}, SelectedTrack = {Track}",
             _sharedDataModel.SelectedTracks.Count,
@@ -186,7 +187,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
 
     private void SharedDataModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SharedDataModel.SelectedTrack) && _sharedDataModel.SelectedTrack != null)
+        if (e.PropertyName == nameof(ISharedDataModel.SelectedTrack) && _sharedDataModel.SelectedTrack != null)
         {
             if (HasUnsavedChanges)
             {
@@ -695,7 +696,9 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
         else
         {
             if (_sharedDataModel.SelectedTrack == null)
+            {
                 return;
+            }
 
             _sharedDataModel.SelectedTrack.UpdateFromFileMetadata();
 
@@ -709,7 +712,9 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         if (_disposed)
+        {
             return;
+        }
 
         _disposed = true;
 
@@ -723,7 +728,7 @@ public partial class PropertiesViewModel : ObservableObject, IDisposable
 
         // Unsubscribe from events to prevent memory leaks
         _sharedDataModel.PropertyChanged -= SharedDataModel_PropertyChanged!;
-        _sharedDataModel.SelectedTracks.CollectionChanged -= SelectedTracks_CollectionChanged!;
+        _sharedDataModel.SelectedTracksChanged -= SelectedTracks_CollectionChanged!;
 
         // Cancel any ongoing operations
         _bpmDetectionCts?.Cancel();

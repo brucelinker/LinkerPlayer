@@ -58,7 +58,9 @@ public class EditableTabHeaderControl : ContentControl
             if (_textBox != null && string.IsNullOrEmpty(_textBox.Text))
             {
                 if (_oldText != null)
+                {
                     _textBox.Text = _oldText;
+                }
             }
 
             SetValue(IsInEditModeProperty, value);
@@ -116,7 +118,10 @@ public class EditableTabHeaderControl : ContentControl
         if (e.Key == Key.Escape)
         {
             if (_oldText != null)
+            {
                 _textBox!.Text = _oldText;
+            }
+
             IsInEditMode = false;
         }
         else if (e.Key == Key.Enter)

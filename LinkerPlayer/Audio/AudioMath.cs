@@ -9,7 +9,9 @@ internal static class AudioMath
     public static int GetFftFrequencyIndex(int sampleRate, int frequency, int fftSize = DefaultFftSize)
     {
         if (frequency <= 0 || sampleRate <= 0 || fftSize <= 0)
+        {
             return 0;
+        }
 
         float binWidth = sampleRate / (float)fftSize;
         int index = (int)(frequency / binWidth);
