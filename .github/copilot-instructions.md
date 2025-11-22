@@ -43,3 +43,4 @@ When I ask a question, follow these steps:
    - Keep the code simple and DRY
    - My project enables `<Nullable>`, make sure the code supports that
    - I prefer using Explicit Types, do not use var.
+   - Only focus on changes in logic - DO NOT CHANGE FORMATTING. Formatting is my preference, not your preference.

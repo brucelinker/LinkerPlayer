@@ -26,7 +26,8 @@ public partial class VuMeter : Control
     #endregion
 
     #region Fields
-    private readonly System.Threading.Timer _animationTimer;
+    // Replaced System.Threading.Timer with DispatcherTimer to avoid cross-thread marshal cost each tick.
+    private readonly DispatcherTimer _uiTimer;
     private Canvas? _vuCanvas;
     private ISpectrumPlayer? _soundPlayer;
     private readonly ILogger<VuMeter> _logger;
@@ -43,6 +44,9 @@ public partial class VuMeter : Control
     private bool _isPlayerPlaying = false;
     private AudioEngine? _audioEngine;
     private bool _isShuttingDown = false;
+
+    // Cached gradient brush
+    private LinearGradientBrush _baseGradient = null!;
     #endregion
 
     #region Dependency Properties
@@ -98,7 +102,7 @@ public partial class VuMeter : Control
 
     public static readonly DependencyProperty GradientStartColorProperty =
         DependencyProperty.Register(nameof(GradientStartColor), typeof(Color), typeof(VuMeter),
-            new FrameworkPropertyMetadata(Color.FromRgb(44, 8, 106), FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(Color.FromRgb(44, 8, 106), FrameworkPropertyMetadataOptions.AffectsRender, OnGradientChanged));
 
     public Color GradientStartColor
     {
@@ -108,7 +112,7 @@ public partial class VuMeter : Control
 
     public static readonly DependencyProperty GradientEndColorProperty =
         DependencyProperty.Register(nameof(GradientEndColor), typeof(Color), typeof(VuMeter),
-            new FrameworkPropertyMetadata(Colors.Black, FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(Colors.Black, FrameworkPropertyMetadataOptions.AffectsRender, OnGradientChanged));
 
     public Color GradientEndColor
     {
@@ -189,6 +193,13 @@ public partial class VuMeter : Control
         VuMeter vu = (VuMeter)d;
         vu.SafeUpdateLayout();
     }
+
+    private static void OnGradientChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        VuMeter vu = (VuMeter)d;
+        vu.CreateOrUpdateGradient();
+        vu.UpdateVuBars();
+    }
     #endregion
 
     #region Constructor
@@ -211,11 +222,11 @@ public partial class VuMeter : Control
             _isShuttingDown = true;
         }
 
-        _animationTimer = new System.Threading.Timer(
-            AnimationTimer_Tick,
-            null,
-            Timeout.Infinite,
-            DefaultUpdateInterval);
+        _uiTimer = new DispatcherTimer(DispatcherPriority.Render)
+        {
+            Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
+        };
+        _uiTimer.Tick += UiTimer_Tick;
 
         DefaultStyleKey = typeof(VuMeter);
 
@@ -224,6 +235,8 @@ public partial class VuMeter : Control
 
         _channelCount = ChannelCount;
         _channelLevels = Enumerable.Repeat(MinDbValue, _channelCount).ToArray();
+
+        CreateOrUpdateGradient();
     }
     #endregion
 
@@ -254,11 +267,11 @@ public partial class VuMeter : Control
             _isPlayerPlaying = _soundPlayer.IsPlaying;
             if (_soundPlayer.IsPlaying)
             {
-                _animationTimer.Change(0, DefaultUpdateInterval);
+                StartTimer();
             }
             else
             {
-                _animationTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                StopTimer();
             }
             _logger.LogInformation("VuMeter: Registered sound player");
         }
@@ -273,7 +286,7 @@ public partial class VuMeter : Control
             _soundPlayer = null;
             _audioEngine = null;
             _isPlayerPlaying = false;
-            _animationTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            StopTimer();
 
             lock (_lockObject)
             {
@@ -413,7 +426,7 @@ public partial class VuMeter : Control
             {
                 Width = 0,
                 Height = channelHeight,
-                Fill = CreateGradientBrush(channelHeight, MinDbValue)
+                Fill = _baseGradient
             };
             double top = i * (channelHeight + ChannelSpacing);
             Canvas.SetLeft(bar, 0);
@@ -447,7 +460,7 @@ public partial class VuMeter : Control
 
         if (!Dispatcher.CheckAccess())
         {
-            Dispatcher.BeginInvoke(new Action(UpdateVuBarsInternal));
+            Dispatcher.BeginInvoke(new Action(UpdateVuBarsInternal), DispatcherPriority.Render);
             return;
         }
         UpdateVuBarsInternal();
@@ -473,7 +486,6 @@ public partial class VuMeter : Control
             double width = System.Math.Max(0, System.Math.Min(canvasWidth, (level - MinDbValue) / DbRange * canvasWidth));
             Rectangle bar = _channelBars[i];
             bar.Width = width;
-            bar.Fill = CreateGradientBrush(bar.Height, level);
         }
     }
 
@@ -549,15 +561,14 @@ public partial class VuMeter : Control
 
         if (e.PropertyName == nameof(ISpectrumPlayer.IsPlaying) && _soundPlayer != null)
         {
-            bool wasPlaying = _isPlayerPlaying;
             _isPlayerPlaying = _soundPlayer.IsPlaying;
             if (_soundPlayer.IsPlaying)
             {
-                _animationTimer.Change(0, DefaultUpdateInterval);
+                StartTimer();
             }
             else
             {
-                _animationTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                StopTimer();
                 lock (_lockObject)
                 {
                     for (int i = 0; i < _channelLevels.Length; i++)
@@ -570,28 +581,15 @@ public partial class VuMeter : Control
         }
     }
 
-    private void AnimationTimer_Tick(object? state)
+    private void UiTimer_Tick(object? sender, EventArgs e)
     {
         if (_isShuttingDown || !_isPlayerPlaying)
         {
             return;
         }
 
-        try
-        {
-            Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                UpdateAudioLevels();
-                UpdateVuBars();
-            }), DispatcherPriority.Background);
-        }
-        catch (System.Exception ex)
-        {
-            if (!_isShuttingDown)
-            {
-                _logger.LogDebug(ex, "Error in VuMeter animation timer: {Message}", ex.Message);
-            }
-        }
+        UpdateAudioLevels();
+        UpdateVuBars();
     }
 
     private void VuCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
@@ -608,7 +606,7 @@ public partial class VuMeter : Control
     #endregion
 
     #region Gradient Brush Creator
-    private Brush CreateGradientBrush(double barHeight, double dbLevel)
+    private void CreateOrUpdateGradient()
     {
         LinearGradientBrush gradient = new LinearGradientBrush
         {
@@ -618,7 +616,30 @@ public partial class VuMeter : Control
         gradient.GradientStops.Add(new GradientStop(GradientStartColor, 0.0));
         gradient.GradientStops.Add(new GradientStop(GradientEndColor, 1.0));
         gradient.Freeze();
-        return gradient;
+        _baseGradient = gradient;
+        foreach (Rectangle bar in _channelBars)
+        {
+            bar.Fill = _baseGradient;
+        }
+    }
+    #endregion
+
+    #region Timer Helpers
+    private void StartTimer()
+    {
+        if (!_uiTimer.IsEnabled)
+        {
+            _uiTimer.Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval);
+            _uiTimer.Start();
+        }
+    }
+
+    private void StopTimer()
+    {
+        if (_uiTimer.IsEnabled)
+        {
+            _uiTimer.Stop();
+        }
     }
     #endregion
 }

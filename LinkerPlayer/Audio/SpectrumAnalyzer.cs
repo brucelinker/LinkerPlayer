@@ -44,6 +44,10 @@ public partial class SpectrumAnalyzer : Control
     private int[] _barIndexMax = [];
     private int[] _barLogScaleIndexMax = [];
     private readonly object _updateLock = new object();
+    // New cached x coordinates to avoid recomputation each frame
+    private double[] _barXCoords = [];
+    // Reusable scratch buffer for channel copy to reduce allocations
+    private float[] _scratchFftCopy = new float[2048];
     #endregion
 
     #region Constants
@@ -58,7 +62,7 @@ public partial class SpectrumAnalyzer : Control
     #region Dependency Properties
     public static readonly DependencyProperty MaximumFrequencyProperty =
         DependencyProperty.Register(nameof(MaximumFrequency), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(20000, OnPropertyChanged, OnCoerceMaximumFrequency));
+            new UIPropertyMetadata(20000, OnLayoutAffectingPropertyChanged, OnCoerceMaximumFrequency));
 
     public int MaximumFrequency
     {
@@ -68,7 +72,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty MinimumFrequencyProperty =
         DependencyProperty.Register(nameof(MinimumFrequency), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(20, OnPropertyChanged, OnCoerceMinimumFrequency));
+            new UIPropertyMetadata(20, OnLayoutAffectingPropertyChanged, OnCoerceMinimumFrequency));
 
     public int MinimumFrequency
     {
@@ -78,7 +82,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarCountProperty =
         DependencyProperty.Register(nameof(BarCount), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(32, OnPropertyChanged, OnCoerceBarCount));
+            new UIPropertyMetadata(32, OnLayoutAffectingPropertyChanged, OnCoerceBarCount));
 
     public int BarCount
     {
@@ -88,7 +92,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarSpacingProperty =
         DependencyProperty.Register(nameof(BarSpacing), typeof(double), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(5.0d, OnPropertyChanged, OnCoerceBarSpacing));
+            new UIPropertyMetadata(5.0d, OnLayoutAffectingPropertyChanged, OnCoerceBarSpacing));
 
     public double BarSpacing
     {
@@ -98,7 +102,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty PeakFallDelayProperty =
         DependencyProperty.Register(nameof(PeakFallDelay), typeof(int), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(10, OnPropertyChanged, OnCoercePeakFallDelay));
+            new UIPropertyMetadata(10, OnNonLayoutPropertyChanged, OnCoercePeakFallDelay));
 
     public int PeakFallDelay
     {
@@ -108,7 +112,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarDecaySpeedProperty =
         DependencyProperty.Register(nameof(BarDecaySpeed), typeof(double), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(2.0, OnPropertyChanged, OnCoerceBarDecaySpeed));
+            new UIPropertyMetadata(2.0, OnNonLayoutPropertyChanged, OnCoerceBarDecaySpeed));
 
     public double BarDecaySpeed
     {
@@ -118,7 +122,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty PeakHeightProperty =
         DependencyProperty.Register(nameof(PeakHeight), typeof(double), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(3.0, OnPropertyChanged, OnCoercePeakHeight));
+            new UIPropertyMetadata(3.0, OnLayoutAffectingPropertyChanged, OnCoercePeakHeight));
 
     public double PeakHeight
     {
@@ -128,7 +132,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarSmoothingFactorProperty =
         DependencyProperty.Register(nameof(BarSmoothingFactor), typeof(double), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(2.0, OnPropertyChanged, OnCoerceBarSmoothingFactor));
+            new UIPropertyMetadata(2.0, OnNonLayoutPropertyChanged, OnCoerceBarSmoothingFactor));
 
     public double BarSmoothingFactor
     {
@@ -153,7 +157,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty IsFrequencyScaleLinearProperty =
         DependencyProperty.Register(nameof(IsFrequencyScaleLinear), typeof(bool), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(false, OnPropertyChanged));
+            new UIPropertyMetadata(false, OnLayoutAffectingPropertyChanged));
 
     public bool IsFrequencyScaleLinear
     {
@@ -163,7 +167,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarHeightScalingProperty =
         DependencyProperty.Register(nameof(BarHeightScaling), typeof(BarHeightScalingStyles), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(BarHeightScalingStyles.Decibel, OnPropertyChanged));
+            new UIPropertyMetadata(BarHeightScalingStyles.Decibel, OnLayoutAffectingPropertyChanged));
 
     public BarHeightScalingStyles BarHeightScaling
     {
@@ -173,7 +177,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty AveragePeaksProperty =
         DependencyProperty.Register(nameof(AveragePeaks), typeof(bool), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(false, OnPropertyChanged));
+            new UIPropertyMetadata(false, OnNonLayoutPropertyChanged));
 
     public bool AveragePeaks
     {
@@ -183,7 +187,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarStyleProperty =
         DependencyProperty.Register(nameof(BarStyle), typeof(Style), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(null, OnPropertyChanged));
+            new UIPropertyMetadata(null, OnLayoutAffectingPropertyChanged));
 
     public Style BarStyle
     {
@@ -193,7 +197,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty PeakStyleProperty =
         DependencyProperty.Register(nameof(PeakStyle), typeof(Style), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(null, OnPropertyChanged));
+            new UIPropertyMetadata(null, OnLayoutAffectingPropertyChanged));
 
     public Style PeakStyle
     {
@@ -202,8 +206,7 @@ public partial class SpectrumAnalyzer : Control
     }
 
     public static readonly DependencyProperty ActualBarWidthProperty =
-        DependencyProperty.Register(nameof(ActualBarWidth), typeof(double), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(0.0d));
+        DependencyProperty.Register(nameof(ActualBarWidth), typeof(double), typeof(SpectrumAnalyzer), new UIPropertyMetadata(0.0d));
 
     public double ActualBarWidth
     {
@@ -233,7 +236,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty BarShapeTypeProperty =
         DependencyProperty.Register(nameof(BarShapeType), typeof(ShapeType), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(ShapeType.Rectangle, OnPropertyChanged));
+            new UIPropertyMetadata(ShapeType.Rectangle, OnLayoutAffectingPropertyChanged));
 
     public ShapeType BarShapeType
     {
@@ -243,7 +246,7 @@ public partial class SpectrumAnalyzer : Control
 
     public static readonly DependencyProperty PeakShapeTypeProperty =
         DependencyProperty.Register(nameof(PeakShapeType), typeof(ShapeType), typeof(SpectrumAnalyzer),
-            new UIPropertyMetadata(ShapeType.Rectangle, OnPropertyChanged));
+            new UIPropertyMetadata(ShapeType.Rectangle, OnLayoutAffectingPropertyChanged));
 
     public ShapeType PeakShapeType
     {
@@ -251,11 +254,20 @@ public partial class SpectrumAnalyzer : Control
         set => SetValue(PeakShapeTypeProperty, value);
     }
 
-    private static void OnPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnLayoutAffectingPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is SpectrumAnalyzer sa)
         {
             sa.UpdateBarLayout();
+        }
+    }
+
+    private static void OnNonLayoutPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        // Non layout properties only affect drawing; force a spectrum refresh without rebuilding bars.
+        if (d is SpectrumAnalyzer sa && sa._soundPlayer != null && sa._soundPlayer.IsPlaying)
+        {
+            sa.UpdateSpectrum();
         }
     }
 
@@ -268,7 +280,6 @@ public partial class SpectrumAnalyzer : Control
                 sa._uiTimer.Interval = TimeSpan.FromMilliseconds((int)e.NewValue);
                 if (sa._uiTimer.IsEnabled)
                 {
-                    // Restart to apply immediately
                     sa._uiTimer.Stop();
                     sa._uiTimer.Start();
                 }
@@ -338,9 +349,7 @@ public partial class SpectrumAnalyzer : Control
     public SpectrumAnalyzer()
     {
         _logger = App.AppHost.Services.GetRequiredService<ILogger<SpectrumAnalyzer>>();
-
-        // UI-thread timer for rendering updates
-        _uiTimer = new DispatcherTimer(DispatcherPriority.Background)
+        _uiTimer = new DispatcherTimer(DispatcherPriority.Render)
         {
             Interval = TimeSpan.FromMilliseconds(DefaultUpdateInterval)
         };
@@ -367,7 +376,6 @@ public partial class SpectrumAnalyzer : Control
             {
                 StartTimer();
             }
-
             _logger.LogInformation("SpectrumAnalyzer: Registered sound player");
         }
     }
@@ -383,7 +391,6 @@ public partial class SpectrumAnalyzer : Control
             {
                 UpdateSpectrumShapes();
             }
-            // Immediately clear visual bars when unregistered
             DropSpectrumImmediately();
             StopTimer();
             _logger.LogInformation("SpectrumAnalyzer: Sound player unregistered");
@@ -427,24 +434,16 @@ public partial class SpectrumAnalyzer : Control
     #endregion
 
     #region Event Overrides
+    // Removed heavy work from OnRender to avoid extra layout rebuilds during unrelated UI invalidations.
     protected override void OnRender(DrawingContext dc)
     {
         base.OnRender(dc);
-        UpdateBarLayout();
-        if (_soundPlayer != null && _soundPlayer.IsPlaying)
-        {
-            UpdateSpectrum();
-        }
     }
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
         base.OnRenderSizeChanged(sizeInfo);
         UpdateBarLayout();
-        if (_soundPlayer != null && _soundPlayer.IsPlaying)
-        {
-            UpdateSpectrum();
-        }
     }
     #endregion
 
@@ -464,7 +463,9 @@ public partial class SpectrumAnalyzer : Control
             _ => new Rectangle { Width = width, Height = height }
         };
         shape.Style = style;
-        shape.Margin = new Thickness(x, y, 0, 0);
+        // Use Canvas positioning instead of Margin to reduce layout churn
+        Canvas.SetLeft(shape, x);
+        Canvas.SetTop(shape, y);
         return shape;
     }
     #endregion
@@ -479,23 +480,50 @@ public partial class SpectrumAnalyzer : Control
 
         if (_soundPlayer != null && !_soundPlayer.IsPlaying)
         {
-            UpdateSpectrumShapes();
+            DropSpectrumImmediately();
             return;
         }
 
+        bool haveNewData = true;
         if (_soundPlayer != null)
         {
             lock (_updateLock)
             {
-                if (!_soundPlayer.GetFftData(_channelData))
-                {
-                    UpdateSpectrumShapes();
-                    return;
-                }
+                haveNewData = _soundPlayer.GetFftData(_channelData);
             }
         }
 
+        if (!haveNewData)
+        {
+            // No new data while still playing: apply decay only (do NOT drop or freeze).
+            ApplyDecayOnly();
+            return;
+        }
+
         UpdateSpectrumShapes();
+    }
+
+    private void ApplyDecayOnly()
+    {
+        if (_spectrumCanvas == null)
+        { return; }
+        double height = _spectrumCanvas.RenderSize.Height;
+        double peakDotHeight = Math.Max(PeakHeight, 1.0);
+        double[] barHeights = new double[_barShapes.Count];
+        for (int i = 0; i < barHeights.Length; i++)
+        { barHeights[i] = _barShapes[i].Height; }
+        for (int i = 0; i < _barShapes.Count; i++)
+        {
+            double h = barHeights[i] = (barHeights[i] * BarDecaySpeed) / (BarDecaySpeed + 1);
+            _channelPeakData[i] = (float)(h + PeakFallDelay * _channelPeakData[i]) / (PeakFallDelay + 1);
+            Canvas.SetLeft(_barShapes[i], _barXCoords[i]);
+            Canvas.SetTop(_barShapes[i], height - h);
+            _barShapes[i].Height = h;
+            Canvas.SetLeft(_peakShapes[i], _barXCoords[i]);
+            Canvas.SetTop(_peakShapes[i], height - _channelPeakData[i] - peakDotHeight);
+            _peakShapes[i].Height = peakDotHeight;
+        }
+        BarValuesChanged?.Invoke(this, _channelPeakData);
     }
 
     private void UpdateSpectrumShapes()
@@ -523,15 +551,12 @@ public partial class SpectrumAnalyzer : Control
         int minFreqIndex = _soundPlayer?.GetFftFrequencyIndex(MinimumFrequency) ?? 0;
         maxFreqIndex = Math.Min(maxFreqIndex, _channelData.Length - 1);
         if (maxFreqIndex <= minFreqIndex)
-        {
-            maxFreqIndex = minFreqIndex + 1;
-        }
+        { maxFreqIndex = minFreqIndex + 1; }
 
-        // Copy channel data under lock to avoid race conditions
-        float[] channelDataCopy;
+        // Use scratch buffer instead of cloning each frame
         lock (_updateLock)
         {
-            channelDataCopy = (float[])_channelData.Clone();
+            Array.Copy(_channelData, _scratchFftCopy, _channelData.Length);
         }
 
         if (_soundPlayer == null || !_soundPlayer.IsPlaying)
@@ -543,10 +568,11 @@ public partial class SpectrumAnalyzer : Control
                 double peakYPos = barHeight;
                 _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay + 1);
 
-                double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex + 1;
-                _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight, 0, 0);
+                Canvas.SetLeft(_barShapes[barIndex], _barXCoords[barIndex]);
+                Canvas.SetTop(_barShapes[barIndex], height - barHeight);
                 _barShapes[barIndex].Height = barHeight;
-                _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight, 0, 0);
+                Canvas.SetLeft(_peakShapes[barIndex], _barXCoords[barIndex]);
+                Canvas.SetTop(_peakShapes[barIndex], height - _channelPeakData[barIndex] - peakDotHeight);
                 _peakShapes[barIndex].Height = peakDotHeight;
             }
         }
@@ -554,36 +580,30 @@ public partial class SpectrumAnalyzer : Control
         {
             for (int i = minFreqIndex; i <= maxFreqIndex && barIndex < _barShapes.Count; i++)
             {
-                double dbValue;
+                double sample = _scratchFftCopy[i];
                 switch (BarHeightScaling)
                 {
                     case BarHeightScalingStyles.Decibel:
-                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
-                        fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
+                        fftBucketHeight = (20 * Math.Log10(sample > 0 ? sample : 1e-5) - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Linear:
-                        fftBucketHeight = channelDataCopy[i] * ScaleFactorLinear * barHeightScale;
+                        fftBucketHeight = sample * ScaleFactorLinear * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Sqrt:
-                        fftBucketHeight = Math.Sqrt(channelDataCopy[i]) * ScaleFactorSqr * barHeightScale;
+                        fftBucketHeight = Math.Sqrt(sample) * ScaleFactorSqr * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Mel:
-                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
-                        fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
-                        break;
                     case BarHeightScalingStyles.Bark:
-                        dbValue = 20 * Math.Log10(channelDataCopy[i] > 0 ? channelDataCopy[i] : 1e-5);
-                        fftBucketHeight = (dbValue - MinDbValue) / DbScale * barHeightScale;
+                        fftBucketHeight = (20 * Math.Log10(sample > 0 ? sample : 1e-5) - MinDbValue) / DbScale * barHeightScale;
                         break;
                     case BarHeightScalingStyles.Power:
-                        fftBucketHeight = channelDataCopy[i] * channelDataCopy[i] * 20 * barHeightScale;
+                        fftBucketHeight = sample * sample * 20 * barHeightScale;
                         break;
                     case BarHeightScalingStyles.LogFrequency:
-                        fftBucketHeight = channelDataCopy[i] * ScaleFactorLinear * barHeightScale;
+                        fftBucketHeight = sample * ScaleFactorLinear * barHeightScale;
                         break;
                 }
-                fftBucketHeight = Math.Max(fftBucketHeight, 0);
-                fftBucketHeight = Math.Min(fftBucketHeight, height);
+                fftBucketHeight = Math.Clamp(fftBucketHeight, 0, height);
                 barHeight = Math.Max(barHeight, fftBucketHeight);
 
                 int currentIndexMax = IsFrequencyScaleLinear ? _barIndexMax[barIndex] : _barLogScaleIndexMax[barIndex];
@@ -591,22 +611,23 @@ public partial class SpectrumAnalyzer : Control
                 {
                     barHeight = Math.Min(barHeight, height);
                     if (AveragePeaks && barIndex > 0)
+                    { barHeight = (lastPeakHeight + barHeight) / 2; }
+                    // Conditional smoothing: skip when height is near zero to avoid flatten flicker
+                    if (barHeight > 1.0)
                     {
-                        barHeight = (lastPeakHeight + barHeight) / 2;
+                        barHeight = (barHeight + BarSmoothingFactor * barHeights[barIndex]) / (BarSmoothingFactor + 1);
                     }
-
-                    // Apply smoothing to bar height
-                    barHeight = (barHeight + BarSmoothingFactor * barHeights[barIndex]) / (BarSmoothingFactor + 1);
                     barHeights[barIndex] = barHeight;
 
                     double peakYPos = barHeight;
                     _channelPeakData[barIndex] = (float)Math.Max(_channelPeakData[barIndex], peakYPos);
                     _channelPeakData[barIndex] = (float)(peakYPos + PeakFallDelay * _channelPeakData[barIndex]) / (PeakFallDelay + 1);
 
-                    double xCoord = BarSpacing + ActualBarWidth * barIndex + BarSpacing * barIndex + 1;
-                    _barShapes[barIndex].Margin = new Thickness(xCoord, height - barHeight, 0, 0);
+                    Canvas.SetLeft(_barShapes[barIndex], _barXCoords[barIndex]);
+                    Canvas.SetTop(_barShapes[barIndex], height - barHeight);
                     _barShapes[barIndex].Height = barHeight;
-                    _peakShapes[barIndex].Margin = new Thickness(xCoord, height - _channelPeakData[barIndex] - peakDotHeight, 0, 0);
+                    Canvas.SetLeft(_peakShapes[barIndex], _barXCoords[barIndex]);
+                    Canvas.SetTop(_peakShapes[barIndex], height - _channelPeakData[barIndex] - peakDotHeight);
                     _peakShapes[barIndex].Height = peakDotHeight;
 
                     lastPeakHeight = barHeight;
@@ -643,12 +664,12 @@ public partial class SpectrumAnalyzer : Control
 
             for (int i = 0; i < _barShapes.Count; i++)
             {
-                double xCoord = BarSpacing + ActualBarWidth * i + BarSpacing * i + 1;
-
-                _barShapes[i].Margin = new Thickness(xCoord, height, 0, 0);
+                Canvas.SetLeft(_barShapes[i], _barXCoords[i]);
+                Canvas.SetTop(_barShapes[i], height);
                 _barShapes[i].Height = 0;
 
-                _peakShapes[i].Margin = new Thickness(xCoord, height - peakDotHeight, 0, 0);
+                Canvas.SetLeft(_peakShapes[i], _barXCoords[i]);
+                Canvas.SetTop(_peakShapes[i], height - peakDotHeight);
                 _peakShapes[i].Height = peakDotHeight;
             }
         }
@@ -760,6 +781,7 @@ public partial class SpectrumAnalyzer : Control
         _spectrumCanvas.Children.Clear();
         _barShapes.Clear();
         _peakShapes.Clear();
+        _barXCoords = new double[actualBarCount];
 
         double height = _spectrumCanvas.RenderSize.Height;
         double peakDotHeight = Math.Max(PeakHeight, 1.0);
@@ -767,6 +789,7 @@ public partial class SpectrumAnalyzer : Control
         for (int i = 0; i < actualBarCount; i++)
         {
             double xCoord = BarSpacing + barWidth * i + BarSpacing * i + 1;
+            _barXCoords[i] = xCoord;
             Shape barShape = CreateShape(BarShapeType, barWidth, 0, BarStyle, xCoord, height);
             Shape peakShape = CreateShape(PeakShapeType, barWidth, peakDotHeight, PeakStyle, xCoord, height - peakDotHeight);
             _barShapes.Add(barShape);
@@ -813,11 +836,12 @@ public partial class SpectrumAnalyzer : Control
     private void SoundPlayer_OnFftCalculated(float[] fftData)
     {
         int expectedInputLength = _channelData.Length / 2; // 1024
-        if (_soundPlayer?.IsPlaying == true)
+        if (_soundPlayer?.IsPlaying != true)
         {
-            StartTimer();
+            SafeDropSpectrumImmediately();
+            return;
         }
-
+        StartTimer();
         if (fftData.Length == expectedInputLength && _channelData.Length == 2048)
         {
             lock (_updateLock)
@@ -829,9 +853,7 @@ public partial class SpectrumAnalyzer : Control
         else
         {
             lock (_updateLock)
-            {
-                Array.Clear(_channelData, 0, _channelData.Length);
-            }
+            { Array.Clear(_channelData, 0, _channelData.Length); }
         }
     }
 
@@ -840,25 +862,20 @@ public partial class SpectrumAnalyzer : Control
         if (e.PropertyName == nameof(ISpectrumPlayer.IsPlaying) && _soundPlayer != null)
         {
             if (_soundPlayer.IsPlaying)
-            {
-                StartTimer();
-            }
+            { StartTimer(); }
             else
-            {
-                // Drop visuals but do not stop timer to avoid missing restart
-                DropSpectrumImmediately();
-            }
+            { SafeDropSpectrumImmediately(); }
         }
     }
 
-    private void UiTimer_Tick(object? sender, EventArgs e)
+    private void SafeDropSpectrumImmediately()
     {
-        UpdateSpectrum();
-    }
-
-    private void SpectrumCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
-    {
-        UpdateBarLayout();
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke((Action)DropSpectrumImmediately, DispatcherPriority.Render);
+            return;
+        }
+        DropSpectrumImmediately();
     }
     #endregion
 
@@ -904,4 +921,14 @@ public partial class SpectrumAnalyzer : Control
         }
     }
     #endregion
+
+    private void UiTimer_Tick(object? sender, EventArgs e)
+    {
+        UpdateSpectrum();
+    }
+
+    private void SpectrumCanvas_SizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        UpdateBarLayout();
+    }
 }

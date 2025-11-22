@@ -31,7 +31,8 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
-                logging.SetMinimumLevel(LogLevel.Trace);
+                logging.SetMinimumLevel(LogLevel.Warning);
+                //Trace = 0, Debug = 1, Information = 2, Warning = 3, Error = 4, Critical = 5, and None = 6
                 logging.AddSimpleConsole(options =>
                 {
                     options.IncludeScopes = false;

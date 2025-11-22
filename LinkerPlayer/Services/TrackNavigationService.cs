@@ -5,47 +5,11 @@ namespace LinkerPlayer.Services;
 
 public interface ITrackNavigationService
 {
-    /// <summary>
-    /// Gets the next track in the current playlist
-    /// </summary>
-    /// <param name="currentTracks">Current playlist tracks</param>
-    /// <param name="currentIndex">Current track index</param>
-    /// <param name="shuffleMode">Whether shuffle mode is enabled</param>
-    /// <returns>Index of the next track</returns>
     int GetNextTrackIndex(IList<MediaFile> currentTracks, int currentIndex, bool shuffleMode);
-
-    /// <summary>
-    /// Gets the previous track in the current playlist
-    /// </summary>
-    /// <param name="currentTracks">Current playlist tracks</param>
-    /// <param name="currentIndex">Current track index</param>
-    /// <param name="shuffleMode">Whether shuffle mode is enabled</param>
-    /// <returns>Index of the previous track</returns>
     int GetPreviousTrackIndex(IList<MediaFile> currentTracks, int currentIndex, bool shuffleMode);
-
-    /// <summary>
-    /// Initializes or updates the shuffle list for the current tracks
-    /// </summary>
-    /// <param name="tracks">Tracks to create shuffle list from</param>
-    /// <param name="currentTrackId">ID of currently active track (to maintain position)</param>
     void InitializeShuffle(IEnumerable<MediaFile> tracks, string? currentTrackId = null);
-
-    /// <summary>
-    /// Clears the current shuffle list
-    /// </summary>
     void ClearShuffle();
-
-    /// <summary>
-    /// Gets the current shuffle position
-    /// </summary>
-    /// <returns>Current position in shuffle list, or -1 if not shuffling</returns>
     int GetShufflePosition();
-
-    /// <summary>
-    /// Sets the shuffle position based on a track ID
-    /// </summary>
-    /// <param name="trackId">ID of the track to position to</param>
-    /// <returns>True if track was found in shuffle list</returns>
     bool SetShufflePosition(string trackId);
 }
 
@@ -182,11 +146,21 @@ public class TrackNavigationService : ITrackNavigationService
         return false;
     }
 
+    private static int FindTrackIndexById(IList<MediaFile> tracks, string id)
+    {
+        for (int i = 0; i < tracks.Count; i++)
+        {
+            if (tracks[i].Id == id)
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
     private int GetNextShuffledIndex(IList<MediaFile> currentTracks)
     {
         if (!_shuffleList.Any())
         {
-            _logger.LogWarning("Shuffle list is empty, initializing with current tracks");
             InitializeShuffle(currentTracks);
         }
 
@@ -196,20 +170,17 @@ public class TrackNavigationService : ITrackNavigationService
             return 0;
         }
 
-        // Move to next position in shuffle
         _shuffledIndex = (_shuffledIndex == _shuffleList.Count - 1) ? 0 : _shuffledIndex + 1;
 
         MediaFile shuffledTrack = _shuffleList[_shuffledIndex];
-        int actualIndex = currentTracks.ToList().FindIndex(track => track.Id == shuffledTrack.Id);
+        int actualIndex = FindTrackIndexById(currentTracks, shuffledTrack.Id);
 
         if (actualIndex < 0)
         {
-            //_logger.LogWarning("Shuffled track not found in current track list, reinitializing shuffle");
             InitializeShuffle(currentTracks);
             actualIndex = 0;
         }
 
-        //_logger.LogDebug("Next shuffled track index: {ActualIndex} (shuffle position: {ShuffleIndex})", actualIndex, _shuffledIndex);
         return actualIndex;
     }
 
@@ -217,7 +188,6 @@ public class TrackNavigationService : ITrackNavigationService
     {
         if (!_shuffleList.Any())
         {
-            _logger.LogWarning("Shuffle list is empty, initializing with current tracks");
             InitializeShuffle(currentTracks);
         }
 
@@ -227,20 +197,17 @@ public class TrackNavigationService : ITrackNavigationService
             return currentTracks.Count - 1;
         }
 
-        // Move to previous position in shuffle
         _shuffledIndex = (_shuffledIndex == 0) ? _shuffleList.Count - 1 : _shuffledIndex - 1;
 
         MediaFile shuffledTrack = _shuffleList[_shuffledIndex];
-        int actualIndex = currentTracks.ToList().FindIndex(track => track.Id == shuffledTrack.Id);
+        int actualIndex = FindTrackIndexById(currentTracks, shuffledTrack.Id);
 
         if (actualIndex < 0)
         {
-            _logger.LogWarning("Shuffled track not found in current track list, reinitializing shuffle");
             InitializeShuffle(currentTracks);
             actualIndex = currentTracks.Count - 1;
         }
 
-        //_logger.LogDebug("Previous shuffled track index: {ActualIndex} (shuffle position: {ShuffleIndex})", actualIndex, _shuffledIndex);
         return actualIndex;
     }
 }
