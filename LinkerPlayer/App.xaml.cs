@@ -25,6 +25,8 @@ public partial class App
     public App()
     {
         WindowPlace = new WindowPlace("placement.config");
+        this.WindowPlace.IsSavingSnappedPositionEnabled = true;
+
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
 
         AppHost = Host.CreateDefaultBuilder()
@@ -184,6 +186,7 @@ public partial class App
             {
                 _logger.LogError(ex, "Error saving during shutdown");
             }
+
             try
             {
                 AudioEngine audioEngine = AppHost.Services.GetRequiredService<AudioEngine>();
@@ -198,6 +201,7 @@ public partial class App
         {
             _logger.LogError(ex, "Shutdown error");
         }
+
         try
         {
             AppHost.StopAsync().GetAwaiter().GetResult();
@@ -207,6 +211,8 @@ public partial class App
         {
             _logger.LogError(ex, "Host dispose error");
         }
+
         base.OnExit(e);
+        this.WindowPlace.Save();
     }
 }

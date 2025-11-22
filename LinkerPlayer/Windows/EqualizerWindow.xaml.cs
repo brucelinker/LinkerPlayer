@@ -36,6 +36,8 @@ public partial class EqualizerWindow
         _logger = logger;
         try
         {
+            ((App)Application.Current).WindowPlace.Register(this, "EqualizerWindow");
+
             _logger.LogInformation("Initializing EqualizerWindow");
             InitializeComponent();
             DataContext = _equalizerViewModel;
@@ -58,8 +60,6 @@ public partial class EqualizerWindow
                 .FirstOrDefault(n => n.Name == _settingsManager.Settings.EqualizerPresetName);
 
             ApplyPreset(preset ?? _equalizerViewModel.EqPresets[0]);
-
-            ((App)Application.Current).WindowPlace.Register(this);
 
             WeakReferenceMessenger.Default.Register<MainWindowClosingMessage>(this, (_, _) =>
             {

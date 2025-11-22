@@ -106,7 +106,7 @@ public partial class PropertiesWindow
     {
         InitializeComponent();
 
-        ((App)Application.Current).WindowPlace.Register(this);
+        ((App)Application.Current).WindowPlace.Register(this, "PropertiesWindow");
         this.Loaded += PropertiesWindow_Loaded;
     }
 

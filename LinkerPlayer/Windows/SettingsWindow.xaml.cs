@@ -29,6 +29,8 @@ public partial class SettingsWindow
 
         try
         {
+            ((App)Application.Current).WindowPlace.Register(this, "SettingsWindow");
+
             // Initialize component with error handling
             try
             {
