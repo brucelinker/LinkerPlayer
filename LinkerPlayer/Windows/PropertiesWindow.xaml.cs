@@ -1,101 +1,11 @@
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 
 namespace LinkerPlayer.Windows;
-
-/// <summary>
-/// Inverts a boolean value
-/// </summary>
-public class InverseBooleanConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is bool boolValue)
-        {
-            return !boolValue;
-        }
-        return false;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is bool boolValue)
-        {
-            return !boolValue;
-        }
-        return false;
-    }
-}
-
-/// <summary>
-/// Converts false to Visible and true to Collapsed
-/// </summary>
-public class InvertedBooleanToVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is bool boolValue)
-        {
-            return !boolValue ? Visibility.Visible : Visibility.Collapsed;
-        }
-        return Visibility.Collapsed;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is Visibility visibility)
-        {
-            return visibility != Visibility.Visible;
-        }
-        return false;
-    }
-}
-
-/// <summary>
-/// Shows UI only for "Beats Per Minute" row (returns Collapsed for BPM row, Visible for others)
-/// </summary>
-public class BpmRowVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is string name && name == "Beats Per Minute")
-        {
-            return Visibility.Collapsed; // Hide normal text for BPM row
-        }
-        return Visibility.Visible;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
-
-/// <summary>
-/// Shows UI only for "Beats Per Minute" row (returns Visible for BPM row, Collapsed for others)
-/// </summary>
-public class InverseBpmRowVisibilityConverter : IValueConverter
-{
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value is string name && name == "Beats Per Minute")
-        {
-            return Visibility.Visible; // Show BPM detection UI for BPM row
-        }
-        return Visibility.Collapsed;
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        throw new NotImplementedException();
-    }
-}
 
 /// <summary>
 /// Interaction logic for PropertiesWindow.xaml
