@@ -143,7 +143,7 @@ public partial class SpectrumAnalyzer : Control
 
     private static object OnCoercePeakHeight(DependencyObject d, object value)
     {
-        return Math.Max((double)value, 1.0);
+        return Math.Max((double)value, 0.1);
     }
 
     private static object OnCoerceBarSmoothingFactor(DependencyObject d, object value)

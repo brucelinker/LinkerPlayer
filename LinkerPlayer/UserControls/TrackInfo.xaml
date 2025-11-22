@@ -192,7 +192,7 @@
       MaximumFrequency="20000"
       MinimumFrequency="20"
       PeakFallDelay="10"
-      PeakHeight="3.0"
+      PeakHeight="0.1"
       RefreshInterval="25"
       Style="{StaticResource SpectrumAnalyzerStyle}" />
 
