@@ -62,7 +62,7 @@ public class SharedDataModelTests
         model.UpdateSelectedTracks(multi);
         Assert.Equal(4, model.SelectedTracks.Count);
         model.UpdateSelectedTracks(new [] { multi[2] });
-        Assert.Equal(1, model.SelectedTracks.Count);
+        Assert.Single(model.SelectedTracks);
         Assert.Equal(multi[2].Id, model.SelectedTracks[0].Id);
     }
 }
