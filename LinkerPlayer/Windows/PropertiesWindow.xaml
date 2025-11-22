@@ -2,6 +2,7 @@
   x:Class="LinkerPlayer.Windows.PropertiesWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:local="clr-namespace:LinkerPlayer.Windows"
@@ -23,11 +24,11 @@
       </ResourceDictionary.MergedDictionaries>
 
       <!--  Converters  -->
-      <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-      <local:InverseBooleanConverter x:Key="InverseBooleanConverter" />
-      <local:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter" />
-      <local:BpmRowVisibilityConverter x:Key="BpmRowVisibilityConverter" />
-      <local:InverseBpmRowVisibilityConverter x:Key="InverseBpmRowVisibilityConverter" />
+      <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+      <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
+      <converters:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter" />
+      <converters:BpmRowVisibilityConverter x:Key="BpmRowVisibilityConverter" />
+      <converters:InverseBpmRowVisibilityConverter x:Key="InverseBpmRowVisibilityConverter" />
 
       <!--  Properties Window Specific DataGrid Cell Style (matches transparent theme)  -->
       <Style
@@ -207,14 +208,14 @@
               CanUserResizeRows="False"
               CellStyle="{StaticResource PropertiesWindowDataGridCellStyle}"
               ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HeadersVisibility="None"
               HorizontalScrollBarVisibility="Disabled"
               ItemsSource="{Binding MetadataItems}"
               PreviewMouseWheel="DataGrid_PreviewMouseWheel"
               RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
               SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled"
-              HeadersVisibility="None">
+              VerticalScrollBarVisibility="Disabled">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
@@ -411,14 +412,14 @@
               CanUserResizeRows="False"
               CellStyle="{StaticResource PropertiesWindowDataGridCellStyle}"
               ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HeadersVisibility="None"
               HorizontalScrollBarVisibility="Disabled"
               ItemsSource="{Binding PropertyItems}"
               PreviewMouseWheel="DataGrid_PreviewMouseWheel"
               RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
               SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled"
-              HeadersVisibility="None">
+              VerticalScrollBarVisibility="Disabled">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
@@ -541,14 +542,14 @@
               CanUserResizeRows="False"
               CellStyle="{StaticResource PropertiesWindowDataGridCellStyle}"
               ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+              HeadersVisibility="None"
               HorizontalScrollBarVisibility="Disabled"
               ItemsSource="{Binding ReplayGainItems}"
               PreviewMouseWheel="DataGrid_PreviewMouseWheel"
               RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
               SelectionChanged="DataGrid_SelectionChanged"
               Style="{StaticResource SharedDataGridStyle}"
-              VerticalScrollBarVisibility="Disabled"
-              HeadersVisibility="None">
+              VerticalScrollBarVisibility="Disabled">
 
               <DataGrid.Columns>
                 <DataGridTextColumn
@@ -618,14 +619,14 @@
                 CanUserResizeRows="False"
                 CellStyle="{StaticResource PropertiesWindowDataGridCellStyle}"
                 ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+                HeadersVisibility="None"
                 HorizontalScrollBarVisibility="Disabled"
                 ItemsSource="{Binding PictureInfoItems}"
                 PreviewMouseWheel="DataGrid_PreviewMouseWheel"
                 RowStyle="{StaticResource PropertiesWindowDataGridRowStyle}"
                 SelectionChanged="DataGrid_SelectionChanged"
                 Style="{StaticResource SharedDataGridStyle}"
-                VerticalScrollBarVisibility="Disabled"
-                HeadersVisibility="None">
+                VerticalScrollBarVisibility="Disabled">
 
                 <DataGrid.Columns>
                   <DataGridTextColumn
