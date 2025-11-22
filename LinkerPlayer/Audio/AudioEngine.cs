@@ -136,9 +136,6 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
             // Load add-ons (bass_fx, bassmix) - these are loaded synchronously as they're needed for playback
             LoadBassAddOns();
 
-            // Refresh device list - do this lazily on first use, not at startup
-            // _ = _outputDeviceManager.RefreshOutputDeviceList();
-
             // Create WASAPI callback
             _wasapiProc = new WasapiProcedure(WasapiProc);
 
