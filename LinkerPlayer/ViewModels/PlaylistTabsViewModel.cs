@@ -23,7 +23,31 @@ using System; // added for Action
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class PlaylistTabsViewModel : ObservableObject
+public interface IPlaylistTabsViewModel
+{
+    PlaylistTab? SelectedTab { get; }
+    int SelectedTabIndex { get; }
+    Playlist? SelectedPlaylist { get; }
+    PlaybackState State { get; }
+    ObservableCollection<PlaylistTab> TabList { get; }
+    bool AllowDrop { get; }
+    ProgressData ProgressInfo { get; }
+    MediaFile? ActiveTrack { get; set; }
+    int SelectedTrackIndex { get; set; }
+    MediaFile? SelectedTrack { get; set; }
+    Task NewPlaylistAsync();
+    Task LoadPlaylistAsync();
+    Task AddFolderAsync();
+    Task AddFilesAsync();
+    Task NewPlaylistFromFolderAsync();
+    Task RemovePlaylistAsync(object sender);
+    Task RemoveTrackAsync();
+    void LoadPlaylistTabs();
+    Task LoadSelectedPlaylistTracksAsync();
+    Task LoadOtherPlaylistTracksAsync();
+}
+
+public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsViewModel
 {
     [ObservableProperty] private PlaylistTab? _selectedTab;
     [ObservableProperty] private int _selectedTabIndex;

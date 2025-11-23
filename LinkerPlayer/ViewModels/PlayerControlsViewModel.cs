@@ -5,14 +5,32 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Services; // to potentially interact with selection service later
 using ManagedBass;
 using Microsoft.Extensions.Logging;
 using System.IO;
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class PlayerControlsViewModel : ObservableObject
+public interface IPlayerControlsViewModel
+{
+    PlaybackState State { get; }
+    bool ShuffleMode { get; set; }
+    bool IsMuted { get; set; }
+    double VolumeSliderValue { get; set; }
+    MediaFile? SelectedTrack { get; set; }
+    MediaFile? ActiveTrack { get; set; }
+    event Action? UpdateSelectedTrack;
+    void PlayPauseTrack();
+    void StopTrack();
+    void PreviousTrack();
+    void NextTrack();
+    double CurrentSeekbarPosition();
+    double GetVolumeBeforeMute();
+    void UpdateVolumeAfterAnimation(double value, bool isMuted);
+    void SaveSettingsOnShutdown(double volumeValue, double seekBarValue);
+}
+
+public partial class PlayerControlsViewModel : ObservableObject, IPlayerControlsViewModel
 {
     private readonly AudioEngine _audioEngine;
     private readonly PlaylistTabsViewModel _playlistTabsViewModel;

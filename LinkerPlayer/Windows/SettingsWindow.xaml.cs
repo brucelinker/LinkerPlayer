@@ -52,16 +52,6 @@ public partial class SettingsWindow
                 _logger.LogError(ex, "Error setting DataContext: {Message}", ex.Message);
             }
 
-            // Register window placement safely
-            try
-            {
-                ((App)Application.Current).WindowPlace.Register(this);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error registering window placement: {Message}", ex.Message);
-            }
-
             // Add key event handler safely
             try
             {

@@ -119,7 +119,7 @@
         </Setter>
       </Style>
 
-      <!-- Keep the keyed TabItemContainerStyle but do not apply it to Dragablz, since Dragablz handles dragging internally -->
+      <!--  Keep the keyed TabItemContainerStyle but do not apply it to Dragablz, since Dragablz handles dragging internally  -->
       <Style x:Key="TabItemContainerStyle" TargetType="TabItem">
         <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -156,11 +156,11 @@
                 Margin="0"
                 Padding="0"
                 AllowDrop="True"
+                DragLeave="TabItem_DragLeave"
+                DragOver="TabItem_DragOver"
+                Drop="TabItem_Drop"
                 PreviewMouseLeftButtonDown="TabItem_PreviewMouseLeftButtonDown"
                 PreviewMouseMove="TabItem_PreviewMouseMove"
-                DragOver="TabItem_DragOver"
-                DragLeave="TabItem_DragLeave"
-                Drop="TabItem_Drop"
                 Style="{StaticResource EditableTabHeaderControl}">
                 <userControls:EditableTabHeaderControl.ContextMenu>
                   <ContextMenu>
@@ -439,11 +439,11 @@
       Padding="0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
-      BorderThickness="0"
       Background="{DynamicResource PlaylistTabBackgroundBrush}"
+      BorderThickness="0"
+      ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       ItemsSource="{Binding TabList}"
       SelectedIndex="{Binding SelectedTabIndex}"
-      ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       SelectionChanged="TabControl_SelectionChanged">
       <TabControl.ContentTemplate>
         <StaticResource ResourceKey="TabContentTemplate" />

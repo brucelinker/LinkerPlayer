@@ -8,7 +8,14 @@ using System.IO;
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class EqualizerViewModel : ObservableObject
+public interface IEqualizerViewModel
+{
+    ObservableCollection<Preset> EqPresets { get; }
+    Preset? SelectedPreset { get; }
+    bool IsEqualizerEnabled { get; }
+}
+
+public partial class EqualizerViewModel : ObservableObject, IEqualizerViewModel
 {
     private readonly AudioEngine _audioEngine;
     private readonly ILogger<EqualizerViewModel> _logger;

@@ -52,23 +52,28 @@ public partial class App
             {
                 services.AddSingleton<MainWindow>();
                 services.AddSingleton<MainViewModel>();
+
+                services.AddSingleton<IEqualizerViewModel, EqualizerViewModel>();
+                services.AddSingleton<IPlaylistTabsViewModel, PlaylistTabsViewModel>();
+                services.AddSingleton<IPlayerControlsViewModel, PlayerControlsViewModel>();
+                services.AddTransient<IPropertiesViewModel, PropertiesViewModel>();
+
+                services.AddSingleton<IAudioEngine, AudioEngine>();
                 services.AddSingleton<IMusicLibrary, MusicLibrary>();
                 services.AddSingleton<IFileImportService, FileImportService>();
+
+                services.AddSingleton<ISettingsManager, SettingsManager>();
+                services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
+
                 services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
                 services.AddSingleton<IUiNotifier, WpfUiNotifier>();
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
-                services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
-                services.AddSingleton<ISettingsManager, SettingsManager>();
-                services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
                 services.AddSingleton<IBpmDetector, BpmDetector>();
                 services.AddSingleton<IReplayGainCalculator, ReplayGainCalculator>();
-                services.AddSingleton<PlaylistTabsViewModel>();
-                services.AddSingleton<PlayerControlsViewModel>();
+
                 services.AddSingleton<EqualizerWindow>();
-                services.AddSingleton<EqualizerViewModel>();
-                services.AddSingleton<AudioEngine>();
                 services.AddSingleton<BassAudioEngine>();
                 services.AddSingleton<SettingsWindow>();
                 services.AddSingleton<SharedDataModel>();
@@ -80,7 +85,6 @@ public partial class App
                 services.AddTransient<ReplayGainLoader>();
                 services.AddTransient<PictureInfoLoader>();
                 services.AddTransient<LyricsCommentLoader>();
-                services.AddTransient<PropertiesViewModel>();
             })
             .Build();
 

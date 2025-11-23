@@ -14,10 +14,25 @@ using File = TagLib.File;
 
 namespace LinkerPlayer.ViewModels;
 
+public interface IPropertiesViewModel
+{
+    ObservableCollection<TagItem> MetadataItems { get; }
+    ObservableCollection<TagItem> PropertyItems { get; }
+    ObservableCollection<TagItem> ReplayGainItems { get; }
+    ObservableCollection<TagItem> PictureInfoItems { get; }
+    TagItem CommentItem { get; }
+    TagItem LyricsItem { get; }
+    BitmapImage? AlbumCoverSource { get; }
+    bool HasUnsavedChanges { get; }
+    bool IsMultipleSelection { get; }
+    int SelectedFilesCount { get; }
+    event EventHandler<bool>? CloseRequested;
+}
+
 /// <summary>
 /// ViewModel for the Properties window - REFACTORED to use loader pattern with debounced multi-selection
 /// </summary>
-public partial class PropertiesViewModel : ObservableObject, IDisposable
+public partial class PropertiesViewModel : ObservableObject, IPropertiesViewModel, IDisposable
 {
     // Dependencies
     private readonly ISharedDataModel _sharedDataModel; // change to interface
