@@ -55,10 +55,17 @@ public partial class App
 
                 services.AddSingleton<IEqualizerViewModel, EqualizerViewModel>();
                 services.AddSingleton<IPlaylistTabsViewModel, PlaylistTabsViewModel>();
+                // Also register concrete types for backward compatibility where constructors request concrete classes
+                services.AddSingleton<PlaylistTabsViewModel>(sp => (PlaylistTabsViewModel)sp.GetRequiredService<IPlaylistTabsViewModel>());
+                services.AddSingleton<PlayerControlsViewModel>();
                 services.AddSingleton<IPlayerControlsViewModel, PlayerControlsViewModel>();
-                services.AddTransient<IPropertiesViewModel, PropertiesViewModel>();
+                services.AddSingleton<IPropertiesViewModel, PropertiesViewModel>();
+                services.AddSingleton<PropertiesWindow>();
 
                 services.AddSingleton<IAudioEngine, AudioEngine>();
+                // Backwards-compat: allow resolving concrete AudioEngine where existing code requests it
+                services.AddSingleton<AudioEngine>(sp => (AudioEngine)sp.GetRequiredService<IAudioEngine>());
+
                 services.AddSingleton<IMusicLibrary, MusicLibrary>();
                 services.AddSingleton<IFileImportService, FileImportService>();
 
@@ -66,6 +73,9 @@ public partial class App
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
+
+                // Database save debounce service
+                services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
 
                 services.AddSingleton<IUiDispatcher, WpfUiDispatcher>();
                 services.AddSingleton<IUiNotifier, WpfUiNotifier>();

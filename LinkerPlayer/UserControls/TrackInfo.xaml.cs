@@ -12,7 +12,7 @@ namespace LinkerPlayer.UserControls;
 
 public partial class TrackInfo
 {
-    private readonly AudioEngine _audioEngine;
+    private readonly IAudioEngine _audioEngine;
     private readonly ILogger<TrackInfo> _logger;
     private readonly ISelectionService _selectionService;
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
@@ -28,7 +28,7 @@ public partial class TrackInfo
 
     public TrackInfo()
     {
-        _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
+        _audioEngine = App.AppHost.Services.GetRequiredService<IAudioEngine>();
         _logger = App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>();
         _selectionService = App.AppHost.Services.GetRequiredService<ISelectionService>();
 

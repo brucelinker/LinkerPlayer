@@ -22,14 +22,14 @@ public partial class EqualizerWindow
     private Preset? _selectedPreset;
     private const string FlatPreset = "Flat";
 
-    private readonly EqualizerViewModel _equalizerViewModel;
-    private readonly AudioEngine _audioEngine;
+    private readonly IEqualizerViewModel _equalizerViewModel;
+    private readonly IAudioEngine _audioEngine;
     private readonly ISettingsManager _settingsManager;
     private readonly ILogger<EqualizerWindow> _logger;
 
     public EqualizerWindow(
-        EqualizerViewModel viewModel,
-        AudioEngine audioEngine,
+        IEqualizerViewModel viewModel,
+        IAudioEngine audioEngine,
         ISettingsManager settingsManager,
         ILogger<EqualizerWindow> logger)
     {

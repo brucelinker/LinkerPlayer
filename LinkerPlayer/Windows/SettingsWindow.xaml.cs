@@ -12,14 +12,14 @@ namespace LinkerPlayer.Windows;
 public partial class SettingsWindow
 {
     private readonly ThemeManager _themeManager = new();
-    private readonly AudioEngine _audioEngine;
+    private readonly IAudioEngine _audioEngine;
     private readonly ISettingsManager _settingsManager;
     private readonly ILogger _logger;
 
     private const string DefaultDeviceName = "Default";
 
     public SettingsWindow(
-        AudioEngine audioEngine,
+        IAudioEngine audioEngine,
         ISettingsManager settingsManager,
         ILogger<SettingsWindow> logger)
     {

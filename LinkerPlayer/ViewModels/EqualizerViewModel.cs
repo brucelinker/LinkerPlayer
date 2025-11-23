@@ -13,11 +13,14 @@ public interface IEqualizerViewModel
     ObservableCollection<Preset> EqPresets { get; }
     Preset? SelectedPreset { get; }
     bool IsEqualizerEnabled { get; }
+
+    void SaveEqPresets();
+    void LoadFromJson();
 }
 
 public partial class EqualizerViewModel : ObservableObject, IEqualizerViewModel
 {
-    private readonly AudioEngine _audioEngine;
+    private readonly IAudioEngine _audioEngine;
     private readonly ILogger<EqualizerViewModel> _logger;
     private readonly string _jsonFilePath;
 
@@ -40,7 +43,7 @@ public partial class EqualizerViewModel : ObservableObject, IEqualizerViewModel
     [ObservableProperty] private float _band8;
     [ObservableProperty] private float _band9;
 
-    public EqualizerViewModel(AudioEngine audioEngine, ILogger<EqualizerViewModel> logger)
+    public EqualizerViewModel(IAudioEngine audioEngine, ILogger<EqualizerViewModel> logger)
     {
         _audioEngine = audioEngine;
         _logger = logger;

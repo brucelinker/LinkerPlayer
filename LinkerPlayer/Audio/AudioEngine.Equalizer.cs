@@ -3,6 +3,8 @@ using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
 using Microsoft.Extensions.Logging;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace LinkerPlayer.Audio;
 
@@ -10,24 +12,24 @@ public partial class AudioEngine
 {
     [ObservableProperty] private bool _eqEnabled = true;
 
-    private readonly List<EqualizerBandSettings> _equalizerBands =
-    [
-        new(32.0f,0f,1.0f),
-        new(64.0f,0f,1.0f),
-        new(125.0f,0f,1.0f),
-        new(250.0f,0f,1.0f),
-        new(500.0f,0f,1.0f),
-        new(1000.0f,0f,1.0f),
-        new(2000.0f,0f,1.0f),
-        new(4000.0f,0f,1.0f),
-        new(8000.0f,0f,1.0f),
-        new(16000.0f,0f,1.0f)
-    ];
+    private readonly List<EqualizerBandSettings> _equalizerBands = new List<EqualizerBandSettings>
+    {
+        new EqualizerBandSettings(32.0f, 0f, 1.0f),
+        new EqualizerBandSettings(64.0f, 0f, 1.0f),
+        new EqualizerBandSettings(125.0f, 0f, 1.0f),
+        new EqualizerBandSettings(250.0f, 0f, 1.0f),
+        new EqualizerBandSettings(500.0f, 0f, 1.0f),
+        new EqualizerBandSettings(1000.0f, 0f, 1.0f),
+        new EqualizerBandSettings(2000.0f, 0f, 1.0f),
+        new EqualizerBandSettings(4000.0f, 0f, 1.0f),
+        new EqualizerBandSettings(8000.0f, 0f, 1.0f),
+        new EqualizerBandSettings(16000.0f, 0f, 1.0f)
+    };
 
-    private bool _eqInitialized;
-    private int[] _eqFxHandles = [];
+    private bool _eqInitializedLocal;
+    private int[] _eqFxHandlesLocal = Array.Empty<int>();
 
-    public bool IsEqualizerInitialized => _eqInitialized;
+    public bool IsEqualizerInitialized => _eqInitializedLocal;
 
     public bool InitializeEqualizer()
     {
@@ -39,7 +41,7 @@ public partial class AudioEngine
             return false;
         }
 
-        _eqFxHandles = new int[_equalizerBands.Count];
+        _eqFxHandlesLocal = new int[_equalizerBands.Count];
         int successCount = 0;
 
         for (int i = 0; i < _equalizerBands.Count; i++)
@@ -53,7 +55,7 @@ public partial class AudioEngine
                 continue;
             }
 
-            PeakEQParameters eqParams = new()
+            PeakEQParameters eqParams = new PeakEQParameters()
             {
                 fCenter = freq,
                 fGain = _equalizerBands[i].Gain,
@@ -65,44 +67,33 @@ public partial class AudioEngine
             {
                 _logger.LogError($"Failed to set EQ params for {freq}Hz: {Bass.LastError}");
                 Bass.ChannelRemoveFX(CurrentStream, fxHandle);
-                _eqFxHandles[i] = 0;
+                _eqFxHandlesLocal[i] = 0;
             }
             else
             {
-                _eqFxHandles[i] = fxHandle;
+                _eqFxHandlesLocal[i] = fxHandle;
                 successCount++;
             }
         }
 
-        _eqInitialized = successCount > 0;
-        return _eqInitialized;
+        _eqInitializedLocal = successCount > 0;
+        return _eqInitializedLocal;
     }
 
     public List<EqualizerBandSettings> GetBandsList()
     {
-        // Return a COPY of the bands, not the original reference
-        return _equalizerBands.Select(band => new EqualizerBandSettings(
-        band.Frequency,
-        band.Gain,
-        band.Bandwidth
-        )).ToList();
+        return _equalizerBands.Select(band => new EqualizerBandSettings(band.Frequency, band.Gain, band.Bandwidth)).ToList();
     }
 
     public void SetBandsList(List<EqualizerBandSettings> bands)
     {
         _equalizerBands.Clear();
 
-        // Create NEW band objects from the input, don't store references
         foreach (EqualizerBandSettings band in bands)
         {
-            _equalizerBands.Add(new EqualizerBandSettings(
-            band.Frequency,
-            band.Gain,
-            band.Bandwidth
-           ));
+            _equalizerBands.Add(new EqualizerBandSettings(band.Frequency, band.Gain, band.Bandwidth));
         }
 
-        // Re-initialize EQ if it's already set up
         if (EqEnabled && CurrentStream != 0)
         {
             InitializeEqualizer();
@@ -128,28 +119,26 @@ public partial class AudioEngine
 
     public void SetBandGain(float frequency, float gain)
     {
-        // Store the gain setting regardless of EQ state
         int bandIndex = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < 0.1f);
         if (bandIndex != -1)
         {
             _equalizerBands[bandIndex].Gain = AudioMath.ClampGain(gain);
         }
 
-        // Only apply to actual EQ if it's enabled and initialized
-        if (!EqEnabled || !_eqInitialized || _eqFxHandles.Length == 0 || CurrentStream == 0)
+        if (!EqEnabled || !_eqInitializedLocal || _eqFxHandlesLocal.Length == 0 || CurrentStream == 0)
         {
             return;
         }
 
         int bandIdx = _equalizerBands.FindIndex(b => Math.Abs(b.Frequency - frequency) < 0.1f);
-        if (bandIdx == -1 || bandIdx >= _eqFxHandles.Length || _eqFxHandles[bandIdx] == 0)
+        if (bandIdx == -1 || bandIdx >= _eqFxHandlesLocal.Length || _eqFxHandlesLocal[bandIdx] == 0)
         {
             return;
         }
 
         float clampedGain = AudioMath.ClampGain(gain);
 
-        PeakEQParameters eqParams = new()
+        PeakEQParameters eqParams = new PeakEQParameters()
         {
             fCenter = frequency,
             fBandwidth = _equalizerBands[bandIdx].Bandwidth,
@@ -157,7 +146,7 @@ public partial class AudioEngine
             lChannel = FXChannelFlags.All
         };
 
-        if (Bass.FXSetParameters(_eqFxHandles[bandIdx], eqParams))
+        if (Bass.FXSetParameters(_eqFxHandlesLocal[bandIdx], eqParams))
         {
             _equalizerBands[bandIdx].Gain = clampedGain;
         }
@@ -169,9 +158,9 @@ public partial class AudioEngine
 
     private void CleanupEqualizer()
     {
-        if (_eqFxHandles.Length > 0 && CurrentStream != 0)
+        if (_eqFxHandlesLocal.Length > 0 && CurrentStream != 0)
         {
-            foreach (int fxHandle in _eqFxHandles)
+            foreach (int fxHandle in _eqFxHandlesLocal)
             {
                 if (fxHandle != 0)
                 {
@@ -179,7 +168,7 @@ public partial class AudioEngine
                 }
             }
         }
-        _eqFxHandles = [];
-        _eqInitialized = false;
+        _eqFxHandlesLocal = Array.Empty<int>();
+        _eqInitializedLocal = false;
     }
 }

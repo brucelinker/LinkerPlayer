@@ -129,10 +129,9 @@ public class EditableTabHeaderControl : ContentControl
             if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel)
             {
                 string newText = _textBox!.Text;
-                string? previousOldText = _oldText;
                 _oldText = newText;
                 IsInEditMode = false;
-                viewModel.RenamePlaylistAsync((tab, previousOldText)).GetAwaiter().GetResult();
+                viewModel.RenamePlaylistAsync(tab).GetAwaiter().GetResult();
             }
             else
             {

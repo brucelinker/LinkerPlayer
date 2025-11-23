@@ -5,7 +5,9 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
+using LinkerPlayer.Windows;
 using ManagedBass;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PlaylistsNET.Content;
@@ -19,7 +21,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
-using System; // added for Action
 
 namespace LinkerPlayer.ViewModels;
 
@@ -35,13 +36,6 @@ public interface IPlaylistTabsViewModel
     MediaFile? ActiveTrack { get; set; }
     int SelectedTrackIndex { get; set; }
     MediaFile? SelectedTrack { get; set; }
-    Task NewPlaylistAsync();
-    Task LoadPlaylistAsync();
-    Task AddFolderAsync();
-    Task AddFilesAsync();
-    Task NewPlaylistFromFolderAsync();
-    Task RemovePlaylistAsync(object sender);
-    Task RemoveTrackAsync();
     void LoadPlaylistTabs();
     Task LoadSelectedPlaylistTracksAsync();
     Task LoadOtherPlaylistTracksAsync();
@@ -313,30 +307,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _selectionService.SetTrack(null, -1);
             SelectedTrack = null;
         }
-    }
-
-    private bool SetLastSelectedTrack(MediaFile selectedTrack)
-    {
-        if (SelectedPlaylist == null)
-        {
-            return false;
-        }
-
-        if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
-        {
-            _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = selectedTrack.Id;
-
-            // Request deferred database save instead of immediate save
-            // This batches changes and saves every 2 seconds
-            _databaseSaveService.RequestSave();
-        }
-        else
-        {
-            _logger.LogError("SetLastSelectedTrack: Invalid SelectedTabIndex {Index}", SelectedTabIndex);
-            return false;
-        }
-
-        return true;
     }
 
     public void OnDataGridSorted(string propertyName, ListSortDirection direction)
@@ -614,7 +584,11 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             await _uiDispatcher.InvokeAsync(() =>
             {
                 TabList.Add(newTab);
-                _tabControl!.SelectedIndex = TabList.Count - 1;
+                if (_tabControl != null)
+                {
+                    _tabControl.SelectedIndex = TabList.Count - 1;
+                }
+                SelectedTabIndex = TabList.Count - 1;
             });
         }
         catch (Exception ex)
@@ -821,6 +795,26 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     [RelayCommand]
     private async Task RemoveTrack()
     {
+        // Ensure we have a selected playlist
+        if (SelectedPlaylist == null)
+        {
+            SelectedPlaylist = GetSelectedPlaylist();
+        }
+
+        // Try to determine selected item if DataGrid reference is missing
+        if (_dataGrid?.SelectedItem == null && SelectedTrack != null && SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+        {
+            int idxFromSelected = TabList[SelectedTabIndex].Tracks.IndexOf(SelectedTrack);
+            if (idxFromSelected >= 0)
+            {
+                SelectedTrackIndex = idxFromSelected;
+                if (_dataGrid != null)
+                {
+                    _dataGrid.SelectedIndex = idxFromSelected;
+                }
+            }
+        }
+
         if (_dataGrid?.SelectedItem == null || SelectedPlaylist == null)
         {
             _logger.LogWarning("Cannot remove track - no track or playlist selected");
@@ -868,6 +862,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         if (_dataGrid?.SelectedItem is MediaFile selectedTrack)
         {
             OnDoubleClickDataGrid();
+            // Notify PlayerControls (uses WeakReferenceMessenger)
+            WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
         }
     }
 
@@ -877,31 +873,50 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         SelectFirstTrack();
     }
 
-    // Keep the old methods for backward compatibility but mark them as obsolete
-    [Obsolete("Use NewPlaylistCommand instead")]
-    public async Task NewPlaylistAsync() => await NewPlaylist();
-
-    [Obsolete("Use LoadPlaylistCommand instead")]
-    public async Task LoadPlaylistAsync() => await LoadPlaylist();
-
-    [Obsolete("Use AddFolderCommand instead")]
-    public async Task AddFolderAsync() => await AddFolder();
-
-    [Obsolete("Use AddFilesCommand instead")]
-    public async Task AddFilesAsync() => await AddFiles();
-
-    [Obsolete("Use NewPlaylistFromFolderCommand instead")]
-    public async Task NewPlaylistFromFolderAsync() => await NewPlaylistFromFolder();
-
-    [Obsolete("Use RemoveTrackCommand instead")]
-    public async Task RemoveTrackAsync() => await RemoveTrack();
-
-    // Convert this to a more proper command handler
-    public async Task RemovePlaylistAsync(object sender)
+    [RelayCommand]
+    public void ShowProperties()
     {
-        if (sender is MenuItem { DataContext: PlaylistTab playlistTab })
+        try
         {
-            await RemovePlaylist(playlistTab);
+            IPropertiesViewModel propertiesVm = App.AppHost.Services.GetRequiredService<IPropertiesViewModel>();
+            // Reuse the single PropertiesWindow from DI so only one instance exists
+            PropertiesWindow window = App.AppHost.Services.GetRequiredService<PropertiesWindow>();
+            window.DataContext = propertiesVm;
+
+            // Show or activate on UI thread
+            _ = _uiDispatcher.InvokeAsync(() =>
+            {
+                try
+                {
+                    if (Application.Current?.MainWindow != null && !window.IsLoaded)
+                    {
+                        window.Owner = Application.Current.MainWindow;
+                    }
+
+                    if (window.IsVisible)
+                    {
+                        // Bring existing window to front
+                        try
+                        { window.Activate(); }
+                        catch { }
+                    }
+                    else
+                    {
+                        window.Show();
+                        try
+                        { window.Activate(); }
+                        catch { }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to show or activate Properties window");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to show Properties window");
         }
     }
 
@@ -1389,17 +1404,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         catch { return null; }
     }
 
-    private PlaylistTab CreatePlaylistTabFromPlaylist(Playlist playlist)
-    {
-        IEnumerable<MediaFile> tracks = _playlistManagerService.LoadPlaylistTracks(playlist.Name);
-        PlaylistTab tab = new PlaylistTab { Name = playlist.Name }; // FIX: removed read-only Tracks assignment
-        foreach (MediaFile track in tracks)
-        {
-            tab.Tracks.Add(track);
-        }
-        return tab;
-    }
-
     private async Task EnsureSelectedTabExistsAsync()
     {
         if (SelectedTab == null)
@@ -1515,7 +1519,10 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 TabList.Add(newTab);
                 SelectedTab = newTab;
                 SelectedTabIndex = TabList.Count - 1;
-                _tabControl!.SelectedIndex = SelectedTabIndex;
+                if (_tabControl != null)
+                {
+                    _tabControl.SelectedIndex = SelectedTabIndex;
+                }
                 // Do not override ItemsSource; XAML binding will pick up Tracks automatically
             });
 
@@ -1594,40 +1601,44 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     }
 
     [RelayCommand]
-    public async Task RenamePlaylistAsync((PlaylistTab Tab, string? OldName) args)
+    public async Task RenamePlaylistAsync(PlaylistTab tab)
     {
-        if (string.IsNullOrEmpty(args.Tab.Name) || args.OldName == null)
+        if (tab == null || string.IsNullOrWhiteSpace(tab.Name))
+        {
+            return;
+        }
+
+        string? oldName = _musicLibrary.Playlists.FirstOrDefault(p => p.Name == tab.Name)?.Name;
+        // Attempt to find original playlist by SelectedPlaylist if same reference
+        if (SelectedPlaylist != null && SelectedPlaylist.Name != tab.Name && oldName == null)
+        {
+            oldName = SelectedPlaylist.Name;
+        }
+
+        // If oldName is null we cannot rename (no previous value). Just exit.
+        if (oldName == null || oldName.Equals(tab.Name, StringComparison.Ordinal))
         {
             return;
         }
 
         try
         {
-            bool success = await _playlistManagerService.RenamePlaylistAsync(args.OldName, args.Tab.Name);
+            bool success = await _playlistManagerService.RenamePlaylistAsync(oldName, tab.Name);
             if (!success)
             {
-                // Revert the tab name if rename failed
-                await _uiDispatcher.InvokeAsync(() =>
-                {
-                    args.Tab.Name = args.OldName;
-                });
-                _logger.LogWarning("Failed to rename playlist from '{OldName}' to '{NewName}'", args.OldName, args.Tab.Name);
+                // Revert
+                tab.Name = oldName;
+                _logger.LogWarning("Failed to rename playlist from '{OldName}' to '{NewName}'", oldName, tab.Name);
             }
             else
             {
-                // Update the selected playlist reference
-                SelectedPlaylist = _musicLibrary.Playlists.FirstOrDefault(p => p.Name == args.Tab.Name);
+                SelectedPlaylist = _musicLibrary.Playlists.FirstOrDefault(p => p.Name == tab.Name);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "RenamePlaylistAsync failed for '{OldName}' to '{NewName}'", args.OldName, args.Tab.Name);
-
-            // Revert the tab name on error
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                args.Tab.Name = args.OldName;
-            });
+            _logger.LogError(ex, "RenamePlaylistAsync failed for '{OldName}' to '{NewName}'", oldName, tab.Name);
+            tab.Name = oldName;
         }
     }
 

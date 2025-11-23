@@ -137,6 +137,29 @@ public partial class PlaylistTabs
         }
     }
 
+    private void DataGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Ensure right-click selects the row under the mouse so context menu commands act on it
+        if (sender is not DataGrid dataGrid)
+        {
+            return;
+        }
+
+        DependencyObject source = (DependencyObject)e.OriginalSource;
+        DataGridRow? row = FindAncestor<DataGridRow>(source);
+        if (row != null)
+        {
+            try
+            {
+                // Select the row and focus it
+                dataGrid.SelectedItem = row.Item;
+                row.IsSelected = true;
+                row.Focus();
+            }
+            catch { }
+        }
+    }
+
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         // Update selection immediately so context menu actions (like Properties) see multi-select state
@@ -246,78 +269,40 @@ public partial class PlaylistTabs
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
     }
 
-    private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            viewModel.NewPlaylistCommand.Execute(null);
-        }
-    }
-
-    private void MenuItem_LoadPlaylistAsync(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            viewModel.LoadPlaylistCommand.Execute(null);
-        }
-    }
-
     private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
     {
-        EditableTabHeaderControl? targetHeader = null;
-        if (sender is MenuItem mi)
-        {
-            ContextMenu? ctx = mi.Parent as ContextMenu;
-            if (ctx == null)
-            {
-                ctx = FindAncestor<ContextMenu>(mi);
-            }
-            if (ctx != null && ctx.PlacementTarget is EditableTabHeaderControl header)
-            {
-                targetHeader = header;
-            }
-        }
-
-        if (targetHeader == null)
-        {
-            targetHeader = _selectedEditableTabHeaderControl;
-        }
-
-        if (targetHeader != null)
-        {
-            if (targetHeader.Tag is not PlaylistTabsViewModel && DataContext is PlaylistTabsViewModel vm)
-            {
-                targetHeader.Tag = vm;
-            }
-            targetHeader.SetEditMode(true);
-        }
+        // Legacy handler no longer needed now that command binding invokes RenamePlaylistAsyncCommand directly.
+        // Removed logic; keep method stub only if still referenced elsewhere, otherwise delete.
     }
 
     private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
     {
-        Dispatcher.BeginInvoke(async () =>
-        {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                await viewModel.RemovePlaylistAsync(sender);
-            }
-        });
+        // Legacy handler replaced by RemovePlaylistCommand binding; safe to remove body.
     }
 
     private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
     {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            viewModel.AddFolderCommand.Execute(null);
-        }
+        // Legacy handler replaced by AddFolderCommand binding.
     }
 
     private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
     {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            viewModel.AddFilesCommand.Execute(null);
-        }
+        // Legacy handler replaced by AddFilesCommand binding.
+    }
+
+    private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
+    {
+        // Legacy handler replaced by NewPlaylistCommand binding.
+    }
+
+    private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
+    {
+        // Legacy handler replaced by NewPlaylistFromFolderCommand binding.
+    }
+
+    private void MenuItem_LoadPlaylistAsync(object sender, RoutedEventArgs e)
+    {
+        // Legacy handler replaced by LoadPlaylistCommand binding.
     }
 
     private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
@@ -333,29 +318,13 @@ public partial class PlaylistTabs
 
     private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
     {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            viewModel.RemoveTrackCommand.Execute(null);
-        }
-    }
-
-    private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
-    {
-        if (DataContext is PlaylistTabsViewModel viewModel)
-        {
-            viewModel.NewPlaylistFromFolderCommand.Execute(null);
-        }
+        // Legacy handler replaced by RemoveTrackCommand binding.
     }
 
     private void MenuItem_Properties(object sender, RoutedEventArgs e)
     {
-        PropertiesViewModel propertiesViewModel = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
-
-        PropertiesWindow dialog = new PropertiesWindow
-        {
-            DataContext = propertiesViewModel
-        };
-        dialog.Show();
+        PropertiesViewModel vm = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
+        new PropertiesWindow { DataContext = vm }.Show();
     }
 
     private void TabHeader_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

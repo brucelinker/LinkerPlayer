@@ -20,9 +20,9 @@ namespace LinkerPlayer.UserControls;
 public partial class PlayerControls
 {
     private readonly DispatcherTimer _seekBarTimer = new();
-    private readonly AudioEngine _audioEngine;
+    private readonly IAudioEngine _audioEngine;
     private readonly EqualizerWindow _equalizerWindow;
-    private readonly PlayerControlsViewModel _vm;
+    private readonly IPlayerControlsViewModel _vm;
     private readonly ILogger<PlayerControls> _logger;
 
 
@@ -30,9 +30,9 @@ public partial class PlayerControls
 
     public PlayerControls()
     {
-        _audioEngine = App.AppHost.Services.GetRequiredService<AudioEngine>();
+        _audioEngine = App.AppHost.Services.GetRequiredService<IAudioEngine>();
 
-        _vm = App.AppHost.Services.GetRequiredService<PlayerControlsViewModel>();
+        _vm = App.AppHost.Services.GetRequiredService<IPlayerControlsViewModel>();
         DataContext = _vm;
 
         _logger = App.AppHost.Services.GetRequiredService<ILogger<PlayerControls>>();

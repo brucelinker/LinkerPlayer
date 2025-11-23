@@ -30,11 +30,11 @@ public partial class PropertiesWindow
 
     protected override void OnClosed(EventArgs e)
     {
-        // Properly dispose the ViewModel when window closes
+        // Properly unsubscribe from VM events when window closes. Do not dispose singleton VM here.
         if (DataContext is PropertiesViewModel vm)
         {
             vm.CloseRequested -= PropertiesViewModel_CloseRequested;
-            vm.Dispose();
+            // Do not call vm.Dispose() for singleton VM; host will dispose at shutdown
         }
 
         base.OnClosed(e);
@@ -96,11 +96,25 @@ public partial class PropertiesWindow
 
     private void ClosePropertiesWindow()
     {
+        // Hide instead of closing to allow reuse of single instance
         Window? win = GetWindow(this);
         if (win != null)
         {
-            win.Close();
+            win.Hide();
         }
+    }
+
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // During application shutdown allow close; otherwise convert close to hide so the window can be reused
+        if (Application.Current?.Dispatcher.HasShutdownStarted == true || Application.Current?.Dispatcher.HasShutdownFinished == true)
+        {
+            base.OnClosing(e);
+            return;
+        }
+
+        e.Cancel = true;
+        this.Hide();
     }
 
     private void LyricsTextBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)

@@ -32,8 +32,8 @@ public interface IPlayerControlsViewModel
 
 public partial class PlayerControlsViewModel : ObservableObject, IPlayerControlsViewModel
 {
-    private readonly AudioEngine _audioEngine;
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel;
+    private readonly IAudioEngine _audioEngine;
+    private readonly PlaylistTabsViewModel _playlistTabsViewModel; // concrete to access SelectFirstTrack/PreviousMediaFile/NextMediaFile
     private readonly ISettingsManager _settingsManager;
     private readonly ISharedDataModel _sharedDataModel; // switched to interface
     private readonly ILogger<PlayerControlsViewModel> _logger;
@@ -44,7 +44,7 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
     private bool _isNavigatingTrack = false;
 
     public PlayerControlsViewModel(
-        AudioEngine audioEngine,
+        IAudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
         ISettingsManager settingsManager,
         ISharedDataModel sharedDataModel,
@@ -53,7 +53,7 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
         _audioEngine = audioEngine;
         _playlistTabsViewModel = playlistTabsViewModel;
         _settingsManager = settingsManager;
-        _sharedDataModel = sharedDataModel;
+        _sharedDataModel = sharedDataModel; // will be fixed by compiler if name mismatch
         _logger = logger;
 
         try
