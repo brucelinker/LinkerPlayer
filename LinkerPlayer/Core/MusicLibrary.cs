@@ -30,7 +30,6 @@ public interface IMusicLibrary
     void SaveToDatabase();
     Task LoadFromDatabaseAsync();
     Task CleanOrphanedTracksAsync();
-    void ClearPlayState();
 }
 
 public class MusicLibrary : IMusicLibrary
@@ -225,9 +224,6 @@ public class MusicLibrary : IMusicLibrary
         try
         {
             context.ChangeTracker.AutoDetectChangesEnabled = false;
-
-            // IMPORTANT: Do not clear play state here; it breaks UI indicators of currently playing track.
-            //ClearPlayState();
 
             // Ensure all MainLibrary tracks have their database Id set
             foreach (MediaFile track in MainLibrary)
@@ -555,14 +551,5 @@ public class MusicLibrary : IMusicLibrary
             .Where(t => t != null)
             .Select(t => t!)
             .ToList();
-    }
-
-    public void ClearPlayState()
-    {
-        // Keep as a utility for any future explicit UI reset, but avoid calling it during persistence.
-        foreach (MediaFile file in MainLibrary)
-        {
-            file.State = PlaybackState.Stopped;
-        }
     }
 }

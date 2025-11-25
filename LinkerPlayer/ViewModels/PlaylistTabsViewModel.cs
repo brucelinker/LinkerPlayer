@@ -454,42 +454,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         }
     }
 
-    private void ClearPlayingStates(MediaFile? except = null)
-    {
-        try
-        {
-            foreach (PlaylistTab tab in TabList)
-            {
-                foreach (MediaFile track in tab.Tracks)
-                {
-                    if (except == null || track.Id != except.Id)
-                    {
-                        if (track.State != PlaybackState.Stopped)
-                        {
-                            track.State = PlaybackState.Stopped;
-                        }
-                    }
-                }
-            }
-
-            // Also clear in main library
-            foreach (MediaFile lib in _musicLibrary.MainLibrary)
-            {
-                if (except == null || lib.Id != except.Id)
-                {
-                    if (lib.State != PlaybackState.Stopped)
-                    {
-                        lib.State = PlaybackState.Stopped;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "ClearPlayingStates failed");
-        }
-    }
-
     public void OnDoubleClickDataGrid()
     {
         if (_dataGrid?.SelectedItem is not MediaFile selectedTrack)
