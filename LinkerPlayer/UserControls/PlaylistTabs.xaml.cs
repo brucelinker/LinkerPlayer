@@ -263,10 +263,10 @@ public partial class PlaylistTabs
             if (DataContext is PlaylistTabsViewModel viewModel)
             {
                 viewModel.OnDoubleClickDataGrid();
-                // Send play message after the view model has updated selection/active track
-                WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
             }
         }, null);
+
+        WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
     }
 
     private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)

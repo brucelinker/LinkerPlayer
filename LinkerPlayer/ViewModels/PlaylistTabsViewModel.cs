@@ -168,73 +168,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         {
             OnShuffleChanged(m.Value);
         });
-
-        // Listen for active track changes from the player so we can update UI states
-        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
-        {
-            try
-            {
-                // Keep UI state simple: only track the single ActiveTrack. Update via helper.
-                SetActiveTrack(m.Value);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error handling ActiveTrackChangedMessage");
-            }
-        });
-    }
-
-    private void SetActiveTrack(MediaFile? newActive)
-    {
-        try
-        {
-            MediaFile? previous = _sharedDataModel.ActiveTrack;
-
-            // Stop previous active if different
-            if (previous != null && (newActive == null || previous.Id != newActive.Id))
-            {
-                previous.State = PlaybackState.Stopped;
-
-                // Also ensure main library instance reflects stopped state if different instance exists
-                MediaFile? libPrev = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == previous.Id);
-                if (libPrev != null && libPrev.State != PlaybackState.Stopped)
-                {
-                    libPrev.State = PlaybackState.Stopped;
-                }
-            }
-
-            if (newActive != null)
-            {
-                // Update selection/active references
-                SelectedTrack = newActive;
-
-                // Ensure the main library instance is marked playing
-                MediaFile? libNew = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == newActive.Id);
-                if (libNew != null)
-                {
-                    libNew.State = PlaybackState.Playing;
-                }
-
-                // Set the track's state and ActiveTrack
-                newActive.State = PlaybackState.Playing;
-                ActiveTrack = newActive;
-
-                // Persist playlist selected id if applicable
-                if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
-                {
-                    _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = newActive.Id;
-                }
-            }
-            else
-            {
-                // Clearing active
-                ActiveTrack = null;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "SetActiveTrack failed");
-        }
     }
 
     public void OnDataGridLoaded(object sender, RoutedEventArgs _)
@@ -463,11 +396,19 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
         try
         {
+            selectedTrack.State = PlaybackState.Playing;
+            MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == selectedTrack.Id);
+            if (libraryTrack != null)
+            {
+                libraryTrack.State = PlaybackState.Playing;
+            }
+            if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
+            {
+                _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = selectedTrack.Id;
+            }
             // Centralize through SelectedTrack property (which invokes SelectionService)
             SelectedTrack = selectedTrack;
-
-            // Use helper to update previous/new active states and ActiveTrack
-            SetActiveTrack(selectedTrack);
+            ActiveTrack = selectedTrack;
         }
         catch (Exception ex)
         {
@@ -1352,7 +1293,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
             string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
             HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
+            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
+            ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
             string? bestPath = null;
             int bestScore = int.MaxValue;
             foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
@@ -1394,7 +1336,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
             string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
             HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
+            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
+            ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
             string? bestPath = null;
             int bestScore = int.MaxValue;
             foreach (string file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
@@ -1485,12 +1428,20 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
         MediaFile newTrack = tracks[newIndex];
 
-        // Update via helper which handles stopping previous active and setting new active
-        SetActiveTrack(newTrack);
+        // Update track state
+        newTrack.State = PlaybackState.Playing;
 
         // Update UI selection
         SelectedTrack = newTrack; // triggers selection service
         SelectedTrackIndex = newIndex;
+        ActiveTrack = newTrack;
+
+        // Update library state
+        MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == newTrack.Id);
+        if (libraryTrack != null)
+        {
+            libraryTrack.State = PlaybackState.Playing;
+        }
 
         // Update playlist state
         if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
