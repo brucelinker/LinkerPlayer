@@ -172,7 +172,7 @@
                     <MenuItem Command="{Binding PlacementTarget.Tag.AddFilesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Files" />
                     <Separator />
                     <MenuItem
-                      Command="{Binding PlacementTarget.Tag.RenamePlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                      Command="{Binding PlacementTarget.Tag.BeginRenameTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                       Header="Rename Playlist" />
                     <Separator />

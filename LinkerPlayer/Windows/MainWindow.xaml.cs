@@ -105,7 +105,7 @@ public partial class MainWindow : Window
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton == MouseButton.Left)
+        if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
         {
             DragMove();
         }

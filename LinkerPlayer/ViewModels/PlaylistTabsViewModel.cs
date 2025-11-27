@@ -6,6 +6,7 @@ using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.Windows;
+using LinkerPlayer.UserControls;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -1616,7 +1618,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         }
 
         // If oldName is null we cannot rename (no previous value). Just exit.
-        if (oldName == null || oldName.Equals(tab.Name, StringComparison.Ordinal))
+        if (oldName == null) // || oldName.Equals(tab.Name, StringComparison.Ordinal))
         {
             return;
         }
@@ -1802,5 +1804,73 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _logger.LogError(ex, "Error getting next media file");
             return null;
         }
+    }
+
+    [RelayCommand]
+    private void BeginRenameTab(PlaylistTab tab)
+    {
+        if (tab == null)
+        {
+            return;
+        }
+        // Find the EditableTabHeaderControl for this tab and set edit mode
+        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            foreach (Window window in Application.Current.Windows)
+            {
+                foreach (System.Windows.Controls.TabControl? tabControl in FindVisualChildren<System.Windows.Controls.TabControl>(window))
+                {
+                    foreach (System.Windows.Controls.TabItem? tabItem in FindVisualChildren<System.Windows.Controls.TabItem>(tabControl))
+                    {
+                        if (tabItem.DataContext == tab)
+                        {
+                            EditableTabHeaderControl? header = FindVisualChild<EditableTabHeaderControl>(tabItem);
+                            if (header != null)
+                            {
+                                header.SetEditMode(true);
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }), System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
+    {
+        if (depObj != null)
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+            {
+                DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+                if (child != null && child is T t)
+                {
+                    yield return t;
+                }
+                foreach (T childOfChild in FindVisualChildren<T>(child))
+                {
+                    yield return childOfChild;
+                }
+            }
+        }
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject depObj) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
+            if (child is T t)
+            {
+                return t;
+            }
+            T? childOfChild = FindVisualChild<T>(child);
+            if (childOfChild != null)
+            {
+                return childOfChild;
+            }
+        }
+        return null;
     }
 }
