@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LinkerPlayer", "LinkerPlayer.csproj", "{EB897F95-6399-EB52-D0B4-9F2D8278CBB0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "nCrunchTemp_32470f61-93ea-447f-806c-25e0c1f5a676", "nCrunchTemp_32470f61-93ea-447f-806c-25e0c1f5a676.csproj", "{E98972EF-C798-D2DB-8279-01068BACE011}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EB897F95-6399-EB52-D0B4-9F2D8278CBB0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB897F95-6399-EB52-D0B4-9F2D8278CBB0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB897F95-6399-EB52-D0B4-9F2D8278CBB0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB897F95-6399-EB52-D0B4-9F2D8278CBB0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E98972EF-C798-D2DB-8279-01068BACE011}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E98972EF-C798-D2DB-8279-01068BACE011}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E98972EF-C798-D2DB-8279-01068BACE011}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E98972EF-C798-D2DB-8279-01068BACE011}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E94F8CB3-BC58-400F-A84B-B66AB9ADA3D5}
+	EndGlobalSection
+EndGlobal

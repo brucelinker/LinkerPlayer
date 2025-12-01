@@ -4,7 +4,7 @@ namespace LinkerPlayer.Tests.Audio;
 
 public class AudioMathTests
 {
-    [Theory]
+    [StaTheory]
     [InlineData(44100, 0, 2048, 0)]
     [InlineData(44100, 20, 2048, 0)] // very low freq -> first bin
     [InlineData(44100, 1000, 2048, 46)]
@@ -15,7 +15,7 @@ public class AudioMathTests
         Assert.Equal(expected, idx);
     }
 
-    [Theory]
+    [StaTheory]
     [InlineData(-20f, -12f)]
     [InlineData(0f, 0f)]
     [InlineData(6f, 6f)]

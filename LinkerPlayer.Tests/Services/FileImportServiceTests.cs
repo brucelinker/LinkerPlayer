@@ -53,7 +53,7 @@ public class FileImportServiceTests : IDisposable
         result.Should().Be(expected);
     }
 
-    [Fact]
+    [StaFact]
     public void IsAudioFile_WithNullOrEmptyPath_ShouldReturnFalse()
     {
         // Arrange
@@ -65,7 +65,7 @@ public class FileImportServiceTests : IDisposable
         fileImportService.IsAudioFile("   ").Should().BeFalse();
     }
 
-    [Fact]
+    [StaFact]
     public void GetAudioFileCount_WithNonExistentFolder_ShouldReturnZero()
     {
         // Arrange
@@ -79,7 +79,7 @@ public class FileImportServiceTests : IDisposable
         result.Should().Be(0);
     }
 
-    [Fact]
+    [StaFact]
     public void GetAudioFileCount_WithMixedFiles_ShouldReturnOnlyAudioFiles()
     {
         // Arrange

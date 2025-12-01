@@ -14,94 +14,31 @@ namespace LinkerPlayer.Models;
 
 public interface IMediaFile
 {
-    string Id
-    {
-        get;
-    }
-    string Path
-    {
-        get;
-    }
-    string FileName
-    {
-        get;
-    }
-    uint Track
-    {
-        get;
-    }
-    uint TrackCount
-    {
-        get;
-    }
-    uint Disc
-    {
-        get;
-    }
-    uint DiscCount
-    {
-        get;
-    }
-    uint Year
-    {
-        get;
-    }
-    string Title
-    {
-        get;
-    }
-    string Artist
-    {
-        get;
-    }
-    string Album
-    {
-        get;
-    }
-    string Performers
-    {
-        get;
-    }
-    string Composers
-    {
-        get;
-    }
-    string Genres
-    {
-        get;
-    }
-    TimeSpan Duration
-    {
-        get;
-    }
-    string Comment
-    {
-        get;
-    }
-    int Bitrate
-    {
-        get;
-    }
-    int SampleRate
-    {
-        get;
-    }
-    int Channels
-    {
-        get;
-    }
-    string Copyright
-    {
-        get;
-    }
-    BitmapImage? AlbumCover
-    {
-        get;
-    }
-    PlaybackState State
-    {
-        get; set;
-    }
+    string Id { get; }
+    string Path { get; }
+    string FileName { get; }
+    uint Track { get; }
+    uint TrackCount { get; }
+    uint Disc { get; }
+    uint DiscCount { get; }
+    uint Year { get; }
+    string Title { get; }
+    string Artist { get; }
+    string Album { get; }
+    string AlbumArtist { get; }
+    string Performers { get; }
+    string Composers { get; }
+    string Genres { get; }
+    TimeSpan Duration { get; }
+    string Comment { get; }
+    int Bitrate { get; }
+    int SampleRate { get; }
+    int Channels { get; }
+    string? Codec { get; }
+    string Copyright { get; }
+    BitmapImage? AlbumCover { get; }
+    PlaybackState State { get; set; }
+
 }
 
 [Index(nameof(Id), nameof(Path), IsUnique = true)]
@@ -141,6 +78,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [StringLength(128, ErrorMessage = "Album cannot exceed 128 characters")]
     [ObservableProperty]
     private string _album = string.Empty;
+
+    [StringLength(128, ErrorMessage = "AlbumArtist cannot exceed 128 characters")]
+    [ObservableProperty]
+    private string _albumArtist = string.Empty;
 
     [StringLength(256, ErrorMessage = "Performers cannot exceed 256 characters")]
     [ObservableProperty]
@@ -189,6 +130,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private int _channels;
 
+    [ObservableProperty]
+    private string _codec = string.Empty;
+
     [NotMapped]
     [ObservableProperty]
     private BitmapImage? _albumCover;
@@ -230,19 +174,18 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
             FileName = ValidateStringLength(System.IO.Path.GetFileName(Path), 255, nameof(FileName));
             Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
+
+            string artist = MediaFileHelper?.GetBestArtistField(file.Tag) ?? UnknownString;
+            Artist = ValidateStringLength(artist, 128, nameof(Artist));
+
             Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
 
             // Use the MediaFileHelper service to get the best album artist field
             string albumArtist = MediaFileHelper?.GetBestAlbumArtistField(file.Tag) ?? UnknownString;
-            Artist = ValidateStringLength(albumArtist, 128, nameof(Artist));
+            AlbumArtist = ValidateStringLength(albumArtist, 128, nameof(AlbumArtist));
 
             List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
             Performers = ValidateStringLength(performers.Count > 0 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
-
-            if (string.IsNullOrWhiteSpace(Artist))
-            {
-                Artist = ValidateStringLength(string.IsNullOrWhiteSpace(Performers) ? UnknownString : Performers, 128, nameof(Artist));
-            }
 
             //Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
 
@@ -261,6 +204,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Bitrate = file.Properties.AudioBitrate;
             SampleRate = file.Properties.AudioSampleRate;
             Channels = file.Properties.AudioChannels;
+            Codec = file.Properties.Codecs?.FirstOrDefault()!.Description ?? string.Empty;
 
             if (file.Properties.MediaTypes != MediaTypes.None)
             {
@@ -317,6 +261,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         SampleRate = 0;
         Channels = 0;
         Duration = TimeSpan.FromSeconds(1);
+        Codec = string.Empty;
 
         if (raisePropertyChanged)
         {
@@ -450,7 +395,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                     file.Properties.AudioChannels,
                     file.Properties.Duration,
                     file.Properties.MediaTypes,
-                    file.Properties.Description
+                    file.Properties.Description,
+                    Codec = string.Empty
                 }
             };
             return System.Text.Json.JsonSerializer.Serialize(tagInfo, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });

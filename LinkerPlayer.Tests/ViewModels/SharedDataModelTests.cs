@@ -6,7 +6,7 @@ namespace LinkerPlayer.Tests.ViewModels;
 
 public class SharedDataModelTests
 {
-    [Fact]
+    [StaFact]
     public void UpdateSelectedTrackIndex_ShouldRaiseAndStoreValue()
     {
         SharedDataModel model = new SharedDataModel();
@@ -17,7 +17,7 @@ public class SharedDataModelTests
         Assert.Equal(5, observed);
     }
 
-    [Fact]
+    [StaFact]
     public void UpdateSelectedTrack_ShouldSetTrackAndRaise()
     {
         SharedDataModel model = new SharedDataModel();
@@ -29,7 +29,7 @@ public class SharedDataModelTests
         Assert.Equal(track, observed);
     }
 
-    [Fact]
+    [StaFact]
     public void UpdateActiveTrack_ShouldSetTrackAndRaise()
     {
         SharedDataModel model = new SharedDataModel();
@@ -41,7 +41,7 @@ public class SharedDataModelTests
         Assert.Equal(track, observed);
     }
 
-    [Fact]
+    [StaFact]
     public void UpdateSelectedTracks_ShouldReplaceContents()
     {
         SharedDataModel model = new SharedDataModel();
@@ -54,7 +54,7 @@ public class SharedDataModelTests
         Assert.True(changeCount >= 1);
     }
 
-    [Fact]
+    [StaFact]
     public void MultiSelection_SwitchToSingleSelection_ShouldReflectCounts()
     {
         SharedDataModel model = new SharedDataModel();

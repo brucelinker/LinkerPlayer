@@ -1,25 +1,103 @@
 using FluentAssertions;
-using LinkerPlayer.ViewModels;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.Tests.Mocks;
-using Moq;
+using LinkerPlayer.UserControls;
+using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.Logging;
+using Moq;
 using System.Collections.ObjectModel;
+using System.Reflection;
+using System.Windows.Controls;
 
 namespace LinkerPlayer.Tests.ViewModels;
 
-public class PlaylistTabsViewModelTests
+public class PlaylistTabsViewModelTests : IDisposable
 {
-    [Fact]
+    private readonly Mock<IMusicLibrary> _mockLibrary;
+    private readonly Mock<ISharedDataModel> _mockShared;
+    private readonly Mock<ISettingsManager> _mockSettings;
+    private readonly Mock<IFileImportService> _mockFileImport;
+    private readonly Mock<IPlaylistManagerService> _mockPlaylist;
+    private readonly Mock<ITrackNavigationService> _mockNav;
+    private readonly Mock<IUiDispatcher> _mockDispatcher;
+    private readonly Mock<IDatabaseSaveService> _mockSave;
+    private readonly Mock<ISelectionService> _mockSelection;
+    private readonly Mock<ILogger<PlaylistTabsViewModel>> _mockLogger;
+    private readonly PlaylistTabsViewModel _vm;
+
+    public PlaylistTabsViewModelTests()
+    {
+        _mockLibrary = new Mock<IMusicLibrary>();
+        _mockShared = new Mock<ISharedDataModel>();
+        _mockSettings = new Mock<ISettingsManager>();
+        _mockFileImport = new Mock<IFileImportService>();
+        _mockPlaylist = new Mock<IPlaylistManagerService>();
+        _mockNav = new Mock<ITrackNavigationService>();
+        _mockDispatcher = new Mock<IUiDispatcher>();
+        _mockSave = new Mock<IDatabaseSaveService>();
+        _mockSelection = new Mock<ISelectionService>();
+        _mockLogger = new Mock<ILogger<PlaylistTabsViewModel>>();
+
+        _mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
+
+        _vm = new PlaylistTabsViewModel(
+            _mockLibrary.Object,
+            _mockShared.Object,
+            _mockSettings.Object,
+            _mockFileImport.Object,
+            _mockPlaylist.Object,
+            _mockNav.Object,
+            _mockDispatcher.Object,
+            _mockSave.Object,
+            _mockSelection.Object,
+            _mockLogger.Object
+        );
+    }
+
+    [StaFact]
     public void BasicTest_ShouldPass()
     {
         bool result = true;
         result.Should().BeTrue();
     }
 
-    [Fact]
+    [StaFact]
+    public void DoubleClick_SameTrack_DoesNotRestart()
+    {
+        var track = new MediaFile { Id = "123", Title = "Test" };
+        _vm.ActiveTrack = track;
+
+        _vm.OnDoubleClickDataGrid(); // with track selected
+
+        _mockShared.Verify(s => s.UpdateActiveTrack(track), Times.Once); // or twice with the null trick
+    }
+
+    [StaFact]
+    public void ColumnRegeneration_AlwaysHasPlayPauseColumn()
+    {
+        // Arrange - force zero tag columns
+        var selectedField = typeof(PlaylistTabsViewModel)
+            .GetField("_selectedColumnNames", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        selectedField!.SetValue(_vm, new List<string>());
+
+        var dg = new DataGrid();
+
+        // Act - call the real method (now internal = accessible)
+        var playlistTabs = new PlaylistTabs { DataContext = _vm };
+        playlistTabs.RegenerateColumns(dg);
+
+        // Assert
+        Assert.Single(dg.Columns); // only Play/Pause
+        var col = Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
+        Assert.NotNull(col.CellTemplate); // proves Application.Current.TryFindResource worked
+    }
+
+    // Add more tests for selection sync, tab reordering, scroll restore, etc.
+
+    [StaFact]
     public void Startup_LoadPlaylistTabs_ShouldRestoreSelectedTrack()
     {
         // Arrange
@@ -82,7 +160,7 @@ public class PlaylistTabsViewModelTests
         vm.SelectedTrackIndex.Should().Be(1);
     }
 
-    [Fact]
+    [StaFact]
     public async Task LoadSelectedPlaylistTracksAsync_ShouldPopulateSelectedTab()
     {
         // Arrange
@@ -153,7 +231,7 @@ public class PlaylistTabsViewModelTests
         vm.TabList[0].Tracks.Should().HaveCount(2);
     }
 
-    [Fact]
+    [StaFact]
     public async Task ReorderTabs_ShouldMoveTab_AndPreserveSelection()
     {
         // Arrange
@@ -209,4 +287,6 @@ public class PlaylistTabsViewModelTests
         // Selected tab should still be the same logical tab ("B") now at index 2
         vm.TabList[vm.SelectedTabIndex].Name.Should().Be(selectedName);
     }
+
+    public void Dispose() { }
 }

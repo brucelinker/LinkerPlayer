@@ -39,8 +39,9 @@ When I ask a question, follow these steps:
    Show only the lines that need to change, not the entire file.
 
 6. CODE PREFERENCES
-   - I am now using Community.Toolkit.Mvvm and prefer to use the features it provides. Please convert as needed.
+   - I am using the Community.Toolkit.Mvvm and prefer to use the features it provides. Please convert as needed.
    - Keep the code simple and DRY
    - My project enables `<Nullable>`, make sure the code supports that
    - I prefer using Explicit Types, do not use var.
+   - I prefer file-scoped namespaces
    - Only focus on changes in logic - DO NOT CHANGE FORMATTING. Formatting is my preference, not your preference.

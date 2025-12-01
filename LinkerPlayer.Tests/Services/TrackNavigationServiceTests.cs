@@ -49,7 +49,7 @@ public class TrackNavigationServiceTests
     //    result.Should().Be(expectedIndex);
     //}
 
-    [Fact]
+    [StaFact]
     public void GetNextTrackIndex_WithEmptyTrackList_ShouldReturnMinusOne()
     {
         // Arrange
@@ -62,7 +62,7 @@ public class TrackNavigationServiceTests
         result.Should().Be(-1);
     }
 
-    [Fact]
+    [StaFact]
     public void GetPreviousTrackIndex_WithEmptyTrackList_ShouldReturnMinusOne()
     {
         // Arrange
@@ -134,7 +134,7 @@ public class TrackNavigationServiceTests
     //    position.Should().BeLessThan(testTracks.Count);
     //}
 
-    [Fact]
+    [StaFact]
     public void InitializeShuffle_WithEmptyTracks_ShouldClearShuffle()
     {
         // Arrange

@@ -53,7 +53,7 @@ public class PlaylistTabsViewModel_DragDropTests
             logger);
     }
 
-    [Fact]
+    [StaFact]
     public void DragDrop_Commands_AreGenerated()
     {
         PlaylistTabsViewModel vm = CreateViewModel();
@@ -82,7 +82,7 @@ public class PlaylistTabsViewModel_DragDropTests
         dropCmd!.CanExecute(null).Should().BeTrue();
     }
 
-    [Fact]
+    [StaFact]
     public void ExtractPathsFromM3u_ParsesBasicEntries()
     {
         // Arrange

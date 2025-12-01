@@ -235,7 +235,6 @@
       <DataTemplate x:Key="TabContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <Grid>
           <DataGrid
-            PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
             Name="PlaylistDataGrid"
             Margin="0,0,0,0"
             HorizontalAlignment="Stretch"
@@ -260,6 +259,7 @@
             ItemsSource="{Binding Tracks}"
             Loaded="DataGrid_Loaded"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
+            PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
             RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"
             RowHeaderWidth="0"
             RowHeight="20"
@@ -426,9 +426,9 @@
 
             <DataGrid.ContextMenu>
               <ContextMenu>
-                <MenuItem Header="Play" Command="{Binding PlacementTarget.Tag.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                <MenuItem Header="Remove" Command="{Binding PlacementTarget.Tag.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                <MenuItem Header="Properties" Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Play" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Remove" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Properties" />
               </ContextMenu>
             </DataGrid.ContextMenu>
           </DataGrid>

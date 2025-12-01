@@ -4,7 +4,7 @@ namespace LinkerPlayer.Tests.Services;
 
 public class PlaylistManagerServiceTests
 {
-    [Fact]
+    [StaFact]
     public void BasicTest_ShouldPass()
     {
         // This is a placeholder test while we work on making the complex dependencies testable

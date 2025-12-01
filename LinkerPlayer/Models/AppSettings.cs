@@ -22,4 +22,5 @@ public class AppSettings
 
     // New: Remember which monitor the MainWindow was on last close to position Splash on the same screen next launch
     public string LastMainWindowMonitorDeviceName { get; set; } = string.Empty;
+    public List<string> VisibleColumns { get; set; } = new List<string>();
 }

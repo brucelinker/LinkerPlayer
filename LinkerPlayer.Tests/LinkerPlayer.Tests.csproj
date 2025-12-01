@@ -26,6 +26,7 @@
     
     <!-- Keep Shouldly if you prefer it, but FluentAssertions is more popular -->
     <PackageReference Include="Shouldly" Version="4.3.0" />
+    <PackageReference Include="Xunit.StaFact" Version="1.1.11" />
   </ItemGroup>
 
   <ItemGroup>

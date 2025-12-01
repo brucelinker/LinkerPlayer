@@ -5,8 +5,8 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
-using LinkerPlayer.Windows;
 using LinkerPlayer.UserControls;
+using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -22,6 +22,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 
 namespace LinkerPlayer.ViewModels;
@@ -33,6 +34,7 @@ public interface IPlaylistTabsViewModel
     Playlist? SelectedPlaylist { get; }
     PlaybackState State { get; }
     ObservableCollection<PlaylistTab> TabList { get; }
+    ObservableCollection<DataGridColumn> VisibleColumns { get; }
     bool AllowDrop { get; }
     ProgressData ProgressInfo { get; }
     MediaFile? ActiveTrack { get; set; }
@@ -60,6 +62,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         Status = string.Empty
     };
 
+    public ObservableCollection<DataGridColumn> VisibleColumns { get; } = new ObservableCollection<DataGridColumn>();
+
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<PlaylistTabsViewModel> _logger;
 
@@ -85,6 +89,13 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*"; // restore
+
+    private List<string> _selectedColumnNames = new()
+    {
+        "Playing",
+        "Title",
+        "Artist"
+    };
 
     // SINGLE canonical selection properties (remove duplicates below)
     public MediaFile? ActiveTrack
@@ -122,6 +133,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         }
     }
 
+    public List<string> SelectedColumnNames => _selectedColumnNames;
+
     public PlaylistTabsViewModel(
         IMusicLibrary musicLibrary,
         ISharedDataModel sharedDataModel,
@@ -150,6 +163,19 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
             AllowDrop = true;
             RegisterMessages();
+
+            if (_settingsManager.Settings.VisibleColumns == null ||
+                _settingsManager.Settings.VisibleColumns.Count == 0)
+            {
+                _selectedColumnNames = new List<string> { "Title", "Artist", "Album", "Duration" };
+                _settingsManager.Settings.VisibleColumns = _selectedColumnNames;
+                _settingsManager.SaveSettings(nameof(AppSettings.VisibleColumns));
+            }
+            else
+            {
+                _selectedColumnNames = new List<string>(_settingsManager.Settings.VisibleColumns);
+            }
+
             _logger.LogInformation("PlaylistTabsViewModel initialized successfully (SelectionService)");
         }
         catch (Exception ex)
@@ -170,6 +196,28 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         {
             OnShuffleChanged(m.Value);
         });
+    }
+
+    public void ApplySelectedColumns(List<string> columns)
+    {
+        List<string> newList = columns ?? new List<string>();
+
+        // Only update + save if actually different (prevents unnecessary saves)
+        if (!newList.SequenceEqual(_selectedColumnNames))
+        {
+            _selectedColumnNames = newList;
+            _settingsManager.Settings.VisibleColumns = _selectedColumnNames;
+            _settingsManager.SaveSettings(nameof(AppSettings.VisibleColumns));
+        }
+    }
+
+    public void UpdateSelectedColumnNames(List<string> columns)
+    {
+        _selectedColumnNames = new List<string>(columns ?? new List<string>());
+
+        // Optional: persist to settings so they survive restart
+        _settingsManager.Settings.VisibleColumns = _selectedColumnNames;
+        _settingsManager.SaveSettings("VisibleColumns");
     }
 
     public void OnDataGridLoaded(object sender, RoutedEventArgs _)
@@ -392,29 +440,30 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     public void OnDoubleClickDataGrid()
     {
         if (_dataGrid?.SelectedItem is not MediaFile selectedTrack)
-        {
             return;
-        }
 
-        try
+        // Force playback of this exact track, even if it's the current one (prevents restart)
+        ActiveTrack = null;  // Brief null forces next setter to always trigger
+        ActiveTrack = selectedTrack;
+
+        // Update selection properly
+        SelectedTrack = selectedTrack;
+
+        // Ensure playing state everywhere
+        selectedTrack.State = PlaybackState.Playing;
+        MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == selectedTrack.Id);
+        if (libraryTrack != null)
         {
-            selectedTrack.State = PlaybackState.Playing;
-            MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == selectedTrack.Id);
-            if (libraryTrack != null)
-            {
-                libraryTrack.State = PlaybackState.Playing;
-            }
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
-            {
-                _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = selectedTrack.Id;
-            }
-            // Centralize through SelectedTrack property (which invokes SelectionService)
-            SelectedTrack = selectedTrack;
-            ActiveTrack = selectedTrack;
+            libraryTrack.State = PlaybackState.Playing;
         }
-        catch (Exception ex)
+    }
+
+    public void UpdateColumns(List<string> selectedColumnNames)
+    {
+        VisibleColumns.Clear();
+        foreach (string name in selectedColumnNames)
         {
-            _logger.LogError(ex, "Error handling double-click on DataGrid");
+            VisibleColumns.Add(new DataGridTextColumn { Header = name, Binding = new Binding(name) });
         }
     }
 
@@ -1844,13 +1893,17 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
             {
                 DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                if (child != null && child is T t)
+                if (child != null)
                 {
-                    yield return t;
-                }
-                foreach (T childOfChild in FindVisualChildren<T>(child))
-                {
-                    yield return childOfChild;
+                    if (child is T t)
+                    {
+                        yield return t;
+                    }
+
+                    foreach (T childOfChild in FindVisualChildren<T>(child))
+                    {
+                        yield return childOfChild;
+                    }
                 }
             }
         }

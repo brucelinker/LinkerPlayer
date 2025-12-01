@@ -13,7 +13,7 @@ public class WpfUiDispatcherTests
         _uiDispatcher = new WpfUiDispatcher();
     }
 
-    [Fact]
+    [StaFact]
     public void CheckAccess_WhenApplicationDispatcherIsNull_ShouldReturnFalse()
     {
         // Note: This test may not work as expected in a unit test environment
@@ -29,7 +29,7 @@ public class WpfUiDispatcherTests
         result.Should().BeFalse();
     }
 
-    [Fact]
+    [StaFact]
     public async Task InvokeAsync_WithAction_WhenNotOnUIThread_ShouldCompleteWithoutException()
     {
         // Arrange
@@ -48,7 +48,7 @@ public class WpfUiDispatcherTests
         exception!.Message.Should().Contain("Application dispatcher is not available");
     }
 
-    [Fact]
+    [StaFact]
     public async Task InvokeAsync_WithFunc_WhenNotOnUIThread_ShouldThrowInvalidOperationException()
     {
         // Arrange
@@ -61,7 +61,7 @@ public class WpfUiDispatcherTests
         exception!.Message.Should().Contain("Application dispatcher is not available");
     }
 
-    [Fact]
+    [StaFact]
     public async Task InvokeAsync_WithAsyncAction_WhenNotOnUIThread_ShouldThrowInvalidOperationException()
     {
         // Arrange
@@ -74,7 +74,7 @@ public class WpfUiDispatcherTests
         exception!.Message.Should().Contain("Application dispatcher is not available");
     }
 
-    [Fact]
+    [StaFact]
     public async Task InvokeAsync_WithAsyncFunc_WhenNotOnUIThread_ShouldThrowInvalidOperationException()
     {
         // Arrange

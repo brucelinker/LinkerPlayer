@@ -3,23 +3,24 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 
 namespace LinkerPlayer.UserControls;
 
 [ObservableObject]
 public partial class PlaylistTabs
 {
-    private EditableTabHeaderControl? _selectedEditableTabHeaderControl;
     private readonly ILogger<PlaylistTabs> _logger;
     private PlaylistTab? _draggedTab;
     private DropIndicatorAdorner? _dropIndicatorAdorner;
@@ -27,12 +28,16 @@ public partial class PlaylistTabs
 
     // Flag to allow explicit centering to bypass BringIntoView suppression
     private bool _isExplicitCentering;
+    private Popup? _columnSelectorPopup;
 
     public PlaylistTabs()
     {
         InitializeComponent();
 
-        _logger = App.AppHost.Services.GetRequiredService<ILogger<PlaylistTabs>>();
+        IServiceProvider? services = App.AppHost?.Services;
+        _logger = services != null
+            ? services.GetRequiredService<ILogger<PlaylistTabs>>()
+            : LoggerFactory.Create(_ => { }).CreateLogger<PlaylistTabs>();
 
         Loaded += PlaylistTabs_Loaded;
 
@@ -40,6 +45,93 @@ public partial class PlaylistTabs
         {
             OnGoToActiveTrack(m.Value);
         });
+
+        WeakReferenceMessenger.Default.Register<UpdateColumnsMessage>(this, (r, m) =>
+        {
+            OnUpdateColumns(m);
+        });
+    }
+
+    internal void RegenerateColumns(DataGrid dg)
+    {
+        dg.Columns.Clear();
+
+        dg.HeadersVisibility = DataGridHeadersVisibility.Column; // hides row headers completely
+        dg.RowHeaderWidth = 0;                                    // extra insurance
+
+        // 1. Play/Pause icon column (always first)
+        DataGridTemplateColumn playPauseColumn = new DataGridTemplateColumn
+        {
+            Header = string.Empty,
+            Width = new DataGridLength(36),
+            IsReadOnly = true
+        };
+
+        // This finds the template even if it's in App.xaml or merged dictionaries
+        DataTemplate? tmpl = Application.Current != null
+            ? Application.Current.TryFindResource("PlayPauseCellTemplate") as DataTemplate
+            : null;
+        if (tmpl != null)
+        {
+            playPauseColumn.CellTemplate = tmpl;
+        }
+        else
+        {
+            // Fallback — should never happen, but prevents blank column
+            playPauseColumn.CellTemplate = new DataTemplate(); // or throw
+        }
+
+        dg.Columns.Insert(0, playPauseColumn);  // Use Insert(0) to guarantee it's first
+
+        // 2. Dynamic tag columns according to global selection
+        if (DataContext is PlaylistTabsViewModel vm)
+        {
+            foreach (string prop in vm.SelectedColumnNames)
+            {
+                string niceHeader = prop switch
+                {
+                    "Duration" => "Length",
+                    "AlbumArtist" => "Album Artist",
+                    "Track" => "#",
+                    _ => prop
+                };
+
+                DataGridTextColumn col = new DataGridTextColumn
+                {
+                    Header = niceHeader,
+                    Binding = new Binding(prop)
+                };
+                dg.Columns.Add(col);
+            }
+        }
+    }
+
+    private void DataGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
+    {
+        e.Row.Header = (e.Row.GetIndex() + 1).ToString();
+    }
+
+    private void RegenerateCurrentColumns()
+    {
+        DataGrid? dg = GetActiveDataGrid();
+        if (dg != null)
+            RegenerateColumns(dg);
+    }
+
+    private void OnUpdateColumns(UpdateColumnsMessage m)
+    {
+        if (DataContext is PlaylistTabsViewModel vm)
+        {
+            vm.ApplySelectedColumns(m.SelectedColumns);
+        }
+
+        RegenerateCurrentColumns();
+
+        // Close the popup when OK is pressed
+        if (_columnSelectorPopup != null && _columnSelectorPopup.IsOpen)
+        {
+            _columnSelectorPopup.IsOpen = false;
+        }
     }
 
     private void PlaylistTabs_Loaded(object sender, RoutedEventArgs e)
@@ -93,9 +185,22 @@ public partial class PlaylistTabs
 
                 if (sender is DataGrid dg)
                 {
+                    RegenerateColumns(dg);
+
                     // Prefer restoring prior offset for this tab; only center if no known offset
                     if (viewModel.SelectedTab != null && _tabVerticalOffsets.TryGetValue(viewModel.SelectedTab, out double savedOffset))
                     {
+                        // Attach column header right-click handlers
+                        dg.AddHandler(DataGridColumnHeader.PreviewMouseRightButtonDownEvent,
+                            new MouseButtonEventHandler(DataGridColumnHeader_PreviewMouseRightButtonDown), true);
+
+                        dg.AddHandler(DataGridColumnHeader.PreviewMouseRightButtonUpEvent,
+                            new MouseButtonEventHandler(DataGridColumnHeader_PreviewMouseRightButtonUp), true);
+
+                        // Attach DataGrid-level right mouse up handler
+                        dg.AddHandler(UIElement.PreviewMouseRightButtonUpEvent,
+                            new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonUp), true);
+
                         ScrollViewer? sv = FindDescendant<ScrollViewer>(dg);
                         if (sv != null)
                         {
@@ -127,6 +232,90 @@ public partial class PlaylistTabs
                 }
             }
         }, null);
+    }
+
+    private void DataGridColumnHeader_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject depObj)
+            return;
+
+        DataGridColumnHeader? header = FindAncestor<DataGridColumnHeader>(depObj);
+        if (header == null)
+            return;
+
+        e.Handled = true;
+        Mouse.Capture(header);
+
+        DataGrid? dataGrid = GetActiveDataGrid();
+        if (dataGrid == null)
+            return;
+
+        ColumnSelectorViewModel selectorVm = new ColumnSelectorViewModel();
+
+        // Initialise checkboxes to exactly match what is currently visible (global state)
+        if (DataContext is PlaylistTabsViewModel mainVm)
+        {
+            List<string> current = mainVm.SelectedColumnNames;
+            foreach (ColumnSelectorItem item in selectorVm.Columns)
+            {
+                item.IsVisible = current.Contains(item.PropertyName);
+            }
+        }
+
+        ColumnSelectorPopup content = new ColumnSelectorPopup(selectorVm)
+        {
+            Width = 220,
+            Height = 400
+        };
+
+        Border border = new Border
+        {
+            Background = Brushes.White,
+            BorderBrush = Brushes.Gray,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(8),
+            Child = content,
+            Effect = new DropShadowEffect
+            {
+                Color = Colors.Black,
+                Opacity = 0.4,
+                BlurRadius = 10,
+                ShadowDepth = 3
+            }
+        };
+
+        _columnSelectorPopup = new Popup
+        {
+            PlacementTarget = header,
+            Placement = PlacementMode.Bottom,
+            Child = border,
+            StaysOpen = false,
+            HorizontalOffset = 0,
+            VerticalOffset = 1
+        };
+
+        _columnSelectorPopup.IsOpen = true;
+    }
+
+    private void DataGridColumnHeader_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_columnSelectorPopup != null && _columnSelectorPopup.IsOpen)
+        {
+            if (Mouse.Captured is DataGridColumnHeader)
+            {
+                Mouse.Capture(null); // Release mouse capture
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void DataGrid_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_columnSelectorPopup != null && _columnSelectorPopup.IsOpen)
+        {
+            e.Handled = true;
+        }
     }
 
     private void PlaylistDataGrid_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
@@ -178,35 +367,6 @@ public partial class PlaylistTabs
             return;
         }
 
-        // Apply target scroll immediately to avoid showing previous tab's offset
-        if (DataContext is PlaylistTabsViewModel vmImmediate)
-        {
-            DataGrid? dgImmediate = GetActiveDataGrid();
-            if (dgImmediate != null && vmImmediate.SelectedTab != null)
-            {
-                ScrollViewer? svImmediate = FindDescendant<ScrollViewer>(dgImmediate);
-                if (svImmediate != null)
-                {
-                    if (_tabVerticalOffsets.TryGetValue(vmImmediate.SelectedTab, out double immOffset))
-                    {
-                        svImmediate.ScrollToVerticalOffset(immOffset);
-                    }
-                    else if (vmImmediate.SelectedTrack != null)
-                    {
-                        _isExplicitCentering = true;
-                        try
-                        {
-                            CenterItemInDataGrid(dgImmediate, vmImmediate.SelectedTrack);
-                        }
-                        finally
-                        {
-                            _isExplicitCentering = false;
-                        }
-                    }
-                }
-            }
-        }
-
         Dispatcher.BeginInvoke((Action)delegate
         {
             if (DataContext is PlaylistTabsViewModel viewModel)
@@ -246,6 +406,8 @@ public partial class PlaylistTabs
                                     _isExplicitCentering = false;
                                 }
                             }
+
+                            RegenerateCurrentColumns();
                         }), System.Windows.Threading.DispatcherPriority.Render);
                     }
                 }
@@ -268,81 +430,6 @@ public partial class PlaylistTabs
 
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
     }
-
-    //private void MenuItem_RenamePlaylist(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler no longer needed now that command binding invokes RenamePlaylistAsyncCommand directly.
-    //    // Removed logic; keep method stub only if still referenced elsewhere, otherwise delete.
-    //}
-
-    //private void MenuItem_RemovePlaylist(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by RemovePlaylistCommand binding; safe to remove body.
-    //}
-
-    //private void MenuItem_AddFolder(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by AddFolderCommand binding.
-    //}
-
-    //private void MenuItem_AddFiles(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by AddFilesCommand binding.
-    //}
-
-    //private void MenuItem_NewPlaylist(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by NewPlaylistCommand binding.
-    //}
-
-    //private void MenuItem_NewPlaylistFromFolder(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by NewPlaylistFromFolderCommand binding.
-    //}
-
-    //private void MenuItem_LoadPlaylistAsync(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by LoadPlaylistCommand binding.
-    //}
-
-    //private void MenuItem_PlayTrack(object sender, RoutedEventArgs e)
-    //{
-    //    Dispatcher.BeginInvoke((Action)delegate
-    //    {
-    //        if (DataContext is PlayerControlsViewModel viewModel)
-    //        {
-    //            viewModel.PlayTrack();
-    //        }
-    //    }, null);
-    //}
-
-    //private void MenuItem_RemoveTrack(object sender, RoutedEventArgs e)
-    //{
-    //    // Legacy handler replaced by RemoveTrackCommand binding.
-    //}
-
-    //private void MenuItem_Properties(object sender, RoutedEventArgs e)
-    //{
-    //    PropertiesViewModel vm = App.AppHost.Services.GetRequiredService<PropertiesViewModel>();
-    //    new PropertiesWindow { DataContext = vm }.Show();
-    //}
-
-    //private void TabHeader_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    //{
-    //    // Removed: allow normal bubbling so EditableTabHeaderControl.MouseDoubleClick works
-    //}
-
-    //private void TabHeader_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    //{
-    //    EditableTabHeaderControl header = (EditableTabHeaderControl)sender;
-    //    _selectedEditableTabHeaderControl = header;
-
-    //    if (header.Tag is not PlaylistTabsViewModel && DataContext is PlaylistTabsViewModel vmTag)
-    //    {
-    //        header.Tag = vmTag; // ensure rename works from context menu
-    //    }
-    //    // No same-tab scroll logic here; handled in TabItem_PreviewMouseLeftButtonDown
-    //}
 
     private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
     {
@@ -525,7 +612,7 @@ public partial class PlaylistTabs
         }
     }
 
-    private DataGrid? GetActiveDataGrid()
+    internal DataGrid? GetActiveDataGrid()
     {
         return FindDescendant<DataGrid>(Tabs123);
     }
@@ -587,7 +674,7 @@ public partial class PlaylistTabs
                 DataGrid? dg = GetActiveDataGrid();
                 if (dg != null)
                 {
-                    dg.ScrollIntoView(vm.SelectedTrack); // rely on DataGrid layout
+                    dg.ScrollIntoView(vm.SelectedTrack);
                 }
             }
             return; // do not initiate drag

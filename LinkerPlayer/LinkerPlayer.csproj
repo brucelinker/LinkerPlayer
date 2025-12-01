@@ -1,104 +1,101 @@
 <Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <UseWPF>true</UseWPF>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+        <PlatformTarget>x64</PlatformTarget><!-- Code style enforcement -->
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <GenerateDocumentationFile>false</GenerateDocumentationFile>
+        <Deterministic>true</Deterministic>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <UsingRemove>true</UsingRemove>
+        <UsingSort>true</UsingSort>
+    </PropertyGroup>
+    <ItemGroup>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-Bold.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-BoldItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-Italic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-Regular.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Black.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-BlackItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Bold.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-BoldItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Italic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Light.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-LightItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Medium.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-MediumItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Regular.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Thin.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-ThinItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Bold.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-BoldItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Italic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Light.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-LightItalic.ttf"/>
+        <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Regular.ttf"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0"/>
+        <PackageReference Include="MahApps.Metro.IconPacks" Version="6.2.1"/>
+        <PackageReference Include="ManagedBass" Version="4.0.2"/>
+        <PackageReference Include="ManagedBass.Fx" Version="4.0.2"/>
+        <PackageReference Include="ManagedBass.Mix" Version="4.0.2"/>
+        <PackageReference Include="ManagedBass.Wasapi" Version="4.0.2"/>
+        <PackageReference Include="MaterialDesignThemes" Version="5.3.0"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0"/>
+        <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.4"/>
+        <PackageReference Include="PlaylistsNET" Version="1.4.1"/>
+        <PackageReference Include="RestoreWindowPlace" Version="3.1.0"/>
+        <PackageReference Include="runtime.native.System.Net.Http" Version="4.3.1"/>
+        <PackageReference Include="TagLibSharp" Version="2.3.0"/>
+    </ItemGroup>
 
-	<PropertyGroup>
-		<OutputType>WinExe</OutputType>
-		<TargetFramework>net10.0-windows</TargetFramework>
-		<Nullable>enable</Nullable>
-		<UseWPF>true</UseWPF>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<PlatformTarget>x64</PlatformTarget>
-		<!-- Code style enforcement -->
-		<EnableNETAnalyzers>true</EnableNETAnalyzers>
-		<AnalysisLevel>latest</AnalysisLevel>
-		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-		<GenerateDocumentationFile>false</GenerateDocumentationFile>
-		<Deterministic>true</Deterministic>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<UsingRemove>true</UsingRemove>
-		<UsingSort>true</UsingSort>
-	</PropertyGroup>
+    <ItemGroup>
+        <InternalsVisibleTo Include="LinkerPlayer.Tests"/>
+    </ItemGroup>
 
-	<ItemGroup>
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-Bold.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-BoldItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-Italic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Noto\NotoSans-Regular.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Black.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-BlackItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Bold.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-BoldItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Italic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Light.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-LightItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Medium.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-MediumItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Regular.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-Thin.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\Roboto-ThinItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Bold.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-BoldItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Italic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Light.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-LightItalic.ttf" />
-	  <Content Remove="C:\Users\bruce\.nuget\packages\materialdesignthemes\5.3.0\contentFiles\any\net8.0-windows7.0\Resources\Roboto\RobotoCondensed-Regular.ttf" />
-	</ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\LinkerPlayer.BassLibs\LinkerPlayer.BassLibs.csproj"/>
+    </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="MahApps.Metro.IconPacks" Version="6.2.1" />
-		<PackageReference Include="ManagedBass" Version="4.0.2" />
-		<PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
-		<PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
-		<PackageReference Include="ManagedBass.Wasapi" Version="4.0.2" />
-		<PackageReference Include="MaterialDesignThemes" Version="5.3.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
-		<PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-		<PackageReference Include="PlaylistsNET" Version="1.4.1" />
-		<PackageReference Include="RestoreWindowPlace" Version="3.1.0" />
-		<PackageReference Include="runtime.native.System.Net.Http" Version="4.3.1" />
-		<PackageReference Include="TagLibSharp" Version="2.3.0" />	</ItemGroup>
-
-	<ItemGroup>
-	 <ProjectReference Include="..\LinkerPlayer.BassLibs\LinkerPlayer.BassLibs.csproj" />
-	</ItemGroup>
-
-
-	<ItemGroup>
-		<Resource Include="Images\app.png">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Resource>
-		<Resource Include="Images\app32.ico">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Resource>
-		<Resource Include="Images\app64.ico">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Resource>
-		<Resource Include="Images\reel.png">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Resource>
-		<Resource Include="Presets\DefaultPresets.json">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Resource>
-	</ItemGroup>
-
-	<ItemGroup>
-		<Compile Update="Properties\Settings.Designer.cs">
-			<DesignTimeSharedInput>True</DesignTimeSharedInput>
-			<AutoGen>True</AutoGen>
-			<DependentUpon>Settings.settings</DependentUpon>
-		</Compile>
-	</ItemGroup>
-
-	<ItemGroup>
-	 <Folder Include="Diagnostics\" />
-	</ItemGroup>
-
+    <ItemGroup>
+        <Resource Include="Images\app.png">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Resource>
+        <Resource Include="Images\app32.ico">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Resource>
+        <Resource Include="Images\app64.ico">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Resource>
+        <Resource Include="Images\reel.png">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Resource>
+        <Resource Include="Presets\DefaultPresets.json">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Resource>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Update="Properties\Settings.Designer.cs">
+            <DesignTimeSharedInput>True</DesignTimeSharedInput>
+            <AutoGen>True</AutoGen>
+            <DependentUpon>Settings.settings</DependentUpon>
+        </Compile>
+    </ItemGroup>
+    <ItemGroup>
+        <Folder Include="Diagnostics\"/>
+    </ItemGroup>
 </Project>
