@@ -5,7 +5,13 @@
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:system="clr-namespace:System;assembly=System.Runtime"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+  xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   mc:Ignorable="d">
+  
+  <!-- Converter used by play/pause visibility (matches original working behavior) -->
+  <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
 
   <system:Double x:Key="FontSizeTitle">22</system:Double>
   <system:Double x:Key="FontSizeHeading">16</system:Double>
@@ -638,5 +644,49 @@
       </Trigger>
     </Style.Triggers>
   </Style>
+
+  <!--  DataGrid Play/Pause cell template used by dynamic column regeneration  -->
+  <DataTemplate x:Key="PlayPauseCellTemplate">
+    <Grid>
+      <iconPacks:PackIconFontAwesome
+        Width="20"
+        Height="10"
+        Margin="5,0,0,0"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Center"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="PlaySolid"
+        Visibility="Collapsed">
+        <iconPacks:PackIconFontAwesome.Style>
+          <Style TargetType="{x:Type iconPacks:PackIconFontAwesome}">
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding State}" Value="{x:Static managedBass:PlaybackState.Playing}">
+                <Setter Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </iconPacks:PackIconFontAwesome.Style>
+      </iconPacks:PackIconFontAwesome>
+      <iconPacks:PackIconMaterial
+        Width="20"
+        Height="10"
+        Margin="5,0,0,0"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Center"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="Pause"
+        Visibility="Collapsed">
+        <iconPacks:PackIconMaterial.Style>
+          <Style TargetType="{x:Type iconPacks:PackIconMaterial}">
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding State}" Value="{x:Static managedBass:PlaybackState.Paused}">
+                <Setter Property="Visibility" Value="Visible" />
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </iconPacks:PackIconMaterial.Style>
+      </iconPacks:PackIconMaterial>
+    </Grid>
+  </DataTemplate>
 
 </ResourceDictionary>

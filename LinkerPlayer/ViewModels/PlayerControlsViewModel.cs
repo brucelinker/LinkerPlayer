@@ -245,6 +245,12 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
 
         try
         {
+            // Always align ActiveTrack with current selection before starting playback
+            if (SelectedTrack != null)
+            {
+                ActiveTrack = SelectedTrack;
+            }
+
             if (ActiveTrack != null)
             {
                 _logger.LogInformation("Playing ActiveTrack: {Path}", ActiveTrack.Path);
@@ -256,24 +262,9 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
                 ActiveTrack.State = PlaybackState.Playing;
                 State = PlaybackState.Playing;
             }
-            else if (SelectedTrack != null)
-            {
-                _logger.LogInformation("Playing SelectedTrack: {Path}", SelectedTrack.Path);
-                _audioEngine.PathToMusic = SelectedTrack.Path;
-
-                // Offload heavy audio start to background to keep UI responsive
-                _ = Task.Run(() => _audioEngine.Play());
-
-                if (ActiveTrack == null)
-                {
-                    ActiveTrack = SelectedTrack;
-                    ActiveTrack.State = PlaybackState.Playing;
-                    State = PlaybackState.Playing;
-                }
-            }
             else
             {
-                _logger.LogWarning("Cannot play: Both ActiveTrack and SelectedTrack are null");
+                _logger.LogWarning("Cannot play: ActiveTrack is null");
             }
         }
         finally
@@ -313,13 +304,20 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
         _audioEngine.Stop();
         State = PlaybackState.Stopped;
 
+        // IMPORTANT: mark the current ActiveTrack as Stopped and broadcast BEFORE clearing ActiveTrack
         if (ActiveTrack != null)
         {
             ActiveTrack.State = PlaybackState.Stopped;
-            ActiveTrack = null;
         }
 
+        // Notify listeners while ActiveTrack is still set so they can update their own instances by Id
         WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
+
+        // Now clear ActiveTrack
+        if (ActiveTrack != null)
+        {
+            ActiveTrack = null;
+        }
     }
 
     [RelayCommand]

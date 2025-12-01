@@ -288,5 +288,73 @@ public class PlaylistTabsViewModelTests : IDisposable
         vm.TabList[vm.SelectedTabIndex].Name.Should().Be(selectedName);
     }
 
+    [StaFact]
+    public void ColumnRegeneration_PreservesIconAndRebuildsDynamicColumns()
+    {
+        // Arrange: set two visible columns
+        FieldInfo? selectedField = typeof(PlaylistTabsViewModel)
+            .GetField("_selectedColumnNames", BindingFlags.NonPublic | BindingFlags.Instance);
+        selectedField!.SetValue(_vm, new List<string> { "Title", "Artist" });
+
+        DataGrid dg = new DataGrid();
+        PlaylistTabs playlistTabs = new PlaylistTabs { DataContext = _vm };
+
+        // Act: first regeneration should inject icon column and add dynamic ones
+        playlistTabs.RegenerateColumns(dg);
+
+        // Assert: one static (icon) + two dynamic
+        Assert.Equal(3, dg.Columns.Count);
+        Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
+        Assert.Equal("Title", dg.Columns[1].Header);
+        Assert.Equal("Artist", dg.Columns[2].Header);
+
+        // Change selection to a single column and regenerate
+        selectedField.SetValue(_vm, new List<string> { "Title" });
+        playlistTabs.RegenerateColumns(dg);
+
+        // Assert: icon preserved, only one dynamic column remains
+        Assert.Equal(2, dg.Columns.Count);
+        Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
+        Assert.Equal("Title", dg.Columns[1].Header);
+    }
+
+    [StaFact]
+    public void ColumnRegeneration_PreservesTwoStaticWhenPresent()
+    {
+        // Arrange: simulate XAML-defined index and icon columns already present
+        FieldInfo? selectedField = typeof(PlaylistTabsViewModel)
+            .GetField("_selectedColumnNames", BindingFlags.NonPublic | BindingFlags.Instance);
+        selectedField!.SetValue(_vm, new List<string> { "Title", "AlbumArtist", "Duration" });
+
+        DataGrid dg = new DataGrid();
+        DataGridTextColumn indexCol = new DataGridTextColumn { Header = "#" };
+        DataGridTemplateColumn iconCol = new DataGridTemplateColumn { Header = string.Empty, CellTemplate = new System.Windows.DataTemplate() };
+        dg.Columns.Add(indexCol);
+        dg.Columns.Add(iconCol);
+
+        PlaylistTabs playlistTabs = new PlaylistTabs { DataContext = _vm };
+
+        // Act
+        playlistTabs.RegenerateColumns(dg);
+
+        // Assert: preserves first two, appends 3 dynamic with correct headers (mapped names)
+        Assert.Equal(5, dg.Columns.Count);
+        Assert.Equal("#", dg.Columns[0].Header);
+        Assert.IsType<DataGridTemplateColumn>(dg.Columns[1]);
+        Assert.Equal("Title", dg.Columns[2].Header);
+        Assert.Equal("Album Artist", dg.Columns[3].Header);
+        Assert.Equal("Length", dg.Columns[4].Header);
+
+        // Change selection to a single dynamic column and regenerate
+        selectedField.SetValue(_vm, new List<string> { "Artist" });
+        playlistTabs.RegenerateColumns(dg);
+
+        // Assert: still preserves first two, now only one dynamic column
+        Assert.Equal(3, dg.Columns.Count);
+        Assert.Equal("#", dg.Columns[0].Header);
+        Assert.IsType<DataGridTemplateColumn>(dg.Columns[1]);
+        Assert.Equal("Artist", dg.Columns[2].Header);
+    }
+
     public void Dispose() { }
 }

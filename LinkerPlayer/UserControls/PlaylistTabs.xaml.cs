@@ -54,36 +54,51 @@ public partial class PlaylistTabs
 
     internal void RegenerateColumns(DataGrid dg)
     {
-        dg.Columns.Clear();
+        // If the grid has no columns (e.g., unit tests or initial construction outside XAML),
+        // inject the Play/Pause template column so we always have the icon column.
+        if (dg.Columns.Count == 0)
+        {
+            DataGridTemplateColumn playPauseColumn = new DataGridTemplateColumn
+            {
+                Header = string.Empty,
+                Width = new DataGridLength(36),
+                IsReadOnly = true
+            };
+
+            DataTemplate? tmpl = Application.Current != null
+                ? Application.Current.TryFindResource("PlayPauseCellTemplate") as DataTemplate
+                : null;
+            playPauseColumn.CellTemplate = tmpl ?? new DataTemplate();
+
+            dg.Columns.Insert(0, playPauseColumn);
+        }
+
+        // Determine how many static columns to preserve based on what's actually present
+        int staticColumnsToPreserve = 0;
+        if (dg.Columns.Count > 0 && dg.Columns[0] is DataGridTemplateColumn)
+        {
+            // Only icon column exists (no index column) => preserve 1
+            staticColumnsToPreserve = 1;
+        }
+        if (dg.Columns.Count > 1
+            && dg.Columns[0] is DataGridTextColumn firstText
+            && Equals(firstText.Header, "#")
+            && dg.Columns[1] is DataGridTemplateColumn)
+        {
+            // XAML-defined: [#] then [icon] => preserve 2
+            staticColumnsToPreserve = 2;
+        }
+
+        // Remove only dynamic columns (everything after the static ones)
+        for (int i = dg.Columns.Count - 1; i >= staticColumnsToPreserve; i--)
+        {
+            dg.Columns.RemoveAt(i);
+        }
 
         dg.HeadersVisibility = DataGridHeadersVisibility.Column; // hides row headers completely
         dg.RowHeaderWidth = 0;                                    // extra insurance
 
-        // 1. Play/Pause icon column (always first)
-        DataGridTemplateColumn playPauseColumn = new DataGridTemplateColumn
-        {
-            Header = string.Empty,
-            Width = new DataGridLength(36),
-            IsReadOnly = true
-        };
-
-        // This finds the template even if it's in App.xaml or merged dictionaries
-        DataTemplate? tmpl = Application.Current != null
-            ? Application.Current.TryFindResource("PlayPauseCellTemplate") as DataTemplate
-            : null;
-        if (tmpl != null)
-        {
-            playPauseColumn.CellTemplate = tmpl;
-        }
-        else
-        {
-            // Fallback — should never happen, but prevents blank column
-            playPauseColumn.CellTemplate = new DataTemplate(); // or throw
-        }
-
-        dg.Columns.Insert(0, playPauseColumn);  // Use Insert(0) to guarantee it's first
-
-        // 2. Dynamic tag columns according to global selection
+        // Append dynamic tag columns according to global selection
         if (DataContext is PlaylistTabsViewModel vm)
         {
             foreach (string prop in vm.SelectedColumnNames)
@@ -420,15 +435,48 @@ public partial class PlaylistTabs
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        Dispatcher.BeginInvoke((Action)delegate
+        // Ignore non-left button and header/column header double-clicks
+        if (e.ChangedButton != MouseButton.Left)
         {
-            if (DataContext is PlaylistTabsViewModel viewModel)
-            {
-                viewModel.OnDoubleClickDataGrid();
-            }
-        }, null);
+            return;
+        }
+
+        DependencyObject origin = (DependencyObject)e.OriginalSource;
+        DataGridColumnHeader? header = FindAncestor<DataGridColumnHeader>(origin);
+        if (header != null)
+        {
+            return;
+        }
+
+        // Ensure the row under the mouse is selected before playing
+        DataGrid? dataGrid = sender as DataGrid ?? FindDescendant<DataGrid>(Tabs123);
+        if (dataGrid == null)
+        {
+            return;
+        }
+
+        DataGridRow? row = FindAncestor<DataGridRow>(origin);
+        if (row == null)
+        {
+            return;
+        }
+
+        try
+        {
+            dataGrid.SelectedItem = row.Item;
+            row.IsSelected = true;
+            row.Focus();
+        }
+        catch { }
+
+        // Synchronously update VM selection and active track BEFORE sending play message
+        if (DataContext is PlaylistTabsViewModel viewModel)
+        {
+            viewModel.OnDoubleClickDataGrid();
+        }
 
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
+        e.Handled = true;
     }
 
     private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)

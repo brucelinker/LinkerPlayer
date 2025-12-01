@@ -19,6 +19,7 @@
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Octicons;component/Themes/packiconocticons.xaml" />
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Material;component/Themes/packiconmaterial.xaml" />
         <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.Entypo;component/Themes/packiconentypo.xaml" />
+        <ResourceDictionary Source="pack://application:,,,/MahApps.Metro.IconPacks.FontAwesome;component/Themes/packiconfontawesome.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
       <BitmapImage x:Key="AppIcon" UriSource="Images/app64.ico" />

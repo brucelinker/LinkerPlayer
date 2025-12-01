@@ -144,6 +144,12 @@ public class ThemeManager
                 Source = new Uri("pack://application:,,,/MahApps.Metro.IconPacks.Entypo;component/Themes/packiconentypo.xaml", UriKind.Absolute)
             };
             AddDict(entypoDict);
+
+            ResourceDictionary fontAwesomeDict = new ResourceDictionary
+            {
+                Source = new Uri("pack://application:,,,/MahApps.Metro.IconPacks.FontAwesome;component/Themes/packiconfontawesome.xaml", UriKind.Absolute)
+            };
+            AddDict(fontAwesomeDict);
         }
         catch (Exception)
         {

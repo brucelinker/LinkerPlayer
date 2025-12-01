@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging; // retained for other messages
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -88,7 +88,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     // ADD back filter constants used by dialogs
     private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
-    private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*"; // restore
+    private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
 
     private List<string> _selectedColumnNames = new()
     {
@@ -202,7 +202,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     {
         List<string> newList = columns ?? new List<string>();
 
-        // Only update + save if actually different (prevents unnecessary saves)
         if (!newList.SequenceEqual(_selectedColumnNames))
         {
             _selectedColumnNames = newList;
@@ -213,9 +212,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
     public void UpdateSelectedColumnNames(List<string> columns)
     {
-        _selectedColumnNames = new List<string>(columns ?? new List<string>());
+        _selectedColumnNames = [.. columns ?? new List<string>()];
 
-        // Optional: persist to settings so they survive restart
         _settingsManager.Settings.VisibleColumns = _selectedColumnNames;
         _settingsManager.SaveSettings("VisibleColumns");
     }
@@ -287,17 +285,21 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         {
             _tabControl = tc;
         }
+
         if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
         {
             return;
         }
+
         PlaylistTab tab = TabList[SelectedTabIndex];
         _selectionService.SetTab(tab);
+
         if (_dataGrid == null)
         {
             SelectedPlaylist = GetSelectedPlaylist();
             return;
         }
+
         _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
         if (tab.Tracks.Count == 0)
         {
@@ -328,6 +330,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 }
             });
         }
+
         SelectedPlaylist = GetSelectedPlaylist();
     }
 
@@ -442,25 +445,45 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         if (_dataGrid?.SelectedItem is not MediaFile selectedTrack)
             return;
 
-        // Force playback of this exact track, even if it's the current one (prevents restart)
-        ActiveTrack = null;  // Brief null forces next setter to always trigger
-        ActiveTrack = selectedTrack;
-
-        // Update selection properly
-        SelectedTrack = selectedTrack;
-
-        // Ensure playing state everywhere
-        selectedTrack.State = PlaybackState.Playing;
-        MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == selectedTrack.Id);
-        if (libraryTrack != null)
+        // Clear any existing Playing states so the Play icon is removed from previous rows
+        try
         {
-            libraryTrack.State = PlaybackState.Playing;
+            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+            {
+                foreach (MediaFile t in TabList[SelectedTabIndex].Tracks)
+                {
+                    if (t.State == PlaybackState.Playing)
+                    {
+                        t.State = PlaybackState.Stopped;
+                    }
+                }
+            }
+
+            foreach (MediaFile lib in _musicLibrary.MainLibrary)
+            {
+                if (lib.State == PlaybackState.Playing)
+                {
+                    lib.State = PlaybackState.Stopped;
+                }
+            }
         }
+        catch { }
+
+        // Update selection and persist selected track id
+        SelectedTrack = selectedTrack;
+        if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
+        {
+            _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = selectedTrack.Id;
+        }
+
+        // Do NOT set ActiveTrack here; PlayerControls will Stop the previous ActiveTrack
+        // and then play the newly selected track, ensuring icons update correctly.
     }
 
     public void UpdateColumns(List<string> selectedColumnNames)
     {
         VisibleColumns.Clear();
+
         foreach (string name in selectedColumnNames)
         {
             VisibleColumns.Add(new DataGridTextColumn { Header = name, Binding = new Binding(name) });
@@ -974,9 +997,29 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private void OnPlaybackStateChanged(PlaybackState state)
     {
         State = state;
+        // Update ActiveTrack state
         if (ActiveTrack != null)
         {
             ActiveTrack.State = state;
+            // Propagate to the instance inside the current tab (if different reference)
+            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+            {
+                MediaFile? trackInTab = TabList[SelectedTabIndex].Tracks.FirstOrDefault(t => t.Id == ActiveTrack.Id);
+                if (trackInTab != null && !ReferenceEquals(trackInTab, ActiveTrack))
+                {
+                    trackInTab.State = state;
+                }
+            }
+        }
+        else if (SelectedTrack != null)
+        {
+            // Fallback: ensure SelectedTrack reflects playback state
+            SelectedTrack.State = state;
+        }
+        // Ensure SelectedTrack mirrors state if both are set but differ
+        if (SelectedTrack != null && ActiveTrack != null && SelectedTrack.Id == ActiveTrack.Id && !ReferenceEquals(SelectedTrack, ActiveTrack))
+        {
+            SelectedTrack.State = state;
         }
     }
 
@@ -1281,8 +1324,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         StringBuilder sb = new StringBuilder(formD.Length);
         foreach (char ch in formD)
         {
-            UnicodeCategory uc = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
-            if (uc != System.Globalization.UnicodeCategory.NonSpacingMark)
+            UnicodeCategory uc = CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (uc != UnicodeCategory.NonSpacingMark)
             {
                 sb.Append(ch);
             }
@@ -1867,9 +1910,9 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         {
             foreach (Window window in Application.Current.Windows)
             {
-                foreach (System.Windows.Controls.TabControl? tabControl in FindVisualChildren<System.Windows.Controls.TabControl>(window))
+                foreach (TabControl? tabControl in FindVisualChildren<TabControl>(window))
                 {
-                    foreach (System.Windows.Controls.TabItem? tabItem in FindVisualChildren<System.Windows.Controls.TabItem>(tabControl))
+                    foreach (TabItem? tabItem in FindVisualChildren<TabItem>(tabControl))
                     {
                         if (tabItem.DataContext == tab)
                         {
