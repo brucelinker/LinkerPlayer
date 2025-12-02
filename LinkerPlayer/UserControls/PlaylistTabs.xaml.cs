@@ -123,16 +123,16 @@ public partial class PlaylistTabs
         // === 4. Add visible columns (skip if already exists as static, e.g. Track #) ===
         (string prop, string header, double defWidth)[] defaultColumns = new (string prop, string header, double defWidth)[]
         {
-        ("Track",       "Track #",      80),
-        ("Title",       "Title",       300),
-        ("Artist",      "Artist",      200),
-        ("Album",       "Album",       200),
-        ("AlbumArtist", "Album Artist",180),
-        ("Duration",    "Duration",    100),
-        ("Bitrate",     "Bitrate",      90),
-        ("Channels",    "Channels",     80),
-        ("Codec",       "Codec",       100),
-        ("Year",        "Year",         80)
+            ("Track",       "Track #",       80),
+            ("Title",       "Title",        300),
+            ("Artist",      "Artist",       200),
+            ("Album",       "Album",        200),
+            ("AlbumArtist", "Album Artist", 180),
+            ("Duration",    "Duration",     100),
+            ("Bitrate",     "Bitrate",       90),
+            ("Channels",    "Channels",      80),
+            ("Codec",       "Codec",        100),
+            ("Year",        "Year",          80)
         };
 
         foreach ((string prop, string header, double defWidth) in defaultColumns)
@@ -150,7 +150,7 @@ public partial class PlaylistTabs
 
             Binding binding = new Binding(prop);
 
-            if(prop == "Year")
+            if (prop == "Year")
             {
                 binding.Converter = new Converters.UintToStringConverter();
                 binding.TargetNullValue = "";
@@ -162,7 +162,7 @@ public partial class PlaylistTabs
                 binding.TargetNullValue = "";
             }
 
-            if(prop == "Bitrate")
+            if (prop == "Bitrate")
             {
                 binding.StringFormat = prop == "Bitrate" ? "{0} kbps" : null;
                 binding.TargetNullValue = "";
@@ -288,6 +288,27 @@ public partial class PlaylistTabs
             OpenColumnSelectorPopupAt(mouseScreenPos, headersPresenter, staysOpen: true);
             _openPopupOnRightButtonUp = true;
             return;
+        }
+
+        // Fallback: if origin did not resolve, but pointer is within headers presenter bounds, treat as header
+        if (sender is DataGrid dg)
+        {
+            DataGridColumnHeadersPresenter? presenter = FindDescendant<DataGridColumnHeadersPresenter>(dg);
+            if (presenter != null)
+            {
+                Point posInPresenter = e.GetPosition(presenter);
+                if (posInPresenter.X >= 0 && posInPresenter.X <= presenter.ActualWidth &&
+                    posInPresenter.Y >= 0 && posInPresenter.Y <= presenter.ActualHeight)
+                {
+                    e.Handled = true;
+                    _suppressNextContextMenu = true;
+
+                    Point mouseScreenPos = presenter.PointToScreen(posInPresenter);
+                    OpenColumnSelectorPopupAt(mouseScreenPos, presenter, staysOpen: true);
+                    _openPopupOnRightButtonUp = true;
+                    return;
+                }
+            }
         }
 
         // not in header region at all; allow normal row context menu
@@ -497,6 +518,11 @@ public partial class PlaylistTabs
 
                 dg.AddHandler(ContextMenuService.ContextMenuOpeningEvent,
                     new ContextMenuEventHandler(DataGrid_ContextMenuOpening),
+                    handledEventsToo: true);
+
+                // Ensure right-click anywhere on the column header row opens the column selector
+                dg.AddHandler(UIElement.PreviewMouseRightButtonDownEvent,
+                    new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonDown),
                     handledEventsToo: true);
             }
         }, DispatcherPriority.Loaded);

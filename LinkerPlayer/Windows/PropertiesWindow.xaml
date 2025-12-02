@@ -8,7 +8,7 @@
   xmlns:local="clr-namespace:LinkerPlayer.Windows"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   Title="PropertiesWindow"
-  Width="500"
+  Width="600"
   Height="800"
   WindowStyle="None"
   mc:Ignorable="d">

@@ -204,7 +204,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Bitrate = file.Properties.AudioBitrate;
             SampleRate = file.Properties.AudioSampleRate;
             Channels = file.Properties.AudioChannels;
-            Codec = file.Properties.Codecs?.FirstOrDefault()!.Description ?? string.Empty;
+            Codec = file.Properties.Description ?? file.Properties.Codecs?.FirstOrDefault()?.Description ?? "";
 
             if (file.Properties.MediaTypes != MediaTypes.None)
             {
@@ -339,7 +339,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Channels = Channels,
             Copyright = Copyright,
             AlbumCover = AlbumCover,
-            State = State
+            State = State,
+            Codec = Codec
         };
     }
 
@@ -396,7 +397,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                     file.Properties.Duration,
                     file.Properties.MediaTypes,
                     file.Properties.Description,
-                    Codec = string.Empty
+                    file.Properties.Codecs
                 }
             };
             return System.Text.Json.JsonSerializer.Serialize(tagInfo, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
