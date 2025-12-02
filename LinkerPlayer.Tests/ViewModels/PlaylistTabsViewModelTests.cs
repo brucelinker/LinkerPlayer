@@ -66,7 +66,7 @@ public class PlaylistTabsViewModelTests : IDisposable
     [StaFact]
     public void DoubleClick_SameTrack_DoesNotRestart()
     {
-        var track = new MediaFile { Id = "123", Title = "Test" };
+        MediaFile track = new MediaFile { Id = "123", Title = "Test" };
         _vm.ActiveTrack = track;
 
         _vm.OnDoubleClickDataGrid(); // with track selected
@@ -78,20 +78,20 @@ public class PlaylistTabsViewModelTests : IDisposable
     public void ColumnRegeneration_AlwaysHasPlayPauseColumn()
     {
         // Arrange - force zero tag columns
-        var selectedField = typeof(PlaylistTabsViewModel)
+        FieldInfo? selectedField = typeof(PlaylistTabsViewModel)
             .GetField("_selectedColumnNames", BindingFlags.NonPublic | BindingFlags.Instance);
 
         selectedField!.SetValue(_vm, new List<string>());
 
-        var dg = new DataGrid();
+        DataGrid dg = new DataGrid();
 
         // Act - call the real method (now internal = accessible)
-        var playlistTabs = new PlaylistTabs { DataContext = _vm };
+        PlaylistTabs playlistTabs = new PlaylistTabs { DataContext = _vm };
         playlistTabs.RegenerateColumns(dg);
 
         // Assert
         Assert.Single(dg.Columns); // only Play/Pause
-        var col = Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
+        DataGridTemplateColumn col = Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
         Assert.NotNull(col.CellTemplate); // proves Application.Current.TryFindResource worked
     }
 

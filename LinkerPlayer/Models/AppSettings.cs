@@ -22,5 +22,13 @@ public class AppSettings
 
     // New: Remember which monitor the MainWindow was on last close to position Splash on the same screen next launch
     public string LastMainWindowMonitorDeviceName { get; set; } = string.Empty;
-    public List<string> VisibleColumns { get; set; } = new List<string>();
+    public List<string> VisibleColumns { get; set; } = new();
+    public Dictionary<string, ColumnInfo> ColumnSettings { get; set; } = new();
+
+    [Serializable]
+    public class ColumnInfo
+    {
+        public double Width { get; set; } = 100;
+        public int Position { get; set; } = -1;   // -1 = far right
+    }
 }

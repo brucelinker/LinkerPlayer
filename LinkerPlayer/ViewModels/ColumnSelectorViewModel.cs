@@ -1,3 +1,4 @@
+// ColumnSelectorViewModel.cs
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -9,9 +10,10 @@ namespace LinkerPlayer.ViewModels;
 public class ColumnSelectorItem : ObservableObject
 {
     public string DisplayName { get; }
-    public string PropertyName { get; }   // the real property on MediaFile
+    public string PropertyName { get; }
 
     private bool _isVisible;
+
     public bool IsVisible
     {
         get => _isVisible;
@@ -22,7 +24,7 @@ public class ColumnSelectorItem : ObservableObject
     {
         DisplayName = displayName;
         PropertyName = propertyName;
-        _isVisible = defaultVisible;
+        IsVisible = defaultVisible;
     }
 }
 
@@ -42,17 +44,12 @@ public partial class ColumnSelectorViewModel : ObservableObject
         Columns.Add(new ColumnSelectorItem("Channels", "Channels", false));
         Columns.Add(new ColumnSelectorItem("Codec", "Codec", false));
         Columns.Add(new ColumnSelectorItem("Year", "Year", false));
-        // Columns.Add(new ColumnSelectorItem("File Name", "FileName", false));
     }
 
-    public List<string> SelectedColumns => Columns
-        .Where(c => c.IsVisible)
-        .Select(c => c.PropertyName)
-        .ToList();
-
     [RelayCommand]
-    public void ConfirmSelection()
+    private void ConfirmSelection()
     {
-        WeakReferenceMessenger.Default.Send(new UpdateColumnsMessage(SelectedColumns));
+        List<string> selected = Columns.Where(c => c.IsVisible).Select(c => c.PropertyName).ToList();
+        WeakReferenceMessenger.Default.Send(new UpdateColumnsMessage(selected));
     }
 }

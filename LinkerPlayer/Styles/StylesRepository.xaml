@@ -2,15 +2,15 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:audio="clr-namespace:LinkerPlayer.Audio"
+  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:system="clr-namespace:System;assembly=System.Runtime"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
-  xmlns:converters="clr-namespace:LinkerPlayer.Converters"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:system="clr-namespace:System;assembly=System.Runtime"
   mc:Ignorable="d">
-  
-  <!-- Converter used by play/pause visibility (matches original working behavior) -->
+
+  <!--  Converter used by play/pause visibility (matches original working behavior)  -->
   <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
 
   <system:Double x:Key="FontSizeTitle">22</system:Double>
