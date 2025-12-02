@@ -343,7 +343,7 @@ public class PlaylistTabsViewModelTests : IDisposable
         Assert.IsType<DataGridTemplateColumn>(dg.Columns[1]);
         Assert.Equal("Title", dg.Columns[2].Header);
         Assert.Equal("Album Artist", dg.Columns[3].Header);
-        Assert.Equal("Length", dg.Columns[4].Header);
+        Assert.Equal("Duration", dg.Columns[4].Header);
 
         // Change selection to a single dynamic column and regenerate
         selectedField.SetValue(_vm, new List<string> { "Artist" });

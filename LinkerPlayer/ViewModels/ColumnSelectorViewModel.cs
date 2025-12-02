@@ -39,7 +39,7 @@ public partial class ColumnSelectorViewModel : ObservableObject
         Columns.Add(new ColumnSelectorItem("Artist", "Artist", true));
         Columns.Add(new ColumnSelectorItem("Album", "Album", true));
         Columns.Add(new ColumnSelectorItem("Album Artist", "AlbumArtist", false));
-        Columns.Add(new ColumnSelectorItem("Length", "Duration", true));
+        Columns.Add(new ColumnSelectorItem("Duration", "Duration", true));
         Columns.Add(new ColumnSelectorItem("Bitrate", "Bitrate", false));
         Columns.Add(new ColumnSelectorItem("Channels", "Channels", false));
         Columns.Add(new ColumnSelectorItem("Codec", "Codec", false));

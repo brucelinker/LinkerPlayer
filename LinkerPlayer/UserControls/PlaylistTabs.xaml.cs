@@ -8,6 +8,7 @@ using ManagedBass;  // for PlaybackState
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
+//using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -15,7 +16,6 @@ using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Threading;
 
 namespace LinkerPlayer.UserControls;
@@ -63,10 +63,6 @@ public partial class PlaylistTabs
         WeakReferenceMessenger.Default.Register<UpdateColumnsMessage>(this, (_, m) => OnUpdateColumns(m));
     }
 
-    // ==================================================================
-    //  COLUMN REGENERATION – now perfect (preserves existing play/# columns if present in XAML, 
-    //  adds them correctly with proper resource lookup, never duplicates, never breaks play icon)
-    // ==================================================================
     internal void RegenerateColumns(DataGrid dg)
     {
         if (!dg.Dispatcher.CheckAccess())
@@ -83,12 +79,16 @@ public partial class PlaylistTabs
         // === 1. Determine how many static columns exist in XAML (play icon and/or # column) ===
         int staticColumnsToPreserve = 0;
         if (dg.Columns.Count > 0 && dg.Columns[0] is DataGridTemplateColumn)
+        {
             staticColumnsToPreserve = 1;
+        }
         else if (dg.Columns.Count > 1
-                 && dg.Columns[0] is DataGridTextColumn txt
-                 && txt.Header?.ToString() == "#"
-                 && dg.Columns[1] is DataGridTemplateColumn)
+            && dg.Columns[0] is DataGridTextColumn txt
+            && txt.Header?.ToString() == "#"
+            && dg.Columns[1] is DataGridTemplateColumn)
+        {
             staticColumnsToPreserve = 2;
+        }
 
         // === 2. If no play/pause column exists, add it properly using dg's resource scope ===
         if (staticColumnsToPreserve == 0)
@@ -116,7 +116,9 @@ public partial class PlaylistTabs
 
         // === 3. Remove only dynamic columns ===
         for (int i = dg.Columns.Count - 1; i >= staticColumnsToPreserve; i--)
+        {
             dg.Columns.RemoveAt(i);
+        }
 
         // === 4. Add visible columns (skip if already exists as static, e.g. Track #) ===
         (string prop, string header, double defWidth)[] defaultColumns = new (string prop, string header, double defWidth)[]
@@ -126,7 +128,7 @@ public partial class PlaylistTabs
         ("Artist",      "Artist",      200),
         ("Album",       "Album",       200),
         ("AlbumArtist", "Album Artist",180),
-        ("Duration",    "Length",      100),
+        ("Duration",    "Duration",    100),
         ("Bitrate",     "Bitrate",      90),
         ("Channels",    "Channels",     80),
         ("Codec",       "Codec",       100),
@@ -136,17 +138,40 @@ public partial class PlaylistTabs
         foreach ((string prop, string header, double defWidth) in defaultColumns)
         {
             if (!visibleProps.Contains(prop))
+            {
                 continue;
+            }
 
             // Skip if already exists (e.g. Track # column preserved from XAML)
-            if (dg.Columns.Any(c => c is DataGridBoundColumn bc &&
-                                    bc.Binding is Binding b && b.Path.Path == prop))
+            if (dg.Columns.Any(c => c is DataGridBoundColumn bc && bc.Binding is Binding b && b.Path.Path == prop))
+            {
                 continue;
+            }
+
+            Binding binding = new Binding(prop);
+
+            if(prop == "Year")
+            {
+                binding.Converter = new Converters.UintToStringConverter();
+                binding.TargetNullValue = "";
+            }
+
+            if (prop == "Duration")
+            {
+                binding.Converter = new Converters.DurationConverter();
+                binding.TargetNullValue = "";
+            }
+
+            if(prop == "Bitrate")
+            {
+                binding.StringFormat = prop == "Bitrate" ? "{0} kbps" : null;
+                binding.TargetNullValue = "";
+            }
 
             DataGridTextColumn col = new DataGridTextColumn
             {
                 Header = header,
-                Binding = new Binding(prop)
+                Binding = binding
             };
 
             double width = savedInfo.TryGetValue(prop, out AppSettings.ColumnInfo? ci) && ci.Width > 10 ? ci.Width : defWidth;
@@ -298,17 +323,6 @@ public partial class PlaylistTabs
         }
     }
 
-    // Suppress context menu when right-clicking anywhere on the tab row (including empty area)
-    private void TabControl_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        // Removed: no suppression at tab control level
-    }
-
-    private void TabControl_PreviewMouseRightButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        // Removed: no suppression at tab control level
-    }
-
     private void OpenColumnSelectorPopupAt(Point screenPos, DependencyObject dpiContext, bool staysOpen)
     {
         CloseColumnPopup();
@@ -322,13 +336,13 @@ public partial class PlaylistTabs
                 item.IsVisible = current.Contains(item.PropertyName);
         }
 
-        ColumnSelectorPopup popupContent = new ColumnSelectorPopup(selectorVm)
-        {
-            Width = 210,
-            Height = 440
-        };
+        //ColumnSelectorPopup popupContent = new ColumnSelectorPopup(selectorVm)
+        //{
+        //    Width = 210,
+        //    Height = 340
+        //};
 
-        Brush background = (Brush?)Application.Current?.TryFindResource("PanelBackgroundBrush") ?? Brushes.WhiteSmoke;
+        //Brush background = (Brush?)Application.Current?.TryFindResource("PanelBackgroundBrush") ?? Brushes.WhiteSmoke;
 
         _columnSelectorPopup = new Popup
         {
@@ -337,13 +351,13 @@ public partial class PlaylistTabs
             AllowsTransparency = true,
             Child = new Border
             {
-                Background = background,
-                BorderBrush = Brushes.Gray,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(8),
-                Padding = new Thickness(8),
-                Effect = new DropShadowEffect { BlurRadius = 20, Opacity = 0.5, ShadowDepth = 5 },
-                Child = popupContent
+                //Background = background,
+                //BorderBrush = Brushes.Gray,
+                //BorderThickness = new Thickness(1),
+                //CornerRadius = new CornerRadius(8),
+                //Padding = new Thickness(8),
+                //Effect = new DropShadowEffect { BlurRadius = 20, Opacity = 0.5, ShadowDepth = 5 },
+                Child = new ColumnSelectorPopup(selectorVm)
             }
         };
 
@@ -437,7 +451,7 @@ public partial class PlaylistTabs
                 }
 
                 // Removed tab row suppression handlers; suppression is scoped to column headers only
-            }), System.Windows.Threading.DispatcherPriority.Loaded);
+            }), DispatcherPriority.Loaded);
 
             Dispatcher.BeginInvoke(async () =>
             {
@@ -450,13 +464,13 @@ public partial class PlaylistTabs
                 {
                     _logger.LogWarning("PlaylistTabs: No playlists loaded");
                 }
-            }, System.Windows.Threading.DispatcherPriority.Background);
+            }, DispatcherPriority.Background);
 
             Dispatcher.BeginInvoke(async () =>
             {
                 _logger.LogInformation("PlaylistTabs_Loaded: PHASE 3 - Loading other playlists in background");
                 await viewModel.LoadOtherPlaylistTracksAsync();
-            }, System.Windows.Threading.DispatcherPriority.Background);
+            }, DispatcherPriority.Background);
         }
         else
         {

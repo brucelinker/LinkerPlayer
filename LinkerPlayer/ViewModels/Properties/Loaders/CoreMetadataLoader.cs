@@ -37,9 +37,9 @@ public class CoreMetadataLoader : IMetadataLoader
 
         // Title
         AddMetadataItem(targetCollection, "Title", tag.Title ?? "", true, v =>
-           {
-               tag.Title = string.IsNullOrEmpty(v) ? null : v;
-           });
+        {
+            tag.Title = string.IsNullOrEmpty(v) ? null : v;
+        });
 
         _logger.LogInformation("CoreMetadataLoader.Load: After adding Title, collection has {Count} items", targetCollection.Count);
 
@@ -47,9 +47,8 @@ public class CoreMetadataLoader : IMetadataLoader
         string artistValue = _mediaFileHelper.GetBestArtistField(tag);
         AddMetadataItem(targetCollection, "Artist", artistValue, true, v =>
         {
-            tag.Performers = string.IsNullOrEmpty(v)
-  ? []
-             : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            tag.Performers = string.IsNullOrEmpty(v) ? []
+                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
         });
 
         // Album
@@ -61,11 +60,10 @@ public class CoreMetadataLoader : IMetadataLoader
         // Album Artist - use smart field selection
         string albumArtistValue = _mediaFileHelper.GetBestAlbumArtistField(tag);
         AddMetadataItem(targetCollection, "Album Artist", albumArtistValue, true, v =>
-               {
-                   tag.AlbumArtists = string.IsNullOrEmpty(v)
-                   ? []
-             : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
-               });
+        {
+            tag.AlbumArtists = string.IsNullOrEmpty(v) ? []
+                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+        });
 
         // Track Number
         AddMetadataItem(targetCollection, "Track Number", tag.Track > 0 ? tag.Track.ToString() : "", true, v =>
@@ -75,9 +73,9 @@ public class CoreMetadataLoader : IMetadataLoader
 
         // Total Tracks
         AddMetadataItem(targetCollection, "Total Tracks", tag.TrackCount > 0 ? tag.TrackCount.ToString() : "", true, v =>
- {
-     tag.TrackCount = uint.TryParse(v, out uint count) ? count : 0;
- });
+         {
+             tag.TrackCount = uint.TryParse(v, out uint count) ? count : 0;
+         });
 
         // Disc Number
         AddMetadataItem(targetCollection, "Disc Number", tag.Disc > 0 ? tag.Disc.ToString() : "", true, v =>
@@ -87,30 +85,28 @@ public class CoreMetadataLoader : IMetadataLoader
 
         // Total Discs
         AddMetadataItem(targetCollection, "Total Discs", tag.DiscCount > 0 ? tag.DiscCount.ToString() : "", true, v =>
-{
-    tag.DiscCount = uint.TryParse(v, out uint count) ? count : 0;
-});
+        {
+            tag.DiscCount = uint.TryParse(v, out uint count) ? count : 0;
+        });
 
         // Year
         AddMetadataItem(targetCollection, "Year", tag.Year > 0 ? tag.Year.ToString() : "", true, v =>
-          {
-              tag.Year = uint.TryParse(v, out uint year) ? year : 0;
-          });
+        {
+            tag.Year = uint.TryParse(v, out uint year) ? year : 0;
+        });
 
         // Genre
         AddMetadataItem(targetCollection, "Genre", tag.FirstGenre ?? string.Join(", ", tag.Genres ?? []), true, v =>
         {
-            tag.Genres = string.IsNullOrEmpty(v)
-                    ? []
-                   : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            tag.Genres = string.IsNullOrEmpty(v) ? []
+                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
         });
 
         // Composer
         AddMetadataItem(targetCollection, "Composer", tag.FirstComposer ?? string.Join(", ", tag.Composers ?? []), true, v =>
         {
-            tag.Composers = string.IsNullOrEmpty(v)
-                ? []
-       : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            tag.Composers = string.IsNullOrEmpty(v) ? []
+                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
         });
 
         // Copyright
