@@ -1,5 +1,8 @@
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
+using TagLib.Id3v2;
+using TagLib.Mpeg4;
+using TagLib.Ogg;
 using File = TagLib.File;
 
 namespace LinkerPlayer.ViewModels.Properties.Loaders;
@@ -121,8 +124,7 @@ public class LyricsCommentLoader
             return CreatePlaceholderLyrics();
         }
 
-        TagLib.Tag tag = audioFile.Tag;
-        string lyricsValue = tag.Lyrics ?? "[ No lyrics available. ]";
+        string lyricsValue = GetLyricsValue(audioFile) ?? "[ No lyrics available. ]";
 
         return new TagItem
         {
@@ -130,17 +132,9 @@ public class LyricsCommentLoader
             Value = lyricsValue,
             IsEditable = true,
             UpdateAction = v =>
-                  {
-                      // Don't update if the value is the placeholder text
-                      if (v == "[ No lyrics available. ]")
-                      {
-                          tag.Lyrics = null;
-                      }
-                      else
-                      {
-                          tag.Lyrics = string.IsNullOrEmpty(v) ? null : v;
-                      }
-                  }
+            {
+                SetLyricsValue(audioFile, v == "[ No lyrics available. ]" ? null : (string.IsNullOrEmpty(v) ? null : v));
+            }
         };
     }
 
@@ -155,7 +149,6 @@ public class LyricsCommentLoader
             return CreatePlaceholderLyrics();
         }
 
-        // Aggregate lyrics values
         Dictionary<string, int> lyricsValues = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         foreach (File audioFile in audioFiles)
@@ -165,7 +158,7 @@ public class LyricsCommentLoader
                 continue;
             }
 
-            string lyrics = audioFile.Tag.Lyrics ?? "";
+            string lyrics = GetLyricsValue(audioFile) ?? "";
 
             if (!lyricsValues.ContainsKey(lyrics))
             {
@@ -177,7 +170,6 @@ public class LyricsCommentLoader
         string displayValue;
         if (lyricsValues.Count == 0)
         {
-            // No files had tags
             displayValue = "[ No lyrics available. ]";
         }
         else if (lyricsValues.Count == 1 && lyricsValues.Keys.First() == "")
@@ -202,6 +194,154 @@ public class LyricsCommentLoader
             Value = displayValue,
             IsEditable = false // Read-only for multi-selection
         };
+    }
+
+    private static string? GetLyricsValue(File audioFile)
+    {
+        try
+        {
+            // ID3v2 (MP3): prefer USLT, then try SYLT and TXXX fallbacks
+            if (audioFile.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3Tag)
+            {
+                try
+                {
+                    UnsynchronisedLyricsFrame? uslt = id3Tag.GetFrames<UnsynchronisedLyricsFrame>().FirstOrDefault();
+                    if (uslt != null && !string.IsNullOrWhiteSpace(uslt.Text))
+                    {
+                        return uslt.Text;
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    SynchronisedLyricsFrame? sylt = id3Tag.GetFrames<SynchronisedLyricsFrame>().FirstOrDefault();
+                    if (sylt != null)
+                    {
+                        string syltText = sylt.ToString();
+                        if (!string.IsNullOrWhiteSpace(syltText))
+                        {
+                            return syltText;
+                        }
+                    }
+                }
+                catch { }
+
+                try
+                {
+                    // Some tools store lyrics in TXXX custom frames with description like "LYRICS"
+                    foreach (UserTextInformationFrame txxx in id3Tag.GetFrames<UserTextInformationFrame>())
+                    {
+                        string description = txxx.Description ?? string.Empty;
+                        if (description.Contains("LYRICS", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string? text = txxx.Text?.FirstOrDefault();
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                return text;
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                string? generic = id3Tag.Lyrics;
+                if (!string.IsNullOrWhiteSpace(generic))
+                {
+                    return generic;
+                }
+            }
+
+            // Vorbis comments (FLAC/OGG/Opus)
+            if (audioFile.GetTag(TagLib.TagTypes.Xiph, false) is XiphComment xiph)
+            {
+                foreach (string key in new[] { "LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS" })
+                {
+                    string? value = xiph.GetFirstField(key);
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        return value;
+                    }
+                }
+
+                string? generic = audioFile.Tag.Lyrics;
+                if (!string.IsNullOrWhiteSpace(generic))
+                {
+                    return generic;
+                }
+            }
+
+            // MP4/M4A iTunes-style
+            if (audioFile.GetTag(TagLib.TagTypes.Apple, false) is AppleTag mp4)
+            {
+                string? itunesLyrics = mp4.GetText("----:com.apple.iTunes:LYRICS")?.FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(itunesLyrics))
+                {
+                    return itunesLyrics;
+                }
+
+                string? generic = audioFile.Tag.Lyrics;
+                if (!string.IsNullOrWhiteSpace(generic))
+                {
+                    return generic;
+                }
+            }
+
+            return audioFile.Tag.Lyrics;
+        }
+        catch
+        {
+            return audioFile.Tag.Lyrics;
+        }
+    }
+
+    private static void SetLyricsValue(File audioFile, string? value)
+    {
+        try
+        {
+            // ID3v2 (MP3) - set USLT
+            if (audioFile.GetTag(TagLib.TagTypes.Id3v2, true) is TagLib.Id3v2.Tag id3Tag)
+            {
+                foreach (UnsynchronisedLyricsFrame f in id3Tag.GetFrames<UnsynchronisedLyricsFrame>().ToList())
+                {
+                    id3Tag.RemoveFrame(f);
+                }
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    UnsynchronisedLyricsFrame frame = new UnsynchronisedLyricsFrame("eng", string.Empty)
+                    {
+                        Text = value
+                    };
+                    id3Tag.AddFrame(frame);
+                }
+                else
+                {
+                    id3Tag.Lyrics = null;
+                }
+                return;
+            }
+
+            // Vorbis comments (FLAC/OGG/Opus)
+            if (audioFile.GetTag(TagLib.TagTypes.Xiph, true) is XiphComment xiph)
+            {
+                xiph.SetField("LYRICS", string.IsNullOrEmpty(value) ? null : value);
+                return;
+            }
+
+            // MP4/M4A iTunes-style
+            if (audioFile.GetTag(TagLib.TagTypes.Apple, true) is AppleTag mp4)
+            {
+                mp4.SetText("----:com.apple.iTunes:LYRICS", string.IsNullOrEmpty(value) ? null : new[] { value });
+                return;
+            }
+
+            audioFile.Tag.Lyrics = value;
+        }
+        catch
+        {
+            audioFile.Tag.Lyrics = value;
+        }
     }
 
     private static TagItem CreatePlaceholderComment()
