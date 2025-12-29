@@ -218,7 +218,7 @@ public class LyricsCommentLoader
                     SynchronisedLyricsFrame? sylt = id3Tag.GetFrames<SynchronisedLyricsFrame>().FirstOrDefault();
                     if (sylt != null)
                     {
-                        string syltText = sylt.ToString();
+                        string syltText = sylt.ToString() ?? string.Empty;
                         if (!string.IsNullOrWhiteSpace(syltText))
                         {
                             return syltText;
