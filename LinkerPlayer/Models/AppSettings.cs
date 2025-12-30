@@ -25,6 +25,12 @@ public class AppSettings
     public List<string> VisibleColumns { get; set; } = new();
     public Dictionary<string, ColumnInfo> ColumnSettings { get; set; } = new();
 
+    // Configurable settings for silence-based auto-advance
+    public double AutoAdvanceTailWindowSeconds { get; set; } = 10.0;
+    public double AutoAdvanceSilenceThresholdDb { get; set; } = -40.0;
+    public double AutoAdvanceSilenceHoldSeconds { get; set; } = 0.75;
+    public double AutoAdvanceHardEndSeconds { get; set; } = 0.5;
+
     [Serializable]
     public class ColumnInfo
     {

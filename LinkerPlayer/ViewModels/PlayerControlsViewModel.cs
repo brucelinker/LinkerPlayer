@@ -43,6 +43,10 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
     // Guard to prevent re-entrant Next/Prev during transitions
     private bool _isNavigatingTrack = false;
 
+    private bool _autoAdvanceTriggeredForTrack;
+    private DateTimeOffset? _silenceBelowThresholdSinceUtc;
+    private string? _autoAdvanceTrackPath;
+
     public PlayerControlsViewModel(
         IAudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
@@ -253,6 +257,10 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
 
             if (ActiveTrack != null)
             {
+                _autoAdvanceTriggeredForTrack = false;
+                _silenceBelowThresholdSinceUtc = null;
+                _autoAdvanceTrackPath = ActiveTrack.Path;
+
                 _logger.LogInformation("Playing ActiveTrack: {Path}", ActiveTrack.Path);
                 _audioEngine.PathToMusic = ActiveTrack.Path;
 
@@ -415,18 +423,87 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
 
         if (!_audioEngine.IsPlaying)
         {
+            _silenceBelowThresholdSinceUtc = null;
             return; // only auto-advance while actually playing
+        }
+
+        if (ActiveTrack == null)
+        {
+            _silenceBelowThresholdSinceUtc = null;
+            return;
+        }
+
+        if (_autoAdvanceTriggeredForTrack)
+        {
+            return;
+        }
+
+        if (!string.Equals(_autoAdvanceTrackPath, ActiveTrack.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            _autoAdvanceTriggeredForTrack = false;
+            _silenceBelowThresholdSinceUtc = null;
+            _autoAdvanceTrackPath = ActiveTrack.Path;
         }
 
         double length = _audioEngine.CurrentTrackLength;
         double position = _audioEngine.CurrentTrackPosition;
 
-        if (length > 0 && position + 10.0 > length)
+        if (length <= 0 || double.IsNaN(position) || double.IsNaN(length))
         {
-            if (_audioEngine.GetDecibelLevel() <= -50 || position + 0.5 > length)
-            {
-                NextTrack();
-            }
+            return;
+        }
+
+        double windowSeconds = Math.Max(0.0, _settingsManager.Settings.AutoAdvanceTailWindowSeconds);
+        double hardEndSeconds = Math.Max(0.0, _settingsManager.Settings.AutoAdvanceHardEndSeconds);
+        double silenceThresholdDb = _settingsManager.Settings.AutoAdvanceSilenceThresholdDb;
+        double holdSeconds = Math.Max(0.0, _settingsManager.Settings.AutoAdvanceSilenceHoldSeconds);
+
+        if (position + hardEndSeconds > length)
+        {
+            _autoAdvanceTriggeredForTrack = true;
+            NextTrack();
+            _logger.LogInformation("MonitorNextTrack: position + hardEndSeconds > length");
+            return;
+        }
+
+        if (windowSeconds <= 0 || position + windowSeconds <= length)
+        {
+            _silenceBelowThresholdSinceUtc = null;
+            return;
+        }
+
+        double db = _audioEngine.GetDecibelLevel();
+        if (double.IsNaN(db))
+        {
+            return;
+        }
+
+        if (db <= silenceThresholdDb)
+        {
+            _silenceBelowThresholdSinceUtc ??= DateTimeOffset.UtcNow;
+        }
+        else
+        {
+            _silenceBelowThresholdSinceUtc = null;
+            return;
+        }
+
+        if (holdSeconds <= 0)
+        {
+            _autoAdvanceTriggeredForTrack = true;
+            NextTrack();
+
+            _logger.LogInformation("MonitorNextTrack: holdSeconds <= 0");
+            return;
+        }
+
+        double silentForSeconds = (DateTimeOffset.UtcNow - _silenceBelowThresholdSinceUtc.Value).TotalSeconds;
+        if (silentForSeconds >= holdSeconds)
+        {
+            _autoAdvanceTriggeredForTrack = true;
+            _logger.LogInformation("MonitorNextTrack: silentForSeconds >= holdSeconds");
+
+            NextTrack();
         }
     }
 }
