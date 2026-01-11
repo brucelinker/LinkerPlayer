@@ -18,6 +18,9 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
 
     private readonly List<Device> _devices = new();
 
+    private const string PreferredDirectSoundDefaultToken = "USB";
+    private const string PreferredWasapiDefaultToken = "Realtek";
+
     public OutputDeviceManager(ILogger<OutputDeviceManager> logger)
     {
         _logger = logger;
@@ -29,31 +32,59 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
     {
         _devices.Clear();
 
-        // Add our synthetic default DirectSound device entry once
-        _devices.Add(new Device("Default", OutputDeviceType.DirectSound, -1, true));
+        string primaryLabel = "Primary Sound Driver";
+        try
+        {
+            for (int i = 1; i < Bass.DeviceCount; i++)
+            {
+                DeviceInfo info = Bass.GetDeviceInfo(i);
+                if (info.IsEnabled && info.IsDefault && !string.IsNullOrWhiteSpace(info.Name))
+                {
+                    string resolved = NormalizeDeviceDisplayName(info.Name);
+                    primaryLabel = $"Primary Sound Driver ({resolved})";
+                    break;
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        // DirectSound: match common players
+        _devices.Add(new Device(primaryLabel, OutputDeviceType.DirectSound, -1, true));
 
         // Get DirectSound devices
         try
         {
+            List<Device> dsDevices = new List<Device>();
             for (int i = 1; i < Bass.DeviceCount; i++) // Start from 1 to skip "No sound"
             {
                 DeviceInfo dsDevice = Bass.GetDeviceInfo(i);
-                //_logger.LogDebug("DirectSound Device {Index}: Name='{Name}', IsEnabled={IsEnabled}, IsDefault={IsDefault}", i, dsDevice.Name, dsDevice.IsEnabled, dsDevice.IsDefault);
                 if (string.IsNullOrEmpty(dsDevice.Name) || !dsDevice.IsEnabled)
                 {
                     continue;
                 }
 
-                // Skip BASS's internal "Default" entry to avoid duplicates
                 if (dsDevice.IsDefault || string.Equals(dsDevice.Name, "Default", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }
 
-                _devices.Add(new Device(dsDevice.Name, OutputDeviceType.DirectSound, i));
+                string displayName = NormalizeDeviceDisplayName(dsDevice.Name);
+                dsDevices.Add(new Device(displayName, OutputDeviceType.DirectSound, i));
             }
-            int dsCount = _devices.Count(d => d.Type == OutputDeviceType.DirectSound) - 1; // -1 for our synthetic default
-            //_logger.LogInformation("Found {Count} DirectSound devices (excluding synthetic Default)", dsCount);
+
+            dsDevices = DisambiguateDuplicateNames(dsDevices);
+
+            List<Device> orderedDs = dsDevices
+                .OrderByDescending(d => d.Name.Contains(PreferredDirectSoundDefaultToken, StringComparison.OrdinalIgnoreCase))
+                .ThenBy(d => d.Name)
+                .ToList();
+
+            foreach (Device dev in orderedDs)
+            {
+                _devices.Add(dev);
+            }
         }
         catch (Exception ex)
         {
@@ -63,20 +94,21 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         // Get WASAPI devices
         try
         {
-            List<Device> wasapiList = new List<Device>();
-            for (int i = 0; BassWasapi.GetDeviceInfo(i, out WasapiDeviceInfo wasapiDevice); i++) // WASAPI devices start from 0
+            List<Device> wasapiDevices = new List<Device>();
+            for (int i = 0; BassWasapi.GetDeviceInfo(i, out WasapiDeviceInfo wasapiDevice); i++)
             {
-                //_logger.LogDebug("WASAPI Device {Index}: Name='{Name}', IsEnabled={IsEnabled}, IsInput={IsInput}, IsDefault={IsDefault}", i, wasapiDevice.Name, wasapiDevice.IsEnabled, wasapiDevice.IsInput, wasapiDevice.IsDefault);
                 if (wasapiDevice.IsEnabled && !wasapiDevice.IsInput && !string.IsNullOrEmpty(wasapiDevice.Name))
                 {
-                    // Keep the original device name; track default via IsDefault flag
-                    wasapiList.Add(new Device(wasapiDevice.Name, OutputDeviceType.Wasapi, i, wasapiDevice.IsDefault));
+                    string displayName = NormalizeDeviceDisplayName(wasapiDevice.Name);
+                    wasapiDevices.Add(new Device(displayName, OutputDeviceType.Wasapi, i, wasapiDevice.IsDefault));
                 }
             }
 
-            // Order WASAPI devices so that default Speakers (or any speakers) come first, headsets last
-            List<Device> orderedWasapi = wasapiList
-                .OrderBy(d => GetWasapiPriority(d.Name, d.IsDefault))
+            wasapiDevices = DisambiguateDuplicateNames(wasapiDevices);
+
+            List<Device> orderedWasapi = wasapiDevices
+                .OrderByDescending(d => d.Name.Contains(PreferredWasapiDefaultToken, StringComparison.OrdinalIgnoreCase))
+                .ThenByDescending(d => d.IsDefault)
                 .ThenBy(d => d.Name)
                 .ToList();
 
@@ -85,7 +117,7 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
                 _devices.Add(dev);
             }
 
-            _logger.LogInformation("Found {Count} enabled WASAPI output devices (speaker-first order)", orderedWasapi.Count);
+            _logger.LogInformation("Found {Count} enabled WASAPI output devices", orderedWasapi.Count);
         }
         catch (Exception ex)
         {
@@ -93,6 +125,60 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
         }
 
         return _devices;
+    }
+
+    private static string NormalizeDeviceDisplayName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return string.Empty;
+        }
+
+        // Keep WASAPI/Windows-friendly names as-is; only trim obvious trailing metadata.
+        // Examples we want to keep: "Speakers (Realtek(R) Audio)", "Headset Earphone (Jabra ...)".
+        // Examples we want to trim: trailing " - " driver-instance decorations.
+        string trimmed = name.Trim();
+
+        int dashIndex = trimmed.IndexOf(" - ", StringComparison.Ordinal);
+        if (dashIndex > 0)
+        {
+            trimmed = trimmed.Substring(0, dashIndex).Trim();
+        }
+
+        return trimmed;
+    }
+
+    private static List<Device> DisambiguateDuplicateNames(List<Device> devices)
+    {
+        Dictionary<string, int> counts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (Device device in devices)
+        {
+            string key = device.Name;
+            if (counts.TryGetValue(key, out int existing))
+            {
+                counts[key] = existing + 1;
+            }
+            else
+            {
+                counts[key] = 1;
+            }
+        }
+
+        List<Device> result = new List<Device>(devices.Count);
+        foreach (Device device in devices)
+        {
+            if (counts.TryGetValue(device.Name, out int count) && count > 1)
+            {
+                // Only disambiguate when needed.
+                result.Add(device with { Name = $"{device.Name} [{device.Index}]" });
+            }
+            else
+            {
+                result.Add(device);
+            }
+        }
+
+        return result;
     }
 
     public IEnumerable<Device> GetDirectSoundDevices()
@@ -138,36 +224,5 @@ public class OutputDeviceManager : IOutputDeviceManager, IDisposable
             _devices.Clear();
             _logger.LogInformation("OutputDeviceManager: Disposed");
         }
-    }
-
-    // Heuristics to push speaker devices to the top and headset-style devices to the bottom
-    private static int GetWasapiPriority(string name, bool isDefault)
-    {
-        string n = name?.ToLowerInvariant() ?? string.Empty;
-
-        bool isSpeaker = n.Contains("speaker"); // matches "Speakers" as well
-        bool isHeadset = n.Contains("headset") || n.Contains("headphone") || n.Contains("earphone") || n.Contains("hands-free") || n.Contains("earbud") || n.Contains("ear buds") || n.Contains("bt700");
-
-        // Priority buckets (lower number = earlier in list)
-        // 0: Default Speakers
-        // 1: Any Speakers
-        // 2: Other non-headset devices
-        // 3: Headset-style devices
-        if (isSpeaker && isDefault)
-        {
-            return 0;
-        }
-
-        if (isSpeaker)
-        {
-            return 1;
-        }
-
-        if (isHeadset)
-        {
-            return 3;
-        }
-
-        return 2;
     }
 }

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using LinkerPlayer.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -50,7 +50,7 @@ public class FileImportServiceTests : IDisposable
         bool result = fileImportService.IsAudioFile(filePath);
 
         // Assert
-        result.Should().Be(expected);
+        result.ShouldBe(expected);
     }
 
     [StaFact]
@@ -60,9 +60,9 @@ public class FileImportServiceTests : IDisposable
         TestableFileImportService fileImportService = new TestableFileImportService(_mockLogger.Object);
 
         // Act & Assert
-        fileImportService.IsAudioFile(null!).Should().BeFalse();
-        fileImportService.IsAudioFile("").Should().BeFalse();
-        fileImportService.IsAudioFile("   ").Should().BeFalse();
+        fileImportService.IsAudioFile(null!).ShouldBeFalse();
+        fileImportService.IsAudioFile("").ShouldBeFalse();
+        fileImportService.IsAudioFile("   ").ShouldBeFalse();
     }
 
     [StaFact]
@@ -76,7 +76,7 @@ public class FileImportServiceTests : IDisposable
         int result = fileImportService.GetAudioFileCount(nonExistentPath);
 
         // Assert
-        result.Should().Be(0);
+        result.ShouldBe(0);
     }
 
     [StaFact]
@@ -93,7 +93,7 @@ public class FileImportServiceTests : IDisposable
         int result = fileImportService.GetAudioFileCount(_testDirectory);
 
         // Assert
-        result.Should().Be(2);
+        result.ShouldBe(2);
     }
 
     // NOTE: ImportFileAsync, ImportFolderAsync, and ImportFilesAsync tests are commented out

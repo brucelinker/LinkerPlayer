@@ -3,10 +3,19 @@ using LinkerPlayer.Models;
 
 namespace LinkerPlayer.Audio;
 
+public enum FadeCurveShape
+{
+    Linear = 0,
+    Cosine = 1,
+    Sine = 2,
+    Logarithmic = 3
+}
+
 public interface IAudioEngine : ISpectrumPlayer, System.IDisposable
 {
     // Path to current file
     string PathToMusic { get; set; }
+    string LoadedTrackPath { get; }
     float MusicVolume { get; set; }
 
     // Device / mode
@@ -28,6 +37,9 @@ public interface IAudioEngine : ISpectrumPlayer, System.IDisposable
 
     // Events
     event System.Action? OnPlaybackStopped;
+    event System.Action? OnTrackEnded;
+
+    event System.Action<string>? OnCrossfadeCommitted;
 
     // Visualization helpers
     float[] FftUpdate { get; }
@@ -43,4 +55,7 @@ public interface IAudioEngine : ISpectrumPlayer, System.IDisposable
     float GetBandGain(int index);
     void SetBandGain(float frequency, float gain);
     void SetBandGainByIndex(int index, float gain);
+
+    bool TryBeginCrossfade(string nextTrackPath, double nextTrackStartSeconds, int fadeOutMs, int fadeInMs, FadeCurveShape curveShape);
+    bool TryFadeOutAndStop(int fadeOutMs, FadeCurveShape curveShape);
 }

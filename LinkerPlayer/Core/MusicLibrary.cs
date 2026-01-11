@@ -31,6 +31,7 @@ public interface IMusicLibrary
     void SaveToDatabase();
     Task LoadFromDatabaseAsync();
     Task CleanOrphanedTracksAsync();
+    Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true);
 }
 
 public class MusicLibrary : IMusicLibrary
@@ -44,7 +45,7 @@ public class MusicLibrary : IMusicLibrary
     private readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
     public ObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
-    public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
+    public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
 
     public MusicLibrary(ILogger<MusicLibrary> logger)
     {
@@ -89,6 +90,46 @@ public class MusicLibrary : IMusicLibrary
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error checking/adding Order column to Playlists table");
+                }
+
+                // Add LeadingSilenceMs/TrailingSilenceMs columns to Tracks table if they don't exist (for existing databases)
+                try
+                {
+                    List<int> leadingResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='LeadingSilenceMs'").ToList();
+                    if (leadingResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"LeadingSilenceMs\" INTEGER NULL;");
+                        _logger.LogInformation("Added LeadingSilenceMs column to Tracks table");
+                    }
+
+                    List<int> trailingResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='TrailingSilenceMs'").ToList();
+                    if (trailingResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"TrailingSilenceMs\" INTEGER NULL;");
+                        _logger.LogInformation("Added TrailingSilenceMs column to Tracks table");
+                    }
+
+                    List<int> lastWriteResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='FileLastWriteTimeUtc'").ToList();
+                    if (lastWriteResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"FileLastWriteTimeUtc\" TEXT NULL;");
+                        _logger.LogInformation("Added FileLastWriteTimeUtc column to Tracks table");
+                    }
+
+                    List<int> lastRefreshResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='LastMetadataRefreshUtc'").ToList();
+                    if (lastRefreshResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"LastMetadataRefreshUtc\" TEXT NULL;");
+                        _logger.LogInformation("Added LastMetadataRefreshUtc column to Tracks table");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking/adding analysis/metadata columns to Tracks table");
                 }
             }
 
@@ -552,5 +593,129 @@ public class MusicLibrary : IMusicLibrary
             .Where(t => t != null)
             .Select(t => t!)
             .ToList();
+    }
+
+    public async Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true)
+    {
+        if (tracks == null)
+        {
+            throw new ArgumentNullException(nameof(tracks));
+        }
+
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            foreach (MediaFile incoming in tracks)
+            {
+                if (incoming == null)
+                {
+                    continue;
+                }
+
+                MediaFile? existing = null;
+                if (!string.IsNullOrWhiteSpace(incoming.Id))
+                {
+                    existing = await context.Tracks.FirstOrDefaultAsync(t => t.Id == incoming.Id);
+                }
+
+                if (existing == null && !string.IsNullOrWhiteSpace(incoming.Path))
+                {
+                    existing = await context.Tracks.FirstOrDefaultAsync(t => t.Path == incoming.Path);
+                }
+
+                if (existing == null)
+                {
+                    continue;
+                }
+
+                if (updateMetadata)
+                {
+                    existing.FileName = incoming.FileName;
+                    existing.Title = incoming.Title;
+                    existing.Artist = incoming.Artist;
+                    existing.Album = incoming.Album;
+                    existing.AlbumArtist = incoming.AlbumArtist;
+                    existing.Performers = incoming.Performers;
+                    existing.Composers = incoming.Composers;
+                    existing.Genres = incoming.Genres;
+                    existing.Copyright = incoming.Copyright;
+                    existing.Comment = incoming.Comment;
+                    existing.Track = incoming.Track;
+                    existing.TrackCount = incoming.TrackCount;
+                    existing.Disc = incoming.Disc;
+                    existing.DiscCount = incoming.DiscCount;
+                    existing.Year = incoming.Year;
+                    existing.Duration = incoming.Duration;
+                    existing.Bitrate = incoming.Bitrate;
+                    existing.SampleRate = incoming.SampleRate;
+                    existing.Channels = incoming.Channels;
+                    existing.Codec = incoming.Codec;
+
+                    existing.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
+                    existing.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
+                }
+
+                if (updateAnalysis)
+                {
+                    existing.LeadingSilenceMs = incoming.LeadingSilenceMs;
+                    existing.TrailingSilenceMs = incoming.TrailingSilenceMs;
+                }
+
+                // Keep in-memory library in sync with DB updates.
+                MediaFile? inMemory = null;
+                if (!string.IsNullOrWhiteSpace(incoming.Id))
+                {
+                    inMemory = MainLibrary.FirstOrDefault(t => t.Id == incoming.Id);
+                }
+
+                if (inMemory == null && !string.IsNullOrWhiteSpace(incoming.Path))
+                {
+                    inMemory = MainLibrary.FirstOrDefault(t => t.Path == incoming.Path);
+                }
+
+                if (inMemory != null)
+                {
+                    if (updateMetadata)
+                    {
+                        inMemory.FileName = incoming.FileName;
+                        inMemory.Title = incoming.Title;
+                        inMemory.Artist = incoming.Artist;
+                        inMemory.Album = incoming.Album;
+                        inMemory.AlbumArtist = incoming.AlbumArtist;
+                        inMemory.Performers = incoming.Performers;
+                        inMemory.Composers = incoming.Composers;
+                        inMemory.Genres = incoming.Genres;
+                        inMemory.Copyright = incoming.Copyright;
+                        inMemory.Comment = incoming.Comment;
+                        inMemory.Track = incoming.Track;
+                        inMemory.TrackCount = incoming.TrackCount;
+                        inMemory.Disc = incoming.Disc;
+                        inMemory.DiscCount = incoming.DiscCount;
+                        inMemory.Year = incoming.Year;
+                        inMemory.Duration = incoming.Duration;
+                        inMemory.Bitrate = incoming.Bitrate;
+                        inMemory.SampleRate = incoming.SampleRate;
+                        inMemory.Channels = incoming.Channels;
+                        inMemory.Codec = incoming.Codec;
+
+                        inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
+                        inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
+                    }
+
+                    if (updateAnalysis)
+                    {
+                        inMemory.LeadingSilenceMs = incoming.LeadingSilenceMs;
+                        inMemory.TrailingSilenceMs = incoming.TrailingSilenceMs;
+                    }
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update tracks in database");
+            throw;
+        }
     }
 }

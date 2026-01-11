@@ -1,6 +1,7 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
+using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Windows;
@@ -15,6 +16,7 @@ public partial class TrackInfo
     private readonly IAudioEngine _audioEngine;
     private readonly ILogger<TrackInfo> _logger;
     private readonly ISelectionService _selectionService;
+    private readonly SharedDataModel _sharedDataModel;
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
 
     public MediaFile? SelectedMediaFile
@@ -26,11 +28,14 @@ public partial class TrackInfo
     public static readonly DependencyProperty SelectedMediaFileProperty =
         DependencyProperty.Register(nameof(SelectedMediaFile), typeof(MediaFile), typeof(TrackInfo), new PropertyMetadata(null));
 
+    private MediaFile? _lastDisplayedTrack;
+
     public TrackInfo()
     {
         _audioEngine = App.AppHost.Services.GetRequiredService<IAudioEngine>();
         _logger = App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>();
         _selectionService = App.AppHost.Services.GetRequiredService<ISelectionService>();
+        _sharedDataModel = App.AppHost.Services.GetRequiredService<SharedDataModel>();
 
         InitializeComponent();
         Loaded += TrackInfo_Loaded;
@@ -43,16 +48,52 @@ public partial class TrackInfo
 
         // Subscribe to selection changes
         _selectionService.TrackChanged += SelectionService_TrackChanged;
+        _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged;
     }
 
     private void TrackInfo_Unloaded(object sender, RoutedEventArgs e)
     {
         _selectionService.TrackChanged -= SelectionService_TrackChanged;
+        _sharedDataModel.PropertyChanged -= SharedDataModel_PropertyChanged;
+    }
+
+    private void SharedDataModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SharedDataModel.ActiveTrack))
+        {
+            UpdateDisplayedTrack();
+        }
+    }
+
+    private void UpdateDisplayedTrack()
+    {
+        MediaFile? activeTrack = _sharedDataModel.ActiveTrack;
+        if (activeTrack != null)
+        {
+            _lastDisplayedTrack = activeTrack;
+            OnSelectedTrackChanged(activeTrack);
+            return;
+        }
+
+        // Stopped (or transitioning to stopped): keep showing the last active track until the user changes selection.
+        if (!_audioEngine.IsPlaying)
+        {
+            return;
+        }
+
+        MediaFile? selected = _selectionService.CurrentTrack;
+        _lastDisplayedTrack = selected;
+        OnSelectedTrackChanged(selected);
     }
 
     private void SelectionService_TrackChanged(object? sender, MediaFile? e)
     {
-        OnSelectedTrackChanged(e);
+        // Only react to selection changes when not actively playing.
+        if (!_audioEngine.IsPlaying)
+        {
+            _lastDisplayedTrack = e;
+            OnSelectedTrackChanged(e);
+        }
     }
 
     private void TrackInfo_Loaded(object sender, RoutedEventArgs e)
@@ -75,11 +116,7 @@ public partial class TrackInfo
             _logger.LogError("TrackInfo: VuMeter control not found");
         }
 
-        // Initialize from current selection
-        if (_selectionService.CurrentTrack != null)
-        {
-            OnSelectedTrackChanged(_selectionService.CurrentTrack);
-        }
+        UpdateDisplayedTrack();
     }
 
     private async void OnSelectedTrackChanged(MediaFile? mediaFile)

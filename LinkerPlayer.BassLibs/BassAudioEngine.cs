@@ -109,7 +109,7 @@ public class BassAudioEngine : IDisposable
             {
                 try
                 {
-                    BassWasapi.Init(-1, options.SampleRate, 2, options.WasapiFlags);
+                    BassWasapi.Init(0, options.SampleRate, 2, options.WasapiFlags);
                     _initializationResult.IsWasapiInitialized = true;
                     _logger.LogInformation("WASAPI initialized successfully");
                 }
@@ -202,14 +202,15 @@ public class BassAudioEngine : IDisposable
         // Defer codec loading to background task for faster startup
         string[] essentialPlugins = new[]
         {
-            "bass_aac.dll",   // AAC
-            "bass_mpc.dll",   // MPC
-            "bassalac.dll",   // Apple Lossless
-            "bassape.dll",    // Monkey's Audio
-            "bassflac.dll",   // FLAC support
-            "bassopus.dll",   // Opus
-            "basswebm.dll",   // WebM/Opus
-            "basswv.dll",     // WavPack
+            "bass_aac.dll", // AAC
+            "bass_mpc.dll", // MPC
+            "bassalac.dll", // Apple Lossless
+            "bassape.dll",  // Monkey's Audio
+            "bassdsd.dll",  // DSD
+            "bassflac.dll", // FLAC support
+            "bassopus.dll", // Opus
+            "basswebm.dll", // WebM/Opus
+            "basswv.dll",   // WavPack
         };
 
         // Start plugin loading in background without blocking

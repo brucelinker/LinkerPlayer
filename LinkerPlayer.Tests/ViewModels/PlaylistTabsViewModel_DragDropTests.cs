@@ -1,10 +1,11 @@
 using System.Reflection;
-using FluentAssertions;
+using Shouldly;
 using Moq;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Services;
 using LinkerPlayer.Models;
 using LinkerPlayer.Core;
+using LinkerPlayer.Services.Playback;
 using Microsoft.Extensions.Logging;
 using System.Windows.Input;
 using LinkerPlayer.Tests.Mocks;
@@ -39,6 +40,7 @@ public class PlaylistTabsViewModel_DragDropTests
 
         SharedDataModel shared = new SharedDataModel();
         ISelectionService selection = new TestSelectionService();
+        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
 
         return new PlaylistTabsViewModel(
             musicLibrary.Object,
@@ -50,6 +52,7 @@ public class PlaylistTabsViewModel_DragDropTests
             uiDispatcher.Object,
             dbSave.Object,
             selection,
+            playbackCoordinator,
             logger);
     }
 
@@ -62,24 +65,24 @@ public class PlaylistTabsViewModel_DragDropTests
         PropertyInfo? dragOverProp = type.GetProperty("DragOverCommand", BindingFlags.Public | BindingFlags.Instance);
         PropertyInfo? dropProp = type.GetProperty("DropCommand", BindingFlags.Public | BindingFlags.Instance);
 
-        dragOverProp.Should().NotBeNull();
-        dropProp.Should().NotBeNull();
+        dragOverProp.ShouldNotBeNull();
+        dropProp.ShouldNotBeNull();
 
         object? dragOverCmdObj = dragOverProp!.GetValue(vm);
         object? dropCmdObj = dropProp!.GetValue(vm);
 
-        dragOverCmdObj.Should().NotBeNull();
-        dropCmdObj.Should().NotBeNull();
+        dragOverCmdObj.ShouldNotBeNull();
+        dropCmdObj.ShouldNotBeNull();
 
         // Verify ICommand is implemented and CanExecute returns true
         ICommand? dragOverCmd = dragOverCmdObj as ICommand;
         ICommand? dropCmd = dropCmdObj as ICommand;
 
-        dragOverCmd.Should().NotBeNull();
-        dropCmd.Should().NotBeNull();
+        dragOverCmd.ShouldNotBeNull();
+        dropCmd.ShouldNotBeNull();
 
-        dragOverCmd!.CanExecute(null).Should().BeTrue();
-        dropCmd!.CanExecute(null).Should().BeTrue();
+        dragOverCmd!.CanExecute(null).ShouldBeTrue();
+        dropCmd!.CanExecute(null).ShouldBeTrue();
     }
 
     [StaFact]
@@ -94,11 +97,12 @@ public class PlaylistTabsViewModel_DragDropTests
 
             // Act
             MethodInfo? method = typeof(PlaylistTabsViewModel).GetMethod("ExtractPathsFromM3u", BindingFlags.NonPublic | BindingFlags.Static);
-            method.Should().NotBeNull();
+            method.ShouldNotBeNull();
             List<string> result = (List<string>)method!.Invoke(null, new object[] { tmp })!;
 
             // Assert
-            result.Should().Contain(new[] { "C:/Music/Song1.mp3", "C:/Music/Album/Song2.flac" });
+            result.ShouldContain("C:/Music/Song1.mp3");
+            result.ShouldContain("C:/Music/Album/Song2.flac");
         }
         finally
         {

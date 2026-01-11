@@ -92,6 +92,8 @@ public partial class AudioEngine
                 return false;
             }
 
+            _logger.LogInformation("WASAPI target device (Index={Index}, Name={Name}, IsDefault={IsDefault})", _currentDevice.Index, deviceInfo.Name, deviceInfo.IsDefault);
+
             bool exclusive = (_currentMode == OutputMode.WasapiExclusive);
             WasapiInitFlags baseFlags = exclusive ? WasapiInitFlags.Exclusive : WasapiInitFlags.Shared;
             WasapiInitFlags bufferedFlags = baseFlags | WasapiInitFlags.Buffer;

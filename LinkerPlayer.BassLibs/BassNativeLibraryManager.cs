@@ -103,6 +103,7 @@ public static class BassNativeLibraryManager
             "bass_mpc.dll",
             "bassalac.dll",
             "bassape.dll",
+            "bassdsd.dll",
             "bassflac.dll",
             "bassloud.dll",
             "bassmix.dll",

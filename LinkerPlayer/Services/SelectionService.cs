@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace LinkerPlayer.Services;
 
@@ -26,13 +27,15 @@ public interface ISelectionService : INotifyPropertyChanged
 
 public class SelectionService : ISelectionService
 {
-    private readonly SharedDataModel _shared;
+    private readonly ISharedDataModel _shared;
+    private readonly ILogger<SelectionService> _logger;
     private PlaylistTab? _currentTab;
     private IReadOnlyList<MediaFile> _multiSelection = Array.Empty<MediaFile>();
 
-    public SelectionService(SharedDataModel shared)
+    public SelectionService(ISharedDataModel shared, ILogger<SelectionService> logger)
     {
         _shared = shared;
+        _logger = logger;
     }
 
     public PlaylistTab? CurrentTab => _currentTab;
@@ -64,22 +67,42 @@ public class SelectionService : ISelectionService
     public void SetTrack(MediaFile? track, int index)
     {
         MediaFile? previous = _shared.SelectedTrack;
+        int previousIndex = _shared.SelectedTrackIndex;
 
         if (track != null)
         {
-            if (previous != null && ReferenceEquals(previous, track) && _shared.SelectedTrackIndex == index)
+            if (previous != null && ReferenceEquals(previous, track) && previousIndex == index)
             {
                 return; // no effective change
             }
+
+            _logger.LogDebug(
+                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> {NewId}@{NewIndex} (PrevTitle='{PrevTitle}', NewTitle='{NewTitle}')\nCaller: {Stack}",
+                previous?.Id ?? "null",
+                previousIndex,
+                track.Id,
+                index,
+                previous?.Title ?? "null",
+                track.Title ?? "null",
+                Environment.StackTrace);
+
             _shared.UpdateSelectedTrack(track);
             _shared.UpdateSelectedTrackIndex(index);
         }
         else
         {
-            if (previous == null && _shared.SelectedTrackIndex == -1)
+            if (previous == null && previousIndex == -1)
             {
                 return; // already null selection
             }
+
+            _logger.LogDebug(
+                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> null@-1 (PrevTitle='{PrevTitle}')\nCaller: {Stack}",
+                previous?.Id ?? "null",
+                previousIndex,
+                previous?.Title ?? "null",
+                Environment.StackTrace);
+
             _shared.UpdateSelectedTrackIndex(-1);
             _shared.UpdateSelectedTrack(null!);
         }

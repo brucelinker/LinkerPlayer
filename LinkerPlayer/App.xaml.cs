@@ -3,6 +3,7 @@ using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
+using LinkerPlayer.Services.Playback;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.ViewModels.Properties.Loaders;
 using LinkerPlayer.Windows; // restore windows namespace for window types
@@ -33,7 +34,7 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
-                logging.SetMinimumLevel(LogLevel.Information);
+                logging.SetMinimumLevel(LogLevel.Trace);
                 //Trace = 0, Debug = 1, Information = 2, Warning = 3, Error = 4, Critical = 5, and None = 6
                 logging.AddSimpleConsole(options =>
                 {
@@ -73,6 +74,7 @@ public partial class App
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
+                services.AddSingleton<IPlaybackCoordinator, PlaybackCoordinator>();
 
                 // Database save debounce service
                 services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
@@ -82,6 +84,8 @@ public partial class App
                 services.AddSingleton<IMediaFileHelper, MediaFileHelper>();
                 services.AddSingleton<IBpmDetector, BpmDetector>();
                 services.AddSingleton<IReplayGainCalculator, ReplayGainCalculator>();
+                services.AddSingleton<Services.Analysis.ITrackSilenceAnalyzer, Services.Analysis.TrackSilenceAnalyzer>();
+                services.AddSingleton<Services.Metadata.ITrackMetadataRefresher, Services.Metadata.TrackMetadataRefresher>();
 
                 services.AddSingleton<EqualizerWindow>();
                 services.AddSingleton<BassAudioEngine>();

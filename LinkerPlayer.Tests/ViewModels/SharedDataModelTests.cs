@@ -1,6 +1,7 @@
 using LinkerPlayer.Models;
 using LinkerPlayer.Tests.Helpers;
 using LinkerPlayer.ViewModels;
+using Shouldly;
 
 namespace LinkerPlayer.Tests.ViewModels;
 
@@ -13,8 +14,8 @@ public class SharedDataModelTests
         int observed = -2;
         model.PropertyChanged += (s,e) => { if (e.PropertyName == nameof(SharedDataModel.SelectedTrackIndex)) { observed = model.SelectedTrackIndex; } };
         model.UpdateSelectedTrackIndex(5);
-        Assert.Equal(5, model.SelectedTrackIndex);
-        Assert.Equal(5, observed);
+        model.SelectedTrackIndex.ShouldBe(5);
+        observed.ShouldBe(5);
     }
 
     [StaFact]
@@ -25,8 +26,8 @@ public class SharedDataModelTests
         MediaFile? observed = null;
         model.PropertyChanged += (s,e) => { if (e.PropertyName == nameof(SharedDataModel.SelectedTrack)) { observed = model.SelectedTrack; } };
         model.UpdateSelectedTrack(track);
-        Assert.Equal(track, model.SelectedTrack);
-        Assert.Equal(track, observed);
+        model.SelectedTrack.ShouldBe(track);
+        observed.ShouldBe(track);
     }
 
     [StaFact]
@@ -37,8 +38,8 @@ public class SharedDataModelTests
         MediaFile? observed = null;
         model.PropertyChanged += (s,e) => { if (e.PropertyName == nameof(SharedDataModel.ActiveTrack)) { observed = model.ActiveTrack; } };
         model.UpdateActiveTrack(track);
-        Assert.Equal(track, model.ActiveTrack);
-        Assert.Equal(track, observed);
+        model.ActiveTrack.ShouldBe(track);
+        observed.ShouldBe(track);
     }
 
     [StaFact]
@@ -49,9 +50,9 @@ public class SharedDataModelTests
         int changeCount = 0;
         model.SelectedTracksChanged += (s,e) => changeCount++;
         model.UpdateSelectedTracks(list);
-        Assert.Equal(3, model.SelectedTracks.Count);
-        Assert.Equal(list[0].Id, model.SelectedTracks[0].Id);
-        Assert.True(changeCount >= 1);
+        model.SelectedTracks.Count.ShouldBe(3);
+        model.SelectedTracks[0].Id.ShouldBe(list[0].Id);
+        changeCount.ShouldBeGreaterThanOrEqualTo(1);
     }
 
     [StaFact]
@@ -60,9 +61,9 @@ public class SharedDataModelTests
         SharedDataModel model = new SharedDataModel();
         List<MediaFile> multi = TestDataHelper.CreateTestMediaFiles(4);
         model.UpdateSelectedTracks(multi);
-        Assert.Equal(4, model.SelectedTracks.Count);
+        model.SelectedTracks.Count.ShouldBe(4);
         model.UpdateSelectedTracks(new [] { multi[2] });
-        Assert.Single(model.SelectedTracks);
-        Assert.Equal(multi[2].Id, model.SelectedTracks[0].Id);
+        model.SelectedTracks.Count.ShouldBe(1);
+        model.SelectedTracks[0].Id.ShouldBe(multi[2].Id);
     }
 }

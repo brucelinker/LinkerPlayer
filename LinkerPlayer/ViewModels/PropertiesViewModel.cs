@@ -1,8 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using LinkerPlayer.BassLibs;
+using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels.Properties.Loaders;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -11,6 +16,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using File = TagLib.File;
+using LinkerPlayer.BassLibs;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -707,6 +713,13 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             {
                 track.UpdateFromFileMetadata();
             }
+
+            try
+            {
+                IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
+                _ = Task.Run(async () => await musicLibrary.UpdateTracksAsync(_sharedDataModel.SelectedTracks, updateMetadata: true, updateAnalysis: false));
+            }
+            catch { }
         }
         else
         {
@@ -721,6 +734,18 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             {
                 _sharedDataModel.ActiveTrack.UpdateFromFileMetadata();
             }
+
+            try
+            {
+                IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
+                List<MediaFile> updated = new List<MediaFile> { _sharedDataModel.SelectedTrack };
+                if (_sharedDataModel.ActiveTrack != null && !_sharedDataModel.ActiveTrack.Id.Equals(_sharedDataModel.SelectedTrack.Id, StringComparison.Ordinal))
+                {
+                    updated.Add(_sharedDataModel.ActiveTrack);
+                }
+                _ = Task.Run(async () => await musicLibrary.UpdateTracksAsync(updated, updateMetadata: true, updateAnalysis: false));
+            }
+            catch { }
         }
     }
 

@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 
 namespace LinkerPlayer.Tests.Services;
 
@@ -10,7 +10,7 @@ public class PlaylistManagerServiceTests
         // This is a placeholder test while we work on making the complex dependencies testable
 
         bool result = true;
-        result.Should().BeTrue();
+        result.ShouldBeTrue();
     }
 
     // NOTE: Most PlaylistManagerService tests are commented out because they require:

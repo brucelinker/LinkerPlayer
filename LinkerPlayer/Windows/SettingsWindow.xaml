@@ -1,4 +1,4 @@
-﻿<Window
+<Window
   x:Class="LinkerPlayer.Windows.SettingsWindow"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,22 +7,19 @@
   xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   Title="Settings"
-  Width="Auto"
-  Height="Auto"
-  MinWidth="420"
-  MinHeight="200"
+  Width="845"
+  Height="460"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
   Closing="Window_Closing"
   Loaded="Window_Loaded"
   ResizeMode="NoResize"
   ShowInTaskbar="False"
-  SizeToContent="WidthAndHeight"
   WindowStyle="None"
   mc:Ignorable="d">
 
   <WindowChrome.WindowChrome>
-    <WindowChrome CaptionHeight="25" />
+    <WindowChrome CaptionHeight="35" />
   </WindowChrome.WindowChrome>
 
   <Window.Resources>
@@ -33,26 +30,60 @@
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
-      <Style TargetType="TextBlock">
-        <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
-        <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-      </Style>
+      <!--  Device display template (used for dropdown items and selected item)  -->
+      <DataTemplate x:Key="DeviceNameTemplate">
+        <TextBlock Text="{Binding Name}" />
+      </DataTemplate>
 
-      <Style TargetType="materialDesign:PackIcon">
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="HorizontalAlignment" Value="Center" />
+      <!--  Navigation Item Style  -->
+      <Style x:Key="NavigationListBoxItemStyle" TargetType="ListBoxItem">
+        <Setter Property="Padding" Value="16,14" />
+        <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="ListBoxItem">
+              <Border
+                x:Name="Border"
+                Padding="{TemplateBinding Padding}"
+                Background="{TemplateBinding Background}"
+                CornerRadius="4">
+                <StackPanel
+                  HorizontalAlignment="Left"
+                  VerticalAlignment="Center"
+                  Orientation="Horizontal">
+                  <materialDesign:PackIcon
+                    x:Name="Icon"
+                    Width="20"
+                    Height="20"
+                    Margin="0,0,12,0"
+                    VerticalAlignment="Center"
+                    Kind="{Binding Tag, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                  <ContentPresenter VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                  <Setter TargetName="Border" Property="Background" Value="{DynamicResource PlaylistTabSelectedBackgroundBrush}" />
+                  <Setter Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+                  <Setter TargetName="Icon" Property="Foreground" Value="{DynamicResource ControlForegroundBrush}" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
       </Style>
 
     </ResourceDictionary>
   </Window.Resources>
 
   <Grid Focusable="True">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="45" />
-      <RowDefinition />
-      <RowDefinition />
-    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="150" />
+      <!--  Navigation rail  -->
+      <ColumnDefinition Width="*" />
+      <!--  Content area  -->
+    </Grid.ColumnDefinitions>
 
     <Grid.Background>
       <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
@@ -62,12 +93,16 @@
       </LinearGradientBrush>
     </Grid.Background>
 
-    <Grid Grid.Row="0">
+    <!--  Title Bar  -->
+    <Grid
+      Grid.Column="0"
+      Grid.ColumnSpan="2"
+      Height="35"
+      VerticalAlignment="Top"
+      Background="{DynamicResource TitleBarBackgroundBrush}">
       <TextBlock
-        Margin="12,2,0,0"
-        HorizontalAlignment="Left"
-        VerticalAlignment="Top"
-        d:Foreground=" White"
+        Margin="16,0,0,0"
+        VerticalAlignment="Center"
         FontSize="{DynamicResource FontSizeTitle}"
         FontWeight="Light"
         Foreground="{DynamicResource TitleBarForegroundBrush}"
@@ -75,141 +110,508 @@
 
       <StackPanel
         HorizontalAlignment="Right"
-        VerticalAlignment="Top"
-        Background="{DynamicResource TitleBarBackgroundBrush}"
         Orientation="Horizontal"
         WindowChrome.IsHitTestVisibleInChrome="True">
-
         <Button
           Name="CloseButton"
-          Background="{DynamicResource TitleBarBackgroundBrush}"
+          Width="40"
+          Height="35"
+          Background="Transparent"
           Click="CloseButton_Click"
-          Content="{iconPacks:Material Close,
-                                       Width=14,
-                                       Height=14}"
+          Content="{iconPacks:Material Close}"
           Style="{DynamicResource CloseButton}" />
-
       </StackPanel>
     </Grid>
 
-    <Grid Grid.Row="1">
-      <StackPanel Margin="0,10,10,10">
+    <!--  Left Navigation  -->
+    <ListBox
+      x:Name="NavigationListBox"
+      Grid.Column="0"
+      Margin="0,35,0,0"
+      Background="{DynamicResource ControlBackgroundBrush}"
+      BorderBrush="{DynamicResource ControlBorderBrush}"
+      BorderThickness="0,0,1,0">
+      <ListBox.Resources>
+        <Style BasedOn="{StaticResource NavigationListBoxItemStyle}" TargetType="ListBoxItem" />
+      </ListBox.Resources>
 
-        <!--  Output Mode  -->
-        <Grid Margin="0,0,10,14">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120" />
-            <ColumnDefinition Width="10" />
-            <ColumnDefinition />
-          </Grid.ColumnDefinitions>
+      <ListBoxItem
+        Content="Output"
+        FontSize="14"
+        Tag="SpeakerOutline" />
+      <ListBoxItem
+        Content="Appearance"
+        FontSize="14"
+        Tag="PaletteOutline" />
+      <ListBoxItem
+        Content="Behavior"
+        FontSize="14"
+        Tag="CogOutline" />
+    </ListBox>
 
-          <TextBlock
-            Grid.Column="0"
-            HorizontalAlignment="Right"
-            Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="Output Mode:" />
+    <!--  OUTPUT PAGE  -->
+    <Grid Grid.Column="1" Margin="30,50,30,60">
+      <Grid x:Name="OutputPage" Visibility="Visible">
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
 
-          <ComboBox
-            x:Name="OutputModeCombo"
-            Grid.Column="2"
+          <!--  Output Mode  -->
+          <Grid Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="140" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+              Grid.Column="0"
+              Margin="0,0,20,0"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
+              Foreground="{DynamicResource ControlForegroundBrush}"
+              Text="Output Mode:" />
+            <ComboBox
+              x:Name="OutputModeCombo"
+              Grid.Column="1"
+              Width="260"
+              Height="32"
+              HorizontalAlignment="Left"
+              Background="{DynamicResource ComboboxItemBackgroundBrush}"
+              BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
+              BorderThickness="1"
+              FontSize="{DynamicResource FontSizeNormal}"
+              Foreground="{DynamicResource ComboboxItemForegroundBrush}"
+              SelectionChanged="OnOutputModeSelectionChanged"
+              Style="{StaticResource CustomComboBoxStyle}">
+              <ComboBoxItem Content="DirectSound" Tag="DirectSound" />
+              <ComboBoxItem Content="WASAPI Shared" Tag="WasapiShared" />
+              <ComboBoxItem Content="WASAPI Exclusive" Tag="WasapiExclusive" />
+            </ComboBox>
+          </Grid>
+
+          <!--  Output Device  -->
+          <Grid Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="140" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+              Grid.Column="0"
+              Margin="0,0,20,0"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
+              Foreground="{DynamicResource ControlForegroundBrush}"
+              Text="Output Device:" />
+            <ComboBox
+              x:Name="OutputDeviceCombo"
+              Grid.Column="1"
+              Width="520"
+              Height="32"
+              HorizontalContentAlignment="Center"
+              Background="{DynamicResource ComboboxItemBackgroundBrush}"
+              BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
+              BorderThickness="1"
+              FontSize="{DynamicResource FontSizeNormal}"
+              Foreground="{DynamicResource ComboboxItemForegroundBrush}"
+              ItemTemplate="{StaticResource DeviceNameTemplate}"
+              Style="{StaticResource CustomComboBoxStyle}">
+              <!-- <ComboBox.ItemTemplate>
+                <StaticResource ResourceKey="DeviceNameTemplate"/>
+              </ComboBox.ItemTemplate> -->
+            </ComboBox>
+          </Grid>
+
+        </StackPanel>
+      </Grid>
+
+      <!--  APPEARANCE PAGE  -->
+      <Grid x:Name="AppearancePage" Visibility="Collapsed">
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top">
+          <Grid Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="140" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+              Grid.Column="0"
+              Margin="0,0,20,0"
+              HorizontalAlignment="Right"
+              VerticalAlignment="Center"
+              Foreground="{DynamicResource ControlForegroundBrush}"
+              Text="Color Theme:" />
+            <ComboBox
+              x:Name="ThemesList"
+              Grid.Column="1"
+              Width="200"
+              Height="32"
+              HorizontalAlignment="Left"
+              Background="{DynamicResource ComboboxItemBackgroundBrush}"
+              BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
+              BorderThickness="1"
+              FontSize="{DynamicResource FontSizeNormal}"
+              Foreground="{DynamicResource ComboboxItemForegroundBrush}"
+              SelectionChanged="OnThemeSelectionChanged"
+              Style="{StaticResource CustomComboBoxStyle}">
+              <ComboBoxItem Content="Light" Tag="Light" />
+              <ComboBoxItem Content="Gray" Tag="Gray" />
+              <ComboBoxItem Content="Slate" Tag="Slate" />
+              <ComboBoxItem Content="Dark" Tag="Dark" />
+              <ComboBoxItem Content="Midnight" Tag="Midnight" />
+            </ComboBox>
+          </Grid>
+        </StackPanel>
+      </Grid>
+
+      <!--  BEHAVIOR PAGE  -->
+      <Grid x:Name="BehaviorPage" Visibility="Collapsed">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  FADE IN/OUT DSP CONFIGURATION  -->
+        <StackPanel
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top"
+          Orientation="Vertical">
+          <CheckBox
+            x:Name="CrossfadeEnabledCheckBox"
+            Margin="0,0,0,10"
+            Content="Enable Crossfade"
+            FontSize="14"
+            Foreground="{DynamicResource ControlForegroundBrush}" />
+
+          <!--  Fade In  -->
+          <Grid Margin="0,0,0,15" IsEnabled="{Binding IsChecked, ElementName=CrossfadeEnabledCheckBox}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel
+              Grid.Row="0"
+              Margin="0,0,0,10"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="64"
+                VerticalAlignment="Bottom"
+                FontSize="16"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Fade in:" />
+              <TextBox
+                x:Name="CrossfadeFadeInValueText"
+                Width="50"
+                Margin="0,0,0,0"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Right"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="0" />
+              <TextBox
+                Width="40"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Left"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="ms" />
+              <ComboBox
+                x:Name="CrossfadeFadeInCurveCombo"
+                Width="90"
+                Height="20"
+                SelectedIndex="0"
+                Style="{StaticResource CustomComboBoxStyle}">
+                <ComboBoxItem Content="Off" />
+                <ComboBoxItem Content="Linear" />
+                <ComboBoxItem Content="Cosine" />
+                <ComboBoxItem Content="Sine" />
+                <ComboBoxItem Content="Logarithmic" />
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel
+              Grid.Row="1"
+              Width="500"
+              Margin="10,0,0,0"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="40"
+                HorizontalAlignment="Left"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Short" />
+              <Slider
+                x:Name="CrossfadeFadeInSlider"
+                Width="300"
+                VerticalAlignment="Center"
+                IsSnapToTickEnabled="True"
+                Maximum="10000"
+                Minimum="0"
+                TickFrequency="100"
+                ValueChanged="OnCrossfadeFadeInSliderValueChanged" />
+              <TextBlock
+                Width="50"
+                Margin="5,0,0,0"
+                HorizontalAlignment="Right"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Long" />
+            </StackPanel>
+
+          </Grid>
+
+          <!--  Fade Out  -->
+          <Grid Margin="0,0,0,15" IsEnabled="{Binding IsChecked, ElementName=CrossfadeEnabledCheckBox}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel
+              Grid.Row="0"
+              Margin="0,0,0,10"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="64"
+                VerticalAlignment="Bottom"
+                FontSize="16"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Fade out:" />
+              <TextBox
+                x:Name="CrossfadeFadeOutValueText"
+                Width="50"
+                Margin="0,0,0,0"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Right"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}" />
+              <TextBox
+                Width="40"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Left"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="ms" />
+              <ComboBox
+                x:Name="CrossfadeFadeOutCurveCombo"
+                Width="90"
+                  Height="20"
+                SelectedIndex="0"
+                Style="{StaticResource CustomComboBoxStyle}">
+                <ComboBoxItem Content="Off" />
+                <ComboBoxItem Content="Linear" />
+                <ComboBoxItem Content="Cosine" />
+                <ComboBoxItem Content="Sine" />
+                <ComboBoxItem Content="Logarithmic" />
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel
+              Grid.Row="1"
+              Width="500"
+              Margin="10,0,0,0"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="40"
+                HorizontalAlignment="Left"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Short" />
+              <Slider
+                x:Name="CrossfadeFadeOutSlider"
+                Width="300"
+                VerticalAlignment="Center"
+                IsSnapToTickEnabled="True"
+                Maximum="10000"
+                Minimum="0"
+                TickFrequency="100"
+                ValueChanged="OnCrossfadeFadeOutSliderValueChanged" />
+              <TextBlock
+                Width="50"
+                Margin="5,0,0,0"
+                HorizontalAlignment="Right"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Long" />
+            </StackPanel>
+
+          </Grid>
+        </StackPanel>
+
+        <!--  REMOVE LEADING/TRAILING SILENCE  -->
+        <StackPanel
+          Grid.Row="1"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top">
+          <Rectangle
             Width="Auto"
-            Height="24"
-            HorizontalAlignment="Left"
-            Background="{DynamicResource ComboboxItemBackgroundBrush}"
-            BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
-            BorderThickness="1"
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ComboboxItemForegroundBrush}"
-            SelectionChanged="OnOutputModeSelectionChanged"
-            Style="{StaticResource CustomComboBoxStyle}">
-            <ComboBoxItem Content="DirectSound" Tag="DirectSound" />
-            <ComboBoxItem Content="WASAPI Shared" Tag="WasapiShared" />
-            <ComboBoxItem Content="WASAPI Exclusive" Tag="WasapiExclusive" />
-          </ComboBox>
-        </Grid>
+            Height="1"
+            Margin="0,10,0,20"
+            Fill="{DynamicResource ControlForegroundBrush}" />
+          <CheckBox
+            x:Name="SkipSilenceEnabledCheckBox"
+            Margin="0,0,0,10"
+            Content="Remove Leading/Trailing Silence"
+            FontSize="14"
+            Foreground="{DynamicResource ControlForegroundBrush}" />
 
-        <!--  Output Device  -->
-        <Grid Margin="0,0,10,14">
+          <!--  Minimum silence thresshold  -->
+          <Grid Margin="0,0,0,15" IsEnabled="{Binding IsChecked, ElementName=SkipSilenceEnabledCheckBox}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120" />
-            <ColumnDefinition Width="10" />
-            <ColumnDefinition />
-          </Grid.ColumnDefinitions>
+            <StackPanel
+              Grid.Row="0"
+              Margin="0,0,0,10"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="Auto"
+                VerticalAlignment="Bottom"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Minimum silence thresshold:" />
+              <TextBox
+                x:Name="SkipSilenceMinDurationValueText"
+                Width="50"
+                Margin="0,0,0,0"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Right"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="11110" />
+              <TextBox
+                Width="20"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Left"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="ms" />
+            </StackPanel>
 
-          <TextBlock
-            Grid.Column="0"
-            HorizontalAlignment="Right"
-            Text="Output Device:" />
+            <StackPanel
+              Grid.Row="1"
+              Width="500"
+              Margin="10,0,0,0"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="40"
+                HorizontalAlignment="Left"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Short" />
+              <Slider
+                x:Name="SkipSilenceMinDurationSlider"
+                Width="300"
+                VerticalAlignment="Center"
+                IsSnapToTickEnabled="True"
+                Maximum="10000"
+                Minimum="0"
+                TickFrequency="100"
+                ValueChanged="OnSkipSilenceMinDurationSliderValueChanged" />
+              <TextBlock
+                Width="50"
+                Margin="5,0,0,0"
+                HorizontalAlignment="Right"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Long" />
+            </StackPanel>
 
-          <ComboBox
-            x:Name="OutputDeviceCombo"
-            Grid.Column="2"
-            Width="288"
-            Height="24"
-            HorizontalContentAlignment="Center"
-            Background="{DynamicResource ComboboxItemBackgroundBrush}"
-            BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
-            BorderThickness="1"
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ComboboxItemForegroundBrush}"
-            Style="{StaticResource CustomComboBoxStyle}" />
-        </Grid>
+          </Grid>
 
-        <!--  Color Theme  -->
-        <Grid Margin="0,0,0,14">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120" />
-            <ColumnDefinition Width="10" />
-            <ColumnDefinition Width="150" />
-          </Grid.ColumnDefinitions>
+          <!--  Silence decibel threshold  -->
+          <Grid Margin="0,0,0,15" IsEnabled="{Binding IsChecked, ElementName=SkipSilenceEnabledCheckBox}">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-          <TextBlock
-            Grid.Column="0"
-            HorizontalAlignment="Right"
-            Foreground="{DynamicResource ControlForegroundBrush}"
-            Text="Color Theme:" />
+            <StackPanel
+              Grid.Row="0"
+              Margin="0,0,0,10"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="Auto"
+                VerticalAlignment="Bottom"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Silence decibel threshold:" />
+              <TextBox
+                x:Name="SkipSilenceThresholdValueText"
+                Width="30"
+                Margin="0,0,0,0"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Right"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="-60" />
+              <TextBox
+                Width="20"
+                VerticalAlignment="Bottom"
+                HorizontalContentAlignment="Left"
+                Background="Transparent"
+                BorderThickness="0"
+                FontSize="14"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="dB" />
+            </StackPanel>
 
-          <ComboBox
-            x:Name="ThemesList"
-            Grid.Column="2"
-            Width="120"
-            Height="24"
-            HorizontalAlignment="Left"
-            Background="{DynamicResource ComboboxItemBackgroundBrush}"
-            BorderBrush="{DynamicResource ComboboxItemForegroundBrush}"
-            BorderThickness="1"
-            FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ComboboxItemForegroundBrush}"
-            SelectionChanged="OnThemeSelectionChanged"
-            Style="{StaticResource CustomComboBoxStyle}">
-            <ComboBoxItem Content="Light" Tag="Light" />
-            <ComboBoxItem Content="Gray" Tag="Gray" />
-            <ComboBoxItem Content="Slate" Tag="Slate" />
-            <ComboBoxItem Content="Dark" Tag="Dark" />
-            <ComboBoxItem Content="Midnight" Tag="Midnight" />
-          </ComboBox>
-        </Grid>
+            <StackPanel
+              Grid.Row="1"
+              Width="500"
+              Margin="10,0,0,0"
+              Orientation="Horizontal">
+              <TextBlock
+                Width="40"
+                HorizontalAlignment="Left"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Quiet" />
+              <Slider
+                x:Name="SkipSilenceThresholdSlider"
+                Width="300"
+                VerticalAlignment="Center"
+                IsSnapToTickEnabled="True"
+                Maximum="-20"
+                Minimum="-100"
+                TickFrequency="1"
+                ValueChanged="OnSkipSilenceThresholdSliderValueChanged" />
+              <TextBlock
+                Width="50"
+                Margin="5,0,0,0"
+                HorizontalAlignment="Right"
+                Foreground="{DynamicResource ControlForegroundBrush}"
+                Text="Loud" />
+            </StackPanel>
 
-      </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Grid>
     </Grid>
 
-    <Grid
-      Grid.Row="2"
+    <!--  Close Button at Bottom Right  -->
+    <Button
+      Grid.Column="1"
+      Width="100"
+      Height="36"
+      Margin="0,0,30,20"
+      HorizontalAlignment="Right"
       VerticalAlignment="Bottom"
-      Background="{DynamicResource MainWindowGradientStartBrush}">
-      <Button
-        Width="80"
-        Height="30"
-        Margin="0,10,14,10"
-        HorizontalAlignment="Right"
-        Click="Close_Click"
-        Content="Close"
-        FontSize="{DynamicResource FontSizeButton}"
-        FontWeight="Light"
-        Foreground="{DynamicResource ControlForegroundBrush}"
-        Style="{StaticResource LinkerRectangleButton}" />
-    </Grid>
+      Click="Close_Click"
+      Content="Close"
+      FontSize="{DynamicResource FontSizeButton}"
+      FontWeight="Light"
+      Foreground="{DynamicResource ControlForegroundBrush}"
+      Style="{StaticResource LinkerRectangleButton}" />
 
   </Grid>
 </Window>

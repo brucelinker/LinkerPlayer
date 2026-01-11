@@ -1,7 +1,8 @@
-using FluentAssertions;
+using Shouldly;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
+using LinkerPlayer.Services.Playback;
 using LinkerPlayer.Tests.Mocks;
 using LinkerPlayer.UserControls;
 using LinkerPlayer.ViewModels;
@@ -24,6 +25,7 @@ public class PlaylistTabsViewModelTests : IDisposable
     private readonly Mock<IUiDispatcher> _mockDispatcher;
     private readonly Mock<IDatabaseSaveService> _mockSave;
     private readonly Mock<ISelectionService> _mockSelection;
+    private readonly IPlaybackCoordinator _playbackCoordinator;
     private readonly Mock<ILogger<PlaylistTabsViewModel>> _mockLogger;
     private readonly PlaylistTabsViewModel _vm;
 
@@ -38,6 +40,7 @@ public class PlaylistTabsViewModelTests : IDisposable
         _mockDispatcher = new Mock<IUiDispatcher>();
         _mockSave = new Mock<IDatabaseSaveService>();
         _mockSelection = new Mock<ISelectionService>();
+        _playbackCoordinator = new TestPlaybackCoordinator();
         _mockLogger = new Mock<ILogger<PlaylistTabsViewModel>>();
 
         _mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
@@ -52,6 +55,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             _mockDispatcher.Object,
             _mockSave.Object,
             _mockSelection.Object,
+            _playbackCoordinator,
             _mockLogger.Object
         );
     }
@@ -60,7 +64,7 @@ public class PlaylistTabsViewModelTests : IDisposable
     public void BasicTest_ShouldPass()
     {
         bool result = true;
-        result.Should().BeTrue();
+        result.ShouldBeTrue();
     }
 
     [StaFact]
@@ -90,9 +94,9 @@ public class PlaylistTabsViewModelTests : IDisposable
         playlistTabs.RegenerateColumns(dg);
 
         // Assert
-        Assert.Single(dg.Columns); // only Play/Pause
-        DataGridTemplateColumn col = Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
-        Assert.NotNull(col.CellTemplate); // proves Application.Current.TryFindResource worked
+        dg.Columns.Count.ShouldBe(1); // only Play/Pause
+        DataGridTemplateColumn col = dg.Columns[0].ShouldBeOfType<DataGridTemplateColumn>();
+        col.CellTemplate.ShouldNotBeNull(); // proves Application.Current.TryFindResource worked
     }
 
     // Add more tests for selection sync, tab reordering, scroll restore, etc.
@@ -138,6 +142,7 @@ public class PlaylistTabsViewModelTests : IDisposable
 
         SharedDataModel shared = new SharedDataModel();
         ISelectionService selection = new TestSelectionService();
+        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
 
         PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
             musicLibrary.Object,
@@ -149,15 +154,16 @@ public class PlaylistTabsViewModelTests : IDisposable
             ui,
             saveSvc.Object,
             selection,
+            playbackCoordinator,
             logger.Object);
 
         // Act
         vm.LoadPlaylistTabs();
 
         // Assert
-        vm.SelectedTrack.Should().NotBeNull();
-        vm.SelectedTrack!.Id.Should().Be("trk2");
-        vm.SelectedTrackIndex.Should().Be(1);
+        vm.SelectedTrack.ShouldNotBeNull();
+        vm.SelectedTrack!.Id.ShouldBe("trk2");
+        vm.SelectedTrackIndex.ShouldBe(1);
     }
 
     [StaFact]
@@ -199,6 +205,7 @@ public class PlaylistTabsViewModelTests : IDisposable
 
         SharedDataModel shared = new SharedDataModel();
         ISelectionService selection = new TestSelectionService();
+        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
 
         PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
             musicLibrary.Object,
@@ -210,6 +217,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             ui,
             saveSvc.Object,
             selection,
+            playbackCoordinator,
             logger.Object);
 
         // Seed tabs
@@ -228,7 +236,7 @@ public class PlaylistTabsViewModelTests : IDisposable
         await vm.LoadSelectedPlaylistTracksAsync();
 
         // Assert
-        vm.TabList[0].Tracks.Should().HaveCount(2);
+        vm.TabList[0].Tracks.Count.ShouldBe(2);
     }
 
     [StaFact]
@@ -261,6 +269,7 @@ public class PlaylistTabsViewModelTests : IDisposable
 
         SharedDataModel shared = new SharedDataModel();
         ISelectionService selection = new TestSelectionService();
+        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
 
         PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
             musicLibrary.Object,
@@ -272,6 +281,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             ui,
             saveSvc.Object,
             selection,
+            playbackCoordinator,
             logger.Object);
 
         vm.LoadPlaylistTabs();
@@ -283,9 +293,9 @@ public class PlaylistTabsViewModelTests : IDisposable
         await vm.ReorderTabsCommand.ExecuteAsync((2, 0));
 
         // Assert order changed
-        vm.TabList.Select(t => t.Name).Should().ContainInOrder("C", "A", "B");
+        vm.TabList.Select(t => t.Name).ShouldBe(new[] { "C", "A", "B" });
         // Selected tab should still be the same logical tab ("B") now at index 2
-        vm.TabList[vm.SelectedTabIndex].Name.Should().Be(selectedName);
+        vm.TabList[vm.SelectedTabIndex].Name.ShouldBe(selectedName);
     }
 
     [StaFact]
@@ -303,19 +313,19 @@ public class PlaylistTabsViewModelTests : IDisposable
         playlistTabs.RegenerateColumns(dg);
 
         // Assert: one static (icon) + two dynamic
-        Assert.Equal(3, dg.Columns.Count);
-        Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
-        Assert.Equal("Title", dg.Columns[1].Header);
-        Assert.Equal("Artist", dg.Columns[2].Header);
+        dg.Columns.Count.ShouldBe(3);
+        dg.Columns[0].ShouldBeOfType<DataGridTemplateColumn>();
+        dg.Columns[1].Header.ShouldBe("Title");
+        dg.Columns[2].Header.ShouldBe("Artist");
 
         // Change selection to a single column and regenerate
         selectedField.SetValue(_vm, new List<string> { "Title" });
         playlistTabs.RegenerateColumns(dg);
 
         // Assert: icon preserved, only one dynamic column remains
-        Assert.Equal(2, dg.Columns.Count);
-        Assert.IsType<DataGridTemplateColumn>(dg.Columns[0]);
-        Assert.Equal("Title", dg.Columns[1].Header);
+        dg.Columns.Count.ShouldBe(2);
+        dg.Columns[0].ShouldBeOfType<DataGridTemplateColumn>();
+        dg.Columns[1].Header.ShouldBe("Title");
     }
 
     [StaFact]
@@ -338,22 +348,22 @@ public class PlaylistTabsViewModelTests : IDisposable
         playlistTabs.RegenerateColumns(dg);
 
         // Assert: preserves first two, appends 3 dynamic with correct headers (mapped names)
-        Assert.Equal(5, dg.Columns.Count);
-        Assert.Equal("#", dg.Columns[0].Header);
-        Assert.IsType<DataGridTemplateColumn>(dg.Columns[1]);
-        Assert.Equal("Title", dg.Columns[2].Header);
-        Assert.Equal("Album Artist", dg.Columns[3].Header);
-        Assert.Equal("Duration", dg.Columns[4].Header);
+        dg.Columns.Count.ShouldBe(5);
+        dg.Columns[0].Header.ShouldBe("#");
+        dg.Columns[1].ShouldBeOfType<DataGridTemplateColumn>();
+        dg.Columns[2].Header.ShouldBe("Title");
+        dg.Columns[3].Header.ShouldBe("Album Artist");
+        dg.Columns[4].Header.ShouldBe("Duration");
 
         // Change selection to a single dynamic column and regenerate
         selectedField.SetValue(_vm, new List<string> { "Artist" });
         playlistTabs.RegenerateColumns(dg);
 
         // Assert: still preserves first two, now only one dynamic column
-        Assert.Equal(3, dg.Columns.Count);
-        Assert.Equal("#", dg.Columns[0].Header);
-        Assert.IsType<DataGridTemplateColumn>(dg.Columns[1]);
-        Assert.Equal("Artist", dg.Columns[2].Header);
+        dg.Columns.Count.ShouldBe(3);
+        dg.Columns[0].Header.ShouldBe("#");
+        dg.Columns[1].ShouldBeOfType<DataGridTemplateColumn>();
+        dg.Columns[2].Header.ShouldBe("Artist");
     }
 
     public void Dispose() { }

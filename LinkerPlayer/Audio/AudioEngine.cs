@@ -27,6 +27,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     [ObservableProperty] private double _currentTrackPosition;
     [ObservableProperty] private float _musicVolume = 0.5f;
     [ObservableProperty] private bool _isPlaying;
+    [ObservableProperty] private string _loadedTrackPath = string.Empty;
 
     private OutputMode _currentMode;
     private Device _currentDevice;
@@ -57,7 +58,10 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     private readonly object _engineSync = new();
 
     public event Action? OnPlaybackStopped;
+    public event Action? OnTrackEnded;
     public event Action<float[]>? OnFftCalculated;
+
+    public event Action<string>? OnCrossfadeCommitted;
 
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool SetDllDirectory(string? lpPathName);
@@ -147,16 +151,34 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
                 if (_currentMode == OutputMode.DirectSound)
                 {
-                    success = Bass.Init(-1, 44100, DeviceInitFlags.DirectSound);
+                    int requestedDeviceIndex = _currentDevice.Type == OutputDeviceType.DirectSound ? _currentDevice.Index : -1;
+
+                    success = Bass.Init(requestedDeviceIndex, 44100, DeviceInitFlags.DirectSound);
                     if (success || Bass.LastError == Errors.Already)
                     {
                         IsBassInitialized = true;
                         _sampleRate = 44100;
+
+                        try
+                        {
+                            int actualDeviceIndex = Bass.CurrentDevice;
+                            DeviceInfo actualInfo = Bass.GetDeviceInfo(actualDeviceIndex);
+                            _logger.LogInformation(
+                                "Initialized DirectSound (RequestedDeviceIndex={RequestedDeviceIndex}, ActualDeviceIndex={ActualDeviceIndex}, ActualDeviceName={ActualDeviceName})",
+                                requestedDeviceIndex,
+                                actualDeviceIndex,
+                                actualInfo.Name);
+                        }
+                        catch
+                        {
+                            _logger.LogInformation("Initialized DirectSound (RequestedDeviceIndex={RequestedDeviceIndex})", requestedDeviceIndex);
+                        }
+
                         _logger.LogDebug("Initialized DirectSound on first play");
                     }
                     else
                     {
-                        _logger.LogError($"Failed to initialize DirectSound: {Bass.LastError}");
+                        _logger.LogError("Failed to initialize DirectSound (RequestedDeviceIndex={RequestedDeviceIndex}): {Error}", requestedDeviceIndex, Bass.LastError);
                     }
                 }
                 else
@@ -213,10 +235,8 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
     private void RefreshDevicesCached()
     {
-        if (_devices == null || !_devices.Any())
-        {
-            _devices = _outputDeviceManager.RefreshOutputDeviceList().ToList();
-        }
+        // Always refresh when called to avoid stale device index mapping after hotplug/default-device changes.
+        _devices = _outputDeviceManager.RefreshOutputDeviceList().ToList();
     }
 
     public OutputMode GetCurrentOutputMode() => _currentMode;
@@ -228,7 +248,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     {
         if (device == null)
         {
-            device = new Device("Default", OutputDeviceType.DirectSound, -1, true);
+            device = new Device("Primary Sound Driver", OutputDeviceType.DirectSound, -1, true);
         }
 
         bool needsReinit = IsBassInitialized;
@@ -237,21 +257,48 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
         {
             Stop();
             FreeResources();
+
+            // Device changes (especially DirectSound) require full BASS teardown to actually switch endpoints.
+            try
+            {
+                if (_wasapiInitialized)
+                {
+                    BassWasapi.Stop();
+                    BassWasapi.Free();
+                    _wasapiInitialized = false;
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                Bass.Free();
+            }
+            catch
+            {
+            }
+
+            IsBassInitialized = false;
         }
 
         _currentMode = selectedOutputMode;
         _currentDevice = device;
+
+        // Force re-init of WASAPI on mode/device change so the next Play binds to the new endpoint.
+        _wasapiInitialized = false;
+
+        // Refresh cached devices so future name->device mapping stays accurate.
+        RefreshDevicesCached();
 
         _settingsManager.Settings.SelectedOutputMode = selectedOutputMode;
         _settingsManager.Settings.SelectedOutputDevice = device;
         _settingsManager.SaveSettings(nameof(_settingsManager.Settings.SelectedOutputMode));
         _settingsManager.SaveSettings(nameof(_settingsManager.Settings.SelectedOutputDevice));
 
-        if (needsReinit)
-        {
-            IsBassInitialized = false;
-            InitializeAudioDevice();
-        }
+        // Re-init eagerly so failures are surfaced immediately.
+        InitializeAudioDevice();
 
         WeakReferenceMessenger.Default.Send(new OutputModeChangedMessage(_currentMode));
     }
@@ -264,6 +311,9 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
             {
                 // Free previous streams and clean up EQ
                 CleanupEqualizer();
+
+                StopCrossfadeTimer("load");
+
                 if (_mixerStream != 0)
                 {
                     Bass.StreamFree(_mixerStream);
@@ -280,75 +330,99 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                     CurrentStream = 0;
                 }
 
+                // Always use decode+mixer topology so crossfade is available in all output modes.
+                int mixerFreq;
+                int mixerChans;
+
                 if (_currentMode == OutputMode.DirectSound)
                 {
-                    CurrentStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Default);
-                    _decodeStream = 0;
-                    _mixerStream = 0;
+                    mixerFreq = _sampleRate > 0 ? _sampleRate : 44100;
+                    mixerChans = 2;
                 }
                 else
                 {
-                    // WASAPI: create decode stream and mixer
                     if (!BassWasapi.GetDeviceInfo(_currentDevice.Index, out WasapiDeviceInfo deviceInfo))
                     {
                         _logger.LogError($"Failed to get device info for mixer creation: {Bass.LastError}");
                         return;
                     }
 
-                    int deviceFreq = deviceInfo.MixFrequency;
-                    int deviceChans = deviceInfo.MixChannels;
+                    mixerFreq = deviceInfo.MixFrequency;
+                    mixerChans = deviceInfo.MixChannels;
+                }
 
-                    _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode);
-                    _logger.LogDebug($"WASAPI: _decodeStream handle: {_decodeStream}, Bass.LastError: {Bass.LastError}");
-                    if (_decodeStream == 0)
+                _decodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode);
+                _logger.LogDebug($"Decode stream handle: {_decodeStream}, Bass.LastError: {Bass.LastError}");
+                if (_decodeStream == 0)
+                {
+                    _logger.LogError($"Failed to load file: {Bass.LastError}. File: {pathToMusic}");
+                    return;
+                }
+
+                Bass.ChannelGetInfo(_decodeStream, out ChannelInfo decodeInfo);
+                int decodeChans = decodeInfo.Channels;
+
+                BassFlags mixerFlags;
+                if (_currentMode == OutputMode.DirectSound)
+                {
+                    // DirectSound needs a PLAYABLE mixer (no Decode flag), otherwise ChannelPlay produces no sound.
+                    mixerFlags = BassFlags.Float;
+                }
+                else
+                {
+                    // WASAPI pulls data via ChannelGetData in WasapiProc, so mixer must be decode-only.
+                    mixerFlags = BassFlags.Float | BassFlags.Decode;
+                }
+
+                _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(mixerFreq, mixerChans, mixerFlags);
+                bool mixerIsFloat = _mixerStream != 0;
+                if (_mixerStream == 0)
+                {
+                    _logger.LogWarning("Falling back to 16-bit PCM mixer");
+
+                    if (_currentMode == OutputMode.DirectSound)
                     {
-                        _logger.LogError($"Failed to load file: {Bass.LastError}. File: {pathToMusic}");
-                        return;
+                        mixerFlags = BassFlags.Default;
+                    }
+                    else
+                    {
+                        mixerFlags = BassFlags.Decode;
                     }
 
-                    Bass.ChannelGetInfo(_decodeStream, out ChannelInfo decodeInfo);
-                    int decodeChans = decodeInfo.Channels;
-
-                    _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Float | BassFlags.Decode);
-                    bool mixerIsFloat = _mixerStream != 0;
+                    _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(mixerFreq, mixerChans, mixerFlags);
+                    mixerIsFloat = false;
                     if (_mixerStream == 0)
                     {
-                        _logger.LogWarning("Falling back to16-bit PCM mixer");
-                        _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(deviceFreq, deviceChans, BassFlags.Decode);
-                        mixerIsFloat = false;
-                        if (_mixerStream == 0)
-                        {
-                            _logger.LogError($"Failed to create mixer: {Bass.LastError}");
-                            Bass.StreamFree(_decodeStream);
-                            _decodeStream = 0;
-                            return;
-                        }
-                    }
-
-                    BassFlags addFlags = BassFlags.Default;
-                    if (decodeChans != deviceChans)
-                    {
-                        addFlags |= BassFlags.MixerChanDownMix;
-                    }
-
-                    if (decodeInfo.Frequency != deviceFreq)
-                    {
-                        addFlags |= BassFlags.MixerChanNoRampin;
-                    }
-
-                    if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, addFlags))
-                    {
-                        _logger.LogError($"Failed to add decode stream to mixer: {Bass.LastError}");
-                        Bass.StreamFree(_mixerStream);
-                        _mixerStream = 0;
+                        _logger.LogError($"Failed to create mixer: {Bass.LastError}");
                         Bass.StreamFree(_decodeStream);
                         _decodeStream = 0;
                         return;
                     }
-
-                    CurrentStream = _mixerStream;
-                    _mixerIsFloat = mixerIsFloat;
                 }
+
+                BassFlags addFlags = BassFlags.Default;
+                if (decodeChans != mixerChans)
+                {
+                    addFlags |= BassFlags.MixerChanDownMix;
+                }
+
+                if (decodeInfo.Frequency != mixerFreq)
+                {
+                    addFlags |= BassFlags.MixerChanNoRampin;
+                }
+
+                if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, addFlags))
+                {
+                    _logger.LogError($"Failed to add decode stream to mixer: {Bass.LastError}");
+                    Bass.StreamFree(_mixerStream);
+                    _mixerStream = 0;
+                    Bass.StreamFree(_decodeStream);
+                    _decodeStream = 0;
+                    return;
+                }
+
+                CurrentStream = _mixerStream;
+                _mixerIsFloat = mixerIsFloat;
 
                 if (CurrentStream == 0)
                 {
@@ -356,7 +430,24 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                     return;
                 }
 
-                long lengthBytes = Bass.ChannelGetLength(CurrentStream);
+                // DirectSound: explicitly bind the output stream to the selected device.
+                if (_currentMode == OutputMode.DirectSound)
+                {
+                    int deviceIndex = _currentDevice.Type == OutputDeviceType.DirectSound ? _currentDevice.Index : -1;
+
+                    // Device -1 is the system default/primary device; ChannelSetDevice does not accept -1.
+                    if (deviceIndex >= 0)
+                    {
+                        if (!Bass.ChannelSetDevice(CurrentStream, deviceIndex))
+                        {
+                            _logger.LogWarning("DirectSound: Bass.ChannelSetDevice failed (DeviceIndex={DeviceIndex}): {Error}", deviceIndex, Bass.LastError);
+                        }
+                    }
+                }
+
+                int lengthStream = _decodeStream != 0 ? _decodeStream : CurrentStream;
+
+                long lengthBytes = Bass.ChannelGetLength(lengthStream);
                 if (lengthBytes < 0)
                 {
                     _logger.LogError($"Failed to get track length: {Bass.LastError}");
@@ -365,13 +456,23 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                     return;
                 }
 
-                CurrentTrackLength = Bass.ChannelBytes2Seconds(CurrentStream, lengthBytes);
+                CurrentTrackLength = Bass.ChannelBytes2Seconds(lengthStream, lengthBytes);
                 CurrentTrackPosition = 0;
+
+                _logger.LogDebug("Track length set (LengthSeconds={LengthSeconds}, LengthStream={LengthStream}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, Mode={Mode})",
+                    CurrentTrackLength,
+                    lengthStream,
+                    CurrentStream,
+                    _decodeStream,
+                    _currentMode);
 
                 if (EqEnabled)
                 {
                     InitializeEqualizer();
                 }
+
+                // Set the LoadedTrackPath only after successfully loading the file
+                LoadedTrackPath = pathToMusic;
             }
             catch (Exception ex)
             {
@@ -418,12 +519,22 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
         lock (_engineSync)
         {
             _logger.LogDebug("Play() called with path: {Path}, position: {Position}", pathToMusic, position);
+            _logger.LogInformation("Play requested (Mode={Mode}, SelectedDeviceType={DeviceType}, SelectedDeviceIndex={DeviceIndex}, SelectedDeviceName={DeviceName}, BassCurrentDevice={BassDevice})",
+                _currentMode,
+                _currentDevice.Type,
+                _currentDevice.Index,
+                _currentDevice.Name,
+                Bass.CurrentDevice);
 
             if (string.IsNullOrEmpty(pathToMusic))
             {
                 _logger.LogError("Play called with null or empty pathToMusic");
                 return;
             }
+
+            // Reset UI-facing state early, so seekbar doesn't show previous track while we load.
+            CurrentTrackPosition = 0;
+            CurrentTrackLength = 0;
 
             // Reset audio device lost flag when user manually tries to play
             if (_audioDeviceLost)
@@ -468,19 +579,105 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                 _logger.LogDebug("CurrentStream is valid ({StreamHandle}), starting playback", CurrentStream);
 
                 // Set end-of-track sync
-                _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
+                int syncTargetStream = CurrentStream;
+                if (_decodeStream != 0)
+                {
+                    syncTargetStream = _decodeStream;
+                }
+
+                double syncLenSeconds = 0;
+                try
+                {
+                    long lenBytes = Bass.ChannelGetLength(syncTargetStream);
+                    syncLenSeconds = Bass.ChannelBytes2Seconds(syncTargetStream, lenBytes);
+                }
+                catch
+                {
+                }
+
+                double syncPosSeconds = 0;
+                try
+                {
+                    long posBytes = Bass.ChannelGetPosition(syncTargetStream);
+                    syncPosSeconds = Bass.ChannelBytes2Seconds(syncTargetStream, posBytes);
+                }
+                catch
+                {
+                }
+
+                PlaybackState syncState = PlaybackState.Stopped;
+                try
+                {
+                    syncState = Bass.ChannelIsActive(syncTargetStream);
+                }
+                catch
+                {
+                }
+
+                PlaybackState currentState = PlaybackState.Stopped;
+                try
+                {
+                    currentState = Bass.ChannelIsActive(CurrentStream);
+                }
+                catch
+                {
+                }
+
+                PlaybackState decodeState = PlaybackState.Stopped;
+                try
+                {
+                    if (_decodeStream != 0)
+                    {
+                        decodeState = Bass.ChannelIsActive(_decodeStream);
+                    }
+                }
+                catch
+                {
+                }
+
+                _logger.LogDebug(
+                    "EndSync register (TargetStream={TargetStream}, EndSyncHandle={EndSyncHandle}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, Mode={Mode}, LoadedPath={LoadedPath}, TargetLenSeconds={TargetLenSeconds}, TargetPosSeconds={TargetPosSeconds}, TargetState={TargetState}, CurrentState={CurrentState}, DecodeState={DecodeState})",
+                    syncTargetStream,
+                    _endSyncHandle,
+                    CurrentStream,
+                    _decodeStream,
+                    _mixerStream,
+                    _currentMode,
+                    LoadedTrackPath,
+                    syncLenSeconds,
+                    syncPosSeconds,
+                    syncState,
+                    currentState,
+                    decodeState);
+
+                _endSyncHandle = Bass.ChannelSetSync(syncTargetStream, SyncFlags.End, 0, EndTrackSyncProc);
                 if (_endSyncHandle == 0)
                 {
-                    _logger.LogWarning($"Failed to set end-of-track sync: {Bass.LastError}");
+                    _logger.LogWarning("Failed to set end-of-track sync (TargetStream={TargetStream}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, Mode={Mode}): {Error}",
+                        syncTargetStream,
+                        CurrentStream,
+                        _decodeStream,
+                        _currentMode,
+                        Bass.LastError);
+                }
+                else
+                {
+                    _logger.LogDebug("EndSync registered (TargetStream={TargetStream}, EndSyncHandle={EndSyncHandle})", syncTargetStream, _endSyncHandle);
                 }
 
                 // Set position if specified
                 if (position > 0)
                 {
-                    long bytePosition = Bass.ChannelSeconds2Bytes(CurrentStream, position);
-                    if (!Bass.ChannelSetPosition(CurrentStream, bytePosition))
+                    int positionTargetStream = CurrentStream;
+                    if (_decodeStream != 0)
                     {
-                        _logger.LogWarning($"Failed to set initial position: {Bass.LastError}");
+                        positionTargetStream = _decodeStream;
+                    }
+
+                    long bytePosition = Bass.ChannelSeconds2Bytes(positionTargetStream, position);
+                    if (!Bass.ChannelSetPosition(positionTargetStream, bytePosition))
+                    {
+                        _logger.LogWarning("Failed to set initial position (TargetStream={TargetStream}, Position={Position}): {Error}", positionTargetStream, position, Bass.LastError);
                     }
                 }
 
@@ -495,6 +692,11 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                 {
                     IsPlaying = true;
                     PathToMusic = pathToMusic;
+                    try
+                    {
+                        _positionTimer.Start();
+                    }
+                    catch { }
                     _logger.LogDebug("Playback started successfully. IsPlaying = {IsPlaying}", IsPlaying);
                 }
                 else
@@ -513,6 +715,17 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     {
         lock (_engineSync)
         {
+            StopCrossfadeTimer("stop");
+
+            _logger.LogDebug("Stop() entered (Mode={Mode}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle}, LoadedPath={LoadedPath}, IsPlaying={IsPlaying})",
+                _currentMode,
+                CurrentStream,
+                _decodeStream,
+                _mixerStream,
+                _endSyncHandle,
+                LoadedTrackPath,
+                IsPlaying);
+
             // Push an immediate zeroed FFT frame so UI drops instantly
             try
             {
@@ -549,6 +762,13 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                 IsPlaying = false;
             }
 
+            // Ensure UI resets immediately even if a subsequent Play is still loading.
+            CurrentTrackPosition = 0;
+            if (CurrentStream == 0)
+            {
+                CurrentTrackLength = 0;
+            }
+
             OnPlaybackStopped?.Invoke();
         }
     }
@@ -557,6 +777,13 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     {
         lock (_engineSync)
         {
+            _logger.LogDebug("FreeResources() entered (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle}, LoadedPath={LoadedPath})",
+                CurrentStream,
+                _decodeStream,
+                _mixerStream,
+                _endSyncHandle,
+                LoadedTrackPath);
+
             // Free all streams - Bass.StreamFree handles invalid handles gracefully
             Bass.StreamFree(_mixerStream);
             _mixerStream = 0;
@@ -567,15 +794,15 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
             Bass.StreamFree(CurrentStream);
             CurrentStream = 0;
 
-            // Free WASAPI - these calls are safe even if not initialized
-            _logger.LogDebug("FreeResources: Freeing WASAPI");
-            BassWasapi.Stop();
-            BassWasapi.Free();
-            _wasapiInitialized = false;
+            // Do not free WASAPI/BASS here. Normal Stop/Pause should keep the device
+            // initialized (especially in WASAPI Exclusive) to avoid BASS_ERROR_BUSY
+            // on rapid stop/resume cycles.
 
-            // Free BASS - safe to call even if not initialized
-            Bass.Free();
-            IsBassInitialized = false; // Reset flag
+            _logger.LogDebug("FreeResources() completed (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle})",
+                CurrentStream,
+                _decodeStream,
+                _mixerStream,
+                _endSyncHandle);
         }
     }
 
@@ -616,10 +843,16 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
                 IsPlaying = true;
 
-                _endSyncHandle = Bass.ChannelSetSync(CurrentStream, SyncFlags.End, 0, EndTrackSyncProc);
+                int syncTargetStream = CurrentStream;
+                if (_decodeStream != 0)
+                {
+                    syncTargetStream = _decodeStream;
+                }
+
+                _endSyncHandle = Bass.ChannelSetSync(syncTargetStream, SyncFlags.End, 0, EndTrackSyncProc);
                 if (_endSyncHandle == 0)
                 {
-                    _logger.LogWarning($"Failed to set end-of-track sync: {Bass.LastError}");
+                    _logger.LogWarning("Failed to set end-of-track sync (TargetStream={TargetStream}): {Error}", syncTargetStream, Bass.LastError);
                 }
             }
         }
@@ -627,7 +860,98 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
     private void EndTrackSyncProc(int handle, int channel, int data, IntPtr user)
     {
-        Stop();
+        try
+        {
+            double channelLenSeconds = 0;
+            double channelPosSeconds = 0;
+            try
+            {
+                long lenBytes = Bass.ChannelGetLength(channel);
+                channelLenSeconds = Bass.ChannelBytes2Seconds(channel, lenBytes);
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                long posBytes = Bass.ChannelGetPosition(channel);
+                channelPosSeconds = Bass.ChannelBytes2Seconds(channel, posBytes);
+            }
+            catch
+            {
+            }
+
+            PlaybackState channelState = PlaybackState.Stopped;
+            try
+            {
+                channelState = Bass.ChannelIsActive(channel);
+            }
+            catch
+            {
+            }
+
+            PlaybackState currentState = PlaybackState.Stopped;
+            try
+            {
+                currentState = CurrentStream != 0 ? Bass.ChannelIsActive(CurrentStream) : PlaybackState.Stopped;
+            }
+            catch
+            {
+            }
+
+            PlaybackState decodeState = PlaybackState.Stopped;
+            try
+            {
+                decodeState = _decodeStream != 0 ? Bass.ChannelIsActive(_decodeStream) : PlaybackState.Stopped;
+            }
+            catch
+            {
+            }
+
+            PlaybackState mixerState = PlaybackState.Stopped;
+            try
+            {
+                mixerState = _mixerStream != 0 ? Bass.ChannelIsActive(_mixerStream) : PlaybackState.Stopped;
+            }
+            catch
+            {
+            }
+
+            _logger.LogDebug(
+                "EndTrackSyncProc fired (Handle={Handle}, Channel={Channel}, Data={Data}, Mode={Mode}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, LoadedPath={LoadedPath}, WasapiStarted={WasapiStarted}, ChannelState={ChannelState}, CurrentState={CurrentState}, DecodeState={DecodeState}, MixerState={MixerState}, ChannelPosSeconds={ChannelPosSeconds}, ChannelLenSeconds={ChannelLenSeconds})",
+                handle,
+                channel,
+                data,
+                _currentMode,
+                CurrentStream,
+                _decodeStream,
+                _mixerStream,
+                LoadedTrackPath,
+                _currentMode == OutputMode.DirectSound ? (bool?)null : BassWasapi.IsStarted,
+                channelState,
+                currentState,
+                decodeState,
+                mixerState,
+                channelPosSeconds,
+                channelLenSeconds);
+
+            // Never call user code synchronously from a BASS sync callback.
+            // The coordinator may call back into AudioEngine (Stop/Play) which can deadlock the BASS callback thread.
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    OnTrackEnded?.Invoke();
+                }
+                catch
+                {
+                }
+            });
+        }
+        catch
+        {
+        }
     }
 
     private bool CheckAudioDeviceLost()
@@ -641,11 +965,13 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
         if (currentError == Errors.Busy)
         {
-            _audioDeviceLost = true;
             _logger.LogError("Audio device is busy (BASS_ERROR_BUSY). Another application has taken exclusive control of the audio device.");
+            if (!_audioDeviceLost)
+            {
+                MarkDeviceBusyAndNotify("Playback has been stopped.");
+            }
 
             Stop();
-            ShowDeviceBusyWarning("Playback has been stopped.");
             return true;
         }
 
@@ -733,10 +1059,8 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     {
         Stop();
 
-        // Clean up equalizer
         CleanupEqualizer();
 
-        // Only call BassWasapi.Free() if WASAPI was successfully initialized
         try
         {
             if (BassNativeLibraryManager.IsDllAvailable("basswasapi.dll"))
@@ -752,7 +1076,6 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
         Bass.Free();
         _positionTimer.Dispose();
 
-        // Free loaded add-on libraries
         try
         {
             if (_bassFxHandle != IntPtr.Zero)
@@ -771,7 +1094,6 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
             _logger.LogWarning(ex, "Error freeing add-on libraries");
         }
 
-        // Reset DLL directory
         SetDllDirectory(null);
 
         GC.SuppressFinalize(this);
@@ -863,6 +1185,6 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
         }
     }
 
-    // Equalizer implementation has been moved to the partial class file 'AudioEngine.Equalizer.cs'.
-    // Do NOT duplicate equalizer fields/methods here to avoid conflicts between partial class definitions.
+    // Crossfade implementation has been moved to the partial class file 'AudioEngine.Crossfade.cs'.
+    // Do NOT duplicate crossfade fields/methods here to avoid conflicts between partial class definitions.
 }

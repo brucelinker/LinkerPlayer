@@ -44,6 +44,14 @@ public class MusicLibraryDbContext : DbContext
             .Property(m => m.FileName)
             .HasMaxLength(255);
         modelBuilder.Entity<MediaFile>()
+            .Property(m => m.LeadingSilenceMs);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.TrailingSilenceMs);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.FileLastWriteTimeUtc);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.LastMetadataRefreshUtc);
+        modelBuilder.Entity<MediaFile>()
             .Property(m => m.Title)
             .HasMaxLength(128);
         modelBuilder.Entity<MediaFile>()

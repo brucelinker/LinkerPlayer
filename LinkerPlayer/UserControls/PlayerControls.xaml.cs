@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services.Playback;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
 using ManagedBass;
@@ -24,13 +25,16 @@ public partial class PlayerControls
     private readonly EqualizerWindow _equalizerWindow;
     private readonly IPlayerControlsViewModel _vm;
     private readonly ILogger<PlayerControls> _logger;
+    private readonly IPlaybackCoordinator _playbackCoordinator;
 
+    private bool _isUserSeeking;
 
     private bool _isStopped = true;
 
     public PlayerControls()
     {
         _audioEngine = App.AppHost.Services.GetRequiredService<IAudioEngine>();
+        _playbackCoordinator = App.AppHost.Services.GetRequiredService<IPlaybackCoordinator>();
 
         _vm = App.AppHost.Services.GetRequiredService<IPlayerControlsViewModel>();
         DataContext = _vm;
@@ -45,6 +49,7 @@ public partial class PlayerControls
 
         _seekBarTimer.Interval = TimeSpan.FromMilliseconds(50);
         _seekBarTimer.Tick += timer_Tick!;
+        SeekBar.PreviewMouseLeftButtonDown += SeekBar_PreviewMouseLeftButtonDown;
         SeekBar.PreviewMouseLeftButtonUp += SeekBar_PreviewMouseLeftButtonUp;
         SeekBar.ValueChanged += SeekBar_ValueChanged;
         Dispatcher.ShutdownStarted += PlayerControls_ShutdownStarted!;
@@ -77,6 +82,11 @@ public partial class PlayerControls
         WeakReferenceMessenger.Default.Register<OutputModeChangedMessage>(this, (_, m) =>
         {
             OnOutputModeChanged(m.Value);
+        });
+
+        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
+        {
+            OnActiveTrackChanged(m.Value);
         });
 
         OnOutputModeChanged(_audioEngine.GetCurrentOutputMode());
@@ -157,11 +167,37 @@ public partial class PlayerControls
 
     private void OnPlaybackStateChanged(PlaybackState state)
     {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(() => OnPlaybackStateChanged(state)), DispatcherPriority.Background);
+            return;
+        }
+
         switch (state)
         {
             case PlaybackState.Playing:
                 _seekBarTimer.Start();
+                // Initialize seekbar from engine (single source of truth)
+                if (_audioEngine.CurrentTrackLength > 0)
+                {
+                    double percentage = (_audioEngine.CurrentTrackPosition / _audioEngine.CurrentTrackLength) * 100d;
+                    if (!double.IsNaN(percentage) && !double.IsInfinity(percentage))
+                    {
+                        SeekBar.Value = Math.Clamp(percentage, 0d, 100d);
+                    }
+                }
+                else
+                {
+                    SeekBar.Value = 0;
+                }
                 _isStopped = false;
+
+                if (_audioEngine.CurrentTrackLength > 0)
+                {
+                    TimeSpan total = TimeSpan.FromSeconds(_audioEngine.CurrentTrackLength);
+                    TotalTime.Text = $"{(int)total.TotalMinutes}:{total.Seconds:D2}";
+                }
+
                 break;
             case PlaybackState.Paused:
                 _seekBarTimer.Stop();
@@ -194,37 +230,75 @@ public partial class PlayerControls
 
     private void OnDataGridPlay(PlaybackState value)
     {
-        _vm.StopTrack();
         _seekBarTimer.Stop();
         SeekBar.Value = 0;
-        PlayButton.Command.Execute(value);
-        _seekBarTimer.Start();
-        _isStopped = false;
+
+        // DataGrid play must go through the ViewModel/coordinator path so PlaybackCursor,
+        // ActiveTrack, and PlaybackState messages are established correctly.
+        _vm.PlayTrack();
+    }
+
+    private void SeekBar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _isUserSeeking = true;
     }
 
     private void SeekBar_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        double clickPosition = e.GetPosition(SeekBar).X;
-        double seekPercentage = clickPosition / SeekBar.ActualWidth;
-        double posInSeekBar = seekPercentage * _audioEngine.CurrentTrackLength;
+        try
+        {
+            if (_audioEngine.CurrentTrackLength <= 0 || string.IsNullOrEmpty(_audioEngine.LoadedTrackPath))
+            {
+                _logger.LogWarning("Seek ignored: no loaded track/length (LoadedTrackPath={LoadedTrackPath}, Length={Length})", _audioEngine.LoadedTrackPath, _audioEngine.CurrentTrackLength);
+                return;
+            }
 
-        if (!string.IsNullOrEmpty(_audioEngine.PathToMusic) && !double.IsNaN(posInSeekBar))
-        {
-            _audioEngine.SeekAudioFile(posInSeekBar);
-            SeekBar.Value = seekPercentage * 100;
-            _seekBarTimer.Start();
+            double clickPosition = e.GetPosition(SeekBar).X;
+            double seekPercentage = clickPosition / SeekBar.ActualWidth;
+            seekPercentage = Math.Clamp(seekPercentage, 0d, 1d);
+
+            double posInSeconds = seekPercentage * _audioEngine.CurrentTrackLength;
+            if (double.IsNaN(posInSeconds) || double.IsInfinity(posInSeconds))
+            {
+                _logger.LogWarning("Seek ignored: computed position invalid (SeekPercentage={SeekPercentage}, Length={Length})", seekPercentage, _audioEngine.CurrentTrackLength);
+                return;
+            }
+
+            // Move the thumb immediately.
+            SeekBar.Value = seekPercentage * 100d;
+
+            _playbackCoordinator.Seek(posInSeconds);
         }
-        else
+        catch (Exception ex)
         {
-            _logger.LogWarning("Seek conditions not met: PathToMusic or position invalid");
+            _logger.LogError(ex, "SeekBar click seek failed");
+        }
+        finally
+        {
+            _isUserSeeking = false;
         }
     }
 
     private void timer_Tick(object sender, EventArgs e)
     {
+        if (_isUserSeeking)
+        {
+            return;
+        }
+
         if (!(SeekBar.IsMouseOver && Mouse.LeftButton == MouseButtonState.Pressed))
         {
-            SeekBar.Value = _vm!.CurrentSeekbarPosition();
+            double length = _audioEngine.CurrentTrackLength;
+            double position = _audioEngine.CurrentTrackPosition;
+
+            if (length > 0 && !double.IsNaN(position) && !double.IsInfinity(position))
+            {
+                double percentage = (position / length) * 100d;
+                if (!double.IsNaN(percentage) && !double.IsInfinity(percentage))
+                {
+                    SeekBar.Value = Math.Clamp(percentage, 0d, 100d);
+                }
+            }
         }
     }
 
@@ -305,5 +379,25 @@ public partial class PlayerControls
     private void PlayerControls_ShutdownStarted(object sender, EventArgs e)
     {
         _vm.SaveSettingsOnShutdown(VolumeSlider.Value, SeekBar.Value);
+    }
+
+    private void OnActiveTrackChanged(MediaFile? track)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(() => OnActiveTrackChanged(track)), DispatcherPriority.Background);
+            return;
+        }
+
+        if (track == null)
+        {
+            TotalTime.Text = "0:00";
+            return;
+        }
+
+        // Prefer engine length when available; otherwise fall back to metadata duration.
+        double engineLengthSeconds = _audioEngine.CurrentTrackLength;
+        TimeSpan total = engineLengthSeconds > 0 ? TimeSpan.FromSeconds(engineLengthSeconds) : track.Duration;
+        TotalTime.Text = $"{(int)total.TotalMinutes}:{total.Seconds:D2}";
     }
 }

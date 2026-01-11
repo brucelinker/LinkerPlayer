@@ -1,4 +1,5 @@
 using LinkerPlayer.Audio;
+using Shouldly;
 
 namespace LinkerPlayer.Tests.Audio;
 
@@ -12,7 +13,7 @@ public class AudioMathTests
     public void GetFftFrequencyIndex_ComputesExpectedBin(int sampleRate, int freq, int fftSize, int expected)
     {
         int idx = AudioMath.GetFftFrequencyIndex(sampleRate, freq, fftSize);
-        Assert.Equal(expected, idx);
+        idx.ShouldBe(expected);
     }
 
     [StaTheory]
@@ -23,6 +24,6 @@ public class AudioMathTests
     public void ClampGain_ClampsToDefaults(float input, float expected)
     {
         float result = AudioMath.ClampGain(input);
-        Assert.Equal(expected, result, 3);
+        result.ShouldBe(expected, 0.001f);
     }
 }

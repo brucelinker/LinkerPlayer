@@ -61,6 +61,7 @@ public partial class PlaylistTabs
 
         WeakReferenceMessenger.Default.Register<GoToActiveTrackMessage>(this, (_, m) => OnGoToActiveTrack(m.Value));
         WeakReferenceMessenger.Default.Register<UpdateColumnsMessage>(this, (_, m) => OnUpdateColumns(m));
+        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) => OnActiveTrackChanged(m.Value));
     }
 
     internal void RegenerateColumns(DataGrid dg)
@@ -524,6 +525,10 @@ public partial class PlaylistTabs
                 dg.AddHandler(UIElement.PreviewMouseRightButtonDownEvent,
                     new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonDown),
                     handledEventsToo: true);
+
+                dg.AddHandler(UIElement.PreviewMouseLeftButtonDownEvent,
+                    new MouseButtonEventHandler(DataGrid_PreviewMouseLeftButtonDown),
+                    handledEventsToo: true);
             }
         }, DispatcherPriority.Loaded);
     }
@@ -613,6 +618,11 @@ public partial class PlaylistTabs
             return;
         }
 
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+        {
+            return;
+        }
+
         DependencyObject origin = (DependencyObject)e.OriginalSource;
         DataGridColumnHeader? header = FindAncestor<DataGridColumnHeader>(origin);
         if (header != null)
@@ -635,9 +645,10 @@ public partial class PlaylistTabs
 
         try
         {
+            dataGrid.SelectedItems.Clear();
             dataGrid.SelectedItem = row.Item;
-            row.IsSelected = true;
-            row.Focus();
+            dataGrid.ScrollIntoView(row.Item);
+            dataGrid.Focus();
         }
         catch { }
 
@@ -651,24 +662,25 @@ public partial class PlaylistTabs
         e.Handled = true;
     }
 
-    private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
-    {
-        if (e.Column is DataGridColumn column)
-        {
-            ListSortDirection direction = (column.SortDirection != ListSortDirection.Ascending)
-            ? ListSortDirection.Ascending
-            : ListSortDirection.Descending;
-            string propertyName = (column.SortMemberPath ?? column.Header.ToString())!;
-
-            Dispatcher.BeginInvoke((Action)delegate
-            {
-                if (DataContext is PlaylistTabsViewModel viewModel)
-                {
-                    viewModel.OnDataGridSorted(propertyName, direction);
-                }
-            }, null);
-        }
-    }
+    // TracksTable sorting is handled by the WPF DataGrid (CollectionView).
+    // private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
+    // {
+    //     if (e.Column is DataGridColumn column)
+    //     {
+    //         ListSortDirection direction = (column.SortDirection != ListSortDirection.Ascending)
+    //         ? ListSortDirection.Ascending
+    //         : ListSortDirection.Descending;
+    //         string propertyName = (column.SortMemberPath ?? column.Header.ToString())!;
+    //
+    //         Dispatcher.BeginInvoke((Action)delegate
+    //         {
+    //             if (DataContext is PlaylistTabsViewModel viewModel)
+    //             {
+    //                 viewModel.OnDataGridSorted(propertyName, direction);
+    //             }
+    //         }, null);
+    //     }
+    // }
 
     private void PlaylistDataGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
@@ -680,30 +692,191 @@ public partial class PlaylistTabs
 
     private void OnGoToActiveTrack(bool value)
     {
-        // Explicit user action: allow forced centering
-        CenterSelectedTrack();
-    }
+        if (!value)
+        {
+            return;
+        }
 
-    private void CenterSelectedTrack()
-    {
-        if (DataContext is PlaylistTabsViewModel viewModel && viewModel.SelectedTrack != null)
+        if (DataContext is not PlaylistTabsViewModel viewModel)
+        {
+            return;
+        }
+
+        MediaFile? active = viewModel.ActiveTrack;
+        if (active == null)
+        {
+            return;
+        }
+
+        int tabIndex = viewModel.SelectedTabIndex;
+        int trackIndex = -1;
+        MediaFile? activeInTab = null;
+
+        if (tabIndex >= 0 && tabIndex < viewModel.TabList.Count)
+        {
+            activeInTab = viewModel.TabList[tabIndex].Tracks.FirstOrDefault(t => t.Id == active.Id);
+            if (activeInTab != null)
+            {
+                trackIndex = viewModel.TabList[tabIndex].Tracks.IndexOf(activeInTab);
+            }
+        }
+
+        if (trackIndex < 0)
+        {
+            for (int i = 0; i < viewModel.TabList.Count; i++)
+            {
+                MediaFile? match = viewModel.TabList[i].Tracks.FirstOrDefault(t => t.Id == active.Id);
+                if (match != null)
+                {
+                    tabIndex = i;
+                    activeInTab = match;
+                    trackIndex = viewModel.TabList[i].Tracks.IndexOf(match);
+                    break;
+                }
+            }
+        }
+
+        if (tabIndex < 0 || tabIndex >= viewModel.TabList.Count || trackIndex < 0 || activeInTab == null)
+        {
+            return;
+        }
+
+        viewModel.SelectedTabIndex = tabIndex;
+
+        Dispatcher.BeginInvoke(new Action(() =>
         {
             DataGrid? dataGrid = GetActiveDataGrid();
-            if (dataGrid != null)
+            if (dataGrid == null)
             {
-                if (!IsItemFullyVisible(dataGrid, viewModel.SelectedTrack))
+                return;
+            }
+
+            try
+            {
+                dataGrid.SelectionChanged -= TracksTable_OnSelectionChanged;
+                try
                 {
+                    dataGrid.SelectedItem = activeInTab;
+                    dataGrid.SelectedIndex = trackIndex;
+                    dataGrid.ScrollIntoView(activeInTab);
+
+                    _isExplicitCentering = true;
                     try
                     {
-                        _isExplicitCentering = true;
-                        CenterItemInDataGrid(dataGrid, viewModel.SelectedTrack);
+                        CenterItemInDataGrid(dataGrid, activeInTab);
                     }
                     finally
                     {
                         _isExplicitCentering = false;
                     }
+
+                    dataGrid.Focus();
+                }
+                finally
+                {
+                    dataGrid.SelectionChanged += TracksTable_OnSelectionChanged;
+                }
+
+                // Ensure the view model selection matches what the grid now shows.
+                viewModel.SelectedTrackIndex = trackIndex;
+                viewModel.SelectedTrack = activeInTab;
+            }
+            catch
+            {
+            }
+        }), DispatcherPriority.Render);
+    }
+
+    private void OnActiveTrackChanged(MediaFile? track)
+    {
+        if (track == null)
+        {
+            return;
+        }
+
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(() => OnActiveTrackChanged(track)), DispatcherPriority.Render);
+            return;
+        }
+
+        // Auto-follow now-playing: select + reveal the playing track (selection should follow now-playing).
+        if (DataContext is not PlaylistTabsViewModel viewModel)
+        {
+            return;
+        }
+
+        MediaFile? activeInTab = null;
+        int tabIndex = viewModel.SelectedTabIndex;
+        int trackIndex = -1;
+
+        if (tabIndex >= 0 && tabIndex < viewModel.TabList.Count)
+        {
+            activeInTab = viewModel.TabList[tabIndex].Tracks.FirstOrDefault(t => t.Id == track.Id);
+            if (activeInTab != null)
+            {
+                trackIndex = viewModel.TabList[tabIndex].Tracks.IndexOf(activeInTab);
+            }
+        }
+
+        if (trackIndex < 0)
+        {
+            for (int i = 0; i < viewModel.TabList.Count; i++)
+            {
+                MediaFile? match = viewModel.TabList[i].Tracks.FirstOrDefault(t => t.Id == track.Id);
+                if (match != null)
+                {
+                    tabIndex = i;
+                    activeInTab = match;
+                    trackIndex = viewModel.TabList[i].Tracks.IndexOf(match);
+                    break;
                 }
             }
+        }
+
+        if (activeInTab == null || trackIndex < 0 || tabIndex < 0 || tabIndex >= viewModel.TabList.Count)
+        {
+            return;
+        }
+
+        viewModel.SelectedTabIndex = tabIndex;
+
+        DataGrid? dataGrid = GetActiveDataGrid();
+        if (dataGrid == null)
+        {
+            return;
+        }
+
+        try
+        {
+            dataGrid.SelectionChanged -= TracksTable_OnSelectionChanged;
+            try
+            {
+                dataGrid.SelectedItem = activeInTab;
+                dataGrid.SelectedIndex = trackIndex;
+                dataGrid.ScrollIntoView(activeInTab);
+
+                _isExplicitCentering = true;
+                try
+                {
+                    CenterItemInDataGrid(dataGrid, activeInTab);
+                }
+                finally
+                {
+                    _isExplicitCentering = false;
+                }
+            }
+            finally
+            {
+                dataGrid.SelectionChanged += TracksTable_OnSelectionChanged;
+            }
+
+            // Ensure the view model selection matches what the grid now shows.
+            viewModel.SelectedTrackIndex = trackIndex;
+            viewModel.SelectedTrack = activeInTab;
+        }
+        catch
+        {
         }
     }
 
@@ -1069,6 +1242,44 @@ public partial class PlaylistTabs
             AdornerLayer? adornerLayer = AdornerLayer.GetAdornerLayer(_dropIndicatorAdorner.AdornedElement);
             adornerLayer?.Remove(_dropIndicatorAdorner);
             _dropIndicatorAdorner = null;
+        }
+    }
+
+    private void DataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not DataGrid dg)
+        {
+            return;
+        }
+
+        if ((Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != ModifierKeys.None)
+        {
+            return;
+        }
+
+        DependencyObject? origin = e.OriginalSource as DependencyObject;
+        if (origin == null)
+        {
+            return;
+        }
+
+        DataGridRow? row = FindAncestor<DataGridRow>(origin);
+        if (row == null)
+        {
+            return;
+        }
+
+        if (!dg.SelectedItems.Contains(row.Item) || dg.SelectedItems.Count != 1)
+        {
+            try
+            {
+                dg.SelectedItems.Clear();
+                dg.SelectedItem = row.Item;
+                dg.Focus();
+            }
+            catch
+            {
+            }
         }
     }
 }

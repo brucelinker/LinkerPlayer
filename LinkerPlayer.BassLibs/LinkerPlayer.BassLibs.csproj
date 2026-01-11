@@ -42,6 +42,9 @@
 		<EmbeddedResource Include="Native\bassape.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bassape.dll</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bassdsd.dll">
+			<LogicalName>LinkerPlayer.BassLibs.Native.bassdsd.dll</LogicalName>
+		</EmbeddedResource>
 		<EmbeddedResource Include="Native\bassflac.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bassflac.dll</LogicalName>
 		</EmbeddedResource>

@@ -23,6 +23,8 @@ public record Device
     {
         get; init;
     }
+    public override string ToString() => Name;
+
     public Device(string name, OutputDeviceType type, int index, bool isDefault = false)
     {
         Name = name;

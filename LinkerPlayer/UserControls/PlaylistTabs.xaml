@@ -22,8 +22,47 @@
 
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
+      <converters:ActiveTrackStateToVisibilityConverter x:Key="ActiveTrackStateToVisibilityConverter" />
       <converters:IndexConverter x:Key="IndexConverter" />
       <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+      <DataTemplate x:Key="PlayPauseCellTemplate">
+        <Grid>
+          <iconPacks:PackIconFontAwesome
+            Width="20"
+            Height="10"
+            Margin="5,0,0,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Foreground="{StaticResource TrackListItemForegroundBrush}"
+            Kind="PlaySolid">
+            <iconPacks:PackIconFontAwesome.Visibility>
+              <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Playing}">
+                <Binding Path="Id" />
+                <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+              </MultiBinding>
+            </iconPacks:PackIconFontAwesome.Visibility>
+          </iconPacks:PackIconFontAwesome>
+
+          <iconPacks:PackIconMaterial
+            Width="20"
+            Height="10"
+            Margin="5,0,0,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Foreground="{StaticResource TrackListItemForegroundBrush}"
+            Kind="Pause">
+            <iconPacks:PackIconMaterial.Visibility>
+              <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Paused}">
+                <Binding Path="Id" />
+                <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+              </MultiBinding>
+            </iconPacks:PackIconMaterial.Visibility>
+          </iconPacks:PackIconMaterial>
+        </Grid>
+      </DataTemplate>
 
       <Style TargetType="TabControl">
         <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
@@ -270,7 +309,6 @@
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
-            Sorting="TracksTable_OnSorting"
             Style="{StaticResource SharedDataGridStyle}"
             ToolTipService.IsEnabled="False"
             VerticalScrollBarVisibility="Visible"
@@ -316,9 +354,9 @@
               </DataGridTextColumn>
 
               <DataGridTemplateColumn
-                Width="20"
+                Width="40"
                 MinWidth="{DynamicResource TrackTableImageSize}"
-                Header="">
+                Header="Playing">
                 <DataGridTemplateColumn.CellTemplate>
                   <DataTemplate>
                     <Grid>
@@ -330,8 +368,15 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         Foreground="{StaticResource TrackListItemForegroundBrush}"
-                        Kind="PlaySolid"
-                        Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static managedBass:PlaybackState.Playing}}" />
+                        Kind="PlaySolid">
+                        <iconPacks:PackIconFontAwesome.Visibility>
+                          <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Playing}">
+                            <Binding Path="Id" />
+                            <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                            <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                          </MultiBinding>
+                        </iconPacks:PackIconFontAwesome.Visibility>
+                      </iconPacks:PackIconFontAwesome>
                       <iconPacks:PackIconMaterial
                         x:Name="PauseImage"
                         Width="20"
@@ -340,8 +385,15 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         Foreground="{StaticResource TrackListItemForegroundBrush}"
-                        Kind="Pause"
-                        Visibility="{Binding State, Mode=OneWay, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter={x:Static managedBass:PlaybackState.Paused}}" />
+                        Kind="Pause">
+                        <iconPacks:PackIconMaterial.Visibility>
+                          <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Paused}">
+                            <Binding Path="Id" />
+                            <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                            <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                          </MultiBinding>
+                        </iconPacks:PackIconMaterial.Visibility>
+                      </iconPacks:PackIconMaterial>
                     </Grid>
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
@@ -428,6 +480,11 @@
               <ContextMenu>
                 <MenuItem Command="{Binding PlacementTarget.Tag.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Play" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Remove" />
+                <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze Silence" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.CancelAnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Cancel Analyze" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.ClearSilenceAnalysisCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Clear Silence Analysis" />
+                <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Properties" />
               </ContextMenu>
             </DataGrid.ContextMenu>

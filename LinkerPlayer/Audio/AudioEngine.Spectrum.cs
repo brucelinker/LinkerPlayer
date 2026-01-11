@@ -8,6 +8,9 @@ namespace LinkerPlayer.Audio;
 public partial class AudioEngine
 {
     private readonly float[] _fftBuffer = new float[2048];
+
+    private int _positionTelemetryTick;
+
     public float[] FftUpdate
     {
         get; private set;
@@ -191,13 +194,6 @@ public partial class AudioEngine
 
         if (CurrentStream != 0)
         {
-            int posHandle = (_currentMode == OutputMode.DirectSound) ? CurrentStream : (_decodeStream != 0 ? _decodeStream : CurrentStream);
-            double positionSeconds = Bass.ChannelBytes2Seconds(posHandle, Bass.ChannelGetPosition(posHandle));
-            if (!double.IsNaN(positionSeconds) && positionSeconds >= 0)
-            {
-                CurrentTrackPosition = positionSeconds;
-            }
-
             PlaybackState state = Bass.ChannelIsActive(CurrentStream);
             if (CheckAudioDeviceLost())
             {
@@ -207,6 +203,88 @@ public partial class AudioEngine
             if (state != PlaybackState.Playing)
             {
                 return;
+            }
+
+            // Update track position for UI/coordinator.
+            try
+            {
+                if (_currentMode == OutputMode.DirectSound)
+                {
+                    int positionStream = _decodeStream != 0 ? _decodeStream : CurrentStream;
+                    long posBytes = Bass.ChannelGetPosition(positionStream);
+                    double posSeconds = Bass.ChannelBytes2Seconds(positionStream, posBytes);
+                    if (!double.IsNaN(posSeconds) && posSeconds >= 0)
+                    {
+                        CurrentTrackPosition = posSeconds;
+                    }
+
+                    int tick = System.Threading.Interlocked.Increment(ref _positionTelemetryTick);
+                    if ((tick % 50) == 0)
+                    {
+                        _logger.LogDebug("PositionTelemetry DS (Tick={Tick}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, PositionStream={PositionStream}, PosBytes={PosBytes}, PosSeconds={PosSeconds}, LenSeconds={LenSeconds}, IsPlaying={IsPlaying}, State={State})",
+                            tick,
+                            CurrentStream,
+                            _decodeStream,
+                            positionStream,
+                            posBytes,
+                            posSeconds,
+                            CurrentTrackLength,
+                            IsPlaying,
+                            state);
+                    }
+                }
+                else
+                {
+                    int positionStream = _decodeStream != 0 ? _decodeStream : CurrentStream;
+                    long posBytes = Bass.ChannelGetPosition(positionStream);
+                    double posSeconds = Bass.ChannelBytes2Seconds(positionStream, posBytes);
+                    if (!double.IsNaN(posSeconds) && posSeconds >= 0)
+                    {
+                        CurrentTrackPosition = posSeconds;
+                    }
+
+                    int tick = System.Threading.Interlocked.Increment(ref _positionTelemetryTick);
+                    if ((tick % 25) == 0)
+                    {
+                        PlaybackState decodeState = _decodeStream != 0 ? Bass.ChannelIsActive(_decodeStream) : PlaybackState.Stopped;
+                        PlaybackState mixerState = _mixerStream != 0 ? Bass.ChannelIsActive(_mixerStream) : PlaybackState.Stopped;
+
+                        _logger.LogDebug("PositionTelemetry WASAPI (Tick={Tick}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, PositionStream={PositionStream}, PosBytes={PosBytes}, PosSeconds={PosSeconds}, LenSeconds={LenSeconds}, WasapiStarted={WasapiStarted}, IsPlaying={IsPlaying}, CurrentState={CurrentState}, DecodeState={DecodeState}, MixerState={MixerState}, LoadedPath={LoadedPath})",
+                            tick,
+                            CurrentStream,
+                            _decodeStream,
+                            _mixerStream,
+                            positionStream,
+                            posBytes,
+                            posSeconds,
+                            CurrentTrackLength,
+                            BassWasapi.IsStarted,
+                            IsPlaying,
+                            state,
+                            decodeState,
+                            mixerState,
+                            LoadedTrackPath);
+                    }
+
+                    if (CurrentTrackLength > 0 && posSeconds >= 0)
+                    {
+                        double remainingSeconds = Math.Max(0, CurrentTrackLength - posSeconds);
+                        if (remainingSeconds <= 1.0)
+                        {
+                            _logger.LogDebug("PositionTelemetry WASAPI near-EOF (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, PositionStream={PositionStream}, PosSeconds={PosSeconds}, LenSeconds={LenSeconds}, RemainingSeconds={RemainingSeconds})",
+                                CurrentStream,
+                                _decodeStream,
+                                _mixerStream,
+                                positionStream,
+                                posSeconds,
+                                CurrentTrackLength,
+                                remainingSeconds);
+                        }
+                    }
+                }
+            }
+            catch
+            {
             }
         }
         else

@@ -5,6 +5,7 @@ using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services.Playback;
 using ManagedBass;
 using Microsoft.Extensions.Logging;
 using System.IO;
@@ -21,6 +22,7 @@ public interface IPlayerControlsViewModel
     MediaFile? ActiveTrack { get; set; }
     event Action? UpdateSelectedTrack;
     void PlayPauseTrack();
+    void PlayTrack();
     void StopTrack();
     void PreviousTrack();
     void NextTrack();
@@ -33,7 +35,8 @@ public interface IPlayerControlsViewModel
 public partial class PlayerControlsViewModel : ObservableObject, IPlayerControlsViewModel
 {
     private readonly IAudioEngine _audioEngine;
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel; // concrete to access SelectFirstTrack/PreviousMediaFile/NextMediaFile
+    private readonly PlaylistTabsViewModel _playlistTabsViewModel; // TODO: change to interface once selection APIs are exposed
+    private readonly IPlaybackCoordinator _playbackCoordinator;
     private readonly ISettingsManager _settingsManager;
     private readonly ISharedDataModel _sharedDataModel; // switched to interface
     private readonly ILogger<PlayerControlsViewModel> _logger;
@@ -43,19 +46,17 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
     // Guard to prevent re-entrant Next/Prev during transitions
     private bool _isNavigatingTrack = false;
 
-    private bool _autoAdvanceTriggeredForTrack;
-    private DateTimeOffset? _silenceBelowThresholdSinceUtc;
-    private string? _autoAdvanceTrackPath;
-
     public PlayerControlsViewModel(
         IAudioEngine audioEngine,
         PlaylistTabsViewModel playlistTabsViewModel,
+        IPlaybackCoordinator playbackCoordinator,
         ISettingsManager settingsManager,
         ISharedDataModel sharedDataModel,
         ILogger<PlayerControlsViewModel> logger)
     {
         _audioEngine = audioEngine;
         _playlistTabsViewModel = playlistTabsViewModel;
+        _playbackCoordinator = playbackCoordinator;
         _settingsManager = settingsManager;
         _sharedDataModel = sharedDataModel; // will be fixed by compiler if name mismatch
         _logger = logger;
@@ -121,7 +122,29 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause()
     {
+        _logger.LogDebug("PlayPauseCommand executed");
         PlayPauseTrack();
+    }
+
+    [RelayCommand]
+    private void Stop()
+    {
+        _logger.LogInformation("StopCommand executed");
+        StopTrack();
+    }
+
+    [RelayCommand]
+    private void Next()
+    {
+        _logger.LogInformation("NextCommand executed");
+        NextTrack();
+    }
+
+    [RelayCommand]
+    private void Prev()
+    {
+        _logger.LogInformation("PrevCommand executed");
+        PreviousTrack();
     }
 
     partial void OnShuffleModeChanged(bool value)
@@ -185,12 +208,18 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
 
     private void OnPlaybackStateChanged(PlaybackState playbackState)
     {
+        _logger.LogDebug("PlaybackStateChangedMessage received: {State}", playbackState);
         State = playbackState;
+    }
+
+    private bool CanPlayPause()
+    {
+        return true;
     }
 
     public double GetVolumeBeforeMute()
     {
-        return _volumeBeforeMute > 0 ? _volumeBeforeMute : 50; // Fallback to 50 if 0
+        return _volumeBeforeMute > 0 ? _volumeBeforeMute : 50;
     }
 
     public void UpdateVolumeAfterAnimation(double value, bool isMuted)
@@ -211,127 +240,102 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
     {
         _settingsManager.Settings.VolumeSliderValue = volumeValue;
         _settingsManager.SaveSettings(nameof(AppSettings.VolumeSliderValue));
-        //_logger.LogInformation("Saved shutdown settings: Volume={Volume}, SeekBar={SeekBar}", volumeValue, seekBarValue);
     }
 
     public void PlayPauseTrack()
     {
-        // Ensure SelectedTrack is set
         SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
+
+        string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? "";
+        int trackIndex = _playlistTabsViewModel.SelectedTrackIndex;
 
         if (_audioEngine.IsPlaying)
         {
-            _audioEngine.Pause();
+            _playbackCoordinator.Pause();
             State = PlaybackState.Paused;
-
-            if (ActiveTrack != null)
-            {
-                ActiveTrack.State = PlaybackState.Paused;
-            }
         }
         else
         {
-            if (ActiveTrack?.State == PlaybackState.Paused)
+            if (State == PlaybackState.Paused)
             {
-                ResumeTrack();
+                _playbackCoordinator.Resume();
+                State = PlaybackState.Playing;
             }
             else
             {
-                PlayTrack();
+                if (SelectedTrack != null && !string.IsNullOrWhiteSpace(playlistName))
+                {
+                    _playbackCoordinator.SetUserSelection(playlistName, trackIndex, SelectedTrack);
+                    _playbackCoordinator.PlayTrack(playlistName, trackIndex, SelectedTrack);
+
+                    MediaFile? active = _sharedDataModel.ActiveTrack;
+                    if (active != null)
+                    {
+                        ActiveTrack = active;
+                    }
+
+                    State = PlaybackState.Playing;
+                }
+                else
+                {
+                    _logger.LogWarning("PlayPauseTrack ignored: missing playlist or selected track (PlaylistName={PlaylistName}, Track={Track})", playlistName, SelectedTrack?.Id ?? "null");
+                }
             }
         }
     }
 
     public void PlayTrack()
     {
+        SelectedTrack = _playlistTabsViewModel.SelectedTrack ?? _playlistTabsViewModel.SelectFirstTrack();
+
         _logger.LogInformation("PlayTrack called - ActiveTrack: {ActiveTrack}, SelectedTrack: {SelectedTrack}",
             ActiveTrack?.Title ?? "null", SelectedTrack?.Title ?? "null");
 
         try
         {
-            // Always align ActiveTrack with current selection before starting playback
             if (SelectedTrack != null)
             {
-                ActiveTrack = SelectedTrack;
-            }
+                _logger.LogInformation("Playing SelectedTrack: {Path}", SelectedTrack.Path);
 
-            if (ActiveTrack != null)
-            {
-                _autoAdvanceTriggeredForTrack = false;
-                _silenceBelowThresholdSinceUtc = null;
-                _autoAdvanceTrackPath = ActiveTrack.Path;
+                string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? "";
+                int trackIndex = _playlistTabsViewModel.SelectedTrackIndex;
 
-                _logger.LogInformation("Playing ActiveTrack: {Path}", ActiveTrack.Path);
-                _audioEngine.PathToMusic = ActiveTrack.Path;
+                if (!string.IsNullOrWhiteSpace(playlistName))
+                {
+                    _playbackCoordinator.SetUserSelection(playlistName, trackIndex, SelectedTrack);
+                }
 
-                // Offload heavy audio start to background to keep UI responsive
-                _ = Task.Run(() => _audioEngine.Play());
+                _playbackCoordinator.PlayTrack(playlistName, trackIndex, SelectedTrack);
 
-                ActiveTrack.State = PlaybackState.Playing;
+                MediaFile? active = _sharedDataModel.ActiveTrack;
+                if (active != null)
+                {
+                    ActiveTrack = active;
+                }
+
                 State = PlaybackState.Playing;
+
+                if (ActiveTrack == null)
+                {
+                    _logger.LogWarning("PlayTrack: ActiveTrack is null");
+                }
             }
             else
             {
-                _logger.LogWarning("Cannot play: ActiveTrack is null");
+                _logger.LogWarning("Cannot play: SelectedTrack is null");
             }
         }
         finally
         {
-            // Always clear navigation guard after attempting to start playback
             _isNavigatingTrack = false;
         }
-
-        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
-        WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(ActiveTrack));
-    }
-
-    public void ResumeTrack()
-    {
-        _audioEngine.ResumePlay();
-        State = PlaybackState.Playing;
-
-        if (ActiveTrack != null)
-        {
-            ActiveTrack.State = PlaybackState.Playing;
-        }
-
-        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Playing));
-    }
-
-    [RelayCommand]
-    private void Stop()
-    {
-        StopTrack();
     }
 
     public void StopTrack()
     {
-        // Push zeroed FFT first to drop visuals immediately across Next/Prev
-        _audioEngine.NextTrackPreStopVisuals();
-
-        _audioEngine.Stop();
+        _playbackCoordinator.Stop();
         State = PlaybackState.Stopped;
-
-        // IMPORTANT: mark the current ActiveTrack as Stopped and broadcast BEFORE clearing ActiveTrack
-        if (ActiveTrack != null)
-        {
-            ActiveTrack.State = PlaybackState.Stopped;
-        }
-
-        // Notify listeners while ActiveTrack is still set so they can update their own instances by Id
-        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(State));
-
-        // Now clear ActiveTrack
-        if (ActiveTrack != null)
-        {
-            ActiveTrack = null;
-        }
-    }
-
-    [RelayCommand]
-    private void Prev()
-    {
-        PreviousTrack();
+        ActiveTrack = null;
     }
 
     public void PreviousTrack()
@@ -341,27 +345,29 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
             _logger.LogDebug("PreviousTrack ignored: navigation in progress");
             return;
         }
+
         _isNavigatingTrack = true;
-
-        StopTrack();
-
-        MediaFile? prevMediaFile = _playlistTabsViewModel.PreviousMediaFile();
-
-        if (prevMediaFile == null || !File.Exists(prevMediaFile.Path))
+        try
         {
-            _logger.LogError("MediaFile not found for previous track.");
-            _isNavigatingTrack = false;
-            return;
+            _logger.LogInformation("PreviousTrack invoked (State={State}, ActiveTrack={ActiveTrack}, SelectedPlaylist={SelectedPlaylist})",
+                State,
+                ActiveTrack?.Id ?? "null",
+                _playlistTabsViewModel.SelectedTab?.Name ?? "null");
+
+            string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
+            MediaFile? seedTrack = _playlistTabsViewModel.SelectedTrack;
+            if (!string.IsNullOrWhiteSpace(playlistName) && seedTrack != null)
+            {
+                int seedIndex = _playlistTabsViewModel.SelectedTrackIndex;
+                _playbackCoordinator.SetUserSelection(playlistName, seedIndex, seedTrack);
+            }
+
+            _playbackCoordinator.Prev();
         }
-
-        ActiveTrack = prevMediaFile;
-        PlayTrack();
-    }
-
-    [RelayCommand]
-    private void Next()
-    {
-        NextTrack();
+        finally
+        {
+            _isNavigatingTrack = false;
+        }
     }
 
     public void NextTrack()
@@ -371,32 +377,33 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
             _logger.LogDebug("NextTrack ignored: navigation in progress");
             return;
         }
+
         _isNavigatingTrack = true;
-
-        StopTrack();
-
-        MediaFile? nextMediaFile = _playlistTabsViewModel.NextMediaFile();
-
-        if (nextMediaFile == null || !File.Exists(nextMediaFile.Path))
+        try
         {
-            _logger.LogError("MediaFile not found for next track.");
-            _isNavigatingTrack = false;
-            return;
+            _logger.LogInformation("NextTrack invoked (State={State}, ActiveTrack={ActiveTrack}, SelectedPlaylist={SelectedPlaylist})",
+                State,
+                ActiveTrack?.Id ?? "null",
+                _playlistTabsViewModel.SelectedTab?.Name ?? "null");
+
+            string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
+            MediaFile? seedTrack = _playlistTabsViewModel.SelectedTrack;
+            if (!string.IsNullOrWhiteSpace(playlistName) && seedTrack != null)
+            {
+                int seedIndex = _playlistTabsViewModel.SelectedTrackIndex;
+                _playbackCoordinator.SetUserSelection(playlistName, seedIndex, seedTrack);
+            }
+
+            _playbackCoordinator.Next();
         }
-
-        ActiveTrack = nextMediaFile;
-        PlayTrack();
-    }
-
-    private bool CanPlayPause()
-    {
-        return true;
+        finally
+        {
+            _isNavigatingTrack = false;
+        }
     }
 
     public double CurrentSeekbarPosition()
     {
-        MonitorNextTrack();
-
         double length = _audioEngine.CurrentTrackLength;
         double position = _audioEngine.CurrentTrackPosition;
 
@@ -412,98 +419,5 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
         }
 
         return percentage;
-    }
-
-    private void MonitorNextTrack()
-    {
-        if (_isNavigatingTrack)
-        {
-            return; // avoid re-entrancy during transitions
-        }
-
-        if (!_audioEngine.IsPlaying)
-        {
-            _silenceBelowThresholdSinceUtc = null;
-            return; // only auto-advance while actually playing
-        }
-
-        if (ActiveTrack == null)
-        {
-            _silenceBelowThresholdSinceUtc = null;
-            return;
-        }
-
-        if (_autoAdvanceTriggeredForTrack)
-        {
-            return;
-        }
-
-        if (!string.Equals(_autoAdvanceTrackPath, ActiveTrack.Path, StringComparison.OrdinalIgnoreCase))
-        {
-            _autoAdvanceTriggeredForTrack = false;
-            _silenceBelowThresholdSinceUtc = null;
-            _autoAdvanceTrackPath = ActiveTrack.Path;
-        }
-
-        double length = _audioEngine.CurrentTrackLength;
-        double position = _audioEngine.CurrentTrackPosition;
-
-        if (length <= 0 || double.IsNaN(position) || double.IsNaN(length))
-        {
-            return;
-        }
-
-        double windowSeconds = Math.Max(0.0, _settingsManager.Settings.AutoAdvanceTailWindowSeconds);
-        double hardEndSeconds = Math.Max(0.0, _settingsManager.Settings.AutoAdvanceHardEndSeconds);
-        double silenceThresholdDb = _settingsManager.Settings.AutoAdvanceSilenceThresholdDb;
-        double holdSeconds = Math.Max(0.0, _settingsManager.Settings.AutoAdvanceSilenceHoldSeconds);
-
-        if (position + hardEndSeconds > length)
-        {
-            _autoAdvanceTriggeredForTrack = true;
-            NextTrack();
-            _logger.LogInformation("MonitorNextTrack: position + hardEndSeconds > length");
-            return;
-        }
-
-        if (windowSeconds <= 0 || position + windowSeconds <= length)
-        {
-            _silenceBelowThresholdSinceUtc = null;
-            return;
-        }
-
-        double db = _audioEngine.GetDecibelLevel();
-        if (double.IsNaN(db))
-        {
-            return;
-        }
-
-        if (db <= silenceThresholdDb)
-        {
-            _silenceBelowThresholdSinceUtc ??= DateTimeOffset.UtcNow;
-        }
-        else
-        {
-            _silenceBelowThresholdSinceUtc = null;
-            return;
-        }
-
-        if (holdSeconds <= 0)
-        {
-            _autoAdvanceTriggeredForTrack = true;
-            NextTrack();
-
-            _logger.LogInformation("MonitorNextTrack: holdSeconds <= 0");
-            return;
-        }
-
-        double silentForSeconds = (DateTimeOffset.UtcNow - _silenceBelowThresholdSinceUtc.Value).TotalSeconds;
-        if (silentForSeconds >= holdSeconds)
-        {
-            _autoAdvanceTriggeredForTrack = true;
-            _logger.LogInformation("MonitorNextTrack: silentForSeconds >= holdSeconds");
-
-            NextTrack();
-        }
     }
 }

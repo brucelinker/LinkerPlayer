@@ -44,4 +44,114 @@ When I ask a question, follow these steps:
    - My project enables `<Nullable>`, make sure the code supports that
    - I prefer using Explicit Types, do not use var.
    - I prefer file-scoped namespaces
-   - Only focus on changes in logic - DO NOT CHANGE FORMATTING. Formatting is my preference, not your preference.
+   - Adopt the format style of the current codebase. It is what I prefer.
+
+7. RESPONSE STYLE
+   - Casual tone is fine; compliments are fine.
+   - It is okay to disagree and suggest alternatives.
+   - It is okay to suggest new ideas or features.
+   - It is okay to ask clarifying questions before answering.
+   - Still keep responses concise and task-focused.
+   - It is alright to suggest refactors if needed, but needs approval
+
+CROSSFADE-SILENCE PROJECT
+
+Proposed high-level direction (purposeful architecture)
+
+Core principle
+
+There must be one authoritative playback coordinator (a service) that owns playback decisions and state transitions, so:
+- UI selection cannot accidentally change what’s “now playing”.
+- “Next track” is computed from a single cursor (playback index), never from whatever the DataGrid happens to have selected.
+- Crossfade is a real state transition with a single commit point.
+
+Separate concepts explicitly
+•	User selection = what the user highlighted in the grid (may change anytime)
+•	Now playing = what is actually audible / committed in the engine
+•	Playback cursor = the logical position in the playlist used for Next/Prev (should track now-playing, not UI selection)
+
+Refactor plan (major steps)
+
+Step 0 — Revert and freeze the baseline
+1.	Revert to the commit right before crossfade changes began.
+2.	Tag it as “baseline playback stable”.
+3.	Add a small reproducible test checklist (manual is fine) for:
+- play/pause/stop
+- next/prev
+- end-of-track auto-advance
+- seek
+- shuffle on/off
+
+Step 1 — Introduce a PlaybackCoordinator service (no crossfade yet)
+
+Create a new service (e.g. PlaybackCoordinator / PlaybackSessionService) that becomes the single owner of playback.
+
+Responsibilities:
+- Accept intents: PlaySelected, PlayTrack(id/path), Next, Prev, Stop, Seek
+- Track:
+- NowPlayingTrack
+- PlaybackState
+- PlaybackCursor (tab + index + track id)
+- Listen to engine events: TrackEnded, PlaybackStopped
+
+Rules:
+- Only coordinator calls AudioEngine.Play/Stop/Seek/TryBeginCrossfade
+- ViewModels no longer directly orchestrate play transitions
+
+Step 2 — Make UI selection non-authoritative
+
+Refactor PlaylistTabsViewModel so that DataGrid selection updates only:
+- UserSelectedTrack (or SelectedTrack but treated purely as UI)
+- never drives Next/Prev automatically
+- The “playing icon” should be bound to NowPlayingTrackId / State (not the Selected row).
+- 
+Step 3 — Consolidate Next/Prev logic around the playback cursor
+
+Move the “what is next” resolution to a single place:
+- ITrackNavigationService.GetNextTrackIndex(list, playbackCursorIndex, shuffleMode)
+Do not compute from DataGrid selection. Do not compute from SelectedTrackIndex unless that index is explicitly the playback cursor.
+
+Step 4 — Add crossfade properly (2-phase transition)
+
+Crossfade becomes a proper state machine:
+- State: Playing
+- Transition: Crossfading(fromTrack, toTrack, startTime)
+- Commit: Occurs when engine reports fade complete (or coordinator timer completes)
+- After commit:
+- NowPlayingTrack = toTrack
+- PlaybackCursor = toTrackIndex
+- update UI “playing icon” and seekbar source
+
+Key requirements:
+- The audio engine must expose a clear event: CrossfadeCommitted(path or trackId)
+- Coordinator must be the only consumer that maps that commit to “now playing”
+
+Step 5 — Seekbar correctness
+
+Seekbar length/position must always come from the same stream identity as NowPlayingTrack. Coordinator ensures that when commit happens, any UI bindings point to the new NowPlayingTrack and engine’s new CurrentTrackLength.
+
+Step 6 — Test / harden
+- Add at least a few unit tests around TrackNavigationService and coordinator state transitions (even without audio).
+- Add structured logs around coordinator transitions (not scattered logs in many classes).
+
+Answering your two questions
+1) Continue with current code or revert?
+Revert.
+If you want a clean implementation, the current branch contains a mix of stopgaps and experimental coupling (new events, suppression flags, etc.). Those changes were useful for diagnosis, but they’re not a good foundation for a “done right” refactor.
+2) Where exactly to revert to?
+Revert to the last revision where:
+•	auto-advance works reliably
+•	seekbar works reliably
+•	selection/playing icon behavior is stable …and crossfade hadn’t been introduced yet.
+If you tell me the commit hash (or roughly “before adding TryBeginCrossfade(string, bool) / before adding OnCrossfadeCommitted”), I can anchor the plan starting point precisely.
+---
+If you start a new thread, paste:
+•	the baseline commit hash you want to revert to
+•	the desired crossfade behavior rules (when to trigger, duration, fade curves, what happens if user clicks next during fade) and I’ll structure the refactor into a small number of PR-sized steps so it stays controlled and doesn’t spiral.
+
+I am looking at my favorite audio player (Foobar2000), and their UI shows two sliders (Fade In and Fade Out) to adjust the milliseconds from 0 to 20000 (wow!). Also, there is a combobox on each slider that (I believe) is the shape of the fade (Off, Cosine, Linear, Sine, Logarithmic).
+
+I noticed Foobar2000 has a DSP called "Skip Silence". It shows a "Minimum silence duration to activate removal:" slider that goes from Short (200ms) to Long (20000ms) with 5000ms as default.
+There is also a "Leave the initial period intact" checkbox (checked by default). And finally a "Silence detection threshold" slider from Quiet (-100dB) to Loud (-20dB) with -60dB is default.
+
+We should be able to use Skip Silence with or without Crossfade.

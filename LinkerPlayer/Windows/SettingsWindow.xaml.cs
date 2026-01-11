@@ -16,7 +16,22 @@ public partial class SettingsWindow
     private readonly ISettingsManager _settingsManager;
     private readonly ILogger _logger;
 
-    private const string DefaultDeviceName = "Default";
+    private const string DefaultDeviceName = "Primary Sound Driver";
+    private bool _isLoaded = false;
+
+    private sealed class PendingBehaviorSettings
+    {
+        public bool CrossfadeEnabled { get; set; }
+        public int CrossfadeFadeInMs { get; set; }
+        public int CrossfadeFadeOutMs { get; set; }
+        public FadeCurveShape CrossfadeCurveShape { get; set; }
+
+        public bool SkipSilenceEnabled { get; set; }
+        public int SkipSilenceMinimumDurationMs { get; set; }
+        public int SkipSilenceThresholdDb { get; set; }
+    }
+
+    private PendingBehaviorSettings _pendingBehavior = new PendingBehaviorSettings();
 
     public SettingsWindow(
         IAudioEngine audioEngine,
@@ -82,6 +97,8 @@ public partial class SettingsWindow
     {
         try
         {
+            LoadBehaviorSettings();
+
             // Set theme with error handling
             try
             {
@@ -135,11 +152,20 @@ public partial class SettingsWindow
             {
                 _logger.LogError(ex, "Error loading output devices: {Message}", ex.Message);
             }
+
+            // ItemTemplate is defined in XAML to avoid runtime Visual reuse issues.
+
+            ShowPage(0);
+            NavigationListBox.SelectedIndex = 0;
+
+            // Now it's safe to attach the event handler
+            NavigationListBox.SelectionChanged += Navigation_SelectionChanged;
+
+            _isLoaded = true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Critical error in Settings Window_Loaded: {Message}", ex.Message);
-            // Don't rethrow - just log the error and continue
         }
     }
 
@@ -188,27 +214,21 @@ public partial class SettingsWindow
                 : _audioEngine.WasapiDevices;
 
             List<Device> deviceList = devices.ToList();
-            //_logger.LogInformation("Refreshing device list for {OutputMode}: {Count} devices found", outputMode, deviceList.Count);
 
-            // Populate ComboBox with strings only
             foreach (Device device in deviceList)
             {
-                OutputDeviceCombo.Items.Add(device.Name);
-                //_logger.LogInformation("Added device to UI: '{DeviceName}'", device.Name);
+                OutputDeviceCombo.Items.Add(device);
             }
-
-            //_logger.LogInformation("UI ComboBox now has {Count} items", OutputDeviceCombo.Items.Count);
 
             if (OutputDeviceCombo.Items.Count > 0)
             {
-                string savedDeviceName = _settingsManager.Settings.SelectedOutputDevice?.Name ?? DefaultDeviceName;
+                Device savedDevice = _settingsManager.Settings.SelectedOutputDevice ?? new Device(DefaultDeviceName, OutputDeviceType.DirectSound, -1, true);
 
-                string deviceNameToSelect = deviceList.Any(d => d.Name == savedDeviceName)
-                    ? savedDeviceName
-                    : deviceList.First().Name;
+                Device? deviceToSelect = deviceList.FirstOrDefault(d => d.Type == savedDevice.Type && d.Index == savedDevice.Index)
+                    ?? deviceList.FirstOrDefault(d => string.Equals(d.Name, savedDevice.Name, StringComparison.Ordinal))
+                    ?? deviceList.First();
 
-                OutputDeviceCombo.SelectedItem = deviceNameToSelect;
-                //_logger.LogInformation("Selected device: '{DeviceName}'", deviceNameToSelect);
+                OutputDeviceCombo.SelectedItem = deviceToSelect;
             }
             else
             {
@@ -242,28 +262,19 @@ public partial class SettingsWindow
 
     private bool HandleDeviceChange(out Device selectedDevice)
     {
-        // Use strings in the ComboBox; map back to Device only for engine/settings
-        string selectedName = (OutputDeviceCombo.SelectedItem as string) ?? DefaultDeviceName;
-
-        // Determine current mode (HandleOutputModeChange is called before this)
-        OutputMode currentMode = _settingsManager.Settings.SelectedOutputMode;
-
-        IEnumerable<Device> devices = currentMode == OutputMode.DirectSound
-            ? _audioEngine.DirectSoundDevices
-            : _audioEngine.WasapiDevices;
-
-        // Find the actual device object with the correct index
-        selectedDevice = devices.FirstOrDefault(d => d.Name == selectedName)
+        selectedDevice = (OutputDeviceCombo.SelectedItem as Device)
             ?? new Device(DefaultDeviceName, OutputDeviceType.DirectSound, -1, true);
 
         bool changed = false;
-        if (selectedName != (_settingsManager.Settings.SelectedOutputDevice?.Name ?? DefaultDeviceName))
+
+        Device savedDevice = _settingsManager.Settings.SelectedOutputDevice
+            ?? new Device(DefaultDeviceName, OutputDeviceType.DirectSound, -1, true);
+
+        if (selectedDevice.Type != savedDevice.Type || selectedDevice.Index != savedDevice.Index)
         {
-            // Save the actual device object, not a placeholder
             _settingsManager.Settings.SelectedOutputDevice = selectedDevice;
             _settingsManager.SaveSettings(nameof(AppSettings.SelectedOutputDevice));
             changed = true;
-            //_logger.LogInformation("Audio device setting changed to {Device}", selectedName);
         }
 
         return changed;
@@ -280,10 +291,53 @@ public partial class SettingsWindow
         }
     }
 
+    private static bool IsKnownProblemDevice(OutputMode mode, Device device)
+    {
+        // Based on observed behavior (also matches MusicBee):
+        // - "Speakers (USB Audio Device)" can run (meters move) but be silent in DirectSound and WASAPI.
+        if (device.Name.Contains("USB Audio Device", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string GetKnownProblemDeviceMessage(OutputMode mode, Device device)
+    {
+        if (device.Name.Contains("USB Audio Device", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"'{device.Name}' may produce no sound with {mode} on some systems (meters may still move). Try a different device or switch output mode.";
+        }
+
+        return $"'{device.Name}' may not work correctly with {mode}.";
+    }
+
+    private void WarnIfKnownProblemDevice(OutputMode mode, Device device)
+    {
+        try
+        {
+            if (!IsKnownProblemDevice(mode, device))
+            {
+                return;
+            }
+
+            MessageBox.Show(
+                GetKnownProblemDeviceMessage(mode, device),
+                "Audio Device Warning",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        catch
+        {
+        }
+    }
+
     private void ApplyAudioSettings(bool outputModeChanged, bool deviceChanged, OutputMode newMode, Device newDevice)
     {
         if (outputModeChanged || deviceChanged)
         {
+            WarnIfKnownProblemDevice(newMode, newDevice);
             _audioEngine.SetOutputMode(newMode, newDevice);
 
             //if (newMode == OutputMode.DirectSound)
@@ -332,6 +386,39 @@ public partial class SettingsWindow
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting audio mode selection: {Message}", ex.Message);
+        }
+    }
+
+    private void Navigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_isLoaded)
+            return; // Extra safety, though not needed after attaching post-load
+
+        if (sender is ListBox listBox && listBox.SelectedIndex >= 0)
+        {
+            ShowPage(listBox.SelectedIndex);
+        }
+    }
+
+    private void ShowPage(int index)
+    {
+        // Hide all
+        OutputPage.Visibility = Visibility.Collapsed;
+        AppearancePage.Visibility = Visibility.Collapsed;
+        BehaviorPage.Visibility = Visibility.Collapsed;
+
+        // Show selected
+        switch (index)
+        {
+            case 0:
+                OutputPage.Visibility = Visibility.Visible;
+                break;
+            case 1:
+                AppearancePage.Visibility = Visibility.Visible;
+                break;
+            case 2:
+                BehaviorPage.Visibility = Visibility.Visible;
+                break;
         }
     }
 
@@ -409,6 +496,8 @@ public partial class SettingsWindow
             bool deviceChanged = HandleDeviceChange(out Device selectedDevice);
             HandleThemeChange();
 
+            ApplyBehaviorSettings();
+
             ApplyAudioSettings(outputModeChanged, deviceChanged, selectedOutputMode, selectedDevice);
         }
         catch (Exception ex)
@@ -430,5 +519,157 @@ public partial class SettingsWindow
 
     private void Window_Closing(object sender, EventArgs e)
     {
+    }
+
+    private void LoadBehaviorSettings()
+    {
+        try
+        {
+            _pendingBehavior = new PendingBehaviorSettings
+            {
+                CrossfadeEnabled = _settingsManager.Settings.CrossfadeEnabled,
+                CrossfadeFadeInMs = _settingsManager.Settings.CrossfadeFadeInMs,
+                CrossfadeFadeOutMs = _settingsManager.Settings.CrossfadeFadeOutMs,
+                CrossfadeCurveShape = _settingsManager.Settings.CrossfadeCurveShape,
+                SkipSilenceEnabled = _settingsManager.Settings.SkipSilenceEnabled,
+                SkipSilenceMinimumDurationMs = _settingsManager.Settings.SkipSilenceMinimumDurationMs,
+                SkipSilenceThresholdDb = _settingsManager.Settings.SkipSilenceThresholdDb,
+            };
+
+            if (CrossfadeEnabledCheckBox != null)
+            {
+                CrossfadeEnabledCheckBox.IsChecked = _pendingBehavior.CrossfadeEnabled;
+            }
+
+            if (CrossfadeFadeInSlider != null)
+            {
+                CrossfadeFadeInSlider.Value = _pendingBehavior.CrossfadeFadeInMs;
+            }
+            if (CrossfadeFadeOutSlider != null)
+            {
+                CrossfadeFadeOutSlider.Value = _pendingBehavior.CrossfadeFadeOutMs;
+            }
+
+            if (CrossfadeFadeInCurveCombo != null)
+            {
+                CrossfadeFadeInCurveCombo.SelectedItem = FindFadeCurveComboItem(CrossfadeFadeInCurveCombo, _pendingBehavior.CrossfadeCurveShape);
+            }
+            if (CrossfadeFadeOutCurveCombo != null)
+            {
+                CrossfadeFadeOutCurveCombo.SelectedItem = FindFadeCurveComboItem(CrossfadeFadeOutCurveCombo, _pendingBehavior.CrossfadeCurveShape);
+            }
+
+            if (SkipSilenceEnabledCheckBox != null)
+            {
+                SkipSilenceEnabledCheckBox.IsChecked = _pendingBehavior.SkipSilenceEnabled;
+            }
+            if (SkipSilenceMinDurationSlider != null)
+            {
+                SkipSilenceMinDurationSlider.Value = _pendingBehavior.SkipSilenceMinimumDurationMs;
+            }
+            if (SkipSilenceThresholdSlider != null)
+            {
+                SkipSilenceThresholdSlider.Value = _pendingBehavior.SkipSilenceThresholdDb;
+            }
+
+            UpdateBehaviorTextFields();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading behavior settings");
+        }
+    }
+
+    private static ComboBoxItem? FindFadeCurveComboItem(ComboBox comboBox, FadeCurveShape curve)
+    {
+        foreach (object item in comboBox.Items)
+        {
+            if (item is ComboBoxItem comboItem && comboItem.Content is string content)
+            {
+                if (string.Equals(content, curve.ToString(), StringComparison.OrdinalIgnoreCase))
+                {
+                    return comboItem;
+                }
+            }
+        }
+        return null;
+    }
+
+    private void UpdateBehaviorTextFields()
+    {
+        if (CrossfadeFadeInValueText != null && CrossfadeFadeInSlider != null)
+        {
+            CrossfadeFadeInValueText.Text = ((int)CrossfadeFadeInSlider.Value).ToString();
+        }
+        if (CrossfadeFadeOutValueText != null && CrossfadeFadeOutSlider != null)
+        {
+            CrossfadeFadeOutValueText.Text = ((int)CrossfadeFadeOutSlider.Value).ToString();
+        }
+        if (SkipSilenceMinDurationValueText != null && SkipSilenceMinDurationSlider != null)
+        {
+            SkipSilenceMinDurationValueText.Text = ((int)SkipSilenceMinDurationSlider.Value).ToString();
+        }
+        if (SkipSilenceThresholdValueText != null && SkipSilenceThresholdSlider != null)
+        {
+            SkipSilenceThresholdValueText.Text = ((int)SkipSilenceThresholdSlider.Value).ToString();
+        }
+    }
+
+    private void ApplyBehaviorSettings()
+    {
+        bool crossfadeEnabled = CrossfadeEnabledCheckBox?.IsChecked == true;
+        int fadeInMs = CrossfadeFadeInSlider != null ? (int)CrossfadeFadeInSlider.Value : _settingsManager.Settings.CrossfadeFadeInMs;
+        int fadeOutMs = CrossfadeFadeOutSlider != null ? (int)CrossfadeFadeOutSlider.Value : _settingsManager.Settings.CrossfadeFadeOutMs;
+
+        FadeCurveShape curveShape = _settingsManager.Settings.CrossfadeCurveShape;
+        if (CrossfadeFadeInCurveCombo?.SelectedItem is ComboBoxItem fadeInCurveItem && fadeInCurveItem.Content is string fadeInCurveText && Enum.TryParse(fadeInCurveText, out FadeCurveShape parsedIn))
+        {
+            curveShape = parsedIn;
+        }
+        if (CrossfadeFadeOutCurveCombo?.SelectedItem is ComboBoxItem fadeOutCurveItem && fadeOutCurveItem.Content is string fadeOutCurveText && Enum.TryParse(fadeOutCurveText, out FadeCurveShape parsedOut))
+        {
+            curveShape = parsedOut;
+        }
+
+        bool skipSilenceEnabled = SkipSilenceEnabledCheckBox?.IsChecked == true;
+        int skipMinMs = SkipSilenceMinDurationSlider != null ? (int)SkipSilenceMinDurationSlider.Value : _settingsManager.Settings.SkipSilenceMinimumDurationMs;
+        int skipThresholdDb = SkipSilenceThresholdSlider != null ? (int)SkipSilenceThresholdSlider.Value : _settingsManager.Settings.SkipSilenceThresholdDb;
+
+        _settingsManager.Settings.CrossfadeEnabled = crossfadeEnabled;
+        _settingsManager.Settings.CrossfadeFadeInMs = fadeInMs;
+        _settingsManager.Settings.CrossfadeFadeOutMs = fadeOutMs;
+        _settingsManager.Settings.CrossfadeCurveShape = curveShape;
+
+        _settingsManager.Settings.SkipSilenceEnabled = skipSilenceEnabled;
+        _settingsManager.Settings.SkipSilenceMinimumDurationMs = skipMinMs;
+        _settingsManager.Settings.SkipSilenceThresholdDb = skipThresholdDb;
+
+        _settingsManager.SaveSettings(nameof(AppSettings.CrossfadeEnabled));
+        _settingsManager.SaveSettings(nameof(AppSettings.CrossfadeFadeInMs));
+        _settingsManager.SaveSettings(nameof(AppSettings.CrossfadeFadeOutMs));
+        _settingsManager.SaveSettings(nameof(AppSettings.CrossfadeCurveShape));
+        _settingsManager.SaveSettings(nameof(AppSettings.SkipSilenceEnabled));
+        _settingsManager.SaveSettings(nameof(AppSettings.SkipSilenceMinimumDurationMs));
+        _settingsManager.SaveSettings(nameof(AppSettings.SkipSilenceThresholdDb));
+    }
+
+    private void OnCrossfadeFadeInSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateBehaviorTextFields();
+    }
+
+    private void OnCrossfadeFadeOutSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateBehaviorTextFields();
+    }
+
+    private void OnSkipSilenceMinDurationSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateBehaviorTextFields();
+    }
+
+    private void OnSkipSilenceThresholdSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateBehaviorTextFields();
     }
 }

@@ -1,5 +1,7 @@
 namespace LinkerPlayer.Models;
 
+using LinkerPlayer.Audio;
+
 public class AppSettings
 {
     public bool EqualizerEnabled
@@ -7,13 +9,23 @@ public class AppSettings
         get; set;
     }
     public string EqualizerPresetName { get; set; } = "Flat";
-    public Device SelectedOutputDevice { get; set; } = new Device("Default", OutputDeviceType.DirectSound, -1, true);
+    public Device SelectedOutputDevice { get; set; } = new Device("Primary Sound Driver", OutputDeviceType.DirectSound, -1, true);
     public OutputMode SelectedOutputMode { get; set; } = OutputMode.DirectSound;
     public int SelectedTabIndex { get; set; } = 0;
     public string SelectedTrackId { get; set; } = string.Empty;
     public string SelectedTheme { get; set; } = "Dark";
     public bool ShuffleMode { get; set; } = false;
     public double VolumeSliderValue { get; set; } = 0.0;
+
+    // Crossfade settings
+    public bool CrossfadeEnabled { get; set; } = false;
+    public int CrossfadeFadeInMs { get; set; } = 400;
+    public int CrossfadeFadeOutMs { get; set; } = 400;
+    public FadeCurveShape CrossfadeCurveShape { get; set; } = FadeCurveShape.Cosine;
+
+    // Smooth fade when stopping
+    public bool SmoothStopFadeEnabled { get; set; } = true;
+    public int SmoothStopFadeMs { get; set; } = 150;
 
     // New: Persisted splitter positions
     // Key: logical name (e.g., "MainTrackInfoRows", "PlaylistColumns")
@@ -25,11 +37,11 @@ public class AppSettings
     public List<string> VisibleColumns { get; set; } = new();
     public Dictionary<string, ColumnInfo> ColumnSettings { get; set; } = new();
 
-    // Configurable settings for silence-based auto-advance
-    public double AutoAdvanceTailWindowSeconds { get; set; } = 10.0;
-    public double AutoAdvanceSilenceThresholdDb { get; set; } = -40.0;
-    public double AutoAdvanceSilenceHoldSeconds { get; set; } = 0.75;
-    public double AutoAdvanceHardEndSeconds { get; set; } = 0.5;
+    // New: SkipSilence analysis settings
+    public bool SkipSilenceEnabled { get; set; } = false;
+    public int SkipSilenceMinimumDurationMs { get; set; } = 5000;
+    public int SkipSilenceLeaveInitialMs { get; set; } = 200;
+    public int SkipSilenceThresholdDb { get; set; } = -60;
 
     [Serializable]
     public class ColumnInfo

@@ -5,16 +5,14 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
-using LinkerPlayer.UserControls;
+using LinkerPlayer.Services.Playback;
 using LinkerPlayer.Windows;
 using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PlaylistsNET.Content;
-using System.Collections;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -23,7 +21,6 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Media;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -76,6 +73,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private readonly ISelectionService _selectionService; // new
     private readonly ISharedDataModel _sharedDataModel; // switch to interface
     private readonly ISettingsManager _settingsManager; // restore
+    private readonly IPlaybackCoordinator _playbackCoordinator;
 
     // Expose for legacy consumers if needed
     public ISharedDataModel SharedDataModel => _sharedDataModel;
@@ -86,7 +84,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private bool _shuffleMode;       // shuffle flag
 
     // ADD back filter constants used by dialogs
-    private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
+    private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dsd; *.dsf; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
     private const string SupportedPlaylistFilter = "(*.m3u;*.pls;*.wpl;*.zpl)|*.m3u;*.pls;*.wpl;*.zpl";
     private const string SupportedFilters = $"Audio Formats {SupportedAudioFilter}|Playlist Files {SupportedPlaylistFilter}|All files (*.*)|*.*";
 
@@ -101,7 +99,14 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     public MediaFile? ActiveTrack
     {
         get => _sharedDataModel.ActiveTrack;
-        set { if (!ReferenceEquals(_sharedDataModel.ActiveTrack, value) && value != null) { _sharedDataModel.UpdateActiveTrack(value); OnPropertyChanged(nameof(ActiveTrack)); } }
+        set
+        {
+            if (!ReferenceEquals(_sharedDataModel.ActiveTrack, value))
+            {
+                _sharedDataModel.UpdateActiveTrack(value);
+                OnPropertyChanged(nameof(ActiveTrack));
+            }
+        }
     }
 
     public int SelectedTrackIndex
@@ -145,6 +150,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         IUiDispatcher uiDispatcher,
         IDatabaseSaveService databaseSaveService,
         ISelectionService selectionService,
+        IPlaybackCoordinator playbackCoordinator,
         ILogger<PlaylistTabsViewModel> logger)
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
@@ -156,6 +162,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         _selectionService = selectionService ?? throw new ArgumentNullException(nameof(selectionService));
         _sharedDataModel = sharedDataModel ?? throw new ArgumentNullException(nameof(sharedDataModel));
         _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
+        _playbackCoordinator = playbackCoordinator ?? throw new ArgumentNullException(nameof(playbackCoordinator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         try
@@ -183,6 +190,24 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _logger.LogError(ex, "Error in PlaylistTabsViewModel constructor: {Message}", ex.Message);
             throw;
         }
+
+        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
+        {
+            if (!ReferenceEquals(_sharedDataModel.ActiveTrack, m.Value))
+            {
+                _sharedDataModel.UpdateActiveTrack(m.Value);
+            }
+            OnPropertyChanged(nameof(ActiveTrack));
+            OnPropertyChanged(nameof(State));
+
+            if (_dataGrid != null)
+            {
+                _ = _uiDispatcher.InvokeAsync(() =>
+                {
+                    _dataGrid.Items.Refresh();
+                });
+            }
+        });
     }
 
     private void RegisterMessages()
@@ -334,25 +359,56 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         SelectedPlaylist = GetSelectedPlaylist();
     }
 
-    public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs _)
+    private bool _isSyncingGridSelection;
+
+    public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_isSyncingGridSelection)
+            return;
+
         _dataGrid = sender as DataGrid;
         if (_dataGrid != null && _dataGrid.SelectedItems.Count > 0)
         {
             List<MediaFile> selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
-            _selectionService.SetMultiSelection(selectedTracks);
-            MediaFile selectedTrack = selectedTracks.First();
+
+            // Only treat as multi-selection when the grid is actually in a multi-selected state.
+            if (selectedTracks.Count > 1)
+            {
+                _selectionService.SetMultiSelection(selectedTracks);
+            }
+            else
+            {
+                _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
+            }
+
+            MediaFile selectedTrack = _dataGrid.SelectedItem as MediaFile ?? selectedTracks[0];
             int index = _dataGrid.Items.IndexOf(selectedTrack);
             _selectionService.SetTrack(selectedTrack, index);
             SelectedTrack = selectedTrack; // property updates index in shared model
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+
+            Task refreshTask = Task.Run(async () =>
+             {
+                 try
+                 {
+                     Services.Metadata.ITrackMetadataRefresher refresher = App.AppHost.Services.GetRequiredService<Services.Metadata.ITrackMetadataRefresher>();
+                     LinkerPlayer.Services.Metadata.TrackMetadataRefreshResult refresh = await refresher.RefreshIfChangedAsync(selectedTrack);
+                     if (refresh.WasRefreshed)
+                     {
+                         await _musicLibrary.UpdateTracksAsync(new List<MediaFile> { selectedTrack }, updateMetadata: true, updateAnalysis: false);
+                     }
+                 }
+                 catch { }
+             });
+            _ = refreshTask;
+
+            Playlist? playlist = GetSelectedPlaylist();
+            if (playlist != null)
             {
-                PlaylistTab tab = TabList[SelectedTabIndex];
-                tab.SelectedTrack = SelectedTrack;
-                tab.SelectedIndex = index;
+                playlist.SelectedTrackId = selectedTrack.Id;
+                _databaseSaveService.RequestSave();
             }
-            _settingsManager.Settings.SelectedTrackId = SelectedTrack.Id;
-            _settingsManager.SaveSettings(nameof(AppSettings.SelectedTrackId));
+
+            SyncGridSelection(selectedTrack, index);
         }
         else
         {
@@ -362,81 +418,24 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         }
     }
 
-    public void OnDataGridSorted(string propertyName, ListSortDirection direction)
+    private void SyncGridSelection(MediaFile? track, int index)
     {
-        if (_dataGrid?.SelectedItem is not MediaFile saveSelectedItem)
-        {
+        if (_dataGrid == null)
             return;
-        }
 
         try
         {
-            List<MediaFile> sortedList = TabList[SelectedTabIndex].Tracks.ToList();
-            sortedList.Sort((x, y) =>
-            {
-                object? propX = x.GetType().GetProperty(propertyName)?.GetValue(x);
-                object? propY = y.GetType().GetProperty(propertyName)?.GetValue(y);
+            _isSyncingGridSelection = true;
 
-                if (propX == null && propY == null)
-                {
-                    return 0;
-                }
+            if (!ReferenceEquals(_dataGrid.SelectedItem, track))
+                _dataGrid.SelectedItem = track;
 
-                if (propX == null)
-                {
-                    return direction == ListSortDirection.Ascending ? -1 : 1;
-                }
-
-                if (propY == null)
-                {
-                    return direction == ListSortDirection.Ascending ? 1 : -1;
-                }
-
-                int comparison = Comparer.Default.Compare(propX, propY);
-                return direction == ListSortDirection.Ascending ? comparison : -comparison;
-            });
-
-            // Update the collection
-            TabList[SelectedTabIndex].Tracks.Clear();
-            foreach (MediaFile track in sortedList)
-            {
-                TabList[SelectedTabIndex].Tracks.Add(track);
-            }
-
-            // Restore selection (no ItemsSource override)
-            int newSelectedIndex = TabList[SelectedTabIndex].Tracks.ToList()
-                .FindIndex(t => t.FileName.Equals(saveSelectedItem.FileName, StringComparison.OrdinalIgnoreCase));
-
-            if (newSelectedIndex >= 0)
-            {
-                _dataGrid.SelectedIndex = newSelectedIndex;
-                SelectedTrackIndex = newSelectedIndex;
-                SelectedTrack = _dataGrid.SelectedItem as MediaFile;
-
-                if (SelectedTrack != null)
-                {
-                    _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = SelectedTrack.Id;
-                }
-            }
-
-            _dataGrid.Items.Refresh(); // Keep this for sorting - needed to update view
-
-            // Scroll into view at lower priority
-            _dataGrid.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem ?? SelectFirstTrack());
-            }), System.Windows.Threading.DispatcherPriority.Background);
-
-            // Reinitialize shuffle if enabled
-            if (_shuffleMode)
-            {
-                OnShuffleChanged(_shuffleMode);
-            }
-
+            if (_dataGrid.SelectedIndex != index)
+                _dataGrid.SelectedIndex = index;
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogError(ex, "Error sorting DataGrid by {PropertyName}", propertyName);
+            _isSyncingGridSelection = false;
         }
     }
 
@@ -444,30 +443,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     {
         if (_dataGrid?.SelectedItem is not MediaFile selectedTrack)
             return;
-
-        // Clear any existing Playing states so the Play icon is removed from previous rows
-        try
-        {
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-            {
-                foreach (MediaFile t in TabList[SelectedTabIndex].Tracks)
-                {
-                    if (t.State == PlaybackState.Playing)
-                    {
-                        t.State = PlaybackState.Stopped;
-                    }
-                }
-            }
-
-            foreach (MediaFile lib in _musicLibrary.MainLibrary)
-            {
-                if (lib.State == PlaybackState.Playing)
-                {
-                    lib.State = PlaybackState.Stopped;
-                }
-            }
-        }
-        catch { }
 
         // Update selection and persist selected track id
         SelectedTrack = selectedTrack;
@@ -705,6 +680,34 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
                 List<MediaFile> importedTracks = await _fileImportService.ImportFolderAsync(folderDialog.FolderName, progress);
 
+                if (importedTracks.Any() && _settingsManager.Settings.SkipSilenceEnabled)
+                {
+                    Services.Analysis.ITrackSilenceAnalyzer analyzer = App.AppHost.Services.GetRequiredService<Services.Analysis.ITrackSilenceAnalyzer>();
+
+                    await Task.Run(async () =>
+                    {
+                        List<MediaFile> updated = new List<MediaFile>();
+                        foreach (MediaFile track in importedTracks)
+                        {
+                            try
+                            {
+                                Services.Analysis.TrackSilenceAnalysisResult result = await analyzer.AnalyzeAsync(track);
+                                track.LeadingSilenceMs = result.LeadingSilenceMs;
+                                track.TrailingSilenceMs = result.TrailingSilenceMs;
+                                updated.Add(track);
+                            }
+                            catch
+                            {
+                            }
+                        }
+
+                        if (updated.Count > 0)
+                        {
+                            await _musicLibrary.UpdateTracksAsync(updated, updateMetadata: false, updateAnalysis: true);
+                        }
+                    });
+                }
+
                 if (importedTracks.Any())
                 {
                     bool success = await _playlistManagerService.AddTracksToPlaylistAsync(SelectedPlaylist!.Name, importedTracks);
@@ -752,6 +755,34 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 });
 
                 List<MediaFile> importedTracks = await _fileImportService.ImportFilesAsync(openFileDialog.FileNames, progress);
+
+                if (importedTracks.Any() && _settingsManager.Settings.SkipSilenceEnabled)
+                {
+                    Services.Analysis.ITrackSilenceAnalyzer analyzer = App.AppHost.Services.GetRequiredService<Services.Analysis.ITrackSilenceAnalyzer>();
+
+                    await Task.Run(async () =>
+                    {
+                        List<MediaFile> updated = new List<MediaFile>();
+                        foreach (MediaFile track in importedTracks)
+                        {
+                            try
+                            {
+                                Services.Analysis.TrackSilenceAnalysisResult result = await analyzer.AnalyzeAsync(track);
+                                track.LeadingSilenceMs = result.LeadingSilenceMs;
+                                track.TrailingSilenceMs = result.TrailingSilenceMs;
+                                updated.Add(track);
+                            }
+                            catch
+                            {
+                            }
+                        }
+
+                        if (updated.Count > 0)
+                        {
+                            await _musicLibrary.UpdateTracksAsync(updated, updateMetadata: false, updateAnalysis: true);
+                        }
+                    });
+                }
 
                 if (importedTracks.Any() && SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
                 {
@@ -931,6 +962,136 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     }
 
     [RelayCommand]
+    private async Task AnalyzeSilence()
+    {
+        if (_dataGrid == null)
+        {
+            return;
+        }
+
+        List<MediaFile> targets = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
+        IReadOnlyList<MediaFile> multiSelection = _selectionService.MultiSelection;
+        if (targets.Count == 0 && multiSelection.Count > 0)
+        {
+            targets = multiSelection.ToList();
+        }
+
+        if (targets.Count == 0 && _dataGrid.SelectedItem is MediaFile single)
+        {
+            targets = new List<MediaFile> { single };
+        }
+
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _analyzeSilenceCts?.Cancel();
+            _analyzeSilenceCts?.Dispose();
+        }
+        catch
+        {
+        }
+        _analyzeSilenceCts = new CancellationTokenSource();
+        CancellationToken cancellationToken = _analyzeSilenceCts.Token;
+
+        await _uiDispatcher.InvokeAsync(() =>
+        {
+            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(new ProgressData
+            {
+                IsProcessing = true,
+                ProcessedTracks = 0,
+                TotalTracks = targets.Count,
+                Status = "Analyzing silence..."
+            }));
+        });
+
+        Services.Analysis.ITrackSilenceAnalyzer analyzer = App.AppHost.Services.GetRequiredService<Services.Analysis.ITrackSilenceAnalyzer>();
+
+        await Task.Run(async () =>
+         {
+             List<MediaFile> updated = new List<MediaFile>();
+             int processed = 0;
+             foreach (MediaFile track in targets)
+             {
+                 if (cancellationToken.IsCancellationRequested)
+                 {
+                     break;
+                 }
+
+                 try
+                 {
+                     Services.Analysis.TrackSilenceAnalysisResult result = await analyzer.AnalyzeAsync(track, cancellationToken);
+                     track.LeadingSilenceMs = result.LeadingSilenceMs;
+                     track.TrailingSilenceMs = result.TrailingSilenceMs;
+                     updated.Add(track);
+                 }
+                 catch
+                 {
+                 }
+
+                 processed++;
+                 await _uiDispatcher.InvokeAsync(() =>
+                 {
+                     WeakReferenceMessenger.Default.Send(new ProgressValueMessage(new ProgressData
+                     {
+                         IsProcessing = true,
+                         ProcessedTracks = processed,
+                         TotalTracks = targets.Count,
+                         Status = cancellationToken.IsCancellationRequested ? "Canceling..." : "Analyzing silence..."
+                     }));
+                 });
+             }
+
+             if (updated.Count > 0)
+             {
+                 await _musicLibrary.UpdateTracksAsync(updated, updateMetadata: false, updateAnalysis: true);
+             }
+         }, cancellationToken);
+
+        await _uiDispatcher.InvokeAsync(() =>
+        {
+            WeakReferenceMessenger.Default.Send(new ProgressValueMessage(new ProgressData
+            {
+                IsProcessing = false,
+                ProcessedTracks = 0,
+                TotalTracks = 1,
+                Status = string.Empty
+            }));
+        });
+    }
+
+    [RelayCommand]
+    private async Task ClearSilenceAnalysis()
+    {
+        if (_dataGrid == null)
+        {
+            return;
+        }
+
+        List<MediaFile> targets = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
+        if (targets.Count == 0 && _dataGrid.SelectedItem is MediaFile single)
+        {
+            targets = new List<MediaFile> { single };
+        }
+
+        if (targets.Count == 0)
+        {
+            return;
+        }
+
+        foreach (MediaFile track in targets)
+        {
+            track.LeadingSilenceMs = null;
+            track.TrailingSilenceMs = null;
+        }
+
+        await _musicLibrary.UpdateTracksAsync(targets, updateMetadata: false, updateAnalysis: true);
+    }
+
+    [RelayCommand]
     private void PlayTrack()
     {
         if (_dataGrid?.SelectedItem is MediaFile selectedTrack)
@@ -997,30 +1158,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private void OnPlaybackStateChanged(PlaybackState state)
     {
         State = state;
-        // Update ActiveTrack state
-        if (ActiveTrack != null)
-        {
-            ActiveTrack.State = state;
-            // Propagate to the instance inside the current tab (if different reference)
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-            {
-                MediaFile? trackInTab = TabList[SelectedTabIndex].Tracks.FirstOrDefault(t => t.Id == ActiveTrack.Id);
-                if (trackInTab != null && !ReferenceEquals(trackInTab, ActiveTrack))
-                {
-                    trackInTab.State = state;
-                }
-            }
-        }
-        else if (SelectedTrack != null)
-        {
-            // Fallback: ensure SelectedTrack reflects playback state
-            SelectedTrack.State = state;
-        }
-        // Ensure SelectedTrack mirrors state if both are set but differ
-        if (SelectedTrack != null && ActiveTrack != null && SelectedTrack.Id == ActiveTrack.Id && !ReferenceEquals(SelectedTrack, ActiveTrack))
-        {
-            SelectedTrack.State = state;
-        }
+        OnPropertyChanged(nameof(State));
+        OnPropertyChanged(nameof(ActiveTrack));
     }
 
     private Playlist? GetSelectedPlaylist()
@@ -1031,12 +1170,15 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             return null;
         }
         SelectedTab = TabList[SelectedTabIndex];
-        SelectedPlaylist = _musicLibrary.Playlists.FirstOrDefault(x => x.Name == SelectedTab.Name);
-        if (SelectedPlaylist == null)
+        Playlist? resolved = _musicLibrary.Playlists.FirstOrDefault(x => x.Name == SelectedTab.Name);
+        if (resolved == null)
         {
             _logger.LogWarning("GetSelectedPlaylist: Playlist '{TabName}' not found in _musicLibrary.Playlists", SelectedTab.Name);
+            // Keep existing SelectedPlaylist (if any). UI selection still works via SelectedTab/Tracks.
             return null;
         }
+
+        SelectedPlaylist = resolved;
         if (SelectedTab.Tracks.Any())
         {
             string? selectedTrackId = SelectedPlaylist.SelectedTrackId;
@@ -1387,8 +1529,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
             string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
             HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
-            ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
+              { ".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4k", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
             string? bestPath = null;
             int bestScore = int.MaxValue;
             foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
@@ -1430,8 +1571,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
             string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
             HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-            { ".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4k", ".mka", ".mp4", ".mpc",
-            ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
+              { ".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4k", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
             string? bestPath = null;
             int bestScore = int.MaxValue;
             foreach (string file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
@@ -1510,44 +1650,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 SelectedTabIndex = TabList.Count - 1;
             });
         }
-    }
-
-    private MediaFile NavigateToTrack(IList<MediaFile> tracks, int newIndex)
-    {
-        if (newIndex < 0 || newIndex >= tracks.Count)
-        {
-            _logger.LogError("Invalid track index: {NewIndex} (Total tracks: {TotalTracks})", newIndex, tracks.Count);
-            return SelectFirstTrack()!;
-        }
-
-        MediaFile newTrack = tracks[newIndex];
-
-        // Update track state
-        newTrack.State = PlaybackState.Playing;
-
-        // Update UI selection
-        SelectedTrack = newTrack; // triggers selection service
-        SelectedTrackIndex = newIndex;
-        ActiveTrack = newTrack;
-
-        // Update library state
-        MediaFile? libraryTrack = _musicLibrary.MainLibrary.FirstOrDefault(x => x.Id == newTrack.Id);
-        if (libraryTrack != null)
-        {
-            libraryTrack.State = PlaybackState.Playing;
-        }
-
-        // Update playlist state
-        if (SelectedTabIndex >= 0 && SelectedTabIndex < _musicLibrary.Playlists.Count)
-        {
-            _musicLibrary.Playlists[SelectedTabIndex].SelectedTrackId = newTrack.Id;
-        }
-
-        // Update UI
-        _dataGrid!.SelectedIndex = newIndex;
-        _dataGrid.ScrollIntoView(newTrack);
-
-        return newTrack;
     }
 
     private void OnShuffleChanged(bool shuffle)
@@ -1805,168 +1907,17 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         }
     }
 
-    // PlayerControlsViewModel helpers
-    public MediaFile? PreviousMediaFile()
-    {
-        try
-        {
-            if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
-            {
-                _logger.LogWarning("PreviousMediaFile: Invalid SelectedTabIndex {Index} (TabList count: {Count})",
-                    SelectedTabIndex, TabList.Count);
-                return null;
-            }
-
-            PlaylistTab tab = TabList[SelectedTabIndex];
-
-            if (tab?.Tracks == null || !tab.Tracks.Any())
-            {
-                _logger.LogWarning("PreviousMediaFile: No tracks available in TabList for tab {Index}",
-                    SelectedTabIndex);
-                return null;
-            }
-
-            List<MediaFile> currentTracks = tab.Tracks.ToList();
-            int currentIndex = SelectedTrackIndex;
-
-            if (currentIndex < 0 || currentIndex >= currentTracks.Count)
-            {
-                _logger.LogWarning("PreviousMediaFile: Invalid current track index {Index}", currentIndex);
-                currentIndex = 0;
-            }
-
-            int previousIndex = _trackNavigationService.GetPreviousTrackIndex(currentTracks, currentIndex, _shuffleMode);
-
-            if (previousIndex < 0 || previousIndex >= currentTracks.Count)
-            {
-                _logger.LogError("PreviousMediaFile: Invalid previous track index {Index}", previousIndex);
-                return null;
-            }
-
-            return NavigateToTrack(currentTracks, previousIndex);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting previous media file");
-            return null;
-        }
-    }
-
-    public MediaFile? NextMediaFile()
-    {
-        try
-        {
-            if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
-            {
-                _logger.LogWarning("NextMediaFile: Invalid SelectedTabIndex {Index} (TabList count: {Count})",
-                    SelectedTabIndex, TabList.Count);
-                return null;
-            }
-
-            PlaylistTab tab = TabList[SelectedTabIndex];
-
-            if (tab?.Tracks == null || !tab.Tracks.Any())
-            {
-                _logger.LogWarning("NextMediaFile: No tracks available in TabList for tab {Index}",
-                    SelectedTabIndex);
-                return null;
-            }
-
-            List<MediaFile> currentTracks = tab.Tracks.ToList();
-            int currentIndex = SelectedTrackIndex;
-
-            if (currentIndex < 0 || currentIndex >= currentTracks.Count)
-            {
-                _logger.LogWarning("NextMediaFile: Invalid current track index {Index}", currentIndex);
-                currentIndex = 0;
-            }
-
-            int nextIndex = _trackNavigationService.GetNextTrackIndex(currentTracks, currentIndex, _shuffleMode);
-
-            if (nextIndex < 0 || nextIndex >= currentTracks.Count)
-            {
-                _logger.LogError("NextMediaFile: Invalid next track index {Index}", nextIndex);
-                return null;
-            }
-
-            return NavigateToTrack(currentTracks, nextIndex);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting next media file");
-            return null;
-        }
-    }
+    private CancellationTokenSource? _analyzeSilenceCts;
 
     [RelayCommand]
-    private void BeginRenameTab(PlaylistTab tab)
+    private void CancelAnalyzeSilence()
     {
-        if (tab == null)
+        try
         {
-            return;
+            _analyzeSilenceCts?.Cancel();
         }
-        // Find the EditableTabHeaderControl for this tab and set edit mode
-        Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+        catch
         {
-            foreach (Window window in Application.Current.Windows)
-            {
-                foreach (TabControl? tabControl in FindVisualChildren<TabControl>(window))
-                {
-                    foreach (TabItem? tabItem in FindVisualChildren<TabItem>(tabControl))
-                    {
-                        if (tabItem.DataContext == tab)
-                        {
-                            EditableTabHeaderControl? header = FindVisualChild<EditableTabHeaderControl>(tabItem);
-                            if (header != null)
-                            {
-                                header.SetEditMode(true);
-                                return;
-                            }
-                        }
-                    }
-                }
-            }
-        }), System.Windows.Threading.DispatcherPriority.Background);
-    }
-
-    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject depObj) where T : DependencyObject
-    {
-        if (depObj != null)
-        {
-            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-            {
-                DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-                if (child != null)
-                {
-                    if (child is T t)
-                    {
-                        yield return t;
-                    }
-
-                    foreach (T childOfChild in FindVisualChildren<T>(child))
-                    {
-                        yield return childOfChild;
-                    }
-                }
-            }
         }
-    }
-
-    private static T? FindVisualChild<T>(DependencyObject depObj) where T : DependencyObject
-    {
-        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(depObj); i++)
-        {
-            DependencyObject child = VisualTreeHelper.GetChild(depObj, i);
-            if (child is T t)
-            {
-                return t;
-            }
-            T? childOfChild = FindVisualChild<T>(child);
-            if (childOfChild != null)
-            {
-                return childOfChild;
-            }
-        }
-        return null;
     }
 }

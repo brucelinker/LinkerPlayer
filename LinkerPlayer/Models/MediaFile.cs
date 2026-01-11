@@ -133,6 +133,18 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private string _codec = string.Empty;
 
+    [ObservableProperty]
+    private int? _leadingSilenceMs;
+
+    [ObservableProperty]
+    private int? _trailingSilenceMs;
+
+    [ObservableProperty]
+    private DateTime? _fileLastWriteTimeUtc;
+
+    [ObservableProperty]
+    private DateTime? _lastMetadataRefreshUtc;
+
     [NotMapped]
     [ObservableProperty]
     private BitmapImage? _albumCover;
@@ -215,9 +227,13 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 Duration = TimeSpan.FromSeconds(1);
             }
 
+            // Silence offsets are persisted in the database (LeadingSilenceMs/TrailingSilenceMs).
+            // Do not infer them from file metadata during a tag refresh.
+
             if (raisePropertyChanged)
             {
-                ValidateAllProperties();
+                // ValidateAllProperties() can throw due to duplicated generated validators (e.g. duplicate key 'Id').
+                // MediaFile is primarily a data model; avoid full validation during metadata refresh to prevent runtime crashes.
             }
         }
         catch (TagLib.CorruptFileException ex)
@@ -265,7 +281,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
         if (raisePropertyChanged)
         {
-            ValidateAllProperties();
+            // See note in UpdateFromFileMetadata about avoiding ValidateAllProperties() runtime crashes.
         }
     }
 

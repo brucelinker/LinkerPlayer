@@ -16,7 +16,7 @@ public interface ISharedDataModel : INotifyPropertyChanged
     event NotifyCollectionChangedEventHandler SelectedTracksChanged;
     void UpdateSelectedTrackIndex(int newIndex);
     void UpdateSelectedTrack(MediaFile track);
-    void UpdateActiveTrack(MediaFile track);
+    void UpdateActiveTrack(MediaFile? track);
     void UpdateSelectedTracks(IEnumerable<MediaFile> tracks);
 }
 
@@ -51,7 +51,7 @@ public partial class SharedDataModel : ObservableRecipient, ISharedDataModel
 
     public void UpdateSelectedTrackIndex(int newIndex) => SafeUiInvoke(() => SelectedTrackIndex = newIndex);
     public void UpdateSelectedTrack(MediaFile track) => SafeUiInvoke(() => SelectedTrack = track);
-    public void UpdateActiveTrack(MediaFile track) => SafeUiInvoke(() => ActiveTrack = track);
+    public void UpdateActiveTrack(MediaFile? track) => SafeUiInvoke(() => ActiveTrack = track);
     public void UpdateSelectedTracks(IEnumerable<MediaFile> tracks) => SafeUiInvoke(() =>
     {
         _selectedTracksMutable.Clear();

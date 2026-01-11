@@ -49,7 +49,7 @@ public class FileImportService : IFileImportService
 {
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<FileImportService> _logger;
-    //private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dts", ".m4a", ".mp4", ".ofr", ".ogg", ".wma", ".wv"];
+    //private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mp4", ".ofr", ".ogg", ".wma", ".wv"];
 
 
     public FileImportService(IMusicLibrary musicLibrary, ILogger<FileImportService> logger)
