@@ -125,6 +125,13 @@ public partial class TrackInfo
         {
             SelectedMediaFile = mediaFile;
 
+            // Ensure VuMeter always reflects the current channel count
+            if (FindName("VuMeter") is VuMeter vuMeter && _audioEngine != null)
+            {
+                vuMeter.ChannelCount = _audioEngine.ChannelCount;
+                vuMeter.SafeUpdateLayout();
+            }
+
             if (mediaFile.AlbumCover == null)
             {
                 await System.Threading.Tasks.Task.Run(() =>

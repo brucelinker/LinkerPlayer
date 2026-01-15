@@ -548,7 +548,7 @@
     <Setter Property="GradientEndColor" Value="{DynamicResource SpectrumEndColor}" />
     <Setter Property="ClippingColor" Value="Red" />
     <Setter Property="PeakBrush" Value="{DynamicResource SpectrumPeakBrush}" />
-    <Setter Property="ScaleBrush" Value="{DynamicResource DefaultForegroundBrush}" />
+        <Setter Property="ScaleBrush" Value="{DynamicResource ControlForegroundBrush}" />
     <!--  VU Meter Thresholds (in dB)  -->
     <Setter Property="WarningThreshold" Value="-6" />
     <!--  Warning threshold (currently unused)  -->

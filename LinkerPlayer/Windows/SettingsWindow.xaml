@@ -214,7 +214,7 @@
               Style="{StaticResource CustomComboBoxStyle}">
               <!-- <ComboBox.ItemTemplate>
                 <StaticResource ResourceKey="DeviceNameTemplate"/>
-              </ComboBox.ItemTemplate> -->
+              </ComboBox.ItemTemplate>-->
             </ComboBox>
           </Grid>
 
@@ -399,7 +399,7 @@
               <ComboBox
                 x:Name="CrossfadeFadeOutCurveCombo"
                 Width="90"
-                  Height="20"
+                Height="20"
                 SelectedIndex="0"
                 Style="{StaticResource CustomComboBoxStyle}">
                 <ComboBoxItem Content="Off" />

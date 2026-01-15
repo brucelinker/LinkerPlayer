@@ -10,6 +10,12 @@ using System.Windows.Threading;
 namespace LinkerPlayer.Audio;
 
 // Optional interface for future multi-channel engine support
+
+// L Left R Right [Stereo]
+// FL Front Left FR Front Right SL Surround Left SR Surround Right [QUAD]
+// FL Front Left FR Front Right FC Front Center LFE Low-Frequency Effects SL Surround Left SR Surround Right [5.1]
+// FL Front Left FR Front Right FC Front Center LFE Low-Frequency Effects SL Surround Left SR Surround Right SBL Surround Back Left SBR Surround Back Right [7.1]
+
 public interface IChannelLevelProvider
 {
     bool TryGetChannelDecibelLevels(out double[] levels); // levels length = channel count, dB values
@@ -258,6 +264,7 @@ public partial class VuMeter : Control
         if (soundPlayer is AudioEngine audioEngine)
         {
             _audioEngine = audioEngine;
+            // Channel count will be updated via PropertyChanged when a file loads
         }
 
         if (_soundPlayer != null)
@@ -273,7 +280,7 @@ public partial class VuMeter : Control
             {
                 StopTimer();
             }
-            _logger.LogInformation("VuMeter: Registered sound player");
+            _logger.LogDebug("VuMeter: Registered sound player");
         }
     }
 
@@ -296,7 +303,7 @@ public partial class VuMeter : Control
                 }
             }
             UpdateVuBars();
-            _logger.LogInformation("VuMeter: Sound player unregistered");
+            _logger.LogDebug("VuMeter: Sound player unregistered");
         }
     }
     #endregion
@@ -332,8 +339,7 @@ public partial class VuMeter : Control
     }
     #endregion
 
-    #region Private Layout / Update Methods
-    private void SafeUpdateLayout()
+    public void SafeUpdateLayout()
     {
         if (_isShuttingDown)
         {
@@ -348,6 +354,7 @@ public partial class VuMeter : Control
         UpdateVuLayout();
     }
 
+    #region Private Layout / Update Methods
     private void UpdateVuLayout()
     {
         if (_vuCanvas == null || _vuCanvas.RenderSize.Width < 1 || _vuCanvas.RenderSize.Height < 1)
@@ -367,10 +374,10 @@ public partial class VuMeter : Control
         double canvasHeight = _vuCanvas.RenderSize.Height;
         double labelHeight = ShowLabels ? 15.0 : 0.0;
         double availableHeight = canvasHeight - labelHeight;
-        double channelHeightDynamic = (availableHeight - ChannelSpacing * (_channelCount - 1)) / _channelCount;
-        // Remove cap so each channel uses full proportional height
-        double perChannelHeight = channelHeightDynamic;
-
+        double perChannelHeight = (_channelCount > 0)
+            ? (availableHeight - ChannelSpacing * (_channelCount - 1)) / _channelCount
+            : 0;
+        // Always use dynamic per-channel height, ignore ChannelHeight property
         CreateChannelBars(canvasWidth, perChannelHeight);
 
         if (ShowLabels)
@@ -387,10 +394,13 @@ public partial class VuMeter : Control
             return;
         }
 
+        double labelWidth = ShowLabels ? 30.0 : 0.0;
+        double availableBarWidth = canvasWidth - labelWidth;
+
         // Create dB scale markings from -60dB to +10dB in 10dB increments
         for (double db = MinDbValue; db <= MaxDbValue; db += 10)
         {
-            double position = (db - MinDbValue) / DbRange * canvasWidth;
+            double position = labelWidth + (db - MinDbValue) / DbRange * availableBarWidth;
 
             // Create tick mark
             Line tickLine = new Line
@@ -420,6 +430,19 @@ public partial class VuMeter : Control
     private void CreateChannelBars(double canvasWidth, double channelHeight)
     {
         _channelBars.Clear();
+        string[] labels = _channelCount switch
+        {
+            2 => new[] { "L", "R" },
+            4 => new[] { "FL", "FR", "SL", "SR" },
+            6 => new[] { "FL", "FR", "FC", "LFE", "SL", "SR" },
+            8 => new[] { "FL", "FR", "FC", "LFE", "BL", "BR", "SL", "SR" },
+            _ => Enumerable.Range(1, _channelCount).Select(i => $"Ch{i}").ToArray()
+        };
+
+        // Reserve space for labels on the left
+        double labelWidth = ShowLabels ? 30.0 : 0.0;
+        double barStartX = labelWidth;
+
         for (int i = 0; i < _channelCount; i++)
         {
             Rectangle bar = new Rectangle
@@ -429,14 +452,14 @@ public partial class VuMeter : Control
                 Fill = _baseGradient
             };
             double top = i * (channelHeight + ChannelSpacing);
-            Canvas.SetLeft(bar, 0);
+            Canvas.SetLeft(bar, barStartX);
             Canvas.SetTop(bar, top);
             _vuCanvas!.Children.Add(bar);
             _channelBars.Add(bar);
 
             if (ShowLabels)
             {
-                string labelText = _channelCount == 2 ? (i == 0 ? "L" : "R") : $"Ch{i + 1}";
+                string labelText = i < labels.Length ? labels[i] : $"Ch{i + 1}";
                 TextBlock channelLabel = new TextBlock
                 {
                     Text = labelText,
@@ -444,7 +467,7 @@ public partial class VuMeter : Control
                     Foreground = ScaleBrush,
                     FontWeight = FontWeights.Bold
                 };
-                Canvas.SetLeft(channelLabel, -25);
+                Canvas.SetLeft(channelLabel, 2); // Small padding from left edge
                 Canvas.SetTop(channelLabel, top + (channelHeight / 2) - 6);
                 _vuCanvas.Children.Add(channelLabel);
             }
@@ -474,6 +497,9 @@ public partial class VuMeter : Control
         }
 
         double canvasWidth = _vuCanvas.RenderSize.Width;
+        double labelWidth = ShowLabels ? 30.0 : 0.0;
+        double availableBarWidth = canvasWidth - labelWidth;
+
         double[] levels;
         lock (_lockObject)
         {
@@ -483,7 +509,7 @@ public partial class VuMeter : Control
         for (int i = 0; i < count; i++)
         {
             double level = levels[i];
-            double width = System.Math.Max(0, System.Math.Min(canvasWidth, (level - MinDbValue) / DbRange * canvasWidth));
+            double width = System.Math.Max(0, System.Math.Min(availableBarWidth, (level - MinDbValue) / DbRange * availableBarWidth));
             Rectangle bar = _channelBars[i];
             bar.Width = width;
         }
@@ -577,6 +603,25 @@ public partial class VuMeter : Control
                     }
                 }
                 UpdateVuBars();
+            }
+        }
+
+        // Listen for ChannelCount changes from AudioEngine (when new tracks load with different channel counts)
+        if (e.PropertyName == nameof(AudioEngine.ChannelCount) && _audioEngine != null)
+        {
+            // PropertyChanged may fire from a background thread, so marshal to UI thread
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => SoundPlayer_PropertyChanged(sender, e)));
+                return;
+            }
+
+            int newChannelCount = _audioEngine.ChannelCount;
+            if (newChannelCount != ChannelCount && newChannelCount > 0)
+            {
+                _logger.LogDebug("VuMeter: AudioEngine channel count changed from {OldCount} to {NewCount}", ChannelCount, newChannelCount);
+                ChannelCount = newChannelCount;
+                SafeUpdateLayout();
             }
         }
     }

@@ -77,14 +77,11 @@ public class SelectionService : ISelectionService
             }
 
             _logger.LogDebug(
-                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> {NewId}@{NewIndex} (PrevTitle='{PrevTitle}', NewTitle='{NewTitle}')\nCaller: {Stack}",
+                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> {NewId}@{NewIndex}",
                 previous?.Id ?? "null",
                 previousIndex,
                 track.Id,
-                index,
-                previous?.Title ?? "null",
-                track.Title ?? "null",
-                Environment.StackTrace);
+                index);
 
             _shared.UpdateSelectedTrack(track);
             _shared.UpdateSelectedTrackIndex(index);
@@ -97,11 +94,9 @@ public class SelectionService : ISelectionService
             }
 
             _logger.LogDebug(
-                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> null@-1 (PrevTitle='{PrevTitle}')\nCaller: {Stack}",
+                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> null@-1",
                 previous?.Id ?? "null",
-                previousIndex,
-                previous?.Title ?? "null",
-                Environment.StackTrace);
+                previousIndex);
 
             _shared.UpdateSelectedTrackIndex(-1);
             _shared.UpdateSelectedTrack(null!);

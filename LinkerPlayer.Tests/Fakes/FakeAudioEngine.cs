@@ -5,7 +5,7 @@ using System.ComponentModel;
 
 namespace LinkerPlayer.Tests.Fakes;
 
-public sealed class FakeAudioEngine : IAudioEngine
+public sealed class FakeAudioEngine : IAudioEngine, IChannelLevelProvider
 {
     private bool _disposed;
 
@@ -198,5 +198,24 @@ public sealed class FakeAudioEngine : IAudioEngine
         }
 
         _disposed = true;
+    }
+
+    public int ChannelCount { get; set; } = 2;
+
+    public bool TryGetChannelDecibelLevels(out double[] levels)
+    {
+        // For testing, simulate all channels at -10 dB except the first two, which oscillate for visual feedback
+        levels = new double[ChannelCount];
+        double t = (DateTime.Now.Millisecond % 1000) / 1000.0;
+        for (int i = 0; i < ChannelCount; i++)
+        {
+            if (i == 0)
+                levels[i] = -10 + 10 * Math.Sin(2 * Math.PI * t);
+            else if (i == 1)
+                levels[i] = -10 + 10 * Math.Cos(2 * Math.PI * t);
+            else
+                levels[i] = -10;
+        }
+        return true;
     }
 }

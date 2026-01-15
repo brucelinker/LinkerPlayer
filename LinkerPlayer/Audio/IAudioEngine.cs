@@ -58,4 +58,7 @@ public interface IAudioEngine : ISpectrumPlayer, System.IDisposable
 
     bool TryBeginCrossfade(string nextTrackPath, double nextTrackStartSeconds, int fadeOutMs, int fadeInMs, FadeCurveShape curveShape);
     bool TryFadeOutAndStop(int fadeOutMs, FadeCurveShape curveShape);
+
+    // Number of output channels (e.g., 2=stereo, 6=5.1, 8=7.1)
+    int ChannelCount { get; }
 }

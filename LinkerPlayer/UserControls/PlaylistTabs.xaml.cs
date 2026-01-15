@@ -462,7 +462,7 @@ public partial class PlaylistTabs
     {
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
-            _logger.LogInformation("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
+            _logger.LogDebug("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
             viewModel.LoadPlaylistTabs();
 
             Dispatcher.BeginInvoke(new Action(() =>
@@ -477,7 +477,7 @@ public partial class PlaylistTabs
 
             Dispatcher.BeginInvoke(async () =>
             {
-                _logger.LogInformation("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks lazily");
+                _logger.LogDebug("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks lazily");
                 if (viewModel.TabList.Any())
                 {
                     await viewModel.LoadSelectedPlaylistTracksAsync();
@@ -490,7 +490,7 @@ public partial class PlaylistTabs
 
             Dispatcher.BeginInvoke(async () =>
             {
-                _logger.LogInformation("PlaylistTabs_Loaded: PHASE 3 - Loading other playlists in background");
+                _logger.LogDebug("PlaylistTabs_Loaded: PHASE 3 - Loading other playlists in background");
                 await viewModel.LoadOtherPlaylistTracksAsync();
             }, DispatcherPriority.Background);
         }

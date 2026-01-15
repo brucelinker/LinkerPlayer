@@ -13,7 +13,7 @@ using System.Runtime.InteropServices;
 
 namespace LinkerPlayer.Audio;
 
-public partial class AudioEngine : ObservableObject, IAudioEngine
+public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevelProvider
 {
     private readonly IOutputDeviceManager _outputDeviceManager;
     private readonly ISettingsManager _settingsManager;
@@ -303,6 +303,8 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
         WeakReferenceMessenger.Default.Send(new OutputModeChangedMessage(_currentMode));
     }
 
+    [ObservableProperty] private int _channelCount = 2;
+
     public void LoadAudioFile(string pathToMusic)
     {
         lock (_engineSync)
@@ -337,7 +339,19 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                 if (_currentMode == OutputMode.DirectSound)
                 {
                     mixerFreq = _sampleRate > 0 ? _sampleRate : 44100;
-                    mixerChans = 2;
+
+                    // Detect channel count from audio file
+                    int tempDecodeStream = Bass.CreateStream(pathToMusic, 0, 0, Flags: BassFlags.Decode);
+                    if (tempDecodeStream != 0)
+                    {
+                        Bass.ChannelGetInfo(tempDecodeStream, out ChannelInfo tempDecodeInfo);
+                        mixerChans = tempDecodeInfo.Channels;
+                        Bass.StreamFree(tempDecodeStream);
+                    }
+                    else
+                    {
+                        mixerChans = 2; // fallback to stereo
+                    }
                 }
                 else
                 {
@@ -361,6 +375,11 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
                 Bass.ChannelGetInfo(_decodeStream, out ChannelInfo decodeInfo);
                 int decodeChans = decodeInfo.Channels;
+
+                // Set channel count - this will fire PropertyChanged via ObservableProperty
+                int oldChannelCount = ChannelCount; // Capture old value before setting
+                ChannelCount = decodeChans;
+                _logger.LogDebug("AudioEngine: Set ChannelCount to {ChannelCount} (was {OldCount})", decodeChans, oldChannelCount);
 
                 BassFlags mixerFlags;
                 if (_currentMode == OutputMode.DirectSound)
@@ -410,6 +429,9 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
                 {
                     addFlags |= BassFlags.MixerChanNoRampin;
                 }
+
+                // Enable buffering so we can read levels from the source channel
+                addFlags |= BassFlags.MixerChanBuffer;
 
                 if (!ManagedBass.Mix.BassMix.MixerAddChannel(_mixerStream, _decodeStream, addFlags))
                 {
@@ -717,7 +739,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
         {
             StopCrossfadeTimer("stop");
 
-            _logger.LogDebug("Stop() entered (Mode={Mode}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle}, LoadedPath={LoadedPath}, IsPlaying={IsPlaying})",
+            _logger.LogTrace("Stop() entered (Mode={Mode}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle}, LoadedPath={LoadedPath}, IsPlaying={IsPlaying})",
                 _currentMode,
                 CurrentStream,
                 _decodeStream,
@@ -777,7 +799,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
     {
         lock (_engineSync)
         {
-            _logger.LogDebug("FreeResources() entered (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle}, LoadedPath={LoadedPath})",
+            _logger.LogTrace("FreeResources() entered (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle}, LoadedPath={LoadedPath})",
                 CurrentStream,
                 _decodeStream,
                 _mixerStream,
@@ -798,7 +820,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
             // initialized (especially in WASAPI Exclusive) to avoid BASS_ERROR_BUSY
             // on rapid stop/resume cycles.
 
-            _logger.LogDebug("FreeResources() completed (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle})",
+            _logger.LogTrace("FreeResources() completed (CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, EndSyncHandle={EndSyncHandle})",
                 CurrentStream,
                 _decodeStream,
                 _mixerStream,
@@ -1187,4 +1209,68 @@ public partial class AudioEngine : ObservableObject, IAudioEngine
 
     // Crossfade implementation has been moved to the partial class file 'AudioEngine.Crossfade.cs'.
     // Do NOT duplicate crossfade fields/methods here to avoid conflicts between partial class definitions.
+
+    public bool TryGetChannelDecibelLevels(out double[] levels)
+    {
+        const double MinDbValue = -60.0;
+        const double MaxDbValue = 10.0;
+        levels = Array.Empty<double>();
+
+        // Use BassMix.ChannelGetLevel to read levels from the decode stream
+        // This is the correct API for reading levels from source channels feeding a mixer
+        if (_decodeStream == 0 || CurrentStream == 0)
+            return false;
+
+        int channelCount = ChannelCount;
+        if (channelCount < 1)
+            return false;
+
+        // For multichannel (>2): use the extended level API to get all channels
+        if (channelCount > 2)
+        {
+            float[] levelEx = new float[channelCount];
+
+            // BASS_Mixer_ChannelGetLevel: reads levels from a mixer source channel
+            // 0.02f = 20ms window for level calculation (good balance of responsiveness and smoothness)
+            // Returns number of samples processed, or -1 on error
+            int result = ManagedBass.Mix.BassMix.ChannelGetLevel(_decodeStream, levelEx, 0.02f, LevelRetrievalFlags.RMS);
+
+            if (result == -1)
+            {
+                return false;
+            }
+
+            levels = new double[channelCount];
+            for (int i = 0; i < channelCount; i++)
+            {
+                double linear = levelEx[i];
+                double db = linear > 0 ? 20.0 * Math.Log10(linear) : MinDbValue;
+                if (db < MinDbValue)
+                    db = MinDbValue;
+                if (db > MaxDbValue)
+                    db = MaxDbValue;
+                levels[i] = db;
+            }
+
+            return true;
+        }
+        else
+        {
+            // Stereo: use the simple integer-based API
+            int level = ManagedBass.Mix.BassMix.ChannelGetLevel(_decodeStream);
+
+            if (level == -1)
+            {
+                return false;
+            }
+
+            int left = level & 0xFFFF;
+            int right = (level >> 16) & 0xFFFF;
+            levels = new double[2];
+            levels[0] = left > 0 ? 20.0 * Math.Log10(left / 32768.0) : MinDbValue;
+            levels[1] = right > 0 ? 20.0 * Math.Log10(right / 32768.0) : MinDbValue;
+
+            return true;
+        }
+    }
 }
