@@ -548,7 +548,7 @@
     <Setter Property="GradientEndColor" Value="{DynamicResource SpectrumEndColor}" />
     <Setter Property="ClippingColor" Value="Red" />
     <Setter Property="PeakBrush" Value="{DynamicResource SpectrumPeakBrush}" />
-        <Setter Property="ScaleBrush" Value="{DynamicResource ControlForegroundBrush}" />
+    <Setter Property="ScaleBrush" Value="{DynamicResource ControlForegroundBrush}" />
     <!--  VU Meter Thresholds (in dB)  -->
     <Setter Property="WarningThreshold" Value="-6" />
     <!--  Warning threshold (currently unused)  -->
@@ -568,7 +568,8 @@
             BorderThickness="{TemplateBinding BorderThickness}">
             <Canvas
               x:Name="PART_VuCanvas"
-              Margin="20,5,5,5"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
               ClipToBounds="True" />
           </Border>
         </ControlTemplate>

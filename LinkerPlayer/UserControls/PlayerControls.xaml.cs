@@ -149,7 +149,7 @@ public partial class PlayerControls
     {
         if (channels == 1)
         {
-            return "Mono";
+            return "mono";
         }
 
         if (channels == 2)
@@ -157,7 +157,22 @@ public partial class PlayerControls
             return "stereo";
         }
 
-        if (channels > 2)
+        if (channels == 4)
+        {
+            return "4ch";
+        }
+
+        if (channels == 6)
+        {
+            return "6ch";
+        }
+
+        if (channels == 8)
+        {
+            return "8ch";
+        }
+
+        if (channels > 8)
         {
             return "multichannel";
         }

@@ -176,6 +176,46 @@ public partial class VuMeter : Control
         set { SetValue(ChannelCountProperty, value); }
     }
 
+    public static readonly DependencyProperty ChannelLabelWidthProperty =
+        DependencyProperty.Register(nameof(ChannelLabelWidth), typeof(double), typeof(VuMeter),
+            new FrameworkPropertyMetadata(30.0, FrameworkPropertyMetadataOptions.AffectsRender, OnLayoutPropertyChanged));
+
+    public double ChannelLabelWidth
+    {
+        get { return (double)GetValue(ChannelLabelWidthProperty); }
+        set { SetValue(ChannelLabelWidthProperty, value); }
+    }
+
+    public static readonly DependencyProperty ScaleLabelHeightProperty =
+        DependencyProperty.Register(nameof(ScaleLabelHeight), typeof(double), typeof(VuMeter),
+            new FrameworkPropertyMetadata(20.0, FrameworkPropertyMetadataOptions.AffectsRender, OnLayoutPropertyChanged));
+
+    public double ScaleLabelHeight
+    {
+        get { return (double)GetValue(ScaleLabelHeightProperty); }
+        set { SetValue(ScaleLabelHeightProperty, value); }
+    }
+
+    public static readonly DependencyProperty ChannelLabelFontSizeProperty =
+        DependencyProperty.Register(nameof(ChannelLabelFontSize), typeof(double), typeof(VuMeter),
+            new FrameworkPropertyMetadata(10.0, FrameworkPropertyMetadataOptions.AffectsRender, OnLayoutPropertyChanged));
+
+    public double ChannelLabelFontSize
+    {
+        get { return (double)GetValue(ChannelLabelFontSizeProperty); }
+        set { SetValue(ChannelLabelFontSizeProperty, value); }
+    }
+
+    public static readonly DependencyProperty ScaleLabelFontSizeProperty =
+        DependencyProperty.Register(nameof(ScaleLabelFontSize), typeof(double), typeof(VuMeter),
+            new FrameworkPropertyMetadata(9.0, FrameworkPropertyMetadataOptions.AffectsRender, OnLayoutPropertyChanged));
+
+    public double ScaleLabelFontSize
+    {
+        get { return (double)GetValue(ScaleLabelFontSizeProperty); }
+        set { SetValue(ScaleLabelFontSizeProperty, value); }
+    }
+
     private static object CoerceChannelCount(DependencyObject d, object value)
     {
         int v = (int)value;
@@ -372,7 +412,7 @@ public partial class VuMeter : Control
 
         double canvasWidth = _vuCanvas.RenderSize.Width;
         double canvasHeight = _vuCanvas.RenderSize.Height;
-        double labelHeight = ShowLabels ? 15.0 : 0.0;
+        double labelHeight = ShowLabels ? ScaleLabelHeight : 0.0;
         double availableHeight = canvasHeight - labelHeight;
         double perChannelHeight = (_channelCount > 0)
             ? (availableHeight - ChannelSpacing * (_channelCount - 1)) / _channelCount
@@ -394,7 +434,7 @@ public partial class VuMeter : Control
             return;
         }
 
-        double labelWidth = ShowLabels ? 30.0 : 0.0;
+        double labelWidth = ShowLabels ? ChannelLabelWidth : 0.0;
         double availableBarWidth = canvasWidth - labelWidth;
 
         // Create dB scale markings from -60dB to +10dB in 10dB increments
@@ -418,7 +458,7 @@ public partial class VuMeter : Control
             TextBlock label = new TextBlock
             {
                 Text = db == 0 ? "0" : db.ToString("+0;-0", CultureInfo.InvariantCulture),
-                FontSize = 9,
+                FontSize = ScaleLabelFontSize,
                 Foreground = ScaleBrush
             };
             Canvas.SetLeft(label, position - 8);
@@ -440,7 +480,7 @@ public partial class VuMeter : Control
         };
 
         // Reserve space for labels on the left
-        double labelWidth = ShowLabels ? 30.0 : 0.0;
+        double labelWidth = ShowLabels ? ChannelLabelWidth : 0.0;
         double barStartX = labelWidth;
 
         for (int i = 0; i < _channelCount; i++)
@@ -463,12 +503,12 @@ public partial class VuMeter : Control
                 TextBlock channelLabel = new TextBlock
                 {
                     Text = labelText,
-                    FontSize = 10,
+                    FontSize = ChannelLabelFontSize,
                     Foreground = ScaleBrush,
-                    FontWeight = FontWeights.Bold
+                    FontWeight = FontWeights.Light
                 };
-                Canvas.SetLeft(channelLabel, 2); // Small padding from left edge
-                Canvas.SetTop(channelLabel, top + (channelHeight / 2) - 6);
+                Canvas.SetLeft(channelLabel, 2);
+                Canvas.SetTop(channelLabel, top + (channelHeight / 2) - (ChannelLabelFontSize / 2));
                 _vuCanvas.Children.Add(channelLabel);
             }
         }
@@ -497,7 +537,7 @@ public partial class VuMeter : Control
         }
 
         double canvasWidth = _vuCanvas.RenderSize.Width;
-        double labelWidth = ShowLabels ? 30.0 : 0.0;
+        double labelWidth = ShowLabels ? ChannelLabelWidth : 0.0;
         double availableBarWidth = canvasWidth - labelWidth;
 
         double[] levels;

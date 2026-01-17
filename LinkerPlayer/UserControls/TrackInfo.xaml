@@ -32,7 +32,7 @@
       <!--  Splitter  -->
       <RowDefinition Height="5" />
       <!--  VuMeter  -->
-      <RowDefinition Height="*" MinHeight="60" />
+      <RowDefinition Height="*" MinHeight="100" />
     </Grid.RowDefinitions>
 
     <!--  AlbumCover Section  -->
@@ -225,11 +225,15 @@
       x:Name="VuMeter"
       Grid.Row="6"
       MinHeight="60"
-      Margin="0,0,0,0"
+      Margin="1,0,2,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
+      ChannelLabelFontSize="10"
+      ChannelLabelWidth="20"
       ChannelSpacing="3"
       DecaySpeed="0.95"
+      ScaleLabelFontSize="9"
+      ScaleLabelHeight="20"
       ShowLabels="True"
       Style="{StaticResource VuMeterStyle}" />
 
