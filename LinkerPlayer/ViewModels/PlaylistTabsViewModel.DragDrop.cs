@@ -38,12 +38,22 @@ public partial class PlaylistTabsViewModel
         string[] droppedItems = (string[])args.Data.GetData(DataFormats.FileDrop)!;
         bool isControlPressed = (args.KeyStates & DragDropKeyStates.ControlKey) == DragDropKeyStates.ControlKey;
 
+        _importCancellationService.BeginImport();
+
         Progress<ProgressData> progress = new Progress<ProgressData>(data =>
         {
             WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
         });
 
-        await HandleDropAsync(droppedItems, isControlPressed, progress);
+        try
+        {
+            await HandleDropAsync(droppedItems, isControlPressed, progress);
+        }
+        finally
+        {
+            _importCancellationService.EndImport();
+        }
+
         args.Handled = true;
     }
 
@@ -129,14 +139,31 @@ public partial class PlaylistTabsViewModel
             if (importedFile != null)
             {
                 await EnsureSelectedTabExistsAsync();
-
-                if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+                if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count && TabList[SelectedTabIndex] is PlaylistTab tab)
                 {
-                    PlaylistTab tab = TabList[SelectedTabIndex];
                     bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, new[] { importedFile });
                     if (success)
                     {
                         await _uiDispatcher.InvokeAsync(() => { if (tab.Tracks.All(t => t.Id != importedFile.Id)) { tab.Tracks.Add(importedFile); } });
+                    }
+                }
+                else
+                {
+                    // No playlist selected -> file was imported into the Music Library. Ensure it is persisted to the database.
+                    try
+                    {
+                        await _musicLibrary.SaveTracksBatchAsync(new[] { importedFile }).ConfigureAwait(false);
+                        // Enqueue background metadata refresh for this single file
+                        try
+                        {
+                            Services.Metadata.BackgroundMetadataRefresher.Enqueue(new[] { importedFile });
+                        }
+                        catch { }
+                        _logger.LogInformation("Imported single file into Music Library and saved to database: {Path}", filePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to persist single imported file to database: {Path}", filePath);
                     }
                 }
             }
@@ -165,16 +192,15 @@ public partial class PlaylistTabsViewModel
         {
             await EnsureSelectedTabExistsAsync();
 
-            List<MediaFile> importedTracks = await _fileImportService.ImportFilesAsync(filePaths, progress);
+            List<MediaFile> importedTracks = await _fileImportService.ImportFilesAsync(filePaths, progress, _importCancellationService.Token);
             if (!importedTracks.Any())
             {
                 _logger.LogWarning("No supported audio files imported from drop selection");
                 return;
             }
 
-            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
+            if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count && TabList[SelectedTabIndex] is PlaylistTab tab)
             {
-                PlaylistTab tab = TabList[SelectedTabIndex];
                 bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, importedTracks);
                 if (success)
                 {
@@ -200,6 +226,11 @@ public partial class PlaylistTabsViewModel
                 {
                     _logger.LogError("Failed to add imported files to playlist {Name}", tab.Name);
                 }
+            }
+            else
+            {
+                // No playlist selected; files were imported into the library only.
+                _logger.LogInformation("Imported {Count} dropped files into Music Library (no playlist selected)", importedTracks.Count);
             }
         }
         catch (Exception ex)
@@ -228,7 +259,7 @@ public partial class PlaylistTabsViewModel
         {
             await EnsureSelectedTabExistsAsync();
 
-            List<MediaFile> importedTracks = await _fileImportService.ImportFolderAsync(folderPath, progress);
+            List<MediaFile> importedTracks = await _fileImportService.ImportFolderAsync(folderPath, progress, _importCancellationService.Token);
 
             if (!importedTracks.Any())
             {
@@ -238,7 +269,11 @@ public partial class PlaylistTabsViewModel
 
             if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
             {
-                PlaylistTab tab = TabList[SelectedTabIndex];
+                if (TabList[SelectedTabIndex] is not PlaylistTab tab)
+                {
+                    // Can't import folder into Music Library
+                    return;
+                }
                 bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, importedTracks);
 
                 if (success)

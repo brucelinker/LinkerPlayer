@@ -19,6 +19,7 @@
 	 <None Remove="Native\bassloud.dll" />
 	 <None Remove="Native\bassopus.dll" />
 	 <None Remove="Native\basswebm.dll" />
+	 <None Remove="Native\bass_ac3.dll" />
 	 <None Remove="Native\bass_dts.dll" />
 	 <None Remove="Native\bass_mpc.dll" />
 	</ItemGroup>
@@ -28,7 +29,7 @@
 		<PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
 		<PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
 		<PackageReference Include="ManagedBass.Wasapi" Version="4.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.6" />
 	</ItemGroup>
 
 	<!-- Embed BASS DLLs as resources -->
@@ -66,6 +67,7 @@
 		<EmbeddedResource Include="Native\bass_aac.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bass_aac.dll</LogicalName>
 		</EmbeddedResource>
+		<EmbeddedResource Include="Native\bass_ac3.dll" />
 		<EmbeddedResource Include="Native\bass_dts.dll" />
 		<EmbeddedResource Include="Native\bass_fx.dll">
 			<LogicalName>LinkerPlayer.BassLibs.Native.bass_fx.dll</LogicalName>

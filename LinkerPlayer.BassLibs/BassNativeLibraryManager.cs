@@ -99,6 +99,7 @@ public static class BassNativeLibraryManager
         {
             "bass.dll",
             "bass_aac.dll",
+            "bass_ac3.dll",
             "bass_fx.dll",
             "bass_mpc.dll",
             "bassalac.dll",

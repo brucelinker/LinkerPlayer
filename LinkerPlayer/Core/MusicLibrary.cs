@@ -8,15 +8,19 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
+using System.Windows.Data;
 
 namespace LinkerPlayer.Core;
 
 public interface IMusicLibrary
 {
-    ObservableCollection<MediaFile> MainLibrary { get; }
+    RangeObservableCollection<MediaFile> MainLibrary { get; }
     ObservableCollection<Playlist> Playlists { get; }
 
     Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true);
+    Task AddTracksToLibraryBatchAsync(IEnumerable<MediaFile> mediaFiles);
+    Task RemoveTrackFromLibraryAsync(string trackId);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
     Task<Playlist> AddNewPlaylistAsync(string playlistName);
     Task<bool> AddPlaylistAsync(Playlist newPlaylist);
@@ -25,6 +29,7 @@ public interface IMusicLibrary
     Task AddTrackToPlaylistAsync(string trackId, string playlistName, bool saveImmediately = true, int position = -1);
     MediaFile? IsTrackInLibrary(MediaFile mediaFile);
     List<Playlist> GetPlaylists();
+    List<string> GetPlaylistsContainingTrack(string trackId);
     List<MediaFile> GetTracksFromPlaylist(string? playlistName);
     Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks);
     Task SaveToDatabaseAsync();
@@ -43,13 +48,21 @@ public class MusicLibrary : IMusicLibrary
         "LinkerPlayer", "music_library.db");
 
     private readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
-    public ObservableCollection<MediaFile> MainLibrary { get; } = new();
+    public RangeObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
     public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
+
+    private readonly object _mainLibraryLock = new();
+    private readonly object _playlistsLock = new();
+    private readonly object _batchAddLock = new();  // Serialize batch UI adds to prevent overlapping CollectionChanged events
 
     public MusicLibrary(ILogger<MusicLibrary> logger)
     {
         _logger = logger;
+
+        // Enable cross-thread collection synchronization for WPF binding
+        BindingOperations.EnableCollectionSynchronization(MainLibrary, _mainLibraryLock);
+        BindingOperations.EnableCollectionSynchronization(Playlists, _playlistsLock);
 
         try
         {
@@ -126,6 +139,15 @@ public class MusicLibrary : IMusicLibrary
                         context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"LastMetadataRefreshUtc\" TEXT NULL;");
                         _logger.LogInformation("Added LastMetadataRefreshUtc column to Tracks table");
                     }
+
+                    List<int> needsMetadataResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='NeedsMetadataRefresh'").ToList();
+                    if (needsMetadataResult.FirstOrDefault() == 0)
+                    {
+                        // SQLite does not have a boolean type; use INTEGER 0/1 with default 0
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"NeedsMetadataRefresh\" INTEGER NOT NULL DEFAULT 0;");
+                        _logger.LogInformation("Added NeedsMetadataRefresh column to Tracks table");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -148,15 +170,8 @@ public class MusicLibrary : IMusicLibrary
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
-            Playlists.Clear();
-            MainLibrary.Clear();
-
-            // Load all tracks from database with all their metadata
+            // Load data from database on background thread
             List<MediaFile> tracks = await context.Tracks.AsNoTracking().ToListAsync();
-            foreach (MediaFile track in tracks)
-            {
-                MainLibrary.Add(track);
-            }
 
             List<Playlist> playlists = await context.Playlists
                 .Include(p => p.PlaylistTracks)
@@ -165,6 +180,19 @@ public class MusicLibrary : IMusicLibrary
                 .AsNoTracking()
                 .OrderBy(p => p.Order)
                 .ToListAsync();
+
+            // Collection changes are now thread-safe via BindingOperations.EnableCollectionSynchronization
+            Playlists.Clear();
+            MainLibrary.Clear();
+
+            // Add all tracks to MainLibrary using AddRange for better performance
+            foreach (MediaFile track in tracks)
+            {
+                track.EnableDirtyTracking();
+            }
+            MainLibrary.AddRange(tracks);
+
+            // Process playlists
             foreach (Playlist playlist in playlists)
             {
                 List<string> validTrackIds = playlist.PlaylistTracks
@@ -401,10 +429,16 @@ public class MusicLibrary : IMusicLibrary
     {
         try
         {
-            MediaFile? existingTrack = IsTrackInLibrary(mediaFile);
-            if (existingTrack != null)
+            // When called from batch import (saveImmediately=false), the caller already
+            // handles duplicate checking via HashSet, so skip the O(n) enumeration that
+            // is unsafe during concurrent access.
+            if (saveImmediately)
             {
-                return existingTrack;
+                MediaFile? existingTrack = IsTrackInLibrary(mediaFile);
+                if (existingTrack != null)
+                {
+                    return existingTrack;
+                }
             }
 
             if (!string.IsNullOrEmpty(mediaFile.Path) &&
@@ -413,7 +447,18 @@ public class MusicLibrary : IMusicLibrary
             {
                 // Metadata is already extracted and set on the mediaFile object
                 MediaFile clonedTrack = mediaFile.Clone();
-                MainLibrary.Add(clonedTrack);
+
+                // Must add on UI thread to prevent "Cannot change ObservableCollection during CollectionChanged" errors
+                // Use InvokeAsync to avoid blocking worker threads
+                if (System.Windows.Application.Current?.Dispatcher is System.Windows.Threading.Dispatcher dispatcher)
+                {
+                    await dispatcher.InvokeAsync(() => MainLibrary.Add(clonedTrack));
+                }
+                else
+                {
+                    MainLibrary.Add(clonedTrack);
+                }
+
                 if (saveImmediately)
                 {
                     await SaveTracksBatchAsync([clonedTrack]);
@@ -431,6 +476,52 @@ public class MusicLibrary : IMusicLibrary
         }
     }
 
+    /// <summary>
+    /// Adds multiple tracks to the library in a single UI-thread dispatch for performance.
+    /// Does NOT save to database — caller must call SaveTracksBatchAsync separately.
+    /// </summary>
+    public Task AddTracksToLibraryBatchAsync(IEnumerable<MediaFile> mediaFiles)
+    {
+        List<MediaFile> tracksToAdd = new List<MediaFile>();
+
+        foreach (MediaFile mediaFile in mediaFiles)
+        {
+            if (!string.IsNullOrEmpty(mediaFile.Path) &&
+                _supportedAudioExtensions.Any(s =>
+                    s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
+            {
+                tracksToAdd.Add(mediaFile.Clone());
+            }
+        }
+
+        if (tracksToAdd.Count > 0)
+        {
+            // Use AddRange to add all items with a single CollectionChanged (Reset) notification
+            if (System.Windows.Application.Current?.Dispatcher is System.Windows.Threading.Dispatcher dispatcher)
+            {
+                if (dispatcher.CheckAccess())
+                {
+                    // Already on UI thread
+                    MainLibrary.AddRange(tracksToAdd);
+                }
+                else
+                {
+                    // Block worker thread until UI add completes
+                    dispatcher.Invoke(() =>
+                    {
+                        MainLibrary.AddRange(tracksToAdd);
+                    });
+                }
+            }
+            else
+            {
+                MainLibrary.AddRange(tracksToAdd);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     public async Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId)
     {
         Playlist? playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
@@ -442,7 +533,38 @@ public class MusicLibrary : IMusicLibrary
                 playlist.SelectedTrackId = null;
             }
             await SaveToDatabaseAsync();
-            await CleanOrphanedTracksAsync();
+        }
+    }
+
+    public async Task RemoveTrackFromLibraryAsync(string trackId)
+    {
+        MediaFile? track = MainLibrary.FirstOrDefault(t => t.Id == trackId);
+        if (track != null)
+        {
+            MainLibrary.Remove(track);
+
+            // Remove from database manually to ensure the track entity is deleted
+            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+            MediaFile? dbTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Id == trackId);
+            if (dbTrack != null)
+            {
+                context.Tracks.Remove(dbTrack);
+                await context.SaveChangesAsync();
+            }
+
+            // Remove from all playlists that contain it
+            foreach (Playlist playlist in Playlists)
+            {
+                if (playlist.TrackIds.Contains(trackId))
+                {
+                    playlist.TrackIds.Remove(trackId);
+                    if (playlist.SelectedTrackId == trackId)
+                    {
+                        playlist.SelectedTrackId = null;
+                    }
+                }
+            }
+            await SaveToDatabaseAsync();
         }
     }
 
@@ -503,7 +625,6 @@ public class MusicLibrary : IMusicLibrary
                     context.Playlists.Remove(dbPlaylist);
                     await context.SaveChangesAsync();
                 }
-                await CleanOrphanedTracksAsync();
             }
         }
         catch (Exception ex)
@@ -580,6 +701,14 @@ public class MusicLibrary : IMusicLibrary
         return Playlists.ToList();
     }
 
+    public List<string> GetPlaylistsContainingTrack(string trackId)
+    {
+        return Playlists
+            .Where(p => p.TrackIds.Contains(trackId))
+            .Select(p => p.Name)
+            .ToList();
+    }
+
     public List<MediaFile> GetTracksFromPlaylist(string? playlistName)
     {
         Playlist? playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
@@ -601,6 +730,9 @@ public class MusicLibrary : IMusicLibrary
         {
             throw new ArgumentNullException(nameof(tracks));
         }
+
+        // Snapshot MainLibrary to prevent concurrent modification exceptions during enumeration
+        List<MediaFile> mainLibrarySnapshot = MainLibrary.ToList();
 
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
@@ -661,16 +793,16 @@ public class MusicLibrary : IMusicLibrary
                     existing.TrailingSilenceMs = incoming.TrailingSilenceMs;
                 }
 
-                // Keep in-memory library in sync with DB updates.
+                // Keep in-memory library in sync with DB updates, using the snapshot
                 MediaFile? inMemory = null;
                 if (!string.IsNullOrWhiteSpace(incoming.Id))
                 {
-                    inMemory = MainLibrary.FirstOrDefault(t => t.Id == incoming.Id);
+                    inMemory = mainLibrarySnapshot.FirstOrDefault(t => t.Id == incoming.Id);
                 }
 
                 if (inMemory == null && !string.IsNullOrWhiteSpace(incoming.Path))
                 {
-                    inMemory = MainLibrary.FirstOrDefault(t => t.Path == incoming.Path);
+                    inMemory = mainLibrarySnapshot.FirstOrDefault(t => t.Path == incoming.Path);
                 }
 
                 if (inMemory != null)

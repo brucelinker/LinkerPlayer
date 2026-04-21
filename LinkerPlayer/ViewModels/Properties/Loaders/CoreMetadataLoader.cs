@@ -1,15 +1,15 @@
+using ATL;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
-using File = TagLib.File;
-using Tag = TagLib.Tag;
+using TagLib;
 
 namespace LinkerPlayer.ViewModels.Properties.Loaders;
 
 /// <summary>
-/// Loads core metadata fields (Title, Artist, Album, Year, Genre, etc.)
+/// Loads core metadata fields using ATL
 /// </summary>
-public class CoreMetadataLoader : IMetadataLoader
+public class CoreMetadataLoader : IAtlMetadataLoader, IMetadataLoader
 {
     private readonly IMediaFileHelper _mediaFileHelper;
     private readonly ILogger<CoreMetadataLoader> _logger;
@@ -20,170 +20,289 @@ public class CoreMetadataLoader : IMetadataLoader
         _logger = logger;
     }
 
-    public void Load(File audioFile, ObservableCollection<TagItem> targetCollection)
+    /// <summary>
+    /// Load metadata for a single file into the properties window
+    /// </summary>
+    public void Load(Track track, ObservableCollection<TagItem> targetCollection)
     {
-        if (audioFile?.Tag == null)
+        if (track == null)
         {
             _logger.LogWarning("No metadata found for the current file");
             return;
         }
 
-        // DON'T clear - ViewModel handles this
-        // targetCollection.Clear();
-
         _logger.LogInformation("CoreMetadataLoader.Load: Starting with {Count} items in collection", targetCollection.Count);
 
-        Tag tag = audioFile.Tag;
-
         // Title
-        AddMetadataItem(targetCollection, "Title", tag.Title ?? "", true, v =>
+        AddMetadataItem(targetCollection, "Title", track.Title ?? "", true, v =>
         {
-            tag.Title = string.IsNullOrEmpty(v) ? null : v;
+            track.Title = string.IsNullOrEmpty(v) ? null : v;
         });
 
-        _logger.LogInformation("CoreMetadataLoader.Load: After adding Title, collection has {Count} items", targetCollection.Count);
-
-        // Artist - use smart field selection
-        string artistValue = _mediaFileHelper.GetBestArtistField(tag);
+        // Artist
+        string artistValue = _mediaFileHelper.GetBestArtistField(track);
         AddMetadataItem(targetCollection, "Artist", artistValue, true, v =>
         {
-            tag.Performers = string.IsNullOrEmpty(v) ? []
-                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            track.Artist = string.IsNullOrEmpty(v) ? null : v;        // ATL uses single string
         });
 
         // Album
-        AddMetadataItem(targetCollection, "Album", tag.Album ?? "", true, v =>
+        AddMetadataItem(targetCollection, "Album", track.Album ?? "", true, v =>
         {
-            tag.Album = string.IsNullOrEmpty(v) ? null : v;
+            track.Album = string.IsNullOrEmpty(v) ? null : v;
         });
 
-        // Album Artist - use smart field selection
-        string albumArtistValue = _mediaFileHelper.GetBestAlbumArtistField(tag);
+        // Album Artist
+        string albumArtistValue = _mediaFileHelper.GetBestAlbumArtistField(track);
         AddMetadataItem(targetCollection, "Album Artist", albumArtistValue, true, v =>
         {
-            tag.AlbumArtists = string.IsNullOrEmpty(v) ? []
-                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            track.AlbumArtist = string.IsNullOrEmpty(v) ? null : v;
         });
 
         // Track Number
-        AddMetadataItem(targetCollection, "Track Number", tag.Track > 0 ? tag.Track.ToString() : "", true, v =>
-        {
-            tag.Track = uint.TryParse(v, out uint track) ? track : 0;
-        });
+        AddMetadataItem(targetCollection, "Track Number",
+            track.TrackNumber > 0 ? track.TrackNumber.ToString() : "", true, v =>
+            {
+                track.TrackNumber = int.TryParse(v, out int num) ? num : 0;
+            });
 
         // Total Tracks
-        AddMetadataItem(targetCollection, "Total Tracks", tag.TrackCount > 0 ? tag.TrackCount.ToString() : "", true, v =>
-         {
-             tag.TrackCount = uint.TryParse(v, out uint count) ? count : 0;
-         });
+        AddMetadataItem(targetCollection, "Total Tracks",
+            track.TrackTotal > 0 ? track.TrackTotal.ToString() : "", true, v =>
+            {
+                track.TrackTotal = int.TryParse(v, out int total) ? total : 0;
+            });
 
         // Disc Number
-        AddMetadataItem(targetCollection, "Disc Number", tag.Disc > 0 ? tag.Disc.ToString() : "", true, v =>
-        {
-            tag.Disc = uint.TryParse(v, out uint disc) ? disc : 0;
-        });
+        AddMetadataItem(targetCollection, "Disc Number",
+            track.DiscNumber > 0 ? track.DiscNumber.ToString() : "", true, v =>
+            {
+                track.DiscNumber = int.TryParse(v, out int num) ? num : 0;
+            });
 
         // Total Discs
-        AddMetadataItem(targetCollection, "Total Discs", tag.DiscCount > 0 ? tag.DiscCount.ToString() : "", true, v =>
-        {
-            tag.DiscCount = uint.TryParse(v, out uint count) ? count : 0;
-        });
+        AddMetadataItem(targetCollection, "Total Discs",
+            track.DiscTotal > 0 ? track.DiscTotal.ToString() : "", true, v =>
+            {
+                track.DiscTotal = int.TryParse(v, out int total) ? total : 0;
+            });
 
         // Year
-        AddMetadataItem(targetCollection, "Year", tag.Year > 0 ? tag.Year.ToString() : "", true, v =>
-        {
-            tag.Year = uint.TryParse(v, out uint year) ? year : 0;
-        });
+        AddMetadataItem(targetCollection, "Year",
+            track.Year > 0 ? track.Year.ToString() : "", true, v =>
+            {
+                track.Year = int.TryParse(v, out int year) ? year : 0;
+            });
 
-        // Genre
-        AddMetadataItem(targetCollection, "Genre", tag.FirstGenre ?? string.Join(", ", tag.Genres ?? []), true, v =>
+        // Genre (ATL uses single string, not array)
+        AddMetadataItem(targetCollection, "Genre", track.Genre ?? "", true, v =>
         {
-            tag.Genres = string.IsNullOrEmpty(v) ? []
-                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            track.Genre = string.IsNullOrEmpty(v) ? null : v;
         });
 
         // Composer
-        AddMetadataItem(targetCollection, "Composer", tag.FirstComposer ?? string.Join(", ", tag.Composers ?? []), true, v =>
+        AddMetadataItem(targetCollection, "Composer", track.Composer ?? "", true, v =>
         {
-            tag.Composers = string.IsNullOrEmpty(v) ? []
-                : v.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+            track.Composer = string.IsNullOrEmpty(v) ? null : v;
         });
 
         // Copyright
-        AddMetadataItem(targetCollection, "Copyright", tag.Copyright ?? "", true, v =>
+        AddMetadataItem(targetCollection, "Copyright", track.Copyright ?? "", true, v =>
         {
-            tag.Copyright = string.IsNullOrEmpty(v) ? null : v;
+            track.Copyright = string.IsNullOrEmpty(v) ? null : v;
         });
 
-        // Beats Per Minute
-        AddMetadataItem(targetCollection, "Beats Per Minute", tag.BeatsPerMinute > 0 ? tag.BeatsPerMinute.ToString() : "", true, v =>
+        // Comment
+        AddMetadataItem(targetCollection, "Comment", track.Comment ?? "", true, v =>
         {
-            tag.BeatsPerMinute = uint.TryParse(v, out uint bpm) ? bpm : 0;
+            track.Comment = string.IsNullOrEmpty(v) ? null : v;
         });
 
         // Conductor
-        AddMetadataItem(targetCollection, "Conductor", tag.Conductor ?? "", true, v =>
-    {
-        tag.Conductor = string.IsNullOrEmpty(v) ? null : v;
-    });
-
-        // Grouping
-        AddMetadataItem(targetCollection, "Grouping", tag.Grouping ?? "", true, v =>
+        AddMetadataItem(targetCollection, "Conductor", track.Conductor ?? "", true, v =>
         {
-            tag.Grouping = string.IsNullOrEmpty(v) ? null : v;
+            track.Conductor = string.IsNullOrEmpty(v) ? null : v;
         });
 
-        // Publisher
-        AddMetadataItem(targetCollection, "Publisher", tag.Publisher ?? "", true, v =>
-             {
-                 tag.Publisher = string.IsNullOrEmpty(v) ? null : v;
-             });
-
-        // ISRC (only show if it has a value - most files don't have this)
-        if (!string.IsNullOrWhiteSpace(tag.ISRC))
+        // Grouping
+        string groupingValue = track.AdditionalFields.TryGetValue("GROUPING", out var g) ? g : "";
+        AddMetadataItem(targetCollection, "Grouping", groupingValue, true, v =>
         {
-            AddMetadataItem(targetCollection, "ISRC", tag.ISRC, true, v =>
-          {
-              tag.ISRC = string.IsNullOrEmpty(v) ? null : v;
-          });
+            if (string.IsNullOrEmpty(v))
+                track.AdditionalFields.Remove("GROUPING");
+            else
+                track.AdditionalFields["GROUPING"] = v;
+        });
+
+        // Beats Per Minute
+        AddMetadataItem(targetCollection, "Beats Per Minute",
+            track.BPM > 0 ? track.BPM.ToString() : "", true, v =>
+            {
+                track.BPM = uint.TryParse(v, out uint bpm) ? bpm : 0;
+            });
+
+        // Publisher (if supported, otherwise you can use AdditionalFields)
+        AddMetadataItem(targetCollection, "Publisher", track.Publisher ?? "", true, v =>
+        {
+            track.Publisher = string.IsNullOrEmpty(v) ? null : v;
+        });
+
+        // ISRC
+        if (!string.IsNullOrWhiteSpace(track.ISRC))
+        {
+            AddMetadataItem(targetCollection, "ISRC", track.ISRC, true, v =>
+            {
+                track.ISRC = string.IsNullOrEmpty(v) ? null : v;
+            });
         }
     }
 
-    public void LoadMultiple(IReadOnlyList<File> audioFiles, ObservableCollection<TagItem> targetCollection)
+    /// <summary>
+    /// Load metadata for multiple files (shows <various> when values differ)
+    /// </summary>
+    public void LoadMultiple(IReadOnlyList<Track> audioFiles, ObservableCollection<TagItem> targetCollection)
     {
         if (audioFiles.Count == 0)
-        {
-            _logger.LogWarning("No files provided for multiple core metadata loading");
             return;
-        }
 
-        // DON'T clear - ViewModel handles this
-        // targetCollection.Clear();
-
-        // For each metadata field, check if all files have the same value
-        // If they differ, show "<various>"
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Title", f => f.Tag.Title);
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Artist", f => _mediaFileHelper.GetBestArtistField(f.Tag));
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Album", f => f.Tag.Album);
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Album Artist", f => _mediaFileHelper.GetBestAlbumArtistField(f.Tag));
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Track Number", f => f.Tag.Track > 0 ? f.Tag.Track.ToString() : "");
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Total Tracks", f => f.Tag.TrackCount > 0 ? f.Tag.TrackCount.ToString() : "");
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Disc Number", f => f.Tag.Disc > 0 ? f.Tag.Disc.ToString() : "");
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Total Discs", f => f.Tag.DiscCount > 0 ? f.Tag.DiscCount.ToString() : "");
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Year", f => f.Tag.Year > 0 ? f.Tag.Year.ToString() : "");
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Genre", f => f.Tag.FirstGenre ?? string.Join(", ", f.Tag.Genres ?? []));
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Composer", f => f.Tag.FirstComposer ?? string.Join(", ", f.Tag.Composers ?? []));
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Copyright", f => f.Tag.Copyright);
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Beats Per Minute", f => f.Tag.BeatsPerMinute > 0 ? f.Tag.BeatsPerMinute.ToString() : "");
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Conductor", f => f.Tag.Conductor);
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Grouping", f => f.Tag.Grouping);
-        AddMetadataItemMultiple(targetCollection, audioFiles, "Publisher", f => f.Tag.Publisher);
+        // Title
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Title", f => f.Title);
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Artist", f => _mediaFileHelper.GetBestArtistField(f));
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Album", f => f.Album);
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Album Artist", f => _mediaFileHelper.GetBestAlbumArtistField(f));
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Track Number", f => f.TrackNumber > 0 ? f.TrackNumber.ToString() : "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Total Tracks", f => f.TrackTotal > 0 ? f.TrackTotal.ToString() : "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Disc Number", f => f.DiscNumber > 0 ? f.DiscNumber.ToString() : "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Total Discs", f => f.DiscTotal > 0 ? f.DiscTotal.ToString() : "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Year", f => f.Year > 0 ? f.Year.ToString() : "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Genre", f => f.Genre ?? "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Composer", f => f.Composer ?? "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Copyright", f => f.Copyright ?? "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Comment", f => f.Comment ?? "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Conductor", f => f.Conductor ?? "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Grouping", f => ""); // ATL doesn't have Grouping
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Beats Per Minute", f => ""); // ATL doesn't have BPM
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Publisher", f => f.Publisher ?? "");
 
         _logger.LogDebug("Loaded core metadata for {Count} files", audioFiles.Count);
     }
 
+    /// <summary>
+    /// Legacy loader path using TagLib file objects
+    /// </summary>
+    public void Load(object audioFile, ObservableCollection<TagItem> targetCollection)
+    {
+        if (audioFile is not TagLib.File tagFile)
+            return;
+
+        AddMetadataItem(targetCollection, "Title", tagFile.Tag.Title ?? "", true, v =>
+        {
+            tagFile.Tag.Title = string.IsNullOrEmpty(v) ? null : v;
+        });
+
+        AddMetadataItem(targetCollection, "Artist", tagFile.Tag.FirstPerformer ?? "", true, v =>
+        {
+            tagFile.Tag.Performers = string.IsNullOrEmpty(v) ? Array.Empty<string>() : new[] { v };
+        });
+
+        AddMetadataItem(targetCollection, "Album", tagFile.Tag.Album ?? "", true, v =>
+        {
+            tagFile.Tag.Album = string.IsNullOrEmpty(v) ? null : v;
+        });
+
+        AddMetadataItem(targetCollection, "Album Artist", tagFile.Tag.FirstAlbumArtist ?? "", true, v =>
+        {
+            tagFile.Tag.AlbumArtists = string.IsNullOrEmpty(v) ? Array.Empty<string>() : new[] { v };
+        });
+
+        AddMetadataItem(targetCollection, "Track Number", tagFile.Tag.Track > 0 ? tagFile.Tag.Track.ToString() : "", true, v =>
+        {
+            tagFile.Tag.Track = uint.TryParse(v, out uint trackNum) ? trackNum : 0;
+        });
+
+        AddMetadataItem(targetCollection, "Total Tracks", tagFile.Tag.TrackCount > 0 ? tagFile.Tag.TrackCount.ToString() : "", true, v =>
+        {
+            tagFile.Tag.TrackCount = uint.TryParse(v, out uint totalTracks) ? totalTracks : 0;
+        });
+
+        AddMetadataItem(targetCollection, "Disc Number", tagFile.Tag.Disc > 0 ? tagFile.Tag.Disc.ToString() : "", true, v =>
+        {
+            tagFile.Tag.Disc = uint.TryParse(v, out uint disc) ? disc : 0;
+        });
+
+        AddMetadataItem(targetCollection, "Total Discs", tagFile.Tag.DiscCount > 0 ? tagFile.Tag.DiscCount.ToString() : "", true, v =>
+        {
+            tagFile.Tag.DiscCount = uint.TryParse(v, out uint totalDiscs) ? totalDiscs : 0;
+        });
+
+        AddMetadataItem(targetCollection, "Year", tagFile.Tag.Year > 0 ? tagFile.Tag.Year.ToString() : "", true, v =>
+        {
+            tagFile.Tag.Year = uint.TryParse(v, out uint year) ? year : 0;
+        });
+
+        AddMetadataItem(targetCollection, "Genre", tagFile.Tag.FirstGenre ?? "", true, v =>
+        {
+            tagFile.Tag.Genres = string.IsNullOrEmpty(v) ? Array.Empty<string>() : new[] { v };
+        });
+
+        AddMetadataItem(targetCollection, "Composer", tagFile.Tag.FirstComposer ?? "", true, v =>
+        {
+            tagFile.Tag.Composers = string.IsNullOrEmpty(v) ? Array.Empty<string>() : new[] { v };
+        });
+
+        AddMetadataItem(targetCollection, "Copyright", tagFile.Tag.Copyright ?? "", true, v =>
+        {
+            tagFile.Tag.Copyright = string.IsNullOrEmpty(v) ? null : v;
+        });
+
+        AddMetadataItem(targetCollection, "Comment", tagFile.Tag.Comment ?? "", true, v =>
+        {
+            tagFile.Tag.Comment = string.IsNullOrEmpty(v) ? null : v;
+        });
+
+        AddMetadataItem(targetCollection, "Grouping", tagFile.Tag.Grouping ?? "", true, v =>
+        {
+            tagFile.Tag.Grouping = string.IsNullOrEmpty(v) ? null : v;
+        });
+
+        AddMetadataItem(targetCollection, "Beats Per Minute", tagFile.Tag.BeatsPerMinute > 0 ? tagFile.Tag.BeatsPerMinute.ToString() : "", true, v =>
+        {
+            tagFile.Tag.BeatsPerMinute = uint.TryParse(v, out uint bpm) ? bpm : 0;
+        });
+    }
+
+    /// <summary>
+    /// Legacy multi-file loader path using TagLib file objects
+    /// </summary>
+    public void LoadMultiple(IReadOnlyList<object> audioFiles, ObservableCollection<TagItem> targetCollection)
+    {
+        var tagFiles = audioFiles.OfType<TagLib.File>().ToList();
+        if (tagFiles.Count == 0)
+            return;
+
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Title", f => f.Tag.Title);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Artist", f => f.Tag.FirstPerformer);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Album", f => f.Tag.Album);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Album Artist", f => f.Tag.FirstAlbumArtist);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Track Number", f => f.Tag.Track > 0 ? f.Tag.Track.ToString() : "");
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Total Tracks", f => f.Tag.TrackCount > 0 ? f.Tag.TrackCount.ToString() : "");
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Disc Number", f => f.Tag.Disc > 0 ? f.Tag.Disc.ToString() : "");
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Total Discs", f => f.Tag.DiscCount > 0 ? f.Tag.DiscCount.ToString() : "");
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Year", f => f.Tag.Year > 0 ? f.Tag.Year.ToString() : "");
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Genre", f => f.Tag.FirstGenre);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Composer", f => f.Tag.FirstComposer);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Copyright", f => f.Tag.Copyright);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Comment", f => f.Tag.Comment);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Grouping", f => f.Tag.Grouping);
+        AddMetadataItemMultipleTagLib(targetCollection, tagFiles, "Beats Per Minute", f => f.Tag.BeatsPerMinute > 0 ? f.Tag.BeatsPerMinute.ToString() : "");
+    }
+
+    // ==================================================================
+    // Helper methods (mostly unchanged, except parameter types)
+    // ==================================================================
+
     private static void AddMetadataItem(ObservableCollection<TagItem> collection, string name, string value,
-      bool isEditable, Action<string> updateAction)
+        bool isEditable, Action<string> updateAction)
     {
         collection.Add(new TagItem
         {
@@ -194,102 +313,184 @@ public class CoreMetadataLoader : IMetadataLoader
         });
     }
 
-    private void AddMetadataItemMultiple(ObservableCollection<TagItem> collection, IReadOnlyList<File> files,
-        string name, Func<File, string?> getValue)
+    private void AddMetadataItemMultiple(ObservableCollection<TagItem> collection, IReadOnlyList<Track> files,
+        string name, Func<Track, string?> getValue)
     {
         List<string?> values = files.Select(getValue).ToList();
-        List<string?> distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string> distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList()!;
+        bool hasMultiple = distinctValues.Count > 1;
 
         string displayValue = distinctValues.Count switch
         {
             0 => "",
             1 => distinctValues[0] ?? "",
-            _ => "<various>"
+            _ => $"<various> {string.Join("; ", distinctValues)}"
         };
 
         collection.Add(new TagItem
         {
             Name = name,
             Value = displayValue,
+            OriginalValue = displayValue,
             IsEditable = true,
+            HasMultipleValues = hasMultiple,
             UpdateAction = v =>
-       {
-           // Only update if user changed the value (not <various>)
-           if (v != "<various>")
-           {
-               UpdateAllFiles(files, name, v);
-           }
-       }
+            {
+                // Strip the <various> prefix if the user didn't change the value
+                string cleanValue = v.StartsWith("<various> ", StringComparison.Ordinal)
+                    ? v["<various> ".Length..]
+                    : v;
+                UpdateAllFiles(files, name, cleanValue);
+            }
         });
     }
 
-    private void UpdateAllFiles(IReadOnlyList<File> files, string fieldName, string value)
+    private void AddMetadataItemMultipleTagLib(ObservableCollection<TagItem> collection, IReadOnlyList<TagLib.File> files,
+        string name, Func<TagLib.File, string?> getValue)
     {
-        foreach (File file in files)
-        {
-            Tag tag = file.Tag;
+        List<string?> values = files.Select(getValue).ToList();
+        List<string> distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList()!;
+        bool hasMultiple = distinctValues.Count > 1;
 
+        string displayValue = distinctValues.Count switch
+        {
+            0 => "",
+            1 => distinctValues[0] ?? "",
+            _ => $"<various> {string.Join("; ", distinctValues)}"
+        };
+
+        collection.Add(new TagItem
+        {
+            Name = name,
+            Value = displayValue,
+            OriginalValue = displayValue,
+            IsEditable = true,
+            HasMultipleValues = hasMultiple,
+            UpdateAction = v =>
+            {
+                string cleanValue = v.StartsWith("<various> ", StringComparison.Ordinal)
+                    ? v["<various> ".Length..]
+                    : v;
+                UpdateAllTagLibFiles(files, name, cleanValue);
+            }
+        });
+    }
+
+    private void UpdateAllFiles(IReadOnlyList<Track> files, string fieldName, string value)
+    {
+        foreach (var track in files)
+        {
             switch (fieldName)
             {
                 case "Title":
-                    tag.Title = string.IsNullOrEmpty(value) ? null : value;
+                    track.Title = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Artist":
-                    tag.Performers = string.IsNullOrEmpty(value)
-                ? []
-            : value.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+                    track.Artist = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Album":
-                    tag.Album = string.IsNullOrEmpty(value) ? null : value;
+                    track.Album = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Album Artist":
-                    tag.AlbumArtists = string.IsNullOrEmpty(value)
-                        ? []
-                    : value.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+                    track.AlbumArtist = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Track Number":
-                    tag.Track = uint.TryParse(value, out uint track) ? track : 0;
+                    track.TrackNumber = int.TryParse(value, out int trackNum) ? trackNum : 0;
                     break;
                 case "Total Tracks":
-                    tag.TrackCount = uint.TryParse(value, out uint trackCount) ? trackCount : 0;
+                    track.TrackTotal = int.TryParse(value, out int totalTracks) ? totalTracks : 0;
                     break;
                 case "Disc Number":
-                    tag.Disc = uint.TryParse(value, out uint disc) ? disc : 0;
+                    track.DiscNumber = int.TryParse(value, out int disc) ? disc : 0;
                     break;
                 case "Total Discs":
-                    tag.DiscCount = uint.TryParse(value, out uint discCount) ? discCount : 0;
+                    track.DiscTotal = int.TryParse(value, out int totalDiscs) ? totalDiscs : 0;
                     break;
                 case "Year":
-                    tag.Year = uint.TryParse(value, out uint year) ? year : 0;
+                    track.Year = int.TryParse(value, out int year) ? year : 0;
                     break;
                 case "Genre":
-                    tag.Genres = string.IsNullOrEmpty(value)
-                    ? []
-                   : value.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+                    track.Genre = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Composer":
-                    tag.Composers = string.IsNullOrEmpty(value)
-                    ? []
-                     : value.Split([','], StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToArray();
+                    track.Composer = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Copyright":
-                    tag.Copyright = string.IsNullOrEmpty(value) ? null : value;
+                    track.Copyright = string.IsNullOrEmpty(value) ? null : value;
                     break;
-                case "Beats Per Minute":
-                    tag.BeatsPerMinute = uint.TryParse(value, out uint bpm) ? bpm : 0;
+                case "Comment":
+                    track.Comment = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Conductor":
-                    tag.Conductor = string.IsNullOrEmpty(value) ? null : value;
+                    track.Conductor = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Grouping":
-                    tag.Grouping = string.IsNullOrEmpty(value) ? null : value;
+                    // ATL doesn't have Grouping
+                    break;
+                case "Beats Per Minute":
+                    // ATL doesn't have BPM
                     break;
                 case "Publisher":
-                    tag.Publisher = string.IsNullOrEmpty(value) ? null : value;
+                    track.Publisher = string.IsNullOrEmpty(value) ? null : value;
                     break;
             }
         }
 
         _logger.LogDebug("Updated field '{FieldName}' to '{Value}' for {Count} files", fieldName, value, files.Count);
+    }
+
+    private void UpdateAllTagLibFiles(IReadOnlyList<TagLib.File> files, string fieldName, string value)
+    {
+        foreach (var file in files)
+        {
+            switch (fieldName)
+            {
+                case "Title":
+                    file.Tag.Title = string.IsNullOrEmpty(value) ? null : value;
+                    break;
+                case "Artist":
+                    file.Tag.Performers = string.IsNullOrEmpty(value) ? Array.Empty<string>() : new[] { value };
+                    break;
+                case "Album":
+                    file.Tag.Album = string.IsNullOrEmpty(value) ? null : value;
+                    break;
+                case "Album Artist":
+                    file.Tag.AlbumArtists = string.IsNullOrEmpty(value) ? Array.Empty<string>() : new[] { value };
+                    break;
+                case "Track Number":
+                    file.Tag.Track = uint.TryParse(value, out uint trackNum) ? trackNum : 0;
+                    break;
+                case "Total Tracks":
+                    file.Tag.TrackCount = uint.TryParse(value, out uint totalTracks) ? totalTracks : 0;
+                    break;
+                case "Disc Number":
+                    file.Tag.Disc = uint.TryParse(value, out uint disc) ? disc : 0;
+                    break;
+                case "Total Discs":
+                    file.Tag.DiscCount = uint.TryParse(value, out uint totalDiscs) ? totalDiscs : 0;
+                    break;
+                case "Year":
+                    file.Tag.Year = uint.TryParse(value, out uint year) ? year : 0;
+                    break;
+                case "Genre":
+                    file.Tag.Genres = string.IsNullOrEmpty(value) ? Array.Empty<string>() : new[] { value };
+                    break;
+                case "Composer":
+                    file.Tag.Composers = string.IsNullOrEmpty(value) ? Array.Empty<string>() : new[] { value };
+                    break;
+                case "Copyright":
+                    file.Tag.Copyright = string.IsNullOrEmpty(value) ? null : value;
+                    break;
+                case "Comment":
+                    file.Tag.Comment = string.IsNullOrEmpty(value) ? null : value;
+                    break;
+                case "Grouping":
+                    file.Tag.Grouping = string.IsNullOrEmpty(value) ? null : value;
+                    break;
+                case "Beats Per Minute":
+                    file.Tag.BeatsPerMinute = uint.TryParse(value, out uint bpm) ? bpm : 0;
+                    break;
+            }
+        }
     }
 }

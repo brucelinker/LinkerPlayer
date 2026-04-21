@@ -66,7 +66,7 @@ public class TrackNavigationServiceTests
                 Id = $"track-{i}",
                 Title = $"Track {i}",
                 Path = $"C:\\Music\\track-{i}.mp3",
-                Duration = TimeSpan.FromSeconds(200 + i)
+                Duration = 200 + i
             });
         }
 

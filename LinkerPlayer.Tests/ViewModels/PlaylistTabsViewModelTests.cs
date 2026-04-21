@@ -56,6 +56,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             _mockSave.Object,
             _mockSelection.Object,
             _playbackCoordinator,
+            Mock.Of<IImportCancellationService>(),
             _mockLogger.Object
         );
     }
@@ -115,7 +116,7 @@ public class PlaylistTabsViewModelTests : IDisposable
                 SelectedTrackId = "trk2"
             }
         };
-        ObservableCollection<MediaFile> mainLibrary = new ObservableCollection<MediaFile>
+        RangeObservableCollection<MediaFile> mainLibrary = new RangeObservableCollection<MediaFile>
         {
             new MediaFile { Id = "trk1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "trk2", FileName = "B", Path = "B.mp3" }
@@ -155,6 +156,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             saveSvc.Object,
             selection,
             playbackCoordinator,
+            Mock.Of<IImportCancellationService>(),
             logger.Object);
 
         // Act
@@ -182,7 +184,7 @@ public class PlaylistTabsViewModelTests : IDisposable
         };
         musicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
         musicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new ObservableCollection<MediaFile>
+        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>
         {
             new MediaFile { Id = "t1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "t2", FileName = "B", Path = "B.mp3" }
@@ -218,6 +220,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             saveSvc.Object,
             selection,
             playbackCoordinator,
+            Mock.Of<IImportCancellationService>(),
             logger.Object);
 
         // Seed tabs
@@ -252,7 +255,7 @@ public class PlaylistTabsViewModelTests : IDisposable
         };
         musicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
         musicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new ObservableCollection<MediaFile>());
+        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
 
         Mock<ISettingsManager> settingsManager = new Mock<ISettingsManager>();
         settingsManager.SetupGet(s => s.Settings).Returns(new AppSettings { SelectedTabIndex = 1 });
@@ -282,6 +285,7 @@ public class PlaylistTabsViewModelTests : IDisposable
             saveSvc.Object,
             selection,
             playbackCoordinator,
+            Mock.Of<IImportCancellationService>(),
             logger.Object);
 
         vm.LoadPlaylistTabs();

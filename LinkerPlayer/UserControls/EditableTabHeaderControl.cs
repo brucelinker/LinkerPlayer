@@ -1,5 +1,7 @@
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
+using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Windows;
@@ -22,6 +24,15 @@ public class EditableTabHeaderControl : ContentControl
     public EditableTabHeaderControl()
     {
         _logger = App.AppHost.Services.GetRequiredService<ILogger<EditableTabHeaderControl>>();
+
+        // Register to receive rename messages
+        WeakReferenceMessenger.Default.Register<BeginEditTabMessage>(this, (r, m) =>
+        {
+            if (DataContext is PlaylistTab tab && tab == m.Value)
+            {
+                SetEditMode(true);
+            }
+        });
     }
 
     public override void OnApplyTemplate()
@@ -142,21 +153,39 @@ public class EditableTabHeaderControl : ContentControl
 
     private static PlaylistTabsViewModel? FindAncestorViewModel(DependencyObject obj)
     {
-        while (obj != null!)
+        int depth = 0;
+        const int maxDepth = 100; // Prevent infinite loops
+
+        while (obj != null && depth < maxDepth)
         {
+            depth++;
+
             if (obj is FrameworkElement { DataContext: PlaylistTabsViewModel viewModel })
             {
                 return viewModel;
             }
 
+            DependencyObject? parent = null;
             if (obj is FrameworkElement fe)
             {
-                obj = LogicalTreeHelper.GetParent(fe) ?? VisualTreeHelper.GetParent(fe)!;
+                parent = LogicalTreeHelper.GetParent(fe);
+                if (parent == null)
+                {
+                    parent = VisualTreeHelper.GetParent(fe);
+                }
             }
             else
             {
-                obj = VisualTreeHelper.GetParent(obj)!;
+                parent = VisualTreeHelper.GetParent(obj);
             }
+
+            if (parent == obj || parent == null)
+            {
+                // Circular reference or end of tree
+                return null;
+            }
+
+            obj = parent;
         }
 
         return null;

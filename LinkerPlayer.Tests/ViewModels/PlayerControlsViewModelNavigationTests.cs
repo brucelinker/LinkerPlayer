@@ -76,7 +76,7 @@ public class PlayerControlsViewModelNavigationTests
         {
             new Playlist { Name = "P1", TrackIds = new System.Collections.ObjectModel.ObservableCollection<string>() }
         });
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new System.Collections.ObjectModel.ObservableCollection<MediaFile>());
+        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
         musicLibrary.Setup(m => m.GetPlaylists()).Returns(musicLibrary.Object.Playlists.ToList());
 
         Mock<ISharedDataModel> shared = new Mock<ISharedDataModel>();
@@ -111,6 +111,7 @@ public class PlayerControlsViewModelNavigationTests
             databaseSaveService.Object,
             selectionService.Object,
             playbackCoordinator.Object,
+            Mock.Of<IImportCancellationService>(),
             logger);
     }
 }

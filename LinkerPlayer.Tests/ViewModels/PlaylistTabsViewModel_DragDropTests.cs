@@ -18,7 +18,7 @@ public class PlaylistTabsViewModel_DragDropTests
     {
         Mock<IMusicLibrary> musicLibrary = new Mock<IMusicLibrary>(MockBehavior.Strict);
         musicLibrary.SetupGet(m => m.Playlists).Returns(new System.Collections.ObjectModel.ObservableCollection<Playlist>());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new System.Collections.ObjectModel.ObservableCollection<MediaFile>());
+        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
 
         Mock<ISettingsManager> settings = new Mock<ISettingsManager>();
         settings.SetupGet(s => s.Settings).Returns(new AppSettings());
@@ -53,6 +53,7 @@ public class PlaylistTabsViewModel_DragDropTests
             dbSave.Object,
             selection,
             playbackCoordinator,
+            Mock.Of<IImportCancellationService>(),
             logger);
     }
 

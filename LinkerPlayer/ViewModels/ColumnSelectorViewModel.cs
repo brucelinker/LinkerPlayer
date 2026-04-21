@@ -39,11 +39,21 @@ public partial class ColumnSelectorViewModel : ObservableObject
         Columns.Add(new ColumnSelectorItem("Artist", "Artist", true));
         Columns.Add(new ColumnSelectorItem("Album", "Album", true));
         Columns.Add(new ColumnSelectorItem("Album Artist", "AlbumArtist", false));
+        Columns.Add(new ColumnSelectorItem("Genre", "Genres", false));
+        Columns.Add(new ColumnSelectorItem("Track Count", "TrackCount", false));
+        Columns.Add(new ColumnSelectorItem("Disc #", "Disc", false));
+        Columns.Add(new ColumnSelectorItem("Disc Count", "DiscCount", false));
+        Columns.Add(new ColumnSelectorItem("Composers", "Composers", false));
+        Columns.Add(new ColumnSelectorItem("Comment", "Comment", false));
+        Columns.Add(new ColumnSelectorItem("Copyright", "Copyright", false));
         Columns.Add(new ColumnSelectorItem("Duration", "Duration", true));
+        Columns.Add(new ColumnSelectorItem("Year", "Year", false));
         Columns.Add(new ColumnSelectorItem("Bitrate", "Bitrate", false));
+        Columns.Add(new ColumnSelectorItem("Sample Rate", "SampleRate", false));
         Columns.Add(new ColumnSelectorItem("Channels", "Channels", false));
         Columns.Add(new ColumnSelectorItem("Codec", "Codec", false));
-        Columns.Add(new ColumnSelectorItem("Year", "Year", false));
+        Columns.Add(new ColumnSelectorItem("File Name", "FileName", false));
+        Columns.Add(new ColumnSelectorItem("Path", "Path", false));
     }
 
     [RelayCommand]

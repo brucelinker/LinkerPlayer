@@ -234,10 +234,25 @@ public class PlaylistManagerService : IPlaylistManagerService
 
         try
         {
-            // Save tracks to library first
-            await _musicLibrary.SaveTracksBatchAsync(trackList);
+            // Ensure all tracks are in the MainLibrary collection (auto-population)
+            // AddTrackToLibraryAsync handles duplicates and adds to MainLibrary
+            List<MediaFile> addedTracks = new List<MediaFile>();
+            foreach (MediaFile track in trackList)
+            {
+                MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(track, saveImmediately: false);
+                if (addedTrack != null)
+                {
+                    addedTracks.Add(addedTrack);
+                }
+            }
 
-            // Add track IDs to playlist
+            // Batch save all new tracks to database
+            if (addedTracks.Any())
+            {
+                await _musicLibrary.SaveTracksBatchAsync(addedTracks);
+            }
+
+            // Add track IDs to playlist (now guaranteed to be in MainLibrary)
             List<string> trackIds = trackList.Select(t => t.Id).ToList();
             await _musicLibrary.AddTracksToPlaylistAsync(trackIds, playlistName, saveImmediately: false);
 

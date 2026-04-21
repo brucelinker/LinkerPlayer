@@ -1,3 +1,4 @@
+using ATL;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using TagLib.Id3v2;
@@ -193,6 +194,74 @@ public class LyricsCommentLoader
             Name = "Lyrics",
             Value = displayValue,
             IsEditable = false // Read-only for multi-selection
+        };
+    }
+
+    /// <summary>
+    /// Load comment field for multiple ATL tracks
+    /// </summary>
+    public TagItem LoadCommentMultiple(IReadOnlyList<Track> atlTracks)
+    {
+        if (atlTracks == null || atlTracks.Count == 0)
+        {
+            _logger.LogWarning("No ATL tracks provided for comment loading");
+            return CreatePlaceholderComment();
+        }
+
+        List<string> distinctValues = atlTracks
+            .Select(t => t.Comment ?? "")
+            .Where(v => !string.IsNullOrEmpty(v))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        string displayValue = distinctValues.Count switch
+        {
+            0 => "[ No comment available. ]",
+            1 => distinctValues[0],
+            _ => $"<various> {string.Join("; ", distinctValues)}"
+        };
+
+        return new TagItem
+        {
+            Name = "Comment",
+            Value = displayValue,
+            OriginalValue = displayValue,
+            HasMultipleValues = distinctValues.Count > 1,
+            IsEditable = false
+        };
+    }
+
+    /// <summary>
+    /// Load lyrics field for multiple ATL tracks
+    /// </summary>
+    public TagItem LoadLyricsMultiple(IReadOnlyList<Track> atlTracks)
+    {
+        if (atlTracks == null || atlTracks.Count == 0)
+        {
+            _logger.LogWarning("No ATL tracks provided for lyrics loading");
+            return CreatePlaceholderLyrics();
+        }
+
+        List<string> distinctValues = atlTracks
+            .Select(t => t.Lyrics?.FirstOrDefault()?.UnsynchronizedLyrics ?? "")
+            .Where(v => !string.IsNullOrEmpty(v))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        string displayValue = distinctValues.Count switch
+        {
+            0 => "[ No lyrics available. ]",
+            1 => distinctValues[0],
+            _ => $"<various> {string.Join("; ", distinctValues)}"
+        };
+
+        return new TagItem
+        {
+            Name = "Lyrics",
+            Value = displayValue,
+            OriginalValue = displayValue,
+            HasMultipleValues = distinctValues.Count > 1,
+            IsEditable = false
         };
     }
 

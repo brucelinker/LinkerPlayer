@@ -12,6 +12,7 @@
 
   <!--  Converter used by play/pause visibility (matches original working behavior)  -->
   <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
+  <converters:DirtyCellBackgroundConverter x:Key="DirtyCellBackgroundConverter" />
 
   <system:Double x:Key="FontSizeTitle">22</system:Double>
   <system:Double x:Key="FontSizeHeading">16</system:Double>

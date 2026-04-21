@@ -12,7 +12,7 @@ namespace LinkerPlayer.ViewModels.Properties.Loaders;
 /// <summary>
 /// Loads custom/non-standard metadata tags from various formats (ID3v2, Vorbis, APE, iTunes)
 /// </summary>
-public class CustomMetadataLoader : IMetadataLoader
+public class CustomMetadataLoader
 {
     private readonly ILogger<CustomMetadataLoader> _logger;
 

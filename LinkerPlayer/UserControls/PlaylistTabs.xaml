@@ -6,6 +6,7 @@
   xmlns:converters="clr-namespace:LinkerPlayer.Converters"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+  xmlns:local="clr-namespace:LinkerPlayer"
   xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
@@ -28,6 +29,17 @@
 
       <DataTemplate x:Key="PlayPauseCellTemplate">
         <Grid>
+          <!-- Badge for items that still need metadata refresh (quick-imported) -->
+          <iconPacks:PackIconMaterial
+            Width="10"
+            Height="10"
+            Margin="2,0,0,0"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Foreground="OrangeRed"
+            Kind="AlertCircle"
+            ToolTip="Needs metadata refresh"
+            Visibility="{Binding NeedsMetadataRefresh, Converter={StaticResource BooleanToVisibilityConverter}}" />
           <iconPacks:PackIconFontAwesome
             Width="20"
             Height="10"
@@ -44,6 +56,24 @@
               </MultiBinding>
             </iconPacks:PackIconFontAwesome.Visibility>
           </iconPacks:PackIconFontAwesome>
+          <!-- Spinner while a background metadata refresh is active -->
+          <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="16" Height="16" Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Ellipse Width="16" Height="16" Stroke="LightGray" StrokeThickness="2" Opacity="0.6" />
+            <Ellipse Width="10" Height="10" Stroke="Orange" StrokeThickness="2">
+              <Ellipse.RenderTransform>
+                <RotateTransform x:Name="rt" Angle="0" CenterX="5" CenterY="5" />
+              </Ellipse.RenderTransform>
+              <Ellipse.Triggers>
+                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                  <BeginStoryboard>
+                    <Storyboard RepeatBehavior="Forever">
+                      <DoubleAnimation Storyboard.TargetName="rt" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:1" />
+                    </Storyboard>
+                  </BeginStoryboard>
+                </EventTrigger>
+              </Ellipse.Triggers>
+            </Ellipse>
+          </Grid>
 
           <iconPacks:PackIconMaterial
             Width="20"
@@ -158,6 +188,127 @@
         </Setter>
       </Style>
 
+      <!--  Music Library Tab Header Template (Icon-based, no editing/dragging)  -->
+      <DataTemplate x:Key="MusicLibraryHeaderTemplate">
+        <Grid
+          Margin="0"
+          Background="Transparent"
+          Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+          <Grid.ContextMenu>
+            <ContextMenu>
+              <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist" />
+              <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistFromFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist From Folder" />
+              <MenuItem Command="{Binding PlacementTarget.Tag.LoadPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Load Playlist" />
+              <Separator />
+              <MenuItem Command="{Binding PlacementTarget.Tag.AddFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Folder to Library" />
+              <MenuItem Command="{Binding PlacementTarget.Tag.AddFilesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Files to Library" />
+            </ContextMenu>
+          </Grid.ContextMenu>
+          <StackPanel Orientation="Horizontal">
+            <iconPacks:PackIconMaterial
+              Width="16"
+              Height="16"
+              Margin="0,0,6,0"
+              VerticalAlignment="Center"
+              Kind="Database">
+              <iconPacks:PackIconMaterial.Style>
+                <Style TargetType="iconPacks:PackIconMaterial">
+                  <Setter Property="Foreground" Value="{DynamicResource PlaylistTabForegroundBrush}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </iconPacks:PackIconMaterial.Style>
+            </iconPacks:PackIconMaterial>
+            <TextBlock
+              VerticalAlignment="Center"
+              FontSize="{DynamicResource FontSizeNormal}">
+              <Run Text="{Binding Name, Mode=OneWay}" />
+              <Run Text=" (" />
+              <Run Text="{Binding FilteredTrackCount, Mode=OneWay}" />
+              <Run Text=")" />
+              <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                  <Setter Property="Foreground" Value="{DynamicResource PlaylistTabForegroundBrush}" />
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </TextBlock.Style>
+            </TextBlock>
+          </StackPanel>
+        </Grid>
+      </DataTemplate>
+
+      <!--  Playlist Tab Header Template (Editable text, draggable)  -->
+      <DataTemplate x:Key="PlaylistHeaderTemplate">
+        <StackPanel Orientation="Horizontal">
+          <userControls:EditableTabHeaderControl
+            Margin="0"
+            Padding="0"
+            AllowDrop="True"
+            DragLeave="TabItem_DragLeave"
+            DragOver="TabItem_DragOver"
+            Drop="TabItem_Drop"
+            PreviewMouseLeftButtonDown="TabItem_PreviewMouseLeftButtonDown"
+            PreviewMouseMove="TabItem_PreviewMouseMove"
+            Style="{StaticResource EditableTabHeaderControl}"
+            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+            <userControls:EditableTabHeaderControl.ContextMenu>
+              <ContextMenu>
+                <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistFromFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist From Folder" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.LoadPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Load Playlist" />
+                <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.AddFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Folder" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.AddFilesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Files" />
+                <Separator />
+                <MenuItem
+                  Command="{Binding PlacementTarget.Tag.BeginRenameTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  Header="Rename Playlist" />
+                <Separator />
+                <MenuItem
+                  Command="{Binding PlacementTarget.Tag.RemovePlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                  Header="Remove Playlist" />
+              </ContextMenu>
+            </userControls:EditableTabHeaderControl.ContextMenu>
+            <userControls:EditableTabHeaderControl.Content>
+              <Binding Mode="TwoWay" Path="Name" />
+            </userControls:EditableTabHeaderControl.Content>
+          </userControls:EditableTabHeaderControl>
+          <TextBlock
+            Margin="4,0,0,0"
+            VerticalAlignment="Center"
+            FontSize="{DynamicResource FontSizeNormal}">
+            <Run Text=" (" />
+            <Run Text="{Binding Tracks.Count, Mode=OneWay}" />
+            <Run Text=")" />
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{DynamicResource PlaylistTabForegroundBrush}" />
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </StackPanel>
+      </DataTemplate>
+
+      <!--  Tab Header Template Selector  -->
+      <userControls:TabHeaderTemplateSelector
+        x:Key="TabHeaderTemplateSelector"
+        MusicLibraryTemplate="{StaticResource MusicLibraryHeaderTemplate}"
+        PlaylistTemplate="{StaticResource PlaylistHeaderTemplate}" />
+
       <Style x:Key="TabItemContainerStyle" TargetType="TabItem">
         <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
         <Setter Property="BorderThickness" Value="1" />
@@ -187,47 +338,7 @@
             </ControlTemplate>
           </Setter.Value>
         </Setter>
-        <Setter Property="HeaderTemplate">
-          <Setter.Value>
-            <DataTemplate>
-              <userControls:EditableTabHeaderControl
-                Margin="0"
-                Padding="0"
-                AllowDrop="True"
-                DragLeave="TabItem_DragLeave"
-                DragOver="TabItem_DragOver"
-                Drop="TabItem_Drop"
-                PreviewMouseLeftButtonDown="TabItem_PreviewMouseLeftButtonDown"
-                PreviewMouseMove="TabItem_PreviewMouseMove"
-                Style="{StaticResource EditableTabHeaderControl}"
-                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                <userControls:EditableTabHeaderControl.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist" />
-                    <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistFromFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist From Folder" />
-                    <MenuItem Command="{Binding PlacementTarget.Tag.LoadPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Load Playlist" />
-                    <Separator />
-                    <MenuItem Command="{Binding PlacementTarget.Tag.AddFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Folder" />
-                    <MenuItem Command="{Binding PlacementTarget.Tag.AddFilesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Add Files" />
-                    <Separator />
-                    <MenuItem
-                      Command="{Binding PlacementTarget.Tag.BeginRenameTabCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                      Header="Rename Playlist" />
-                    <Separator />
-                    <MenuItem
-                      Command="{Binding PlacementTarget.Tag.RemovePlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                      Header="Remove Playlist" />
-                  </ContextMenu>
-                </userControls:EditableTabHeaderControl.ContextMenu>
-                <userControls:EditableTabHeaderControl.Content>
-                  <Binding Mode="TwoWay" Path="Name" />
-                </userControls:EditableTabHeaderControl.Content>
-              </userControls:EditableTabHeaderControl>
-            </DataTemplate>
-          </Setter.Value>
-        </Setter>
+        <Setter Property="HeaderTemplateSelector" Value="{StaticResource TabHeaderTemplateSelector}" />
         <EventSetter Event="PreviewMouseLeftButtonDown" Handler="TabItem_PreviewMouseLeftButtonDown" />
         <EventSetter Event="PreviewMouseMove" Handler="TabItem_PreviewMouseMove" />
         <EventSetter Event="DragOver" Handler="TabItem_DragOver" />
@@ -271,7 +382,118 @@
         </Style.Triggers>
       </Style>
 
-      <DataTemplate x:Key="TabContentTemplate" DataType="{x:Type models:PlaylistTab}">
+      <!--  Music Library Tab Content Template (FilterBar + DataGrid)  -->
+      <DataTemplate x:Key="MusicLibraryContentTemplate" DataType="{x:Type models:MusicLibraryTab}">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="1*" MinHeight="120" />
+            <RowDefinition Height="4" />
+            <RowDefinition Height="3*" />
+          </Grid.RowDefinitions>
+
+          <!--  Filter Bar  -->
+          <userControls:FilterBar
+            Grid.Row="0"
+            DataContext="{Binding}" />
+
+          <!--  Horizontal Splitter  -->
+          <GridSplitter
+            Grid.Row="1"
+            Height="4"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Center"
+            Background="{DynamicResource PlaylistTabBorderBrush}"
+            ResizeDirection="Rows"
+            local:GridSplitterPersistence.PersistKey="LibraryFilterSplitter" />
+
+          <!--  Track List DataGrid  -->
+          <DataGrid
+            Name="MusicLibraryDataGrid"
+            Grid.Row="2"
+            Margin="0,0,0,0"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            HorizontalContentAlignment="Stretch"
+            VerticalContentAlignment="Stretch"
+            AllowDrop="True"
+            AlternationCount="2"
+            AutoGenerateColumns="False"
+            Background="Transparent"
+            BorderThickness="0"
+            CanUserAddRows="False"
+            CanUserDeleteRows="False"
+            CanUserReorderColumns="True"
+            CellStyle="{StaticResource SharedDataGridCellStyle}"
+            ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
+            EnableColumnVirtualization="True"
+            EnableRowVirtualization="True"
+            GridLinesVisibility="None"
+            HorizontalScrollBarVisibility="Visible"
+            IsReadOnly="False"
+            ItemsSource="{Binding TracksView.View}"
+            CellEditEnding="MusicLibraryDataGrid_CellEditEnding"
+            Loaded="DataGrid_Loaded"
+            MouseDoubleClick="PlaylistRow_MouseDoubleClick"
+            PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
+            RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"
+            RowHeaderWidth="0"
+            RowHeight="20"
+            RowStyle="{StaticResource SharedDataGridRowStyle}"
+            ScrollViewer.CanContentScroll="True"
+            ScrollViewer.IsDeferredScrollingEnabled="True"
+            ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
+            SelectionChanged="TracksTable_OnSelectionChanged"
+            SelectionMode="Extended"
+            SelectionUnit="FullRow"
+            Style="{StaticResource SharedDataGridStyle}"
+            ToolTipService.IsEnabled="False"
+            VerticalScrollBarVisibility="Visible"
+            VirtualizingPanel.CacheLength="1"
+            VirtualizingPanel.CacheLengthUnit="Page"
+            VirtualizingPanel.IsVirtualizing="True"
+            VirtualizingPanel.VirtualizationMode="Recycling">
+
+            <DataGrid.Resources>
+              <!--  Apply custom scrollbars implicitly within the DataGrid scope  -->
+              <Style BasedOn="{StaticResource CustomScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
+            </DataGrid.Resources>
+
+            <DataGrid.Tag>
+              <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+            </DataGrid.Tag>
+
+            <b:Interaction.Triggers>
+              <b:EventTrigger EventName="DragOver">
+                <b:InvokeCommandAction Command="{Binding DataContext.DragOverCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
+              </b:EventTrigger>
+              <b:EventTrigger EventName="Drop">
+                <b:InvokeCommandAction Command="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
+              </b:EventTrigger>
+            </b:Interaction.Triggers>
+
+            <!--  Same columns as PlaylistTab for now - can be customized later  -->
+            <DataGrid.Columns>
+              <!--  Columns will be dynamically generated based on MusicLibraryTab.VisibleColumns  -->
+            </DataGrid.Columns>
+
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem Command="{Binding PlacementTarget.Tag.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Play" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Delete from Library" />
+                <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze Silence" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.CancelAnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Cancel Analyze" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.ClearSilenceAnalysisCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Clear Silence Analysis" />
+                <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Properties" />
+              </ContextMenu>
+            </DataGrid.ContextMenu>
+          </DataGrid>
+        </Grid>
+      </DataTemplate>
+
+      <!--  Playlist Tab Content Template (DataGrid only)  -->
+      <DataTemplate x:Key="PlaylistContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <Grid>
           <DataGrid
             Name="PlaylistDataGrid"
@@ -491,6 +713,13 @@
           </DataGrid>
         </Grid>
       </DataTemplate>
+
+      <!--  Tab Content Template Selector  -->
+      <userControls:TabContentTemplateSelector
+        x:Key="TabContentTemplateSelector"
+        MusicLibraryContentTemplate="{StaticResource MusicLibraryContentTemplate}"
+        PlaylistContentTemplate="{StaticResource PlaylistContentTemplate}" />
+
     </ResourceDictionary>
   </UserControl.Resources>
 
@@ -513,9 +742,9 @@
       ItemsSource="{Binding TabList}"
       SelectedIndex="{Binding SelectedTabIndex}"
       SelectionChanged="TabControl_SelectionChanged">
-      <TabControl.ContentTemplate>
-        <StaticResource ResourceKey="TabContentTemplate" />
-      </TabControl.ContentTemplate>
+      <TabControl.ContentTemplateSelector>
+        <StaticResource ResourceKey="TabContentTemplateSelector" />
+      </TabControl.ContentTemplateSelector>
       <TabControl.Tag>
         <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=UserControl}" />
       </TabControl.Tag>

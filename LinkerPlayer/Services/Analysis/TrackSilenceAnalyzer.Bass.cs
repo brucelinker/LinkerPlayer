@@ -39,10 +39,38 @@ public sealed class TrackSilenceAnalyzer : ITrackSilenceAnalyzer
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Ensure BASS is initialized via the shared audio engine when available. During shutdown
+            // the engine may be uninitialized or freeing native resources; handle stream creation
+            // failures gracefully instead of throwing to avoid crashing on app exit.
+            try
+            {
+                object? engineObj = App.AppHost?.Services?.GetService(typeof(BassLibs.BassAudioEngine));
+                BassLibs.BassAudioEngine? engine = engineObj as BassLibs.BassAudioEngine;
+                if (engine != null && !engine.IsInitialized)
+                {
+                    try
+                    {
+                        engine.Initialize();
+                    }
+                    catch (Exception initEx)
+                    {
+                        _logger.LogWarning(initEx, "BASS engine initialization failed in TrackSilenceAnalyzer for {Path}", filePath);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log and continue to attempt stream creation; initialization is best-effort.
+                _logger.LogDebug(ex, "Exception while ensuring BASS engine initialized for {Path}", filePath);
+            }
+
             int stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
             if (stream == 0)
             {
-                throw new InvalidOperationException($"Failed to create decode stream: {Bass.LastError}");
+                Errors err = Bass.LastError;
+                _logger.LogWarning("TrackSilenceAnalyzer: Failed to create decode stream for {Path}: {Error}", filePath, err);
+                // Return a safe default result instead of throwing so shutdown and bulk imports do not crash the app.
+                return new TrackSilenceAnalysisResult { LeadingSilenceMs = 0, TrailingSilenceMs = 0 };
             }
 
             try

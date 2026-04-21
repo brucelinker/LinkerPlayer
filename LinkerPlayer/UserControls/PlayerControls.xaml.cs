@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services;
 using LinkerPlayer.Services.Playback;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.Windows;
@@ -26,6 +27,7 @@ public partial class PlayerControls
     private readonly IPlayerControlsViewModel _vm;
     private readonly ILogger<PlayerControls> _logger;
     private readonly IPlaybackCoordinator _playbackCoordinator;
+    private readonly IImportCancellationService _importCancellationService;
 
     private bool _isUserSeeking;
 
@@ -35,6 +37,7 @@ public partial class PlayerControls
     {
         _audioEngine = App.AppHost.Services.GetRequiredService<IAudioEngine>();
         _playbackCoordinator = App.AppHost.Services.GetRequiredService<IPlaybackCoordinator>();
+        _importCancellationService = App.AppHost.Services.GetRequiredService<IImportCancellationService>();
 
         _vm = App.AppHost.Services.GetRequiredService<IPlayerControlsViewModel>();
         DataContext = _vm;
@@ -114,7 +117,7 @@ public partial class PlayerControls
 
         if (_vm.SelectedTrack == _vm.ActiveTrack)
         {
-            TimeSpan ts = _vm.SelectedTrack.Duration;
+            TimeSpan ts = TimeSpan.FromSeconds(_vm.SelectedTrack.Duration);
             TotalTime.Text = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
             CurrentTime.Text = "0:00";
         }
@@ -147,37 +150,15 @@ public partial class PlayerControls
 
     private string GetChannelsString(int channels)
     {
-        if (channels == 1)
+        return channels switch
         {
-            return "mono";
-        }
-
-        if (channels == 2)
-        {
-            return "stereo";
-        }
-
-        if (channels == 4)
-        {
-            return "4ch";
-        }
-
-        if (channels == 6)
-        {
-            return "6ch";
-        }
-
-        if (channels == 8)
-        {
-            return "8ch";
-        }
-
-        if (channels > 8)
-        {
-            return "multichannel";
-        }
-
-        return "";
+            1 => "mono",
+            2 => "stereo",
+            4 => "quad",
+            6 => "5.1 surround",
+            8 => "7.1 surround",
+            _ => $"{channels} channels"
+        };
     }
 
     private void OnPlaybackStateChanged(PlaybackState state)
@@ -241,6 +222,16 @@ public partial class PlayerControls
         ProgressInfo.Text = progressData.IsProcessing
             ? $"{progressData.Status} ({progressData.ProcessedTracks}/{progressData.TotalTracks})"
             : progressData.Status;
+
+        // Show hint in the Info area during imports; restore output mode when done
+        if (progressData.IsProcessing)
+        {
+            Info.Text = "Press ESC to cancel";
+        }
+        else
+        {
+            OnOutputModeChanged(_audioEngine.GetCurrentOutputMode());
+        }
     }
 
     private void OnDataGridPlay(PlaybackState value)
@@ -412,7 +403,7 @@ public partial class PlayerControls
 
         // Prefer engine length when available; otherwise fall back to metadata duration.
         double engineLengthSeconds = _audioEngine.CurrentTrackLength;
-        TimeSpan total = engineLengthSeconds > 0 ? TimeSpan.FromSeconds(engineLengthSeconds) : track.Duration;
+        TimeSpan total = engineLengthSeconds > 0 ? TimeSpan.FromSeconds(engineLengthSeconds) : TimeSpan.FromSeconds(track.Duration);
         TotalTime.Text = $"{(int)total.TotalMinutes}:{total.Seconds:D2}";
     }
 }

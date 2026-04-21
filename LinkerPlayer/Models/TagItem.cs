@@ -26,6 +26,16 @@ public class TagItem : INotifyPropertyChanged
     {
         get; set;
     }
+
+    /// <summary>
+    /// Indicates this item had multiple distinct values across selected files.
+    /// </summary>
+    public bool HasMultipleValues { get; set; }
+
+    /// <summary>
+    /// The original display value when the item was loaded (used to detect edits on multi-value fields).
+    /// </summary>
+    public string OriginalValue { get; set; } = string.Empty;
     public Action<string>? UpdateAction
     {
         get; set;

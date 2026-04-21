@@ -46,7 +46,7 @@ public class PlaybackCoordinatorTests
             Id = "t1",
             Path = "c:/music/t1.mp3",
             Title = "T1",
-            Duration = TimeSpan.FromSeconds(120)
+            Duration = 120
         };
 
         coordinator.PlayTrack("P1", 3, track, 0);
@@ -90,7 +90,7 @@ public class PlaybackCoordinatorTests
             shared,
             logger);
 
-        MediaFile track = new MediaFile { Id = "t1", Path = "c:/music/t1.mp3", Duration = TimeSpan.FromSeconds(120) };
+        MediaFile track = new MediaFile { Id = "t1", Path = "c:/music/t1.mp3", Duration = 120 };
         coordinator.PlayTrack("P1", 0, track, 0);
 
         coordinator.Stop();
@@ -113,8 +113,8 @@ public class PlaybackCoordinatorTests
         FakeMusicLibrary musicLibrary = new FakeMusicLibrary();
         List<MediaFile> tracks = new List<MediaFile>
         {
-            new MediaFile { Id = "t1", Path = "c:/music/t1.mp3", Duration = TimeSpan.FromSeconds(120) },
-            new MediaFile { Id = "t2", Path = "c:/music/t2.mp3", Duration = TimeSpan.FromSeconds(180) }
+            new MediaFile { Id = "t1", Path = "c:/music/t1.mp3", Duration = 120 },
+            new MediaFile { Id = "t2", Path = "c:/music/t2.mp3", Duration = 180 }
         };
         musicLibrary.GetTracksFromPlaylistFunc = _ => tracks;
 
@@ -164,8 +164,8 @@ public class PlaybackCoordinatorTests
         FakeMusicLibrary musicLibrary = new FakeMusicLibrary();
         List<MediaFile> tracks = new List<MediaFile>
         {
-            new MediaFile { Id = "t1", Path = "c:/music/t1.mp3", Duration = TimeSpan.FromSeconds(120) },
-            new MediaFile { Id = "t2", Path = "c:/music/t2.mp3", Duration = TimeSpan.FromSeconds(180) }
+            new MediaFile { Id = "t1", Path = "c:/music/t1.mp3", Duration = 120 },
+            new MediaFile { Id = "t2", Path = "c:/music/t2.mp3", Duration = 180 }
         };
         musicLibrary.GetTracksFromPlaylistFunc = _ => tracks;
 

@@ -1,7 +1,9 @@
+using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.IO;
+using static ATL.ChannelsArrangements;
 
 namespace LinkerPlayer.Services;
 
@@ -13,7 +15,7 @@ public interface IFileImportService
     /// <param name="filePaths">Array of file or folder paths to import</param>
     /// <param name="progress">Progress reporting interface</param>
     /// <returns>List of successfully imported MediaFiles</returns>
-    Task<List<MediaFile>> ImportFilesAsync(string[] filePaths, IProgress<ProgressData>? progress = null);
+    Task<List<MediaFile>> ImportFilesAsync(string[] filePaths, IProgress<ProgressData>? progress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Imports all audio files from a folder recursively
@@ -21,7 +23,7 @@ public interface IFileImportService
     /// <param name="folderPath">Path to the folder to import</param>
     /// <param name="progress">Progress reporting interface</param>
     /// <returns>List of successfully imported MediaFiles</returns>
-    Task<List<MediaFile>> ImportFolderAsync(string folderPath, IProgress<ProgressData>? progress = null);
+    Task<List<MediaFile>> ImportFolderAsync(string folderPath, IProgress<ProgressData>? progress = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Imports a single audio file
@@ -49,16 +51,19 @@ public class FileImportService : IFileImportService
 {
     private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger<FileImportService> _logger;
-    //private readonly string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mp4", ".ofr", ".ogg", ".wma", ".wv"];
+    private readonly IImportErrorLogger _importErrorLogger;
+    private readonly IImportCancellationService _importCancellationService;
 
 
-    public FileImportService(IMusicLibrary musicLibrary, ILogger<FileImportService> logger)
+    public FileImportService(IMusicLibrary musicLibrary, ILogger<FileImportService> logger, IImportErrorLogger importErrorLogger, IImportCancellationService importCancellationService)
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _importErrorLogger = importErrorLogger ?? throw new ArgumentNullException(nameof(importErrorLogger));
+        _importCancellationService = importCancellationService ?? throw new ArgumentNullException(nameof(importCancellationService));
     }
 
-    public async Task<List<MediaFile>> ImportFilesAsync(string[] filePaths, IProgress<ProgressData>? progress = null)
+    public async Task<List<MediaFile>> ImportFilesAsync(string[] filePaths, IProgress<ProgressData>? progress = null, CancellationToken cancellationToken = default)
     {
         List<MediaFile> importedFiles = new List<MediaFile>();
 
@@ -86,62 +91,154 @@ public class FileImportService : IFileImportService
             Phase = "Importing"
         });
 
-        // Process individual files first
+        // Process individual files in parallel with batching to speed up network imports
+        const int degreeOfParallelism = 4;
+        const int batchSize = 100;
+        const int progressInterval = 25;
+
+        System.Threading.SemaphoreSlim sem = new System.Threading.SemaphoreSlim(degreeOfParallelism);
+        List<Task> tasks = new List<Task>();
+        List<MediaFile> pendingSaves = new List<MediaFile>();
+        object pendingLock = new object();
+
+        int processed = 0;
+
         foreach (string filePath in files)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            if (!await _importCancellationService.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false))
+                break;
+
+            try
+            {
+                await sem.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            Task t = Task.Run(async () =>
+            {
+                try
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
+
+                    string fileName = Path.GetFileName(filePath);
+
+                    // Throttle UI updates slightly
+                    if (processed % progressInterval == 0)
+                    {
+                        progress?.Report(new ProgressData
+                        {
+                            IsProcessing = true,
+                            TotalTracks = totalItems,
+                            ProcessedTracks = processed,
+                            Status = $"Importing: {fileName}",
+                            Phase = "Importing"
+                        });
+                        await Task.Delay(25).ConfigureAwait(false);
+                    }
+
+                    MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
+                    if (importedFile != null)
+                    {
+                        lock (pendingLock)
+                        {
+                            pendingSaves.Add(importedFile);
+                        }
+                        importedFiles.Add(importedFile);
+                    }
+
+                    int current = System.Threading.Interlocked.Increment(ref processed);
+                    if (current % progressInterval == 0)
+                    {
+                        progress?.Report(new ProgressData
+                        {
+                            IsProcessing = true,
+                            TotalTracks = totalItems,
+                            ProcessedTracks = current,
+                            Status = $"Imported: {fileName}",
+                            Phase = "Importing"
+                        });
+                    }
+
+                    // Flush batch when threshold reached
+                    List<MediaFile>? toSave = null;
+                    lock (pendingLock)
+                    {
+                        if (pendingSaves.Count >= batchSize)
+                        {
+                            toSave = pendingSaves.ToList();
+                            pendingSaves.Clear();
+                        }
+                    }
+
+                    if (toSave != null && toSave.Count > 0)
+                    {
+                        try
+                        {
+                            // Add to MainLibrary
+                            await _musicLibrary.AddTracksToLibraryBatchAsync(toSave).ConfigureAwait(false);
+                            // Save to DB
+                            await _musicLibrary.SaveTracksBatchAsync(toSave).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to add/save batch");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to import file: {Path}", filePath);
+                }
+                finally
+                {
+                    sem.Release();
+                }
+            });
+            tasks.Add(t);
+        }
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        // Final flush of any remaining pending saves
+        List<MediaFile> finalBatch;
+        lock (pendingLock)
+        {
+            finalBatch = pendingSaves.ToList();
+            pendingSaves.Clear();
+        }
+        if (finalBatch.Count > 0)
         {
             try
             {
-                string fileName = Path.GetFileName(filePath);
-                progress?.Report(new ProgressData
+                // Add to MainLibrary
+                await _musicLibrary.AddTracksToLibraryBatchAsync(finalBatch).ConfigureAwait(false);
+                // Save to DB
+                await _musicLibrary.SaveTracksBatchAsync(finalBatch).ConfigureAwait(false);
+                // Enqueue background metadata refresh for the final batch
+                try
                 {
-                    IsProcessing = true,
-                    TotalTracks = totalItems,
-                    ProcessedTracks = processedItems,
-                    Status = $"Importing: {fileName}",
-                    Phase = "Importing"
-                });
-
-                // Allow UI to render progress updates before heavy work
-                await Task.Delay(25).ConfigureAwait(false);
-
-                MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
-                if (importedFile != null)
-                {
-                    importedFiles.Add(importedFile);
-                    //_logger.LogDebug("Successfully imported file: {Path}", filePath);
+                    LinkerPlayer.Services.Metadata.BackgroundMetadataRefresher.Enqueue(finalBatch);
                 }
-
-                processedItems++;
-
-                progress?.Report(new ProgressData
-                {
-                    IsProcessing = true,
-                    TotalTracks = totalItems,
-                    ProcessedTracks = processedItems,
-                    Status = $"Imported: {fileName}",
-                    Phase = "Importing"
-                });
+                catch { }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to import file: {Path}", filePath);
-                processedItems++;
-
-                string fileName = Path.GetFileName(filePath);
-                progress?.Report(new ProgressData
-                {
-                    IsProcessing = true,
-                    TotalTracks = totalItems,
-                    ProcessedTracks = processedItems,
-                    Status = $"Failed to import: {fileName}",
-                    Phase = "Importing"
-                });
+                _logger.LogError(ex, "Failed to add/save final batch");
             }
         }
 
         // Process folders
         foreach (string folderPath in folders)
         {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
             try
             {
                 string folderName = Path.GetFileName(folderPath);
@@ -154,7 +251,7 @@ public class FileImportService : IFileImportService
                     Phase = "Importing"
                 });
 
-                List<MediaFile> folderFiles = await ImportFolderAsync(folderPath, progress).ConfigureAwait(false);
+                List<MediaFile> folderFiles = await ImportFolderAsync(folderPath, progress, cancellationToken).ConfigureAwait(false);
                 importedFiles.AddRange(folderFiles);
                 processedItems++;
 
@@ -224,7 +321,7 @@ public class FileImportService : IFileImportService
         return importedFiles;
     }
 
-    public async Task<List<MediaFile>> ImportFolderAsync(string folderPath, IProgress<ProgressData>? progress = null)
+    public async Task<List<MediaFile>> ImportFolderAsync(string folderPath, IProgress<ProgressData>? progress = null, CancellationToken cancellationToken = default)
     {
         List<MediaFile> importedFiles = new List<MediaFile>();
 
@@ -243,66 +340,167 @@ public class FileImportService : IFileImportService
             return importedFiles;
         }
 
-        int processedCount = 0;
+        _logger.LogInformation("Importing {TotalFiles} audio files from folder: {FolderPath}", totalFiles, folderPath);
 
-        // Report initial progress
+        // Build a HashSet of existing paths for O(1) duplicate checking
+        HashSet<string> existingPaths = new HashSet<string>(
+            _musicLibrary.MainLibrary.Select(t => t.Path),
+            StringComparer.OrdinalIgnoreCase);
+
+        int processedCount = 0;
+        const int progressInterval = 10;
+        const int degreeOfParallelism = 8;
+        const int saveBatchSize = 50;
+
+        object importLock = new object();
+        List<MediaFile> pendingSaves = new List<MediaFile>();
+
         progress?.Report(new ProgressData
         {
             IsProcessing = true,
             TotalTracks = totalFiles,
             ProcessedTracks = 0,
-            Status = "Starting folder import...",
+            Status = $"Importing folder: {Path.GetFileName(folderPath)}",
             Phase = "Importing"
         });
 
-        _logger.LogInformation("Importing {TotalFiles} audio files from folder: {FolderPath}", totalFiles, folderPath);
+        SemaphoreSlim sem = new SemaphoreSlim(degreeOfParallelism);
+        List<Task> tasks = new List<Task>();
 
-        // Process files one by one for detailed progress reporting
         foreach (string filePath in audioFiles)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Import cancelled after {Processed}/{Total} files", processedCount, totalFiles);
+                break;
+            }
+
+            if (!await _importCancellationService.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false))
+            {
+                _logger.LogInformation("Import cancelled while paused after {Processed}/{Total} files", processedCount, totalFiles);
+                break;
+            }
+
+            // Skip duplicates immediately (O(1) check)
+            if (existingPaths.Contains(filePath))
+            {
+                System.Threading.Interlocked.Increment(ref processedCount);
+                continue;
+            }
+
+            try
+            {
+                await sem.WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Import cancelled during semaphore wait after {Processed}/{Total} files", processedCount, totalFiles);
+                break;
+            }
+
+            Task task = Task.Run(async () =>
+            {
+                try
+                {
+                    MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
+                    if (importedFile != null)
+                    {
+                        lock (importLock)
+                        {
+                            importedFiles.Add(importedFile);
+                            pendingSaves.Add(importedFile);
+                            existingPaths.Add(filePath);
+                        }
+                    }
+
+                    int current = System.Threading.Interlocked.Increment(ref processedCount);
+                    if (current % progressInterval == 0)
+                    {
+                        progress?.Report(new ProgressData
+                        {
+                            IsProcessing = true,
+                            TotalTracks = totalFiles,
+                            ProcessedTracks = current,
+                            Status = $"Importing: {Path.GetFileName(filePath)} ({current}/{totalFiles})",
+                            Phase = "Importing"
+                        });
+                    }
+
+                    // Flush to MainLibrary and DB in batches
+                    List<MediaFile>? toSave = null;
+                    lock (importLock)
+                    {
+                        if (pendingSaves.Count >= saveBatchSize)
+                        {
+                            toSave = pendingSaves.ToList();
+                            pendingSaves.Clear();
+                        }
+                    }
+
+                    if (toSave != null && toSave.Count > 0)
+                    {
+                        try
+                        {
+                            // Add to MainLibrary in a single UI dispatch
+                            await _musicLibrary.AddTracksToLibraryBatchAsync(toSave).ConfigureAwait(false);
+                            // Then save to DB
+                            await _musicLibrary.SaveTracksBatchAsync(toSave).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to add/save batch");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to import file: {FilePath}", filePath);
+                    System.Threading.Interlocked.Increment(ref processedCount);
+                }
+                finally
+                {
+                    sem.Release();
+                }
+            }, cancellationToken);
+
+            tasks.Add(task);
+        }
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+
+        // Final flush of remaining pending saves
+        List<MediaFile> finalBatch;
+        lock (importLock)
+        {
+            finalBatch = pendingSaves.ToList();
+            pendingSaves.Clear();
+        }
+
+        if (finalBatch.Count > 0)
         {
             try
             {
-                string fileName = Path.GetFileName(filePath);
-
-                // Report progress before processing each file
-                progress?.Report(new ProgressData
-                {
-                    IsProcessing = true,
-                    TotalTracks = totalFiles,
-                    ProcessedTracks = processedCount,
-                    Status = $"Importing: {fileName}",
-                    Phase = "Importing"
-                });
-
-                // Add a small delay to allow UI to show the "Importing" message
-                await Task.Delay(25).ConfigureAwait(false);
-
-                MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
-                if (importedFile != null)
-                {
-                    importedFiles.Add(importedFile);
-                }
-
-                processedCount++;
+                // Add to MainLibrary
+                await _musicLibrary.AddTracksToLibraryBatchAsync(finalBatch).ConfigureAwait(false);
+                // Save to DB
+                await _musicLibrary.SaveTracksBatchAsync(finalBatch).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to import file: {FilePath}", filePath);
-                processedCount++;
-
-                string fileName = Path.GetFileName(filePath);
-                progress?.Report(new ProgressData
-                {
-                    IsProcessing = true,
-                    TotalTracks = totalFiles,
-                    ProcessedTracks = processedCount,
-                    Status = $"Failed to import: {fileName} ({processedCount}/{totalFiles})",
-                    Phase = "Importing"
-                });
+                _logger.LogError(ex, "Failed to add/save final batch");
             }
         }
 
-        // Final progress report
+        // Enqueue background metadata refresh for all imported files
+        if (importedFiles.Count > 0)
+        {
+            try
+            {
+                LinkerPlayer.Services.Metadata.BackgroundMetadataRefresher.Enqueue(importedFiles);
+            }
+            catch { }
+        }
+
         progress?.Report(new ProgressData
         {
             IsProcessing = false,
@@ -311,23 +509,6 @@ public class FileImportService : IFileImportService
             Status = $"Import completed. {importedFiles.Count} files imported successfully.",
             Phase = string.Empty
         });
-
-        // Clear progress after a short delay (run in background to avoid blocking)
-        if (progress != null)
-        {
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(2000).ConfigureAwait(false);
-                progress.Report(new ProgressData
-                {
-                    IsProcessing = false,
-                    TotalTracks = 0,
-                    ProcessedTracks = 0,
-                    Status = string.Empty,
-                    Phase = string.Empty
-                });
-            });
-        }
 
         _logger.LogInformation("Folder import completed. {ImportedCount}/{TotalFiles} files imported successfully",
             importedFiles.Count, totalFiles);
@@ -351,28 +532,30 @@ public class FileImportService : IFileImportService
 
         try
         {
+            // Construct MediaFile with full metadata extraction
             MediaFile mediaFile = new MediaFile { Path = filePath };
-            mediaFile.UpdateFromFileMetadata();
+            mediaFile.FileName = Path.GetFileName(filePath);
 
-            // Check if track already exists in library
-            MediaFile? existingTrack = _musicLibrary.IsTrackInLibrary(mediaFile);
-            if (existingTrack != null)
+            // Extract metadata synchronously for immediate display
+            try
             {
-                //_logger.LogDebug("Track already exists in library: {FilePath}", filePath);
-                return existingTrack.Clone();
+                mediaFile.UpdateFromFileMetadata(raisePropertyChanged: true);
+                mediaFile.NeedsMetadataRefresh = false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract metadata for {FilePath}, will retry in background", filePath);
+                mediaFile.NeedsMetadataRefresh = true;
             }
 
-            // Add new track to library
-            MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(mediaFile, saveImmediately: false).ConfigureAwait(false);
-            if (addedTrack != null)
-            {
-                //_logger.LogDebug("Successfully added new track to library: {FilePath}", filePath);
-                return addedTrack.Clone();
-            }
+            // NOTE: ImportFolderAsync will batch-add these to MainLibrary.
+            // For single-file imports via drag-drop, the caller should use AddTrackToLibraryAsync separately.
+            return mediaFile;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to import file: {FilePath}", filePath);
+            _importErrorLogger.Log(filePath, ex);
         }
 
         return null;

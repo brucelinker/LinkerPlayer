@@ -6,13 +6,25 @@ namespace LinkerPlayer.Tests.Fakes;
 
 public sealed class FakeMusicLibrary : IMusicLibrary
 {
-    public ObservableCollection<MediaFile> MainLibrary { get; } = new ObservableCollection<MediaFile>();
+    public RangeObservableCollection<MediaFile> MainLibrary { get; } = new();
 
     public ObservableCollection<Playlist> Playlists { get; } = new ObservableCollection<Playlist>();
 
     public Func<string?, List<MediaFile>> GetTracksFromPlaylistFunc { get; set; } = _ => new List<MediaFile>();
 
     public Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true) => Task.FromResult<MediaFile?>(mediaFile);
+
+    public Task AddTracksToLibraryBatchAsync(IEnumerable<MediaFile> mediaFiles) => Task.CompletedTask;
+
+    public Task RemoveTrackFromLibraryAsync(string trackId)
+    {
+        MediaFile? track = MainLibrary.FirstOrDefault(t => t.Id == trackId);
+        if (track != null)
+        {
+            MainLibrary.Remove(track);
+        }
+        return Task.CompletedTask;
+    }
 
     public Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId) => Task.CompletedTask;
 
@@ -29,6 +41,14 @@ public sealed class FakeMusicLibrary : IMusicLibrary
     public MediaFile? IsTrackInLibrary(MediaFile mediaFile) => mediaFile;
 
     public List<Playlist> GetPlaylists() => Playlists.ToList();
+
+    public List<string> GetPlaylistsContainingTrack(string trackId)
+    {
+        return Playlists
+            .Where(p => p.TrackIds.Contains(trackId))
+            .Select(p => p.Name)
+            .ToList();
+    }
 
     public List<MediaFile> GetTracksFromPlaylist(string? playlistName) => GetTracksFromPlaylistFunc(playlistName);
 

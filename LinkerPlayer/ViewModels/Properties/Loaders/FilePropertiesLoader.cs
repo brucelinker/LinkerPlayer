@@ -1,15 +1,14 @@
+using ATL;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
-using TagLib.Id3v2;
-using File = TagLib.File;
 
 namespace LinkerPlayer.ViewModels.Properties.Loaders;
 
 /// <summary>
-/// Loads file properties (duration, bitrate, codec, etc.) - read-only technical information
+/// Loads file properties (duration, bitrate, codec, etc.) - read-only technical information using ATL
 /// </summary>
-public class FilePropertiesLoader : IMetadataLoader
+public class FilePropertiesLoader : IAtlMetadataLoader
 {
     private readonly ILogger<FilePropertiesLoader> _logger;
 
@@ -18,60 +17,30 @@ public class FilePropertiesLoader : IMetadataLoader
         _logger = logger;
     }
 
-    public void Load(File audioFile, ObservableCollection<TagItem> targetCollection)
+    public void Load(Track track, ObservableCollection<TagItem> targetCollection)
     {
-        if (audioFile?.Properties == null)
+        if (track == null)
         {
             _logger.LogWarning("No properties found for the current file");
             return;
         }
 
-        // DON'T clear - ViewModel handles this
-        // targetCollection.Clear();
-
-        TagLib.Properties props = audioFile.Properties;
-
         // Technical file properties
-        AddPropertyItem(targetCollection, "Duration", props.Duration.ToString(@"mm\:ss"));
-        AddPropertyItem(targetCollection, "Bitrate", props.AudioBitrate > 0 ? props.AudioBitrate.ToString() + " kbps" : "");
-        AddPropertyItem(targetCollection, "Sample Rate", props.AudioSampleRate > 0 ? props.AudioSampleRate.ToString() + " Hz" : "");
-        AddPropertyItem(targetCollection, "Channels", props.AudioChannels > 0 ? props.AudioChannels.ToString() : "");
-        AddPropertyItem(targetCollection, "Bits Per Sample", props.BitsPerSample > 0 ? props.BitsPerSample.ToString() : "");
-        AddPropertyItem(targetCollection, "Media Types", props.MediaTypes.ToString());
-        AddPropertyItem(targetCollection, "Codec", props.Description ?? props.Codecs?.FirstOrDefault()?.Description ?? "");
-
-        // Tag format information
-        AddPropertyItem(targetCollection, "Tag Types", audioFile.TagTypes.ToString());
-
-        // Format-specific technical info
+        // ATL.Track exposes Duration in milliseconds (int) and sample/bitrate fields via properties
         try
         {
-            if (audioFile.Tag is TagLib.Id3v2.Tag id3v2Tag)
-            {
-                AddPropertyItem(targetCollection, "ID3v2 Version", $"2.{id3v2Tag.Version}");
-            }
+            long durationMs = track.Duration;
+            AddPropertyItem(targetCollection, "Duration", TimeSpan.FromMilliseconds(durationMs).ToString(@"mm\:ss"));
         }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Error reading ID3v2 version: {Message}", ex.Message);
-        }
+        catch { }
 
-        // Encoding tool information
-        try
-        {
-            string? encoderInfo = GetEncoderInfo(audioFile.Tag);
-            if (!string.IsNullOrWhiteSpace(encoderInfo))
-            {
-                AddPropertyItem(targetCollection, "Encoder", encoderInfo);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Error reading encoder info: {Message}", ex.Message);
-        }
+        try { AddPropertyItem(targetCollection, "Bitrate", track.Bitrate > 0 ? track.Bitrate.ToString() + " kbps" : ""); } catch { }
+        try { AddPropertyItem(targetCollection, "Sample Rate", track.SampleRate > 0 ? track.SampleRate.ToString() + " Hz" : ""); } catch { }
+        try { AddPropertyItem(targetCollection, "Channels", track.ChannelsArrangement.NbChannels.ToString()); } catch { }
+        try { AddPropertyItem(targetCollection, "Codec", track.AudioFormat?.Name ?? track.CodecFamily.ToString() ?? ""); } catch { }
     }
 
-    public void LoadMultiple(IReadOnlyList<File> audioFiles, ObservableCollection<TagItem> targetCollection)
+    public void LoadMultiple(IReadOnlyList<Track> audioFiles, ObservableCollection<TagItem> targetCollection)
     {
         if (audioFiles.Count == 0)
         {
@@ -79,20 +48,15 @@ public class FilePropertiesLoader : IMetadataLoader
             return;
         }
 
-        // DON'T clear - ViewModel handles this
-        // targetCollection.Clear();
-
-        // Show aggregate properties or <various> if different
-        AddPropertyItemMultiple(targetCollection, audioFiles, "Duration", f => f.Properties.Duration.ToString(@"mm\:ss"));
-        AddPropertyItemMultiple(targetCollection, audioFiles, "Bitrate", f => f.Properties.AudioBitrate > 0 ? f.Properties.AudioBitrate.ToString() + " kbps" : "");
-        AddPropertyItemMultiple(targetCollection, audioFiles, "Sample Rate", f => f.Properties.AudioSampleRate > 0 ? f.Properties.AudioSampleRate.ToString() + " Hz" : "");
-        AddPropertyItemMultiple(targetCollection, audioFiles, "Channels", f => f.Properties.AudioChannels > 0 ? f.Properties.AudioChannels.ToString() : "");
-        AddPropertyItemMultiple(targetCollection, audioFiles, "Codec", f => f.Properties.Description ?? f.Properties.Codecs?.FirstOrDefault()?.Description ?? "");
+        AddPropertyItemMultiple(targetCollection, audioFiles, "Duration", f => TimeSpan.FromMilliseconds(f.Duration).ToString(@"mm\:ss"));
+        AddPropertyItemMultiple(targetCollection, audioFiles, "Bitrate", f => f.Bitrate > 0 ? f.Bitrate.ToString() + " kbps" : "");
+        AddPropertyItemMultiple(targetCollection, audioFiles, "Sample Rate", f => f.SampleRate > 0 ? f.SampleRate.ToString() + " Hz" : "");
+        AddPropertyItemMultiple(targetCollection, audioFiles, "Channels", f => f.ChannelsArrangement.NbChannels.ToString());
+        AddPropertyItemMultiple(targetCollection, audioFiles, "Codec", f => f.AudioFormat?.Name ?? f.CodecFamily.ToString() ?? "");
     }
 
     private static void AddPropertyItem(ObservableCollection<TagItem> collection, string name, string value)
     {
-        // Only add if there's actually a value (avoid empty entries)
         if (!string.IsNullOrWhiteSpace(value))
         {
             collection.Add(new TagItem
@@ -104,7 +68,7 @@ public class FilePropertiesLoader : IMetadataLoader
         }
     }
 
-    private static void AddPropertyItemMultiple(ObservableCollection<TagItem> collection, IReadOnlyList<File> files, string name, Func<File, string> getValue)
+    private static void AddPropertyItemMultiple(ObservableCollection<TagItem> collection, IReadOnlyList<Track> files, string name, Func<Track, string> getValue)
     {
         List<string> values = files.Select(getValue).ToList();
         List<string> distinctValues = values.Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
@@ -125,66 +89,5 @@ public class FilePropertiesLoader : IMetadataLoader
                 IsEditable = false
             });
         }
-    }
-
-    private string? GetEncoderInfo(TagLib.Tag tag)
-    {
-        string[] possibleKeys =
-        [
-            "ENCODED_BY", "ENCODEDBY", "ENCODER", "TOOL", "SOFTWARE",
-            "WRITING_LIBRARY", "WRITINGLIBRARY", "ENCODING_TOOL"
-        ];
-
-        try
-        {
-            // Vorbis Comments (FLAC, OGG)
-            if (tag is TagLib.Ogg.XiphComment xiphTag)
-            {
-                foreach (string key in possibleKeys)
-                {
-                    string? value = xiphTag.GetFirstField(key);
-                    if (!string.IsNullOrWhiteSpace(value))
-                    {
-                        return value;
-                    }
-                }
-            }
-
-            // iTunes tags (MP4, M4A)
-            if (tag is TagLib.Mpeg4.AppleTag mp4Tag)
-            {
-                foreach (string key in possibleKeys)
-                {
-                    string? value = mp4Tag.GetText("----:com.apple.iTunes:" + key)?.FirstOrDefault();
-                    if (!string.IsNullOrWhiteSpace(value))
-                    {
-                        return value;
-                    }
-                }
-            }
-
-            // ID3v2 tags (MP3)
-            if (tag is TagLib.Id3v2.Tag id3v2Tag)
-            {
-                try
-                {
-                    List<Frame> tencFrames = id3v2Tag.GetFrames("TENC").ToList();
-                    if (tencFrames.Any())
-                    {
-                        return tencFrames.First().ToString();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Error reading ID3v2 TENC frame: {Message}", ex.Message);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Error reading encoder info: {Message}", ex.Message);
-        }
-
-        return null;
     }
 }

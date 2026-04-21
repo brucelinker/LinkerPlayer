@@ -24,9 +24,9 @@ namespace LinkerPlayer.UserControls;
 public partial class PlaylistTabs
 {
     private readonly ILogger<PlaylistTabs> _logger;
-    private PlaylistTab? _draggedTab;
+    private ITabData? _draggedTab; // Can be PlaylistTab or MusicLibraryTab
     private DropIndicatorAdorner? _dropIndicatorAdorner;
-    private readonly Dictionary<PlaylistTab, double> _tabVerticalOffsets = new();
+    private readonly Dictionary<ITabData, double> _tabVerticalOffsets = new();
 
     private bool _isExplicitCentering;
     private Popup? _columnSelectorPopup;
@@ -75,7 +75,37 @@ public partial class PlaylistTabs
         PlaylistTabsViewModel vm = DataContext as PlaylistTabsViewModel ?? throw new InvalidOperationException("DataContext is not PlaylistTabsViewModel");
         ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
         Dictionary<string, AppSettings.ColumnInfo> savedInfo = settingsManager?.Settings.ColumnSettings ?? new Dictionary<string, AppSettings.ColumnInfo>();
-        HashSet<string> visibleProps = vm.SelectedColumnNames.ToHashSet();
+
+        // If this DataGrid is hosting the Music Library (its DataContext will be MusicLibraryTab),
+        // use the library's VisibleColumns instead of the shared playlist SelectedColumnNames.
+        HashSet<string> visibleProps;
+        MusicLibraryTab? libTab = dg.DataContext as MusicLibraryTab;
+        if (libTab != null)
+        {
+            // If the library tab has no visible columns configured, try to restore from settings
+            if ((libTab.VisibleColumns == null || libTab.VisibleColumns.Count == 0) &&
+                settingsManager?.Settings.LibraryVisibleColumns != null &&
+                settingsManager.Settings.LibraryVisibleColumns.Count > 0)
+            {
+                libTab.VisibleColumns = new List<string>(settingsManager.Settings.LibraryVisibleColumns);
+            }
+
+            visibleProps = new HashSet<string>(libTab.VisibleColumns ?? new List<string>());
+            // Ensure Year is always visible in the library
+            if (!visibleProps.Contains("Year"))
+            {
+                visibleProps.Add("Year");
+                libTab.VisibleColumns = visibleProps.ToList();
+                settingsManager?.Settings.LibraryVisibleColumns = libTab.VisibleColumns;
+                settingsManager?.SaveSettings(nameof(AppSettings.LibraryVisibleColumns));
+            }
+            // Load saved layout specifically for the library if available
+            savedInfo = settingsManager?.Settings.LibraryColumnSettings ?? new Dictionary<string, AppSettings.ColumnInfo>();
+        }
+        else
+        {
+            visibleProps = vm.SelectedColumnNames.ToHashSet();
+        }
 
         // === 1. Determine how many static columns exist in XAML (play icon and/or # column) ===
         int staticColumnsToPreserve = 0;
@@ -108,6 +138,8 @@ public partial class PlaylistTabs
             {
                 Header = "",
                 Width = new DataGridLength(36),
+                MaxWidth = 36,
+                CanUserResize = false,
                 IsReadOnly = true,
                 CellTemplate = playTemplate
             };
@@ -129,11 +161,27 @@ public partial class PlaylistTabs
             ("Artist",      "Artist",       200),
             ("Album",       "Album",        200),
             ("AlbumArtist", "Album Artist", 180),
+            ("Genres",      "Genre",        120),
+            ("TrackCount",  "Track Count",   80),
+            ("Disc",        "Disc #",        60),
+            ("DiscCount",   "Disc Count",    80),
+            ("Composers",   "Composers",    180),
+            ("Comment",     "Comment",      200),
+            ("Copyright",   "Copyright",    150),
             ("Duration",    "Duration",     100),
+            ("Year",        "Year",          80),
             ("Bitrate",     "Bitrate",       90),
+            ("SampleRate",  "Sample Rate",   90),
             ("Channels",    "Channels",      80),
             ("Codec",       "Codec",        100),
-            ("Year",        "Year",          80)
+            ("FileName",    "File Name",    200),
+            ("Path",        "Path",         350)
+        };
+
+        // Read-only properties that cannot be edited inline
+        HashSet<string> readOnlyProps = new()
+        {
+            "Duration", "Bitrate", "SampleRate", "Channels", "Codec", "FileName", "Path"
         };
 
         foreach ((string prop, string header, double defWidth) in defaultColumns)
@@ -149,11 +197,18 @@ public partial class PlaylistTabs
                 continue;
             }
 
+            bool isReadOnly = readOnlyProps.Contains(prop) || libTab == null;
+
             Binding binding = new Binding(prop);
+
+            if (!isReadOnly)
+            {
+                binding.Mode = BindingMode.TwoWay;
+                binding.UpdateSourceTrigger = UpdateSourceTrigger.LostFocus;
+            }
 
             if (prop == "Year")
             {
-                binding.Converter = new Converters.UintToStringConverter();
                 binding.TargetNullValue = "";
             }
 
@@ -165,15 +220,28 @@ public partial class PlaylistTabs
 
             if (prop == "Bitrate")
             {
-                binding.StringFormat = prop == "Bitrate" ? "{0} kbps" : null;
+                binding.StringFormat = "{0} kbps";
+                binding.TargetNullValue = "";
+            }
+
+            if (prop == "SampleRate")
+            {
+                binding.StringFormat = "{0:N0} Hz";
                 binding.TargetNullValue = "";
             }
 
             DataGridTextColumn col = new DataGridTextColumn
             {
                 Header = header,
-                Binding = binding
+                Binding = binding,
+                IsReadOnly = isReadOnly
             };
+
+            // Apply dirty cell style for editable columns on the Library DataGrid
+            if (!isReadOnly && libTab != null)
+            {
+                col.CellStyle = CreateDirtyCellStyle(prop);
+            }
 
             double width = savedInfo.TryGetValue(prop, out AppSettings.ColumnInfo? ci) && ci.Width > 10 ? ci.Width : defWidth;
             col.Width = new DataGridLength(width, DataGridLengthUnitType.Pixel);
@@ -184,20 +252,61 @@ public partial class PlaylistTabs
 
         // === 5. Restore saved order ===
         int displayIndex = staticColumnsToPreserve;
-        List<DataGridColumn> ordered = dg.Columns.Skip(staticColumnsToPreserve)
-            .OrderBy(col =>
-            {
-                string key = ((Binding)((DataGridTextColumn)col).Binding).Path.Path;
-                return savedInfo.TryGetValue(key, out AppSettings.ColumnInfo? ci) && ci.Position >= 0 ? ci.Position : int.MaxValue;
-            })
-            .ToList();
+        if (savedInfo != null && savedInfo.Count > 0)
+        {
+            List<DataGridColumn> ordered = dg.Columns.Skip(staticColumnsToPreserve)
+                .OrderBy(col =>
+                {
+                    if (col is DataGridTextColumn txtCol && txtCol.Binding is Binding bind && bind.Path?.Path != null)
+                    {
+                        string key = bind.Path.Path;
+                        return savedInfo.TryGetValue(key, out AppSettings.ColumnInfo? ci) && ci.Position >= 0 ? ci.Position : int.MaxValue;
+                    }
+                    return int.MaxValue;
+                })
+                .ToList();
 
-        foreach (DataGridColumn col in ordered)
-            col.DisplayIndex = displayIndex++;
+            foreach (DataGridColumn col in ordered)
+                col.DisplayIndex = displayIndex++;
+        }
 
         // === 6. Fix horizontal scroll jump ===
         if (FindDescendant<ScrollViewer>(dg) is ScrollViewer sv)
             sv.ScrollToHorizontalOffset(0);
+    }
+
+    // ==================================================================
+    //  Dirty cell style factory for inline Library editing
+    // ==================================================================
+    private static readonly SolidColorBrush DirtyCellBrush = new(Color.FromArgb(60, 0, 180, 0));
+
+    static PlaylistTabs()
+    {
+        DirtyCellBrush.Freeze();
+    }
+
+    private static Style CreateDirtyCellStyle(string propertyName)
+    {
+        Style style = new Style(typeof(DataGridCell), (Style)Application.Current.FindResource("SharedDataGridCellStyle"));
+
+        // Use a DataTrigger with a MultiBinding to get both DirtyCount (for re-evaluation)
+        // and the MediaFile itself (to check per-property dirtiness).
+        MultiBinding multiBinding = new MultiBinding
+        {
+            Converter = new Converters.DirtyCellMultiConverter(propertyName)
+        };
+        multiBinding.Bindings.Add(new Binding("DirtyCount"));  // triggers re-eval when count changes
+        multiBinding.Bindings.Add(new Binding("."));           // provides the MediaFile
+
+        DataTrigger dirtyTrigger = new DataTrigger
+        {
+            Binding = multiBinding,
+            Value = true
+        };
+        dirtyTrigger.Setters.Add(new Setter(DataGridCell.BackgroundProperty, DirtyCellBrush));
+        style.Triggers.Add(dirtyTrigger);
+
+        return style;
     }
 
     // ==================================================================
@@ -248,8 +357,28 @@ public partial class PlaylistTabs
             }
         }
 
-        settingsManager.Settings.ColumnSettings = info;
-        settingsManager.SaveSettings(nameof(AppSettings.ColumnSettings));
+        // If the active DataGrid belongs to the Music Library, persist to library-specific settings
+        if (DataContext is PlaylistTabsViewModel vm && vm.SelectedTab is MusicLibraryTab libTab)
+        {
+            // Persist library visible columns in display order
+            List<string> visible = dg.Columns.Skip(1)
+                .OfType<DataGridTextColumn>()
+                .Where(c => c.Binding is Binding bind && bind.Path?.Path != null)
+                .OrderBy(c => c.DisplayIndex)
+                .Select(c => ((Binding)c.Binding).Path.Path)
+                .ToList();
+
+            settingsManager.Settings.LibraryVisibleColumns = visible;
+            settingsManager.Settings.LibraryColumnSettings = info;
+            libTab.VisibleColumns = new List<string>(visible);
+            settingsManager.SaveSettings(nameof(AppSettings.LibraryVisibleColumns));
+            settingsManager.SaveSettings(nameof(AppSettings.LibraryColumnSettings));
+        }
+        else
+        {
+            settingsManager.Settings.ColumnSettings = info;
+            settingsManager.SaveSettings(nameof(AppSettings.ColumnSettings));
+        }
     }
 
     // ==================================================================
@@ -351,11 +480,23 @@ public partial class PlaylistTabs
 
         ColumnSelectorViewModel selectorVm = new ColumnSelectorViewModel();
 
-        if (DataContext is PlaylistTabsViewModel vm)
+        // Pre-populate the selector with the current visible columns for the target DataGrid
+        DataGrid? targetGrid = FindAncestor<DataGrid>(dpiContext);
+        if (targetGrid != null)
         {
-            List<string> current = vm.SelectedColumnNames;
-            foreach (ColumnSelectorItem item in selectorVm.Columns)
-                item.IsVisible = current.Contains(item.PropertyName);
+            MusicLibraryTab? libTab = targetGrid.DataContext as MusicLibraryTab;
+            if (libTab != null)
+            {
+                List<string> current = libTab.VisibleColumns ?? new List<string>();
+                foreach (ColumnSelectorItem item in selectorVm.Columns)
+                    item.IsVisible = current.Contains(item.PropertyName);
+            }
+            else if (DataContext is PlaylistTabsViewModel vm)
+            {
+                List<string> current = vm.SelectedColumnNames;
+                foreach (ColumnSelectorItem item in selectorVm.Columns)
+                    item.IsVisible = current.Contains(item.PropertyName);
+            }
         }
 
         //ColumnSelectorPopup popupContent = new ColumnSelectorPopup(selectorVm)
@@ -449,8 +590,28 @@ public partial class PlaylistTabs
 
     private void OnUpdateColumns(UpdateColumnsMessage m)
     {
-        if (DataContext is PlaylistTabsViewModel vm)
-            vm.ApplySelectedColumns(m.SelectedColumns);
+        PlaylistTabsViewModel? vm = DataContext as PlaylistTabsViewModel;
+
+        // Determine target DataGrid (active) to decide whether to apply to library or playlists
+        DataGrid? active = GetActiveDataGrid();
+        MusicLibraryTab? libTab = active?.DataContext as MusicLibraryTab;
+
+        if (libTab != null)
+        {
+            // Apply selection to the library tab and persist immediately
+            libTab.VisibleColumns = new List<string>(m.SelectedColumns);
+            ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
+            if (settingsManager != null)
+            {
+                settingsManager.Settings.LibraryVisibleColumns = new List<string>(m.SelectedColumns);
+                settingsManager.SaveSettings(nameof(AppSettings.LibraryVisibleColumns));
+            }
+        }
+        else
+        {
+            if (vm != null)
+                vm.ApplySelectedColumns(m.SelectedColumns);
+        }
 
         RegenerateCurrentColumns();
 
@@ -547,6 +708,16 @@ public partial class PlaylistTabs
         if (DataContext is PlaylistTabsViewModel viewModel)
         {
             viewModel.OnTrackSelectionChanged(sender, e);
+        }
+    }
+
+    private void MusicLibraryDataGrid_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
+    {
+        if (e.EditAction == DataGridEditAction.Commit && DataContext is PlaylistTabsViewModel viewModel)
+        {
+            // Defer so the binding commits before we check dirty state
+            Dispatcher.BeginInvoke(() => viewModel.NotifyDirtyStateChanged(),
+                System.Windows.Threading.DispatcherPriority.DataBind);
         }
     }
 
@@ -1063,9 +1234,26 @@ public partial class PlaylistTabs
 
     private static TAncestor? FindAncestor<TAncestor>(DependencyObject? child) where TAncestor : DependencyObject
     {
-        while (child != null)
+        int depth = 0;
+        const int maxDepth = 100; // Prevent infinite loops
+
+        while (child != null && depth < maxDepth)
         {
-            child = LogicalTreeHelper.GetParent(child) ?? VisualTreeHelper.GetParent(child);
+            depth++;
+            DependencyObject? parent = LogicalTreeHelper.GetParent(child);
+            if (parent == null)
+            {
+                parent = VisualTreeHelper.GetParent(child);
+            }
+
+            if (parent == child)
+            {
+                // Circular reference detected
+                return null;
+            }
+
+            child = parent;
+
             if (child is TAncestor ancestor)
             {
                 return ancestor;
@@ -1099,9 +1287,14 @@ public partial class PlaylistTabs
             return; // do not initiate drag
         }
 
+        // Only allow dragging PlaylistTab, NOT MusicLibraryTab
         if (tabItem.DataContext is PlaylistTab tab)
         {
             _draggedTab = tab; // only set drag when not the already-selected tab
+        }
+        else if (tabItem.DataContext is MusicLibraryTab)
+        {
+            _draggedTab = null; // Music Library cannot be dragged
         }
     }
 
@@ -1172,6 +1365,13 @@ public partial class PlaylistTabs
             return;
         }
 
+        // Prevent dropping at index 0 (Music Library tab must always be first)
+        if (targetIndex == 0)
+        {
+            _logger.LogWarning("Cannot drop tab at index 0 - Music Library tab must remain first");
+            return;
+        }
+
         // Determine intended insertion position relative to target (before/after)
         Point pos = e.GetPosition(targetTabItem);
         bool insertAfter = pos.X > targetTabItem.ActualWidth / 2.0;
@@ -1184,13 +1384,19 @@ public partial class PlaylistTabs
             intended = count;
         }
 
+        // Prevent moving to index 0 (before Music Library)
+        if (intended == 0)
+        {
+            intended = 1;
+        }
+
         // Adjust for removal shifting indices when moving forward
         int adjusted = fromIndex < intended ? intended - 1 : intended;
 
-        // Clamp to valid range [0, count-1]
-        if (adjusted < 0)
+        // Clamp to valid range [1, count-1] (index 0 is reserved for Music Library)
+        if (adjusted < 1)
         {
-            adjusted = 0;
+            adjusted = 1;
         }
 
         if (adjusted >= count)

@@ -33,7 +33,7 @@ public class Tags
     public string Comment { get; set; } = string.Empty;
     public string Copyright { get; set; } = string.Empty;
     public string Lyrics { get; set; } = string.Empty;
-    public uint BeatsPerMinute { get; set; } = 0;
+    public float? BPM { get; set; } = 0;
     public string Conductor { get; set; } = string.Empty;
     public string Grouping { get; set; } = string.Empty;
     public Picture[]? Pictures { get; set; } = [];

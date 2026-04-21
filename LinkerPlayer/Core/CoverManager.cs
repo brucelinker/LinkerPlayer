@@ -1,3 +1,4 @@
+using LinkerPlayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -46,9 +47,26 @@ public class CoverManager
                 return image;
             }
         }
+        catch (TagLib.UnsupportedFormatException ex)
+        {
+            // Record unsupported format in the import error logger and log
+            _logger.LogWarning(ex, "TagLib unsupported format when loading cover from {Filename}: {Message}", fileName, ex.Message);
+            try
+            {
+                IImportErrorLogger? importLogger = App.AppHost?.Services?.GetService(typeof(Services.IImportErrorLogger)) as Services.IImportErrorLogger;
+                importLogger?.Log(fileName, ex);
+            }
+            catch { }
+        }
         catch (Exception e)
         {
-            _logger.LogError("Could not load the cover from picture tag for {Filename}! - {Message}", fileName, e.Message);
+            _logger.LogError(e, "Could not load the cover from picture tag for {Filename}! - {Message}", fileName, e.Message);
+            try
+            {
+                IImportErrorLogger? importLogger = App.AppHost?.Services?.GetService(typeof(Services.IImportErrorLogger)) as Services.IImportErrorLogger;
+                importLogger?.Log(fileName, e);
+            }
+            catch { }
         }
 
         return null!;

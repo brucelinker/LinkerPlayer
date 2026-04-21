@@ -203,6 +203,7 @@ public class BassAudioEngine : IDisposable
         string[] essentialPlugins = new[]
         {
             "bass_aac.dll", // AAC
+            "bass_ac3.dll", // AC3
             "bass_mpc.dll", // MPC
             "bassalac.dll", // Apple Lossless
             "bassape.dll",  // Monkey's Audio

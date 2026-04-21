@@ -69,6 +69,10 @@ public partial class App
 
                 services.AddSingleton<IMusicLibrary, MusicLibrary>();
                 services.AddSingleton<IFileImportService, FileImportService>();
+                services.AddSingleton<IImportCancellationService, ImportCancellationService>();
+                services.AddSingleton<IImportErrorLogger, ImportErrorLogger>();
+                // Register ImportErrorsWindow as transient so a window instance is available for DI when needed
+                services.AddTransient<ImportErrorsWindow>();
 
                 services.AddSingleton<ISettingsManager, SettingsManager>();
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
@@ -94,11 +98,11 @@ public partial class App
                 services.AddSingleton<ISharedDataModel>(sp => sp.GetRequiredService<SharedDataModel>());
                 services.AddSingleton<ISelectionService, SelectionService>(); // new selection service
                 services.AddTransient<CoreMetadataLoader>();
-                services.AddTransient<CustomMetadataLoader>();
+                services.AddTransient<CustomMetadataLoaderAtl>();
                 services.AddTransient<FilePropertiesLoader>();
-                services.AddTransient<ReplayGainLoader>();
-                services.AddTransient<PictureInfoLoader>();
-                services.AddTransient<LyricsCommentLoader>();
+                services.AddTransient<ReplayGainLoaderAtl>();
+                services.AddTransient<PictureInfoLoaderAtl>();
+                services.AddTransient<LyricsCommentLoaderAtl>();
             })
             .Build();
 
@@ -169,11 +173,14 @@ public partial class App
             {
                 try
                 {
+                    _logger.LogInformation("Starting library load from database");
                     await library.LoadFromDatabaseAsync();
+                    _logger.LogInformation("Library load completed successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Library load failed");
+                    _logger.LogError(ex, "Library load failed: {Message}", ex.Message);
+                    throw; // Re-throw to fail the Task.WhenAll
                 }
             });
             await Task.WhenAll(bassInit, libLoad);

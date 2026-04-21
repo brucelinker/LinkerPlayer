@@ -52,6 +52,8 @@ public class MusicLibraryDbContext : DbContext
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.LastMetadataRefreshUtc);
         modelBuilder.Entity<MediaFile>()
+            .Property(m => m.NeedsMetadataRefresh);
+        modelBuilder.Entity<MediaFile>()
             .Property(m => m.Title)
             .HasMaxLength(128);
         modelBuilder.Entity<MediaFile>()
@@ -95,6 +97,7 @@ public class MusicLibraryDbContext : DbContext
         modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);
         modelBuilder.Entity<MediaFile>().Ignore(m => m.State);
         modelBuilder.Entity<MediaFile>().Ignore(m => m.PlaylistTracks);
+        modelBuilder.Entity<MediaFile>().Ignore(m => m.IsRefreshing);
 
         // Playlist
         modelBuilder.Entity<Playlist>()

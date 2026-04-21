@@ -252,7 +252,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             return;
         }
 
-        double metadataLengthSeconds = track.Duration.TotalSeconds;
+        double metadataLengthSeconds = track.Duration;
         double trackLengthSeconds = Math.Max(engineTrackLengthSeconds, metadataLengthSeconds);
 
         double trailingSeconds = trailingSilenceMs.Value / 1000d;

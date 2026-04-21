@@ -11,7 +11,7 @@ namespace LinkerPlayer.ViewModels.Properties.Loaders;
 /// <summary>
 /// Loads ReplayGain tags (track/album gain and peak values)
 /// </summary>
-public class ReplayGainLoader : IMetadataLoader
+public class ReplayGainLoader
 {
     private readonly ILogger<ReplayGainLoader> _logger;
 

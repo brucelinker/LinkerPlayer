@@ -18,7 +18,7 @@ public static class TestDataHelper
             Album = "Test Album",
             Path = $"C:\\Music\\{title}.mp3",
             FileName = $"{title}.mp3",
-            Duration = TimeSpan.FromMinutes(3),
+            Duration = 180, // seconds
             Track = 1,
             Year = 2023,
             Bitrate = 320,

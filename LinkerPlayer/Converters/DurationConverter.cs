@@ -6,16 +6,14 @@ public class DurationConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
-        if (value != null)
+        if (value is int seconds && seconds > 0)
         {
-            TimeSpan ts = (TimeSpan)value;
-
+            TimeSpan ts = TimeSpan.FromSeconds(seconds);
             string output = $"{(int)ts.TotalMinutes}:{ts.Seconds:D2}";
-
             return output;
         }
 
-        return TimeSpan.Zero;
+        return "0:00";
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)

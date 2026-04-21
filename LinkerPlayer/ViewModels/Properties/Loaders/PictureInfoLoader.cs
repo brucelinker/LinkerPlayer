@@ -10,7 +10,7 @@ namespace LinkerPlayer.ViewModels.Properties.Loaders;
 /// <summary>
 /// Loads picture/album art metadata (cover image, dimensions, file info, etc.)
 /// </summary>
-public class PictureInfoLoader : IMetadataLoader
+public class PictureInfoLoader
 {
     private readonly ILogger<PictureInfoLoader> _logger;
 

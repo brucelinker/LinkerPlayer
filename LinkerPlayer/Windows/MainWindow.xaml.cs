@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
+using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,6 +20,7 @@ public partial class MainWindow : Window
     private readonly MainViewModel _mainViewModel;
     private readonly ILogger<MainWindow> _logger;
     private readonly ISettingsManager _settingsManager;
+    private readonly IImportCancellationService _importCancellationService;
 
     public MainWindow(IServiceProvider serviceProvider, ILogger<MainWindow> logger)
     {
@@ -33,6 +35,7 @@ public partial class MainWindow : Window
 
             _mainViewModel = serviceProvider.GetRequiredService<MainViewModel>();
             _settingsManager = serviceProvider.GetRequiredService<ISettingsManager>();
+            _importCancellationService = serviceProvider.GetRequiredService<IImportCancellationService>();
             DataContext = _mainViewModel;
 
             ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
@@ -41,6 +44,7 @@ public partial class MainWindow : Window
             Loaded += (_, _) => UpdateCurrentMonitorSetting();
             LocationChanged += (_, _) => UpdateCurrentMonitorSetting();
             StateChanged += (_, _) => UpdateCurrentMonitorSetting();
+            PreviewKeyDown += MainWindow_PreviewKeyDown;
         }
         catch (IOException ex)
         {
@@ -108,6 +112,44 @@ public partial class MainWindow : Window
         if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed)
         {
             DragMove();
+        }
+    }
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        // Ctrl+S — save dirty library edits
+        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            IPlaylistTabsViewModel? vm = App.AppHost?.Services?.GetService<IPlaylistTabsViewModel>();
+            if (vm is PlaylistTabsViewModel ptvm)
+            {
+                _ = ptvm.SaveDirtyTracksCommand.ExecuteAsync(null);
+            }
+            return;
+        }
+
+        if (e.Key != Key.Escape || !_importCancellationService.IsImporting)
+            return;
+
+        e.Handled = true;
+
+        // Pause the import — the current file will finish before pausing
+        _importCancellationService.RequestPause();
+
+        MessageBoxResult result = MessageBox.Show(
+            "Import is in progress. Would you like to continue or cancel?",
+            "Import Paused",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.OK)
+        {
+            _importCancellationService.Resume();
+        }
+        else
+        {
+            _importCancellationService.Cancel();
         }
     }
 }

@@ -37,11 +37,21 @@ public class AppSettings
     public List<string> VisibleColumns { get; set; } = new();
     public Dictionary<string, ColumnInfo> ColumnSettings { get; set; } = new();
 
+    // Per-library column visibility and layout (separate from playlists)
+    public List<string> LibraryVisibleColumns { get; set; } = new();
+    public Dictionary<string, ColumnInfo> LibraryColumnSettings { get; set; } = new();
+
     // New: SkipSilence analysis settings
     public bool SkipSilenceEnabled { get; set; } = false;
     public int SkipSilenceMinimumDurationMs { get; set; } = 5000;
     public int SkipSilenceLeaveInitialMs { get; set; } = 200;
     public int SkipSilenceThresholdDb { get; set; } = -60;
+
+    // Library tab state persistence
+    public string LastLibrarySelectedTrackId { get; set; } = string.Empty;
+    public List<string> LastLibrarySelectedGenres { get; set; } = new();
+    public List<string> LastLibrarySelectedArtists { get; set; } = new();
+    public List<string> LastLibrarySelectedAlbums { get; set; } = new();
 
     [Serializable]
     public class ColumnInfo

@@ -32,7 +32,12 @@ public sealed class TrackMetadataRefresher : ITrackMetadataRefresher
             }
 
             DateTime utcWriteTime = File.GetLastWriteTimeUtc(path);
-            if (track.FileLastWriteTimeUtc.HasValue && track.FileLastWriteTimeUtc.Value == utcWriteTime)
+            bool shouldRefresh = !track.FileLastWriteTimeUtc.HasValue || 
+                                track.FileLastWriteTimeUtc.Value != utcWriteTime ||
+                                track.Duration == 0 || // Force refresh if duration is missing
+                                string.IsNullOrWhiteSpace(track.Artist); // Or if key metadata is missing
+
+            if (!shouldRefresh)
             {
                 _logger.LogDebug("Metadata refresh skipped (unchanged write-time): TrackId={TrackId} Path='{Path}' UtcWriteTime={UtcWriteTime}", track.Id, path, utcWriteTime);
                 return new TrackMetadataRefreshResult { Track = track, WasRefreshed = false };

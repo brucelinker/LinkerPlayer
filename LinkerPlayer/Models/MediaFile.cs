@@ -1,14 +1,17 @@
+using ATL;
 using CommunityToolkit.Mvvm.ComponentModel;
+using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Services;
 using ManagedBass;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.IO;
 using System.Windows.Media.Imaging;
-using TagLib;
-using File = TagLib.File;
 
 namespace LinkerPlayer.Models;
 
@@ -17,11 +20,11 @@ public interface IMediaFile
     string Id { get; }
     string Path { get; }
     string FileName { get; }
-    uint Track { get; }
-    uint TrackCount { get; }
-    uint Disc { get; }
-    uint DiscCount { get; }
-    uint Year { get; }
+    int Track { get; }
+    int TrackCount { get; }
+    int Disc { get; }
+    int DiscCount { get; }
+    int Year { get; }
     string Title { get; }
     string Artist { get; }
     string Album { get; }
@@ -29,109 +32,157 @@ public interface IMediaFile
     string Performers { get; }
     string Composers { get; }
     string Genres { get; }
-    TimeSpan Duration { get; }
+    int Duration { get; }
     string Comment { get; }
     int Bitrate { get; }
-    int SampleRate { get; }
+    double SampleRate { get; }
     int Channels { get; }
     string? Codec { get; }
-    string Copyright { get; }
+    string? Copyright { get; }
     BitmapImage? AlbumCover { get; }
     PlaybackState State { get; set; }
-
 }
 
 [Index(nameof(Id), nameof(Path), IsUnique = true)]
 public partial class MediaFile : ObservableValidator, IMediaFile
 {
     private const string UnknownString = "<Unknown>";
-    private CoverManager? _coverManager; // Make it nullable and lazy
+    private CoverManager? _coverManager;
+    private bool _isDirtyTrackingEnabled;
 
-    // Helper properties to get services when needed
     private IMediaFileHelper? MediaFileHelper => App.AppHost?.Services?.GetService<IMediaFileHelper>();
     private ILogger<MediaFile>? Logger => App.AppHost?.Services?.GetService<ILogger<MediaFile>>();
 
-    // Lazy initialization of CoverManager
     private CoverManager CoverManager => _coverManager ??= new CoverManager();
 
+    /// <summary>
+    /// Set of property names that have been edited by the user in the Library DataGrid.
+    /// </summary>
+    [NotMapped]
+    public HashSet<string> DirtyProperties { get; } = new();
+
+    /// <summary>
+    /// Properties that can be edited inline in the Library DataGrid.
+    /// </summary>
+    private static readonly HashSet<string> EditableProperties = new()
+    {
+        nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumArtist),
+        nameof(Genres), nameof(Track), nameof(TrackCount), nameof(Disc),
+        nameof(DiscCount), nameof(Year), nameof(Composers), nameof(Comment),
+        nameof(Copyright)
+    };
+
+    [NotMapped]
+    public bool IsDirty => DirtyProperties.Count > 0;
+
+    [NotMapped]
+    public int DirtyCount => DirtyProperties.Count;
+
+    public bool IsPropertyDirty(string propertyName) => DirtyProperties.Contains(propertyName);
+
+    public void ClearDirty()
+    {
+        List<string> previouslyDirty = DirtyProperties.ToList();
+        DirtyProperties.Clear();
+        OnPropertyChanged(nameof(IsDirty));
+        OnPropertyChanged(nameof(DirtyCount));
+        foreach (string prop in previouslyDirty)
+        {
+            OnPropertyChanged($"IsDirty_{prop}");
+        }
+    }
+
+    /// <summary>
+    /// Enables dirty tracking for user edits. Call after loading metadata to avoid marking
+    /// programmatic property sets as dirty.
+    /// </summary>
+    public void EnableDirtyTracking() => _isDirtyTrackingEnabled = true;
+
+    public void DisableDirtyTracking() => _isDirtyTrackingEnabled = false;
+
+    protected override void OnPropertyChanged(PropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+
+        if (_isDirtyTrackingEnabled &&
+            e.PropertyName != null &&
+            EditableProperties.Contains(e.PropertyName) &&
+            !DirtyProperties.Contains(e.PropertyName))
+        {
+            DirtyProperties.Add(e.PropertyName);
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsDirty)));
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(DirtyCount)));
+            OnPropertyChanged(new PropertyChangedEventArgs($"IsDirty_{e.PropertyName}"));
+        }
+    }
+
     [Key]
-    [StringLength(36, ErrorMessage = "Id must be a valid GUID (36 characters)")]
+    [StringLength(36)]
     [ObservableProperty]
     private string _id = Guid.NewGuid().ToString();
 
-    [StringLength(256, ErrorMessage = "Path cannot exceed 256 characters")]
     [ObservableProperty]
     private string _path = string.Empty;
 
-    [StringLength(255, ErrorMessage = "FileName cannot exceed 255 characters")]
     [ObservableProperty]
     private string _fileName = string.Empty;
 
-    [StringLength(128, ErrorMessage = "Title cannot exceed 128 characters")]
     [ObservableProperty]
     private string _title = string.Empty;
 
-    [StringLength(128, ErrorMessage = "Artist cannot exceed 128 characters")]
     [ObservableProperty]
     private string _artist = string.Empty;
 
-    [StringLength(128, ErrorMessage = "Album cannot exceed 128 characters")]
     [ObservableProperty]
     private string _album = string.Empty;
 
-    [StringLength(128, ErrorMessage = "AlbumArtist cannot exceed 128 characters")]
     [ObservableProperty]
     private string _albumArtist = string.Empty;
 
-    [StringLength(256, ErrorMessage = "Performers cannot exceed 256 characters")]
     [ObservableProperty]
     private string _performers = string.Empty;
 
-    [StringLength(256, ErrorMessage = "Composers cannot exceed 256 characters")]
     [ObservableProperty]
     private string _composers = string.Empty;
 
-    [StringLength(128, ErrorMessage = "Genres cannot exceed 128 characters")]
     [ObservableProperty]
     private string _genres = string.Empty;
 
-    [StringLength(128, ErrorMessage = "Copyright cannot exceed 128 characters")]
     [ObservableProperty]
-    private string _copyright = string.Empty;
+    private string? _copyright;
 
-    //[StringLength(256, ErrorMessage = $"Comment cannot exceed 256 characters")]
     [ObservableProperty]
     private string _comment = string.Empty;
 
     [ObservableProperty]
-    private uint _track;
+    private int _track;
 
     [ObservableProperty]
-    private uint _trackCount;
+    private int _trackCount;
 
     [ObservableProperty]
-    private uint _disc;
+    private int _disc;
 
     [ObservableProperty]
-    private uint _discCount;
+    private int _discCount;
 
     [ObservableProperty]
-    private uint _year;
+    private int _year;
 
     [ObservableProperty]
-    private TimeSpan _duration;
+    private int _duration;
 
     [ObservableProperty]
     private int _bitrate;
 
     [ObservableProperty]
-    private int _sampleRate;
+    private double _sampleRate;
 
     [ObservableProperty]
     private int _channels;
 
     [ObservableProperty]
-    private string _codec = string.Empty;
+    private string? _codec = string.Empty;
 
     [ObservableProperty]
     private int? _leadingSilenceMs;
@@ -145,6 +196,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private DateTime? _lastMetadataRefreshUtc;
 
+    [ObservableProperty]
+    private bool _needsMetadataRefresh;
+
     [NotMapped]
     [ObservableProperty]
     private BitmapImage? _albumCover;
@@ -154,159 +208,197 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     private PlaybackState _state = PlaybackState.Stopped;
 
     [NotMapped]
+    [ObservableProperty]
+    private bool _isRefreshing;
+
+    [NotMapped]
     public List<PlaylistTrack> PlaylistTracks { get; set; } = new();
 
-    public MediaFile()
-    {
-    }
+    public MediaFile() { }
 
     public MediaFile(string fileName, MediaFileHelper? mediaFileHelper = null, ILogger<MediaFile>? logger = null)
     {
         Path = fileName;
         FileName = System.IO.Path.GetFileName(fileName);
-        UpdateFromFileMetadata(false);
+        NeedsMetadataRefresh = true;
+        LastMetadataRefreshUtc = null;
     }
 
     public void UpdateFromFileMetadata(bool raisePropertyChanged = true)
     {
         if (string.IsNullOrWhiteSpace(Path))
-        {
             return;
-        }
+
+        DisableDirtyTracking();
+        Track? track = null;
 
         try
         {
-            using File? file = File.Create(Path);
-
-            // Only generate a new ID if we don't have one yet
-            if (string.IsNullOrEmpty(Id) || Id == Guid.Empty.ToString())
+            track = new Track(Path);   // ATL auto-detects format (including AC3)
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path);
+            try
             {
-                Id = ValidateStringLength(Guid.NewGuid().ToString(), 36, nameof(Id));
+                IImportErrorLogger? importLogger = App.AppHost?.Services?.GetService<Services.IImportErrorLogger>();
+                importLogger?.Log(Path, ex);
             }
+            catch { }
+            SetFallbackMetadata(raisePropertyChanged);
+            return;
+        }
 
-            FileName = ValidateStringLength(System.IO.Path.GetFileName(Path), 255, nameof(FileName));
-            Title = ValidateStringLength(file.Tag.Title ?? FileName, 128, nameof(Title));
+        // Only generate a new ID if needed
+        if (string.IsNullOrEmpty(Id) || Id == Guid.Empty.ToString())
+        {
+            Id = ValidateStringLength(Guid.NewGuid().ToString(), 36, nameof(Id));
+        }
 
-            string artist = MediaFileHelper?.GetBestArtistField(file.Tag) ?? UnknownString;
-            Artist = ValidateStringLength(artist, 128, nameof(Artist));
+        FileName = ValidateStringLength(System.IO.Path.GetFileName(Path), 255, nameof(FileName));
 
-            Album = ValidateStringLength(file.Tag.Album ?? UnknownString, 128, nameof(Album));
+        Title = track.Title ?? FileName;
 
-            // Use the MediaFileHelper service to get the best album artist field
-            string albumArtist = MediaFileHelper?.GetBestAlbumArtistField(file.Tag) ?? UnknownString;
-            AlbumArtist = ValidateStringLength(albumArtist, 128, nameof(AlbumArtist));
+        string artist = MediaFileHelper?.GetBestArtistField(track) ?? UnknownString;
+        Artist = artist;
 
-            List<string> performers = file.Tag.Performers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Performers = ValidateStringLength(performers.Count > 0 ? string.Join("/", performers) : file.Tag.FirstPerformer ?? string.Empty, 256, nameof(Performers));
+        Album = track.Album ?? UnknownString;
 
-            //Comment = ValidateStringLength(file.Tag.Comment ?? string.Empty, 256, nameof(Comment));
+        string albumArtist = MediaFileHelper?.GetBestAlbumArtistField(track) ?? UnknownString;
+        AlbumArtist = albumArtist;
 
-            List<string> composers = file.Tag.Composers.Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-            Composers = ValidateStringLength(composers.Count > 1 ? string.Join("/", composers) : file.Tag.FirstComposer ?? string.Empty, 256, nameof(Composers));
+        // ATL uses single string for these (no array like TagLib)
+        Performers = track.Artist ?? string.Empty;
+        Composers = track.Composer ?? string.Empty;
+        Genres = track.Genre ?? string.Empty;
 
-            Copyright = ValidateStringLength(file.Tag.Copyright ?? string.Empty, 128, nameof(Copyright));
+        Copyright = track.Copyright ?? string.Empty;
+        Comment = track.Comment ?? string.Empty;
 
-            Genres = ValidateStringLength(file.Tag.Genres.Length > 1 ? string.Join("/", file.Tag.Genres) : file.Tag.FirstGenre ?? string.Empty, 128, nameof(Genres));
+        Track = track.TrackNumber ?? 0;
+        TrackCount = track.TrackTotal ?? 0;
+        Disc = track.DiscNumber ?? 0;
+        DiscCount = track.DiscTotal ?? 0;
+        Year = track.Year ?? 0;
+        Logger?.LogDebug("ATL Year for {Path}: {AtlYear}, Set Year to {Year}", Path, track.Year, Year);
 
-            Track = file.Tag.Track;
-            TrackCount = file.Tag.TrackCount;
-            Disc = file.Tag.Disc;
-            DiscCount = file.Tag.DiscCount;
-            Year = file.Tag.Year;
-            Bitrate = file.Properties.AudioBitrate;
-            SampleRate = file.Properties.AudioSampleRate;
-            Channels = file.Properties.AudioChannels;
-            Codec = file.Properties.Description ?? file.Properties.Codecs?.FirstOrDefault()?.Description ?? "";
+        Bitrate = track.Bitrate;
+        SampleRate = track.SampleRate;
+        Channels = track.ChannelsArrangement?.NbChannels ?? 0;
 
-            if (file.Properties.MediaTypes != MediaTypes.None)
+        Codec = track.AudioFormat?.Name ?? track.CodecFamily.ToString() ?? string.Empty;
+
+        // ATL.Duration is seconds (int); store as seconds (int)
+        try
+        {
+            int atlDurationSeconds = track.Duration;
+            Logger?.LogDebug("ATL Duration for {Path}: {DurationSeconds}s", Path, atlDurationSeconds);
+
+            // Check if ATL duration is reasonable (> 0 for audio files)
+            if (atlDurationSeconds > 0)
             {
-                Duration = file.Properties.Duration != TimeSpan.Zero ? file.Properties.Duration : TimeSpan.FromSeconds(1);
+                Duration = atlDurationSeconds;
+                Logger?.LogDebug("Set Duration to {Duration}s from ATL", Duration);
             }
             else
             {
-                Duration = TimeSpan.FromSeconds(1);
-            }
+                Logger?.LogWarning("ATL Duration is 0 for {Path}, trying BASS fallback", Path);
+                // Fallback: try to get duration using BASS
+                try
+                {
+                    // Ensure BASS is initialized for decoding
+                    object? engineObj = App.AppHost?.Services?.GetService(typeof(AudioEngine));
+                    AudioEngine? engine = engineObj as AudioEngine;
+                    if (engine != null && !engine.IsBassInitialized)
+                    {
+                        Logger?.LogDebug("Initializing BASS for duration extraction");
+                        engine.InitializeAudioDevice();
+                    }
 
-            // Silence offsets are persisted in the database (LeadingSilenceMs/TrailingSilenceMs).
-            // Do not infer them from file metadata during a tag refresh.
-
-            if (raisePropertyChanged)
-            {
-                // ValidateAllProperties() can throw due to duplicated generated validators (e.g. duplicate key 'Id').
-                // MediaFile is primarily a data model; avoid full validation during metadata refresh to prevent runtime crashes.
+                    // Try to create stream for duration calculation
+                    int stream = ManagedBass.Bass.CreateStream(Path, 0, 0, ManagedBass.BassFlags.Decode);
+                    if (stream != 0)
+                    {
+                        long len = ManagedBass.Bass.ChannelGetLength(stream);
+                        double seconds = ManagedBass.Bass.ChannelBytes2Seconds(stream, len);
+                        Duration = (int)seconds;
+                        Logger?.LogDebug("Set Duration to {Duration}s from BASS", Duration);
+                        ManagedBass.Bass.StreamFree(stream);
+                    }
+                    else
+                    {
+                        Logger?.LogWarning("BASS stream creation failed for {Path}: {Error}", Path, ManagedBass.Bass.LastError);
+                        Duration = 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger?.LogWarning(ex, "Failed to get duration using BASS for {Path}", Path);
+                    Duration = 0;
+                }
             }
         }
-        catch (TagLib.CorruptFileException ex)
+        catch (Exception ex)
         {
-            Logger?.LogError(ex, "Corrupted file {FileName}: {Message}", Path, ex.Message);
-            SetFallbackMetadata(raisePropertyChanged);
+            Logger?.LogError(ex, "Failed to get duration for {Path}", Path);
+            Duration = 0;
         }
-        catch (TagLib.UnsupportedFormatException ex)
+
+        if (raisePropertyChanged)
         {
-            Logger?.LogError(ex, "Unsupported format for {FileName}: {Message}", Path, ex.Message);
-            SetFallbackMetadata(raisePropertyChanged);
+            // Optional: OnPropertyChanged for all if needed
         }
-        catch (ArgumentException ex) when (ex.ParamName == "ident" && ex.Message.Contains("identifier must be four bytes long"))
-        {
-            Logger?.LogError(ex, "Invalid metadata identifiers in {FileName}: {Message}", Path, ex.Message);
-            SetFallbackMetadata(raisePropertyChanged);
-        }
-        catch (Exception e)
-        {
-            Logger?.LogError(e, "TagLib.File.Create failed for {FileName}: {Message}", Path, e.Message);
-            SetFallbackMetadata(raisePropertyChanged);
-        }
+
+        EnableDirtyTracking();
     }
 
     private void SetFallbackMetadata(bool raisePropertyChanged)
     {
-        Title = ValidateStringLength(FileName, 128, nameof(Title));
-        Album = ValidateStringLength(UnknownString, 128, nameof(Album));
-        Artist = ValidateStringLength(UnknownString, 128, nameof(Artist));
+        Title = FileName;
+        Album = UnknownString;
+        Artist = UnknownString;
+        AlbumArtist = UnknownString;
         Performers = string.Empty;
         Composers = string.Empty;
-        Copyright = string.Empty;
         Genres = string.Empty;
+        Copyright = string.Empty;
         Comment = string.Empty;
+
         Track = 0;
         TrackCount = 0;
         Disc = 0;
         DiscCount = 0;
         Year = 0;
+
         Bitrate = 0;
         SampleRate = 0;
-        Channels = 0;
-        Duration = TimeSpan.FromSeconds(1);
+        Channels = 2; // Default to stereo
+        Duration = 0;
         Codec = string.Empty;
-
-        if (raisePropertyChanged)
-        {
-            // See note in UpdateFromFileMetadata about avoiding ValidateAllProperties() runtime crashes.
-        }
     }
 
     public void LoadAlbumCover()
     {
         try
         {
-            BitmapImage? image = CoverManager.GetImageFromPictureTag(Path); // Use property instead of field
-            if (image != null)
+            Track track = new Track(Path);
+
+            // Prefer front cover first, then fall back to any embedded picture
+            PictureInfo? pic = track.EmbeddedPictures.FirstOrDefault(p =>
+                p.PicType == PictureInfo.PIC_TYPE.Front ||
+                p.PicType == PictureInfo.PIC_TYPE.CD ||
+                p.PicType == PictureInfo.PIC_TYPE.Generic)
+                ?? track.EmbeddedPictures.FirstOrDefault();
+
+            if (pic?.PictureData != null && pic.PictureData.Length > 0)
             {
-                // Force reload from file, not cache
-                if (image.UriSource != null)
-                {
-                    BitmapImage bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.UriSource = image.UriSource;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    AlbumCover = bitmap;
-                }
-                else
-                {
-                    AlbumCover = image;
-                }
+                BitmapImage bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.StreamSource = new MemoryStream(pic.PictureData);   // Correct property
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.EndInit();
+                bitmap.Freeze();                    // Important for WPF
+                AlbumCover = bitmap;
             }
             else
             {
@@ -320,15 +412,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
     }
 
-    public void UpdateFullMetadata()
-    {
-        UpdateFromFileMetadata();
-    }
+    public void UpdateFullMetadata() => UpdateFromFileMetadata();
 
-    public override string ToString()
-    {
-        return $"{Track} {Artist} - {Title} {Duration:m\\:ss}";
-    }
+    public override string ToString() => $"{Track} {Artist} - {Title} {Duration:m\\:ss}";
 
     public MediaFile Clone()
     {
@@ -345,6 +431,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Title = Title,
             Album = Album,
             Artist = Artist,
+            AlbumArtist = AlbumArtist,
             Performers = Performers,
             Composers = Composers,
             Genres = Genres,
@@ -372,79 +459,47 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         return value;
     }
 
-    public static string GetTagLibFileJson(string filePath)
+    // Optional: ATL version of debug JSON (if you still need it)
+    public static string GetAtlFileJson(string filePath)
     {
         try
         {
-            using File? file = File.Create(filePath);
-            var tagInfo = new
+            Track track = new Track(filePath);
+            var info = new
             {
-                FileName = file.Name,
-                Tag = new
+                FileName = System.IO.Path.GetFileName(filePath),
+                Metadata = new
                 {
-                    file.Tag.Title,
-                    file.Tag.Album,
-                    AlbumArtists = file.Tag.AlbumArtists,
-                    file.Tag.FirstAlbumArtist,
-                    file.Tag.Performers,
-                    file.Tag.FirstPerformer,
-                    file.Tag.Composers,
-                    file.Tag.FirstComposer,
-                    file.Tag.Genres,
-                    file.Tag.FirstGenre,
-                    file.Tag.Year,
-                    file.Tag.Track,
-                    file.Tag.TrackCount,
-                    file.Tag.Disc,
-                    file.Tag.DiscCount,
-                    file.Tag.Comment,
-                    file.Tag.Copyright,
-                    file.Tag.Lyrics,
-                    file.Tag.BeatsPerMinute,
-                    file.Tag.Conductor,
-                    file.Tag.Grouping,
-                    file.Tag.Pictures
+                    track.Title,
+                    track.Artist,
+                    track.Album,
+                    track.AlbumArtist,
+                    track.Composer,
+                    track.Genre,
+                    track.Year,
+                    track.TrackNumber,
+                    track.TrackTotal,
+                    track.DiscNumber,
+                    track.DiscTotal,
+                    track.Comment,
+                    track.Copyright,
+                    track.Lyrics
                 },
-                Properties = new
+                AudioProperties = new
                 {
-                    file.Properties.AudioBitrate,
-                    file.Properties.AudioSampleRate,
-                    file.Properties.AudioChannels,
-                    file.Properties.Duration,
-                    file.Properties.MediaTypes,
-                    file.Properties.Description,
-                    file.Properties.Codecs
+                    track.Bitrate,
+                    track.SampleRate,
+                    Channels = track.ChannelsArrangement.NbChannels,
+                    Layout = track.ChannelsArrangement.Description,
+                    Duration = track.Duration,
+                    Codec = track.CodecFamily
                 }
             };
-            return System.Text.Json.JsonSerializer.Serialize(tagInfo, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
-        }
-        catch (TagLib.CorruptFileException ex)
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new
-            {
-                Error = $"Corrupted file: {ex.Message}"
-            });
-        }
-        catch (TagLib.UnsupportedFormatException ex)
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new
-            {
-                Error = $"Unsupported format: {ex.Message}"
-            });
-        }
-        catch (ArgumentException ex) when (ex.ParamName == "ident" && ex.Message.Contains("identifier must be four bytes long"))
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new
-            {
-                Error = $"Invalid metadata identifiers: {ex.Message}"
-            });
+            return System.Text.Json.JsonSerializer.Serialize(info, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         }
         catch (Exception ex)
         {
-            return System.Text.Json.JsonSerializer.Serialize(new
-            {
-                Error = $"Error reading file: {ex.Message}"
-            });
+            return System.Text.Json.JsonSerializer.Serialize(new { Error = ex.Message });
         }
     }
 }

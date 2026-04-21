@@ -1,5 +1,6 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Windows;
+using LinkerPlayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Input;
@@ -32,6 +33,7 @@ public partial class TitlebarButtons
         }
         else
         {
+            // Before showing settings, allow opening Import Errors window from settings
             _settingsWindow.Show();
         }
     }
