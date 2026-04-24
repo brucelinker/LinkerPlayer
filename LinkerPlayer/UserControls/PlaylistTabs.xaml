@@ -415,7 +415,6 @@
             VerticalAlignment="Stretch"
             HorizontalContentAlignment="Stretch"
             VerticalContentAlignment="Stretch"
-            AllowDrop="True"
             AlternationCount="2"
             AutoGenerateColumns="False"
             Background="Transparent"
@@ -432,6 +431,8 @@
             IsReadOnly="False"
             ItemsSource="{Binding TracksView.View}"
             CellEditEnding="MusicLibraryDataGrid_CellEditEnding"
+            BeginningEdit="MusicLibraryDataGrid_BeginningEdit"
+            PreviewMouseLeftButtonDown="MusicLibraryDataGrid_PreviewMouseLeftButtonDown"
             Loaded="DataGrid_Loaded"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
@@ -440,7 +441,7 @@
             RowHeight="20"
             RowStyle="{StaticResource SharedDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
-            ScrollViewer.IsDeferredScrollingEnabled="True"
+            ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
@@ -461,15 +462,6 @@
             <DataGrid.Tag>
               <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=UserControl}" />
             </DataGrid.Tag>
-
-            <b:Interaction.Triggers>
-              <b:EventTrigger EventName="DragOver">
-                <b:InvokeCommandAction Command="{Binding DataContext.DragOverCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
-              </b:EventTrigger>
-              <b:EventTrigger EventName="Drop">
-                <b:InvokeCommandAction Command="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" PassEventArgsToCommand="True" />
-              </b:EventTrigger>
-            </b:Interaction.Triggers>
 
             <!--  Same columns as PlaylistTab for now - can be customized later  -->
             <DataGrid.Columns>
@@ -526,7 +518,7 @@
             RowHeight="20"
             RowStyle="{StaticResource SharedDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
-            ScrollViewer.IsDeferredScrollingEnabled="True"
+            ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"

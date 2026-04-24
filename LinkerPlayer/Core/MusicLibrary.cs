@@ -21,6 +21,7 @@ public interface IMusicLibrary
     Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true);
     Task AddTracksToLibraryBatchAsync(IEnumerable<MediaFile> mediaFiles);
     Task RemoveTrackFromLibraryAsync(string trackId);
+    Task<int> RemoveTracksFromFolderAsync(string folderPath);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
     Task<Playlist> AddNewPlaylistAsync(string playlistName);
     Task<bool> AddPlaylistAsync(Playlist newPlaylist);
@@ -496,21 +497,20 @@ public class MusicLibrary : IMusicLibrary
 
         if (tracksToAdd.Count > 0)
         {
-            // Use AddRange to add all items with a single CollectionChanged (Reset) notification
+            // Use AddRange to add all items with a single CollectionChanged (Reset) notification.
+            // BeginInvoke at Background priority so the worker thread never blocks the UI thread,
+            // keeping input events (scroll, click, playback) responsive during large imports.
             if (System.Windows.Application.Current?.Dispatcher is System.Windows.Threading.Dispatcher dispatcher)
             {
                 if (dispatcher.CheckAccess())
                 {
-                    // Already on UI thread
                     MainLibrary.AddRange(tracksToAdd);
                 }
                 else
                 {
-                    // Block worker thread until UI add completes
-                    dispatcher.Invoke(() =>
-                    {
-                        MainLibrary.AddRange(tracksToAdd);
-                    });
+                    dispatcher.BeginInvoke(
+                        new Action(() => MainLibrary.AddRange(tracksToAdd)),
+                        System.Windows.Threading.DispatcherPriority.Background);
                 }
             }
             else
@@ -566,6 +566,51 @@ public class MusicLibrary : IMusicLibrary
             }
             await SaveToDatabaseAsync();
         }
+    }
+
+    public async Task<int> RemoveTracksFromFolderAsync(string folderPath)
+    {
+        // Find all tracks whose path starts with the watched folder (case-insensitive)
+        string normalizedFolder = folderPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+
+        List<MediaFile> toRemove = MainLibrary
+            .Where(t => t.Path.StartsWith(normalizedFolder, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (toRemove.Count == 0)
+            return 0;
+
+        HashSet<string> removeIds = toRemove.Select(t => t.Id).ToHashSet();
+
+        // Remove from in-memory collection
+        foreach (MediaFile track in toRemove)
+            MainLibrary.Remove(track);
+
+        // Remove from all playlists
+        foreach (Playlist playlist in Playlists)
+        {
+            List<string> affected = playlist.TrackIds.Where(id => removeIds.Contains(id)).ToList();
+            foreach (string id in affected)
+                playlist.TrackIds.Remove(id);
+
+            if (playlist.SelectedTrackId != null && removeIds.Contains(playlist.SelectedTrackId))
+                playlist.SelectedTrackId = null;
+        }
+
+        // Batch delete from DB in one round-trip
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+        List<MediaFile> dbTracks = await context.Tracks
+            .Where(t => removeIds.Contains(t.Id))
+            .ToListAsync();
+        context.Tracks.RemoveRange(dbTracks);
+        await context.SaveChangesAsync();
+
+        // Persist updated playlists
+        await SaveToDatabaseAsync();
+
+        _logger.LogInformation("Removed {Count} tracks from folder: {Folder}", toRemove.Count, folderPath);
+        return toRemove.Count;
     }
 
     public async Task<Playlist> AddNewPlaylistAsync(string playlistName)

@@ -1,6 +1,9 @@
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Services;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Windows;
@@ -14,6 +17,8 @@ public partial class SettingsWindow
     private readonly ThemeManager _themeManager = new();
     private readonly IAudioEngine _audioEngine;
     private readonly ISettingsManager _settingsManager;
+    private readonly IWatchedFolderService _watchedFolderService;
+    private readonly IMusicLibrary _musicLibrary;
     private readonly ILogger _logger;
 
     private const string DefaultDeviceName = "Primary Sound Driver";
@@ -36,10 +41,14 @@ public partial class SettingsWindow
     public SettingsWindow(
         IAudioEngine audioEngine,
         ISettingsManager settingsManager,
+        IWatchedFolderService watchedFolderService,
+        IMusicLibrary musicLibrary,
         ILogger<SettingsWindow> logger)
     {
         _audioEngine = audioEngine;
         _settingsManager = settingsManager;
+        _watchedFolderService = watchedFolderService;
+        _musicLibrary = musicLibrary;
         _logger = logger;
 
         try
@@ -406,6 +415,7 @@ public partial class SettingsWindow
         OutputPage.Visibility = Visibility.Collapsed;
         AppearancePage.Visibility = Visibility.Collapsed;
         BehaviorPage.Visibility = Visibility.Collapsed;
+        LibraryPage.Visibility = Visibility.Collapsed;
 
         // Show selected
         switch (index)
@@ -418,6 +428,10 @@ public partial class SettingsWindow
                 break;
             case 2:
                 BehaviorPage.Visibility = Visibility.Visible;
+                break;
+            case 3:
+                LibraryPage.Visibility = Visibility.Visible;
+                LoadLibrarySettings();
                 break;
         }
     }
@@ -671,5 +685,150 @@ public partial class SettingsWindow
     private void OnSkipSilenceThresholdSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         UpdateBehaviorTextFields();
+    }
+
+    private void LoadLibrarySettings()
+    {
+        WatchedFoldersListBox.Items.Clear();
+        foreach (string folder in _watchedFolderService.WatchedFolders)
+        {
+            WatchedFoldersListBox.Items.Add(folder);
+        }
+    }
+
+    private void OnAddFolderClick(object sender, RoutedEventArgs e)
+    {
+        Microsoft.Win32.OpenFolderDialog dialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "Select a folder to watch for audio files",
+            Multiselect = false
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            _watchedFolderService.AddFolder(dialog.FolderName);
+            LoadLibrarySettings();
+            _ = ScanFolderAsync(dialog.FolderName);
+        }
+    }
+
+    private async void OnRemoveFolderClick(object sender, RoutedEventArgs e)
+    {
+        if (WatchedFoldersListBox.SelectedItem is not string selectedFolder)
+            return;
+
+        // Count tracks from this folder so the user knows what they're about to affect
+        int trackCount = _musicLibrary.MainLibrary
+            .Count(t => t.Path.StartsWith(
+                selectedFolder.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+                    + System.IO.Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase));
+
+        string trackSummary = trackCount > 0
+            ? $"{trackCount:N0} track{(trackCount == 1 ? "" : "s")} from this folder {(trackCount == 1 ? "is" : "are")} in your library."
+            : "No tracks from this folder are currently in your library.";
+
+        MessageBoxResult result = MessageBox.Show(
+            $"{trackSummary}\n\nWhat would you like to do?\n\n" +
+            "• Yes  — Remove folder and delete its tracks from the library\n" +
+            "• No   — Remove folder only (keep tracks in library)\n" +
+            "• Cancel — Do nothing\n\n" +
+            "Note: your actual audio files on disk will NOT be deleted.",
+            "Remove Watched Folder",
+            MessageBoxButton.YesNoCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.Cancel)
+            return;
+
+        RemoveFolderButton.IsEnabled = false;
+        try
+        {
+            if (result == MessageBoxResult.Yes && trackCount > 0)
+            {
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(new ProgressData
+                {
+                    IsProcessing = true,
+                    TotalTracks = trackCount,
+                    ProcessedTracks = 0,
+                    Status = $"Removing {trackCount:N0} tracks from library…",
+                    Phase = "Removing"
+                }));
+                int removed = await Task.Run(() => _watchedFolderService.RemoveFolderAndTracksAsync(selectedFolder))
+                    .ConfigureAwait(false);
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(new ProgressData
+                {
+                    IsProcessing = false,
+                    TotalTracks = removed,
+                    ProcessedTracks = removed,
+                    Status = $"Removed {removed:N0} track{(removed == 1 ? "" : "s")} from library.",
+                    Phase = string.Empty
+                }));
+            }
+            else
+            {
+                _watchedFolderService.RemoveFolder(selectedFolder);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing watched folder: {Path}", selectedFolder);
+        }
+        finally
+        {
+            Dispatcher.Invoke(() =>
+            {
+                RemoveFolderButton.IsEnabled = true;
+                LoadLibrarySettings();
+            });
+        }
+    }
+
+    private async Task ScanFolderAsync(string folderPath)
+    {
+        AddFolderButton.IsEnabled = false;
+        RescanButton.IsEnabled = false;
+        try
+        {
+            IProgress<ProgressData> progress = new Progress<ProgressData>(data =>
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
+            await _watchedFolderService.ScanFolderAsync(folderPath, progress).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error scanning new folder: {Path}", folderPath);
+        }
+        finally
+        {
+            Dispatcher.Invoke(() =>
+            {
+                AddFolderButton.IsEnabled = true;
+                RescanButton.IsEnabled = true;
+            });
+        }
+    }
+
+    private async void OnRescanClick(object sender, RoutedEventArgs e)
+    {
+        AddFolderButton.IsEnabled = false;
+        RescanButton.IsEnabled = false;
+        try
+        {
+            IProgress<ProgressData> progress = new Progress<ProgressData>(data =>
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
+            await _watchedFolderService.ScanAllAsync(progress).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during manual rescan");
+        }
+        finally
+        {
+            Dispatcher.Invoke(() =>
+            {
+                AddFolderButton.IsEnabled = true;
+                RescanButton.IsEnabled = true;
+            });
+        }
     }
 }

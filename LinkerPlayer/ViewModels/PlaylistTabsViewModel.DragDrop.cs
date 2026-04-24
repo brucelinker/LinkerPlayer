@@ -149,22 +149,9 @@ public partial class PlaylistTabsViewModel
                 }
                 else
                 {
-                    // No playlist selected -> file was imported into the Music Library. Ensure it is persisted to the database.
-                    try
-                    {
-                        await _musicLibrary.SaveTracksBatchAsync(new[] { importedFile }).ConfigureAwait(false);
-                        // Enqueue background metadata refresh for this single file
-                        try
-                        {
-                            Services.Metadata.BackgroundMetadataRefresher.Enqueue(new[] { importedFile });
-                        }
-                        catch { }
-                        _logger.LogInformation("Imported single file into Music Library and saved to database: {Path}", filePath);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to persist single imported file to database: {Path}", filePath);
-                    }
+                    // Library tab is active — drag-drop onto the Library is not supported.
+                    // Library content is managed exclusively via watched folders in Settings.
+                    _logger.LogDebug("Dropped file ignored: Library tab is active and does not accept drag-drop. Use watched folders instead.");
                 }
             }
         }
@@ -229,8 +216,9 @@ public partial class PlaylistTabsViewModel
             }
             else
             {
-                // No playlist selected; files were imported into the library only.
-                _logger.LogInformation("Imported {Count} dropped files into Music Library (no playlist selected)", importedTracks.Count);
+                // Library tab is active — drag-drop onto the Library is not supported.
+                // Library content is managed exclusively via watched folders in Settings.
+                _logger.LogDebug("Dropped files ignored: Library tab is active and does not accept drag-drop. Use watched folders instead.");
             }
         }
         catch (Exception ex)

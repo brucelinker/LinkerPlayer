@@ -15,6 +15,12 @@ using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.Models;
 
+public enum TrackSource
+{
+    Manual,
+    WatchedFolder
+}
+
 public interface IMediaFile
 {
     string Id { get; }
@@ -50,8 +56,23 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     private CoverManager? _coverManager;
     private bool _isDirtyTrackingEnabled;
 
-    private IMediaFileHelper? MediaFileHelper => App.AppHost?.Services?.GetService<IMediaFileHelper>();
-    private ILogger<MediaFile>? Logger => App.AppHost?.Services?.GetService<ILogger<MediaFile>>();
+    private IMediaFileHelper? MediaFileHelper
+    {
+        get
+        {
+            try { return App.AppHost?.Services?.GetService<IMediaFileHelper>(); }
+            catch { return null; }
+        }
+    }
+
+    private ILogger<MediaFile>? Logger
+    {
+        get
+        {
+            try { return App.AppHost?.Services?.GetService<ILogger<MediaFile>>(); }
+            catch { return null; }
+        }
+    }
 
     private CoverManager CoverManager => _coverManager ??= new CoverManager();
 
@@ -199,6 +220,14 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private bool _needsMetadataRefresh;
 
+    [property: NotMapped]
+    [ObservableProperty]
+    private TrackSource _source = TrackSource.Manual;
+
+    [property: NotMapped]
+    [ObservableProperty]
+    private string _watchedFolderPath = string.Empty;
+
     [NotMapped]
     [ObservableProperty]
     private BitmapImage? _albumCover;
@@ -238,7 +267,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path);
+            try { Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path); } catch { }
             try
             {
                 IImportErrorLogger? importLogger = App.AppHost?.Services?.GetService<Services.IImportErrorLogger>();
@@ -286,7 +315,11 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         SampleRate = track.SampleRate;
         Channels = track.ChannelsArrangement?.NbChannels ?? 0;
 
-        Codec = track.AudioFormat?.Name ?? track.CodecFamily.ToString() ?? string.Empty;
+        Codec = !string.IsNullOrWhiteSpace(Path)
+            ? System.IO.Path.GetExtension(Path).TrimStart('.').ToUpperInvariant()
+            : track.AudioFormat?.ShortName?.ToUpperInvariant()
+              ?? track.CodecFamily.ToString().ToUpperInvariant()
+              ?? string.Empty;
 
         // ATL.Duration is seconds (int); store as seconds (int)
         try

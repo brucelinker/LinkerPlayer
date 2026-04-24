@@ -1,6 +1,8 @@
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.Services.Playback;
@@ -79,6 +81,7 @@ public partial class App
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
                 services.AddSingleton<IPlaybackCoordinator, PlaybackCoordinator>();
+                services.AddSingleton<IWatchedFolderService, WatchedFolderService>();
 
                 // Database save debounce service
                 services.AddSingleton<IDatabaseSaveService, DatabaseSaveService>();
@@ -176,6 +179,12 @@ public partial class App
                     _logger.LogInformation("Starting library load from database");
                     await library.LoadFromDatabaseAsync();
                     _logger.LogInformation("Library load completed successfully");
+
+                    // Phase 1: scan watched folders after library is loaded
+                    IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();
+                    IProgress<ProgressData> startupProgress = new Progress<ProgressData>(data =>
+                        WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
+                    await watchedFolderService.ScanAllAsync(startupProgress).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

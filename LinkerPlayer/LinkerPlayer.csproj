@@ -98,5 +98,6 @@
     </ItemGroup>
     <ItemGroup>
         <Folder Include="Diagnostics\" />
+        <Folder Include="Logs\" />
     </ItemGroup>
 </Project>

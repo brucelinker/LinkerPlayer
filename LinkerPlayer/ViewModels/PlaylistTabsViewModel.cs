@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using PlaylistsNET.Content;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -221,7 +222,11 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             {
                 _ = _uiDispatcher.InvokeAsync(() =>
                 {
-                    _dataGrid.Items.Refresh();
+                    IEditableCollectionView? ecv = _dataGrid.Items as IEditableCollectionView;
+                    if (ecv == null || (!ecv.IsAddingNew && !ecv.IsEditingItem))
+                    {
+                        _dataGrid.Items.Refresh();
+                    }
                 });
             }
         });

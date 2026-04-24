@@ -30,8 +30,8 @@ public partial class PlayerControls
     private readonly IImportCancellationService _importCancellationService;
 
     private bool _isUserSeeking;
-
     private bool _isStopped = true;
+    private readonly DispatcherTimer _statusClearTimer;
 
     public PlayerControls()
     {
@@ -47,6 +47,14 @@ public partial class PlayerControls
         //_logger.LogInformation($"{DataContext} has been set to DataContext");
 
         _vm.UpdateSelectedTrack += OnSelectedTrackChanged;
+
+        _statusClearTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _statusClearTimer.Tick += (_, _) =>
+        {
+            _statusClearTimer.Stop();
+            ProgressInfo.Text = string.Empty;
+            TheProgressBar.Value = 0;
+        };
 
         InitializeComponent();
 
@@ -226,10 +234,13 @@ public partial class PlayerControls
         // Show hint in the Info area during imports; restore output mode when done
         if (progressData.IsProcessing)
         {
+            _statusClearTimer.Stop();
             Info.Text = "Press ESC to cancel";
         }
         else
         {
+            _statusClearTimer.Stop();
+            _statusClearTimer.Start();
             OnOutputModeChanged(_audioEngine.GetCurrentOutputMode());
         }
     }

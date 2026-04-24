@@ -711,6 +711,31 @@ public partial class PlaylistTabs
         }
     }
 
+    // Set by PreviewMouseLeftButtonDown when a double-click is detected, cleared after BeginningEdit consumes it.
+    private bool _suppressNextEdit = false;
+
+    // Detect double-click early (before BeginningEdit fires) so we can suppress the edit.
+    private void MusicLibraryDataGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount >= 2)
+        {
+            _suppressNextEdit = true;
+        }
+    }
+
+    // Edit mode rules to match TagScanner behavior:
+    // - Single click on an already-selected row → enters edit mode
+    // - F2 → enters edit mode
+    // - Double-click → plays the track (edit is suppressed)
+    private void MusicLibraryDataGrid_BeginningEdit(object? sender, DataGridBeginningEditEventArgs e)
+    {
+        if (_suppressNextEdit)
+        {
+            _suppressNextEdit = false;
+            e.Cancel = true;
+        }
+    }
+
     private void MusicLibraryDataGrid_CellEditEnding(object? sender, DataGridCellEditEndingEventArgs e)
     {
         if (e.EditAction == DataGridEditAction.Commit && DataContext is PlaylistTabsViewModel viewModel)

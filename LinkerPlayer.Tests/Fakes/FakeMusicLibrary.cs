@@ -65,4 +65,16 @@ public sealed class FakeMusicLibrary : IMusicLibrary
     public Task CleanOrphanedTracksAsync() => Task.CompletedTask;
 
     public Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true) => Task.CompletedTask;
+
+    public Task<int> RemoveTracksFromFolderAsync(string folderPath)
+    {
+        string normalizedFolder = folderPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+            + System.IO.Path.DirectorySeparatorChar;
+        List<MediaFile> toRemove = MainLibrary
+            .Where(t => t.Path.StartsWith(normalizedFolder, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        foreach (MediaFile track in toRemove)
+            MainLibrary.Remove(track);
+        return Task.FromResult(toRemove.Count);
+    }
 }

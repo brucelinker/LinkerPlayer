@@ -65,20 +65,44 @@ public partial class FilterBar : UserControl
         {
             try
             {
-                ApplySelectionsToListBox(GenresListBox, libraryTab.SelectedGenres);
-                ApplySelectionsToListBox(ArtistsListBox, libraryTab.SelectedArtists);
-                ApplySelectionsToListBox(AlbumsListBox, libraryTab.SelectedAlbums);
-                // Ensure each listbox has a default selection of "(All)" when none selected yet
-                EnsureAllSelectedFallback(GenresListBox, libraryTab.SelectedGenres);
-                EnsureAllSelectedFallback(ArtistsListBox, libraryTab.SelectedArtists);
-                EnsureAllSelectedFallback(AlbumsListBox, libraryTab.SelectedAlbums);
-                // Subscribe to collection changes so we reapply selections when ItemsSource updates
-                libraryTab.Genres.CollectionChanged += (_, __) => Application.Current?.Dispatcher.BeginInvoke(new Action(() => ApplySelectionsToListBox(GenresListBox, libraryTab.SelectedGenres)), DispatcherPriority.Background);
-                libraryTab.Artists.CollectionChanged += (_, __) => Application.Current?.Dispatcher.BeginInvoke(new Action(() => ApplySelectionsToListBox(ArtistsListBox, libraryTab.SelectedArtists)), DispatcherPriority.Background);
-                libraryTab.Albums.CollectionChanged += (_, __) => Application.Current?.Dispatcher.BeginInvoke(new Action(() => ApplySelectionsToListBox(AlbumsListBox, libraryTab.SelectedAlbums)), DispatcherPriority.Background);
+                ApplyAllSelections(libraryTab);
             }
             catch { }
         }), DispatcherPriority.Background);
+
+        // After every facet rebuild the VM fires FacetsRebuilt.  We reapply all four
+        // listbox selections in one suppressed batch — this prevents the re-entrancy
+        // loop where list.Clear() inside the VM triggers SelectionChanged, which then
+        // clears SelectedXxx before the restore can run.
+        libraryTab.FacetsRebuilt += (_, __) =>
+        {
+            Application.Current?.Dispatcher.BeginInvoke(
+                new Action(() => ApplyAllSelections(libraryTab)),
+                DispatcherPriority.Background);
+        };
+    }
+
+    /// <summary>
+    /// Reapplies all four listbox selections from the VM state in a single suppressed batch.
+    /// </summary>
+    private void ApplyAllSelections(MusicLibraryTab libraryTab)
+    {
+        _suppressSelectionChanged = true;
+        try
+        {
+            ApplySelectionsToListBox(GenresListBox, libraryTab.SelectedGenres);
+            ApplySelectionsToListBox(ArtistsListBox, libraryTab.SelectedArtists);
+            ApplySelectionsToListBox(AlbumsListBox, libraryTab.SelectedAlbums);
+            ApplySelectionsToListBox(CodecsListBox, libraryTab.SelectedCodecs);
+            EnsureAllSelectedFallback(GenresListBox, libraryTab.SelectedGenres);
+            EnsureAllSelectedFallback(ArtistsListBox, libraryTab.SelectedArtists);
+            EnsureAllSelectedFallback(AlbumsListBox, libraryTab.SelectedAlbums);
+            EnsureAllSelectedFallback(CodecsListBox, libraryTab.SelectedCodecs);
+        }
+        finally
+        {
+            _suppressSelectionChanged = false;
+        }
     }
 
     private void ApplySelectionsToListBox(ListBox listBox, ObservableCollection<string> selected)
@@ -89,25 +113,17 @@ public partial class FilterBar : UserControl
         // Snapshot the selected collection to avoid "Collection was modified" if the VM updates selections
         List<string> snapshot = new List<string>(selected);
 
-        try
+        listBox.SelectedItems.Clear();
+        foreach (string s in snapshot)
         {
-            _suppressSelectionChanged = true;
-            listBox.SelectedItems.Clear();
-            foreach (string s in snapshot)
+            for (int i = 0; i < listBox.Items.Count; i++)
             {
-                for (int i = 0; i < listBox.Items.Count; i++)
+                if (string.Equals(listBox.Items[i] as string, s, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (string.Equals(listBox.Items[i] as string, s, StringComparison.OrdinalIgnoreCase))
-                    {
-                        listBox.SelectedItems.Add(listBox.Items[i]);
-                        break;
-                    }
+                    listBox.SelectedItems.Add(listBox.Items[i]);
+                    break;
                 }
             }
-        }
-        finally
-        {
-            _suppressSelectionChanged = false;
         }
     }
 
@@ -120,6 +136,29 @@ public partial class FilterBar : UserControl
         }
     }
 
+
+    private void CodecsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressSelectionChanged)
+            return;
+
+        if (DataContext is not MusicLibraryTab libraryTab)
+            return;
+        if (sender is not ListBox lb)
+            return;
+
+        libraryTab.SelectedCodecs.Clear();
+        foreach (object item in lb.SelectedItems)
+        {
+            if (item is string s)
+                libraryTab.SelectedCodecs.Add(s);
+        }
+
+        SaveFilterSelections(libraryTab);
+
+        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
+        Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyCodecsChanged()), DispatcherPriority.Background);
+    }
 
     private void GenresList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -142,8 +181,7 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        // Notify once after batch update to avoid re-entrancy
-        // Defer to the dispatcher so ListBox selection processing completes before we mutate ItemsSources
+        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyGenresChanged()), DispatcherPriority.Background);
     }
 
@@ -168,6 +206,7 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
+        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyArtistsChanged()), DispatcherPriority.Background);
     }
 
@@ -192,6 +231,7 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
+        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyAlbumsChanged()), DispatcherPriority.Background);
     }
 
@@ -208,6 +248,7 @@ public partial class FilterBar : UserControl
             settingsManager.Settings.LastLibrarySelectedGenres = new List<string>(libraryTab.SelectedGenres);
             settingsManager.Settings.LastLibrarySelectedArtists = new List<string>(libraryTab.SelectedArtists);
             settingsManager.Settings.LastLibrarySelectedAlbums = new List<string>(libraryTab.SelectedAlbums);
+            settingsManager.Settings.LastLibrarySelectedCodecs = new List<string>(libraryTab.SelectedCodecs);
 
             settingsManager.SaveSettings(nameof(AppSettings.LastLibrarySelectedGenres));
         }

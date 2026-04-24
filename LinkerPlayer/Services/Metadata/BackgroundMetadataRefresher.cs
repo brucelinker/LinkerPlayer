@@ -113,49 +113,47 @@ public static class BackgroundMetadataRefresher
 
         MediaFile?[] results = await Task.WhenAll(tasks).ConfigureAwait(false);
         List<MediaFile> updates = results.Where(r => r != null).Select(r => r!).ToList();
-        // Clear NeedsMetadataRefresh for items being updated so we don't reprocess them
-        // Snapshot the library to avoid collection-modified exceptions during enumeration
-        List<MediaFile> librarySnapshot = library.MainLibrary.ToList();
+
+        if (updates.Count == 0)
+            return;
+
+        // Build a single O(1) path lookup from the live in-memory objects.
+        // Snapshot once — the same object references remain valid for the whole batch.
+        Dictionary<string, MediaFile> libraryIndex = library.MainLibrary
+            .ToList()
+            .ToDictionary(t => t.Path, t => t, StringComparer.OrdinalIgnoreCase);
+
+        // Mark tracks as refreshing before the DB write
         foreach (MediaFile mf in updates)
         {
-            // Find the in-memory instance in the library so UI-bound objects update their flags.
-            try
+            if (libraryIndex.TryGetValue(mf.Path, out MediaFile? inMemory))
             {
-                MediaFile? inMemory = librarySnapshot.FirstOrDefault(t => string.Equals(t.Path, mf.Path, StringComparison.OrdinalIgnoreCase));
-                if (inMemory != null)
-                {
-                    inMemory.IsRefreshing = true;
-                }
+                try { inMemory.IsRefreshing = true; } catch { }
             }
-            catch { }
         }
-        if (updates.Count > 0)
+
+        try
         {
-            try
+            await library.UpdateTracksAsync(updates, updateMetadata: true, updateAnalysis: false).ConfigureAwait(false);
+
+            // Clear flags on the same in-memory instances — no need to re-snapshot
+            foreach (MediaFile mf in updates)
             {
-                await library.UpdateTracksAsync(updates, updateMetadata: true, updateAnalysis: false).ConfigureAwait(false);
-                // After DB update, clear flags on in-memory items
-                // Re-snapshot in case the library changed during the update
-                librarySnapshot = library.MainLibrary.ToList();
-                foreach (MediaFile mf in updates)
+                if (libraryIndex.TryGetValue(mf.Path, out MediaFile? inMemory))
                 {
                     try
                     {
-                        MediaFile? inMemory = librarySnapshot.FirstOrDefault(t => string.Equals(t.Path, mf.Path, StringComparison.OrdinalIgnoreCase));
-                        if (inMemory != null)
-                        {
-                            inMemory.NeedsMetadataRefresh = false;
-                            inMemory.LastMetadataRefreshUtc = DateTime.UtcNow;
-                            inMemory.IsRefreshing = false;
-                        }
+                        inMemory.NeedsMetadataRefresh = false;
+                        inMemory.LastMetadataRefreshUtc = DateTime.UtcNow;
+                        inMemory.IsRefreshing = false;
                     }
                     catch { }
                 }
             }
-            catch (Exception ex)
-            {
-                logger?.LogError(ex, "Error saving refreshed metadata batch");
-            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Error saving refreshed metadata batch");
         }
     }
 }

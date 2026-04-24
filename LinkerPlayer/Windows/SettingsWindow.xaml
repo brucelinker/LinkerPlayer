@@ -147,6 +147,10 @@
         Content="Behavior"
         FontSize="14"
         Tag="CogOutline" />
+      <ListBoxItem
+        Content="Library"
+        FontSize="14"
+        Tag="LibraryOutline" />
     </ListBox>
 
     <!--  OUTPUT PAGE  -->
@@ -594,6 +598,74 @@
             </StackPanel>
 
           </Grid>
+        </StackPanel>
+      </Grid>
+
+      <!--  LIBRARY PAGE  -->
+      <Grid x:Name="LibraryPage" Visibility="Collapsed">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+          Grid.Row="0"
+          Margin="0,0,0,10"
+          FontSize="14"
+          Foreground="{DynamicResource ControlForegroundBrush}"
+          Text="Watched Folders" />
+
+        <ListBox
+          x:Name="WatchedFoldersListBox"
+          Grid.Row="1"
+          MinHeight="120"
+          MaxHeight="240"
+          Background="{DynamicResource ControlBackgroundBrush}"
+          BorderBrush="{DynamicResource ControlBorderBrush}"
+          BorderThickness="1"
+          FontSize="{DynamicResource FontSizeNormal}"
+          Foreground="{DynamicResource ControlForegroundBrush}"
+          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+          ScrollViewer.VerticalScrollBarVisibility="Auto"
+          SelectionMode="Single" />
+
+        <StackPanel
+          Grid.Row="2"
+          Margin="0,10,0,0"
+          Orientation="Horizontal">
+          <Button
+            x:Name="AddFolderButton"
+            Width="110"
+            Height="32"
+            Margin="0,0,10,0"
+            Click="OnAddFolderClick"
+            Content="Add Folder"
+            FontSize="{DynamicResource FontSizeButton}"
+            FontWeight="Light"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Style="{StaticResource LinkerRectangleButton}" />
+          <Button
+            x:Name="RemoveFolderButton"
+            Width="110"
+            Height="32"
+            Margin="0,0,10,0"
+            Click="OnRemoveFolderClick"
+            Content="Remove"
+            FontSize="{DynamicResource FontSizeButton}"
+            FontWeight="Light"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Style="{StaticResource LinkerRectangleButton}" />
+          <Button
+            x:Name="RescanButton"
+            Width="110"
+            Height="32"
+            Click="OnRescanClick"
+            Content="Rescan Now"
+            FontSize="{DynamicResource FontSizeButton}"
+            FontWeight="Light"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Style="{StaticResource LinkerRectangleButton}" />
         </StackPanel>
       </Grid>
     </Grid>

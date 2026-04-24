@@ -52,6 +52,10 @@ public class AppSettings
     public List<string> LastLibrarySelectedGenres { get; set; } = new();
     public List<string> LastLibrarySelectedArtists { get; set; } = new();
     public List<string> LastLibrarySelectedAlbums { get; set; } = new();
+    public List<string> LastLibrarySelectedCodecs { get; set; } = new();
+
+    // Watched folders — scanned on startup to auto-import audio files
+    public List<string> WatchedFolders { get; set; } = new();
 
     [Serializable]
     public class ColumnInfo

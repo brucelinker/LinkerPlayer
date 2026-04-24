@@ -173,12 +173,13 @@
         </Button>-->
       </Grid>
 
-      <!--  Simpler Filter UI: three cascading ListBoxes for Genre, Artist, Album  -->
+      <!--  Simpler Filter UI: four cascading ListBoxes for Genre, Artist, Album, Codec  -->
       <Grid Grid.Row="1" Margin="0,4,0,0">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="0.5*" />
         </Grid.ColumnDefinitions>
 
         <!--  Genres  -->
@@ -246,7 +247,7 @@
         </Grid>
 
         <!--  Albums  -->
-        <Grid Grid.Column="2">
+        <Grid Grid.Column="2" Margin="0,0,8,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -274,6 +275,38 @@
             ItemsSource="{Binding Albums}"
             ScrollViewer.VerticalScrollBarVisibility="Auto"
             SelectionChanged="AlbumsList_SelectionChanged"
+            SelectionMode="Extended" />
+        </Grid>
+
+        <!--  Codecs  -->
+        <Grid Grid.Column="3">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,4"
+            FontSize="12"
+            FontWeight="Normal"
+            Foreground="{DynamicResource TrackListItemForegroundBrush}">
+            <Run Text="Codec (" />
+            <Run Text="{Binding CodecCount, Mode=OneWay}" />
+            <Run Text=")" />
+          </TextBlock>
+          <ListBox
+            x:Name="CodecsListBox"
+            Grid.Row="1"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="{DynamicResource PlaylistTabBackgroundBrush}"
+            FontSize="12"
+            FontWeight="Normal"
+            Foreground="{DynamicResource TrackListItemForegroundBrush}"
+            ItemContainerStyle="{StaticResource FilterListBoxItemStyle}"
+            ItemsSource="{Binding Codecs}"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            SelectionChanged="CodecsList_SelectionChanged"
             SelectionMode="Extended" />
         </Grid>
       </Grid>

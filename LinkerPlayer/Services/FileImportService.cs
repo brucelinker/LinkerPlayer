@@ -348,19 +348,19 @@ public class FileImportService : IFileImportService
             StringComparer.OrdinalIgnoreCase);
 
         int processedCount = 0;
-        const int progressInterval = 10;
+        const int progressInterval = 50;
         const int degreeOfParallelism = 8;
-        const int saveBatchSize = 50;
+        const int dbBatchSize = 200;
 
         object importLock = new object();
-        List<MediaFile> pendingSaves = new List<MediaFile>();
+        List<MediaFile> pendingDbSaves = new List<MediaFile>();
 
         progress?.Report(new ProgressData
         {
             IsProcessing = true,
             TotalTracks = totalFiles,
             ProcessedTracks = 0,
-            Status = $"Importing folder: {Path.GetFileName(folderPath)}",
+            Status = $"Scanning: {Path.GetFileName(folderPath)}",
             Phase = "Importing"
         });
 
@@ -394,7 +394,6 @@ public class FileImportService : IFileImportService
             }
             catch (OperationCanceledException)
             {
-                _logger.LogInformation("Import cancelled during semaphore wait after {Processed}/{Total} files", processedCount, totalFiles);
                 break;
             }
 
@@ -408,7 +407,7 @@ public class FileImportService : IFileImportService
                         lock (importLock)
                         {
                             importedFiles.Add(importedFile);
-                            pendingSaves.Add(importedFile);
+                            pendingDbSaves.Add(importedFile);
                             existingPaths.Add(filePath);
                         }
                     }
@@ -421,19 +420,19 @@ public class FileImportService : IFileImportService
                             IsProcessing = true,
                             TotalTracks = totalFiles,
                             ProcessedTracks = current,
-                            Status = $"Importing: {Path.GetFileName(filePath)} ({current}/{totalFiles})",
+                            Status = $"Scanning {current:N0} / {totalFiles:N0}  —  {Path.GetFileName(folderPath)}",
                             Phase = "Importing"
                         });
                     }
 
-                    // Flush to MainLibrary and DB in batches
+                    // Flush to DB only — no UI touches during the scan
                     List<MediaFile>? toSave = null;
                     lock (importLock)
                     {
-                        if (pendingSaves.Count >= saveBatchSize)
+                        if (pendingDbSaves.Count >= dbBatchSize)
                         {
-                            toSave = pendingSaves.ToList();
-                            pendingSaves.Clear();
+                            toSave = pendingDbSaves.ToList();
+                            pendingDbSaves.Clear();
                         }
                     }
 
@@ -441,14 +440,11 @@ public class FileImportService : IFileImportService
                     {
                         try
                         {
-                            // Add to MainLibrary in a single UI dispatch
-                            await _musicLibrary.AddTracksToLibraryBatchAsync(toSave).ConfigureAwait(false);
-                            // Then save to DB
                             await _musicLibrary.SaveTracksBatchAsync(toSave).ConfigureAwait(false);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Failed to add/save batch");
+                            _logger.LogError(ex, "Failed to save DB batch");
                         }
                     }
                 }
@@ -468,30 +464,43 @@ public class FileImportService : IFileImportService
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // Final flush of remaining pending saves
-        List<MediaFile> finalBatch;
+        // Final DB flush for any remaining tracks
+        List<MediaFile> finalDbBatch;
         lock (importLock)
         {
-            finalBatch = pendingSaves.ToList();
-            pendingSaves.Clear();
+            finalDbBatch = pendingDbSaves.ToList();
+            pendingDbSaves.Clear();
         }
 
-        if (finalBatch.Count > 0)
+        if (finalDbBatch.Count > 0)
         {
             try
             {
-                // Add to MainLibrary
-                await _musicLibrary.AddTracksToLibraryBatchAsync(finalBatch).ConfigureAwait(false);
-                // Save to DB
-                await _musicLibrary.SaveTracksBatchAsync(finalBatch).ConfigureAwait(false);
+                await _musicLibrary.SaveTracksBatchAsync(finalDbBatch).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to add/save final batch");
+                _logger.LogError(ex, "Failed to save final DB batch");
             }
         }
 
-        // Enqueue background metadata refresh for all imported files
+        // All scanning and DB writes are done — now push to the UI collection in one shot.
+        // A single AddRange fires one Reset notification and one filter rebuild.
+        if (importedFiles.Count > 0)
+        {
+            progress?.Report(new ProgressData
+            {
+                IsProcessing = true,
+                TotalTracks = totalFiles,
+                ProcessedTracks = totalFiles,
+                Status = $"Adding {importedFiles.Count:N0} tracks to library…",
+                Phase = "Importing"
+            });
+
+            await _musicLibrary.AddTracksToLibraryBatchAsync(importedFiles).ConfigureAwait(false);
+        }
+
+        // Enqueue background metadata refresh
         if (importedFiles.Count > 0)
         {
             try
@@ -506,7 +515,9 @@ public class FileImportService : IFileImportService
             IsProcessing = false,
             TotalTracks = totalFiles,
             ProcessedTracks = processedCount,
-            Status = $"Import completed. {importedFiles.Count} files imported successfully.",
+            Status = importedFiles.Count > 0
+                ? $"Done — {importedFiles.Count:N0} new track{(importedFiles.Count == 1 ? "" : "s")} added."
+                : $"Library up to date — {totalFiles:N0} track{(totalFiles == 1 ? "" : "s")} already imported.",
             Phase = string.Empty
         });
 
