@@ -16,7 +16,6 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using ATL;
-using File = TagLib.File;
 using System.Linq;
 using LinkerPlayer.BassLibs;
 
@@ -57,8 +56,6 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
     private readonly LyricsCommentLoaderAtl _lyricsCommentLoader;
 
     // State
-    private File? _audioFile;
-    private List<File> _audioFiles = new();
     private Track? _atlTrack;
     private List<Track> _atlTracks = new();
     private CancellationTokenSource? _bpmDetectionCts;
@@ -248,15 +245,6 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
     {
         try
         {
-            // Cleanup
-            _audioFile?.Dispose();
-            _audioFile = null;
-            foreach (File file in _audioFiles)
-            {
-                file?.Dispose();
-            }
-            _audioFiles.Clear();
-
             // Set single-file mode
             IsMultipleSelection = false;
             SelectedFilesCount = 1;
@@ -284,38 +272,17 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
                 return;
             }
 
-            // Prefer ATL Track creation first
             try
             {
                 _atlTrack = new Track(path);
             }
-            catch (Exception atlEx)
+            catch (Exception ex)
             {
-                _logger.LogDebug(atlEx, "ATL failed to create track for {Path}, falling back to TagLib", path);
-                _atlTrack = null;
+                _logger.LogError(ex, "Failed to open file for metadata: {Path}", path);
+                return;
             }
 
-            if (_atlTrack != null)
-            {
-                // Use ATL loaders where available
-                LoadAllSectionsAtl(_atlTrack);
-            }
-            else
-            {
-                // TagLib fallback
-                try
-                {
-                    _audioFile = File.Create(path);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Failed to open file for metadata: {Path}", path);
-                    return;
-                }
-
-                // Load all sections using legacy loaders
-                LoadAllSections(_audioFile);
-            }
+            LoadAllSectionsAtl(_atlTrack);
 
             // Sort metadata: regular tags first, custom tags (with angle brackets) last
             SortMetadataItems();
@@ -333,14 +300,6 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
     {
         try
         {
-            // Cleanup
-            _audioFile?.Dispose();
-            _audioFile = null;
-            foreach (File file in _audioFiles)
-            {
-                file?.Dispose();
-            }
-            _audioFiles.Clear();
             _atlTracks.Clear();
 
             List<MediaFile> trackList = tracks.ToList();
@@ -360,22 +319,9 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
 
                 try
                 {
-                    // Prefer ATL track creation
-                    try
-                    {
-                        Track atl = new Track(track.Path);
-                        _atlTracks.Add(atl);
-                        _logger.LogDebug("LoadMultipleTracksData: Loaded ATL track {Path}", track.Path);
-                        continue;
-                    }
-                    catch (Exception atlEx)
-                    {
-                        _logger.LogDebug(atlEx, "ATL failed for {Path}, falling back to TagLib", track.Path);
-                    }
-
-                    File audioFile = File.Create(track.Path);
-                    _audioFiles.Add(audioFile);
-                    _logger.LogDebug("LoadMultipleTracksData: Loaded TagLib file {Path}", track.Path);
+                    Track atl = new Track(track.Path);
+                    _atlTracks.Add(atl);
+                    _logger.LogDebug("LoadMultipleTracksData: Loaded ATL track {Path}", track.Path);
                 }
                 catch (Exception ex)
                 {
@@ -383,27 +329,18 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
                 }
             }
 
-            if (_audioFiles.Count == 0 && _atlTracks.Count == 0)
+            if (_atlTracks.Count == 0)
             {
                 _logger.LogError("No files could be loaded");
                 return;
             }
 
-            _logger.LogDebug("LoadMultipleTracksData: Successfully loaded {AtlCount} ATL + {TagLibCount} TagLib files, starting to load sections", _atlTracks.Count, _audioFiles.Count);
+            _logger.LogDebug("LoadMultipleTracksData: Successfully loaded {AtlCount} ATL tracks, starting to load sections", _atlTracks.Count);
 
-            // Load all sections using loaders (multi-file mode)
-            // Prefer ATL tracks; fall back to converting TagLib files
-            if (_atlTracks.Count > 0)
-            {
-                LoadAllSectionsMultipleAtl(_atlTracks);
-            }
-            else
-            {
-                LoadAllSectionsMultiple(_audioFiles);
-            }
+            LoadAllSectionsMultipleAtl(_atlTracks);
 
             HasUnsavedChanges = false;
-            _logger.LogDebug("Successfully loaded data for {Count} tracks", _audioFiles.Count);
+            _logger.LogDebug("Successfully loaded data for {Count} tracks", _atlTracks.Count);
         }
         catch (Exception ex)
         {
@@ -509,182 +446,6 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         {
             _logger.LogError(ex, "Error loading lyrics from ATL track");
         }
-
-        OnPropertyChanged(nameof(AlbumCoverSource));
-    }
-
-    private void LoadAllSections(File audioFile)
-    {
-        // Clear all collections ONCE before loading
-        MetadataItems.Clear();
-        PropertyItems.Clear();
-        ReplayGainItems.Clear();
-        PictureInfoItems.Clear();
-
-        _logger.LogDebug("LoadAllSections: Starting to load metadata for file");
-
-        try
-        {
-            _coreMetadataLoader.Load(audioFile, MetadataItems);
-            _logger.LogDebug("LoadAllSections: Loaded {Count} core metadata items", MetadataItems.Count);
-
-            // Subscribe to PropertyChanged for all editable items
-            foreach (TagItem? item in MetadataItems.Where(i => i.IsEditable))
-            {
-                item.PropertyChanged += TagItem_PropertyChanged!;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading core metadata");
-        }
-
-        // All loaders are now ATL-based; create a temporary ATL Track from the file path
-        Track tempTrack = new Track(audioFile.Name);
-
-        try
-        {
-            _customMetadataLoader.Load(tempTrack, MetadataItems);
-            _logger.LogDebug("LoadAllSections: Total metadata items after custom: {Count}", MetadataItems.Count);
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading custom metadata"); }
-
-        try
-        {
-            _filePropertiesLoader.Load(tempTrack, PropertyItems);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading file properties");
-        }
-
-        try
-        {
-            _replayGainLoader.Load(tempTrack, ReplayGainItems);
-            // Subscribe to PropertyChanged for editable ReplayGain items
-            foreach (TagItem? item in ReplayGainItems.Where(i => i.IsEditable))
-            {
-                item.PropertyChanged += TagItem_PropertyChanged!;
-            }
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading ReplayGain"); }
-
-        try
-        {
-            _pictureInfoLoader.Load(tempTrack, PictureInfoItems);
-            // Subscribe to PropertyChanged for editable picture items
-            foreach (TagItem? item in PictureInfoItems.Where(i => i.IsEditable))
-            {
-                item.PropertyChanged += TagItem_PropertyChanged!;
-            }
-
-            // Load album cover for single file
-            _coversAreDifferent = false;
-            _cachedAlbumCover = tempTrack.EmbeddedPictures is { Count: > 0 }
-                ? LoadAlbumCoverFromPictureInfo(tempTrack.EmbeddedPictures[0])
-                : null;
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading picture info"); }
-
-        try
-        {
-            CommentItem = _lyricsCommentLoader.LoadComment(tempTrack);
-            CommentItem.PropertyChanged += TagItem_PropertyChanged!;
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading comment"); }
-
-        try
-        {
-            LyricsItem = _lyricsCommentLoader.LoadLyrics(tempTrack);
-            LyricsItem.PropertyChanged += TagItem_PropertyChanged!;
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading lyrics"); }
-
-        OnPropertyChanged(nameof(AlbumCoverSource));
-    }
-
-    private void LoadAllSectionsMultiple(IReadOnlyList<File> audioFiles)
-    {
-        // Clear all collections ONCE before loading
-        MetadataItems.Clear();
-        PropertyItems.Clear();
-        ReplayGainItems.Clear();
-        PictureInfoItems.Clear();
-
-        _logger.LogDebug("LoadAllSectionsMultiple: Starting to load metadata for {Count} files", audioFiles.Count);
-
-        // All loaders are now ATL-based; convert TagLib files to ATL Tracks
-        List<Track> tempTracks = audioFiles.Select(f => new Track(f.Name)).ToList();
-
-        try
-        {
-            _coreMetadataLoader.LoadMultiple(tempTracks, MetadataItems);
-            _logger.LogDebug("LoadAllSectionsMultiple: Loaded {Count} core metadata items", MetadataItems.Count);
-
-            // Subscribe to PropertyChanged for all editable items
-            foreach (TagItem? item in MetadataItems.Where(i => i.IsEditable))
-            {
-                item.PropertyChanged += TagItem_PropertyChanged!;
-            }
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading core metadata (multiple)"); }
-
-        try
-        {
-            _customMetadataLoader.LoadMultiple(tempTracks, MetadataItems);
-            _logger.LogDebug("LoadAllSectionsMultiple: Total metadata items after custom: {Count}", MetadataItems.Count);
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading custom metadata (multiple)"); }
-
-        try
-        {
-            _filePropertiesLoader.LoadMultiple(tempTracks, PropertyItems);
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading file properties (multiple)"); }
-
-        try
-        {
-            _replayGainLoader.LoadMultiple(tempTracks, ReplayGainItems);
-            // Subscribe to PropertyChanged for editable ReplayGain items
-            foreach (TagItem? item in ReplayGainItems.Where(i => i.IsEditable))
-            {
-                item.PropertyChanged += TagItem_PropertyChanged!;
-            }
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading ReplayGain (multiple)"); }
-
-        try
-        {
-            _pictureInfoLoader.LoadMultiple(tempTracks, PictureInfoItems);
-
-            // Check if covers are different by looking for <various> in any picture metadata
-            _coversAreDifferent = PictureInfoItems.Any(item => item.Value == "<various>");
-
-            // Load first track's cover if all covers are the same
-            if (!_coversAreDifferent && tempTracks.Count > 0 && tempTracks[0].EmbeddedPictures is { Count: > 0 })
-            {
-                _cachedAlbumCover = LoadAlbumCoverFromPictureInfo(tempTracks[0].EmbeddedPictures[0]);
-            }
-            else
-            {
-                _cachedAlbumCover = null;
-            }
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading picture info (multiple)"); }
-
-        try
-        {
-            CommentItem = _lyricsCommentLoader.LoadCommentMultiple(tempTracks);
-            CommentItem.PropertyChanged += TagItem_PropertyChanged!;
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading comment (multiple)"); }
-
-        try
-        {
-            LyricsItem = _lyricsCommentLoader.LoadLyricsMultiple(tempTracks);
-            LyricsItem.PropertyChanged += TagItem_PropertyChanged!;
-        }
-        catch (Exception ex) { _logger.LogError(ex, "Error loading lyrics (multiple)"); }
 
         OnPropertyChanged(nameof(AlbumCoverSource));
     }
@@ -799,29 +560,6 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         {
             return null;
         }
-    }
-
-    private static BitmapImage? LoadAlbumCoverFromTag(TagLib.IPicture picture)
-    {
-        try
-        {
-            if (picture.Data?.Data is { Length: > 0 })
-            {
-                using MemoryStream ms = new MemoryStream(picture.Data.Data);
-                BitmapImage albumCover = new BitmapImage();
-                albumCover.BeginInit();
-                albumCover.CacheOption = BitmapCacheOption.OnLoad;
-                albumCover.StreamSource = ms;
-                albumCover.EndInit();
-                albumCover.Freeze();
-                return albumCover;
-            }
-        }
-        catch (Exception)
-        {
-            // Ignore errors loading cover
-        }
-        return null;
     }
 
     private static BitmapImage? LoadAlbumCoverFromPictureInfo(ATL.PictureInfo picture)
@@ -958,12 +696,6 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
                 {
                     track.Save();
                 }
-
-                // Save any TagLib fallback files
-                foreach (File file in _audioFiles)
-                {
-                    file.Save();
-                }
             }
             else
             {
@@ -1000,7 +732,7 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
                     LyricsItem.UpdateAction?.Invoke(LyricsItem.Value);
                 }
 
-                _audioFile!.Save();
+                _atlTrack!.Save();
             }
 
             HasUnsavedChanges = false;
@@ -1085,13 +817,7 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         _replayGainCalculationCts?.Cancel();
         _replayGainCalculationCts?.Dispose();
 
-        // Dispose audio files
-        _audioFile?.Dispose();
-        foreach (File file in _audioFiles)
-        {
-            file?.Dispose();
-        }
-        _audioFiles.Clear();
+
 
         _logger.LogDebug("PropertiesViewModel disposed");
     }

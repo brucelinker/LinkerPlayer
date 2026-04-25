@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
+using LinkerPlayer.Converters;
 using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
@@ -184,6 +185,12 @@ public partial class PlaylistTabs
             "Duration", "Bitrate", "SampleRate", "Channels", "Codec", "FileName", "Path"
         };
 
+        // Columns where 0 means "not set" and should display as blank
+        HashSet<string> zeroToEmptyProps = new()
+        {
+            "Track", "TrackCount", "Disc", "DiscCount", "Year", "Channels"
+        };
+
         foreach ((string prop, string header, double defWidth) in defaultColumns)
         {
             if (!visibleProps.Contains(prop))
@@ -207,7 +214,11 @@ public partial class PlaylistTabs
                 binding.UpdateSourceTrigger = UpdateSourceTrigger.LostFocus;
             }
 
-            if (prop == "Year")
+            if (zeroToEmptyProps.Contains(prop))
+            {
+                binding.Converter = new Converters.ZeroToEmptyConverter();
+            }
+            else if (prop == "Year")
             {
                 binding.TargetNullValue = "";
             }
@@ -220,12 +231,14 @@ public partial class PlaylistTabs
 
             if (prop == "Bitrate")
             {
+                binding.Converter = new Converters.ZeroToEmptyConverter();
                 binding.StringFormat = "{0} kbps";
                 binding.TargetNullValue = "";
             }
 
             if (prop == "SampleRate")
             {
+                binding.Converter = new Converters.ZeroToEmptyConverter();
                 binding.StringFormat = "{0:N0} Hz";
                 binding.TargetNullValue = "";
             }
@@ -672,6 +685,9 @@ public partial class PlaylistTabs
             {
                 vm.OnDataGridLoaded(sender, e);
                 RegenerateColumns(dg);
+
+                // Run after all pending layout/render passes from RegenerateColumns have settled.
+                Dispatcher.BeginInvoke(() => FixHeaderScrollShimmy(dg), DispatcherPriority.Background);
 
                 // Attach PreviewMouseRightButtonUp and ContextMenuOpening to swallow context menu after header right-click
                 dg.AddHandler(UIElement.PreviewMouseRightButtonUpEvent,
@@ -1240,6 +1256,56 @@ public partial class PlaylistTabs
     }
 
     internal DataGrid? GetActiveDataGrid() => FindDescendant<DataGrid>(Tabs123);
+
+    // The filler element inside DataGridColumnHeadersPresenter binds its Width to
+    // CellsPanelHorizontalOffset via the DataGrid's default control template.  When
+    // the user scrolls horizontally that value briefly goes negative, WPF rejects it
+    // (Width < 0 is invalid), fires a binding error, triggers a re-measure and
+    // produces the visible shimmy.  We can't reach this element with an implicit
+    // style because it lives inside the DataGrid's ControlTemplate.
+    //
+    // Instead of guessing the element type or name (which varies across WPF themes),
+    // we force template application on both the DataGrid and its presenter, then walk
+    // every descendant looking for the specific Width binding on CellsPanelHorizontalOffset
+    // and replace it with one that clamps the value via NonNegativeConverter.
+    private static void FixHeaderScrollShimmy(DataGrid dg)
+    {
+        dg.ApplyTemplate();
+
+        // The filler Button lives inside the DataGrid's *internal ScrollViewer* template —
+        // it is a SIBLING of DataGridColumnHeadersPresenter, not a child of it.
+        // Force the ScrollViewer's template too, then walk the entire DataGrid subtree.
+        ScrollViewer? sv = dg.Template?.FindName("DG_ScrollViewer", dg) as ScrollViewer;
+        sv?.ApplyTemplate();
+
+        ReplaceShimmyBinding(dg);
+    }
+
+    private static void ReplaceShimmyBinding(DependencyObject root)
+    {
+        int count = VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < count; i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(root, i);
+
+            if (child is FrameworkElement fe)
+            {
+                BindingExpression? expr = fe.GetBindingExpression(FrameworkElement.WidthProperty);
+                if (expr?.ParentBinding.Path?.Path == "CellsPanelHorizontalOffset")
+                {
+                    Binding clamped = new("CellsPanelHorizontalOffset")
+                    {
+                        RelativeSource = new RelativeSource(RelativeSourceMode.FindAncestor, typeof(DataGrid), 1),
+                        Converter = new NonNegativeConverter()
+                    };
+                    fe.SetBinding(FrameworkElement.WidthProperty, clamped);
+                    return;
+                }
+            }
+
+            ReplaceShimmyBinding(child);
+        }
+    }
 
     private static T? FindDescendant<T>(DependencyObject root) where T : DependencyObject
     {

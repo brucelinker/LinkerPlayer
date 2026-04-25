@@ -154,7 +154,11 @@ public partial class TrackInfo
             {
                 mediaFile.AlbumCover = GetDefaultAlbumImage();
                 if (FindName("TrackImageText") is TextBlock trackImageText)
-                { trackImageText.Text = "[No Image]"; }
+                {
+                    trackImageText.Text = mediaFile.UnsupportedCoverFormat != null
+                        ? $"[{mediaFile.UnsupportedCoverFormat} — Not Supported]"
+                        : "[No Image]";
+                }
             }
             else if (FindName("TrackImageText") is TextBlock okText)
             {

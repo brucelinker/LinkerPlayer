@@ -232,7 +232,15 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private BitmapImage? _albumCover;
 
+    /// <summary>
+    /// Set when <see cref="LoadAlbumCover"/> encounters an embedded image in a format
+    /// WPF cannot decode (e.g. "WebP", "AVIF"). Null when the cover loaded successfully
+    /// or there is no embedded picture at all.
+    /// </summary>
     [NotMapped]
+    public string? UnsupportedCoverFormat { get; private set; }
+
+    [NotMapped] 
     [ObservableProperty]
     private PlaybackState _state = PlaybackState.Stopped;
 
@@ -410,6 +418,15 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         Codec = string.Empty;
     }
 
+    // WPF's built-in imaging pipeline only supports these MIME types natively.
+    // Modern formats like WebP/AVIF/HEIF require OS codec extensions that may not
+    // be present or may be unloaded, causing NotSupportedException at EndInit().
+    private static readonly HashSet<string> SupportedCoverMimeTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/jpg", "image/png", "image/bmp",
+        "image/gif", "image/tiff", "image/x-tiff"
+    };
+
     public void LoadAlbumCover()
     {
         try
@@ -423,25 +440,48 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 p.PicType == PictureInfo.PIC_TYPE.Generic)
                 ?? track.EmbeddedPictures.FirstOrDefault();
 
-            if (pic?.PictureData != null && pic.PictureData.Length > 0)
-            {
-                BitmapImage bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.StreamSource = new MemoryStream(pic.PictureData);   // Correct property
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.EndInit();
-                bitmap.Freeze();                    // Important for WPF
-                AlbumCover = bitmap;
-            }
-            else
+            if (pic?.PictureData is not { Length: > 0 })
             {
                 AlbumCover = null;
+                UnsupportedCoverFormat = null;
+                return;
             }
+
+            // Skip formats WPF can't decode natively (e.g. WebP, AVIF, HEIF)
+            if (!string.IsNullOrEmpty(pic.MimeType) && !SupportedCoverMimeTypes.Contains(pic.MimeType))
+            {
+                // Derive a friendly label from the MIME type: "image/webp" → "WebP"
+                string label = pic.MimeType.Contains('/')
+                    ? pic.MimeType[(pic.MimeType.LastIndexOf('/') + 1)..].ToUpperInvariant()
+                    : pic.MimeType.ToUpperInvariant();
+                Logger?.LogDebug("Skipping unsupported cover format '{MimeType}' for {Path}", pic.MimeType, Path);
+                AlbumCover = null;
+                UnsupportedCoverFormat = label;
+                return;
+            }
+
+            using MemoryStream ms = new MemoryStream(pic.PictureData);
+            BitmapImage bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.StreamSource = ms;
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;  // Reads all data before EndInit returns; safe to dispose stream after
+            bitmap.EndInit();
+            bitmap.Freeze();
+            AlbumCover = bitmap;
+            UnsupportedCoverFormat = null;
+        }
+        catch (NotSupportedException)
+        {
+            // Image data is in a format WPF can't decode (codec not available on this machine)
+            Logger?.LogDebug("Cover image format not supported by WPF decoder for {Path}", Path);
+            AlbumCover = null;
+            UnsupportedCoverFormat = "Unknown Format";
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Failed to load album cover for {Path}", Path);
             AlbumCover = null;
+            UnsupportedCoverFormat = null;
         }
     }
 

@@ -583,6 +583,7 @@
     DataGrid Styles
     ************************
   -->
+
   <!--  Shared DataGrid Visual Style  -->
   <Style x:Key="SharedDataGridStyle" TargetType="DataGrid">
     <Setter Property="Background" Value="Transparent" />

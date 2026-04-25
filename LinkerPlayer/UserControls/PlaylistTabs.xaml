@@ -26,6 +26,7 @@
       <converters:ActiveTrackStateToVisibilityConverter x:Key="ActiveTrackStateToVisibilityConverter" />
       <converters:IndexConverter x:Key="IndexConverter" />
       <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+      <converters:ZeroToEmptyConverter x:Key="ZeroToEmptyConverter" />
 
       <DataTemplate x:Key="PlayPauseCellTemplate">
         <Grid>
@@ -624,7 +625,7 @@
                       HorizontalAlignment="Right"
                       d:DataContext="{d:DesignData IMediaFile}"
                       FontSize="{DynamicResource FontSizeNormal}"
-                      Text="{Binding Track}" />
+                      Text="{Binding Track, Converter={StaticResource ZeroToEmptyConverter}}" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
