@@ -128,7 +128,9 @@ public static class BackgroundMetadataRefresher
         {
             if (libraryIndex.TryGetValue(mf.Path, out MediaFile? inMemory))
             {
-                try { inMemory.IsRefreshing = true; } catch { }
+                try
+                { inMemory.IsRefreshing = true; }
+                catch { }
             }
         }
 

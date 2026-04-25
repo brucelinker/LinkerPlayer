@@ -29,7 +29,7 @@
 		<PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
 		<PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
 		<PackageReference Include="ManagedBass.Wasapi" Version="4.0.2" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.6" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
 	</ItemGroup>
 
 	<!-- Embed BASS DLLs as resources -->

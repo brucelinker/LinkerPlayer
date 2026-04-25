@@ -124,7 +124,7 @@ public class CoreMetadataLoader : IAtlMetadataLoader
         });
 
         // Grouping
-        string groupingValue = track.AdditionalFields.TryGetValue("GROUPING", out var g) ? g : "";
+        string groupingValue = track.AdditionalFields.TryGetValue("GROUPING", out string? g) ? g : "";
         AddMetadataItem(targetCollection, "Grouping", groupingValue, true, v =>
         {
             if (string.IsNullOrEmpty(v))
@@ -190,13 +190,13 @@ public class CoreMetadataLoader : IAtlMetadataLoader
     // Helper methods (mostly unchanged, except parameter types)
     // ==================================================================
 
-    private static void AddMetadataItem(ObservableCollection<TagItem> collection, string name, string value,
+    private static void AddMetadataItem(ObservableCollection<TagItem> collection, string name, string? value,
         bool isEditable, Action<string> updateAction)
     {
         collection.Add(new TagItem
         {
             Name = name,
-            Value = value,
+            Value = value ?? string.Empty,
             IsEditable = isEditable,
             UpdateAction = isEditable ? updateAction : null
         });

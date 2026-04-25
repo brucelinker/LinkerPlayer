@@ -34,10 +34,18 @@ public class FilePropertiesLoader : IAtlMetadataLoader
         }
         catch { }
 
-        try { AddPropertyItem(targetCollection, "Bitrate", track.Bitrate > 0 ? track.Bitrate.ToString() + " kbps" : ""); } catch { }
-        try { AddPropertyItem(targetCollection, "Sample Rate", track.SampleRate > 0 ? track.SampleRate.ToString() + " Hz" : ""); } catch { }
-        try { AddPropertyItem(targetCollection, "Channels", track.ChannelsArrangement.NbChannels.ToString()); } catch { }
-        try { AddPropertyItem(targetCollection, "Codec", track.AudioFormat?.Name ?? track.CodecFamily.ToString() ?? ""); } catch { }
+        try
+        { AddPropertyItem(targetCollection, "Bitrate", track.Bitrate > 0 ? track.Bitrate.ToString() + " kbps" : ""); }
+        catch { }
+        try
+        { AddPropertyItem(targetCollection, "Sample Rate", track.SampleRate > 0 ? track.SampleRate.ToString() + " Hz" : ""); }
+        catch { }
+        try
+        { AddPropertyItem(targetCollection, "Channels", track.ChannelsArrangement.NbChannels.ToString()); }
+        catch { }
+        try
+        { AddPropertyItem(targetCollection, "Codec", track.AudioFormat?.Name ?? track.CodecFamily.ToString() ?? ""); }
+        catch { }
     }
 
     public void LoadMultiple(IReadOnlyList<Track> audioFiles, ObservableCollection<TagItem> targetCollection)

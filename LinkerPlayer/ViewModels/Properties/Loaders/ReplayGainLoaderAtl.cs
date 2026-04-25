@@ -68,15 +68,15 @@ public class ReplayGainLoaderAtl : IAtlMetadataLoader
 
         // For multiple files, show consolidated view
         // Collect all unique values
-        var trackGains = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_TRACK_GAIN")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
-        var trackPeaks = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_TRACK_PEAK")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
-        var albumGains = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_ALBUM_GAIN")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
-        var albumPeaks = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_ALBUM_PEAK")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string?> trackGains = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_TRACK_GAIN")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string?> trackPeaks = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_TRACK_PEAK")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string?> albumGains = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_ALBUM_GAIN")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
+        List<string?> albumPeaks = audioFiles.Select(t => GetReplayGainField(t, "REPLAYGAIN_ALBUM_PEAK")).Where(v => !string.IsNullOrEmpty(v)).Distinct().ToList();
 
-        string trackGainDisplay = trackGains.Count == 1 ? trackGains[0] : trackGains.Count > 1 ? "<various>" : "";
-        string trackPeakDisplay = trackPeaks.Count == 1 ? trackPeaks[0] : trackPeaks.Count > 1 ? "<various>" : "";
-        string albumGainDisplay = albumGains.Count == 1 ? albumGains[0] : albumGains.Count > 1 ? "<various>" : "";
-        string albumPeakDisplay = albumPeaks.Count == 1 ? albumPeaks[0] : albumPeaks.Count > 1 ? "<various>" : "";
+        string? trackGainDisplay = trackGains.Count == 1 ? trackGains[0] : trackGains.Count > 1 ? "<various>" : "";
+        string? trackPeakDisplay = trackPeaks.Count == 1 ? trackPeaks[0] : trackPeaks.Count > 1 ? "<various>" : "";
+        string? albumGainDisplay = albumGains.Count == 1 ? albumGains[0] : albumGains.Count > 1 ? "<various>" : "";
+        string? albumPeakDisplay = albumPeaks.Count == 1 ? albumPeaks[0] : albumPeaks.Count > 1 ? "<various>" : "";
 
         // For multiple files, make editable only if all files support it and values are consistent
         bool allEditable = audioFiles.All(t => IsReplayGainEditable(t));
@@ -99,7 +99,7 @@ public class ReplayGainLoaderAtl : IAtlMetadataLoader
     private string? GetReplayGainField(Track track, string fieldName)
     {
         // Try AdditionalFields first
-        if (track.AdditionalFields != null && track.AdditionalFields.TryGetValue(fieldName, out var value))
+        if (track.AdditionalFields != null && track.AdditionalFields.TryGetValue(fieldName, out string? value))
         {
             return value;
         }
@@ -140,13 +140,13 @@ public class ReplayGainLoaderAtl : IAtlMetadataLoader
         };
     }
 
-    private static void AddReplayGainItem(ObservableCollection<TagItem> collection, string name, string value,
+    private static void AddReplayGainItem(ObservableCollection<TagItem> collection, string name, string? value,
         bool isEditable, Action<string>? updateAction)
     {
         collection.Add(new TagItem
         {
             Name = name,
-            Value = value,
+            Value = value ?? string.Empty,
             IsEditable = isEditable,
             UpdateAction = updateAction
         });

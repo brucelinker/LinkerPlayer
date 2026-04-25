@@ -138,7 +138,7 @@ public class MusicLibraryColumnPersistenceTests
 
         // Act - call private ColumnLayoutSaveTimer_Tick
         MethodInfo? tick = typeof(PlaylistTabs).GetMethod("ColumnLayoutSaveTimer_Tick", BindingFlags.NonPublic | BindingFlags.Instance);
-        tick!.Invoke(playlistTabs, new object[] { null, System.EventArgs.Empty });
+        tick!.Invoke(playlistTabs, [null, System.EventArgs.Empty]);
 
         // Assert - settings should have library column info
         settings.Settings.LibraryColumnSettings.ShouldContainKey("Title");

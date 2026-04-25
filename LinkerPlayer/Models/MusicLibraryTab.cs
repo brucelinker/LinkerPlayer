@@ -577,7 +577,8 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
 
         RebuildFacet(Genres, SelectedGenres, ForGenres(), t =>
         {
-            if (string.IsNullOrWhiteSpace(t.Genres)) return Enumerable.Empty<string>();
+            if (string.IsNullOrWhiteSpace(t.Genres))
+                return Enumerable.Empty<string>();
             return t.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s));
         });
 
@@ -636,11 +637,16 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
     {
         if (SelectedGenres == null || SelectedGenres.Count == 0 || SelectedGenres.Contains("(All)", StringComparer.OrdinalIgnoreCase))
             return source;
+
         HashSet<string> sel = new(SelectedGenres, StringComparer.OrdinalIgnoreCase);
+
         return source.Where(t =>
         {
-            if (string.IsNullOrWhiteSpace(t.Genres)) return false;
+            if (string.IsNullOrWhiteSpace(t.Genres))
+                return false;
+
             string[] tokens = t.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
+
             return tokens.Select(x => x.Trim()).Any(tok => sel.Contains(tok));
         });
     }
@@ -649,7 +655,9 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
     {
         if (SelectedArtists == null || SelectedArtists.Count == 0 || SelectedArtists.Contains("(All)", StringComparer.OrdinalIgnoreCase))
             return source;
+
         HashSet<string> sel = new(SelectedArtists, StringComparer.OrdinalIgnoreCase);
+
         return source.Where(t => !string.IsNullOrWhiteSpace(t.Artist) && sel.Contains(t.Artist));
     }
 
@@ -657,7 +665,9 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
     {
         if (SelectedAlbums == null || SelectedAlbums.Count == 0 || SelectedAlbums.Contains("(All)", StringComparer.OrdinalIgnoreCase))
             return source;
+
         HashSet<string> sel = new(SelectedAlbums, StringComparer.OrdinalIgnoreCase);
+
         return source.Where(t => !string.IsNullOrWhiteSpace(t.Album) && sel.Contains(t.Album));
     }
 
@@ -665,7 +675,9 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
     {
         if (SelectedCodecs == null || SelectedCodecs.Count == 0 || SelectedCodecs.Contains("(All)", StringComparer.OrdinalIgnoreCase))
             return source;
+
         HashSet<string> sel = new(SelectedCodecs, StringComparer.OrdinalIgnoreCase);
+
         return source.Where(t => !string.IsNullOrWhiteSpace(t.Codec) && sel.Contains(t.Codec));
     }
 

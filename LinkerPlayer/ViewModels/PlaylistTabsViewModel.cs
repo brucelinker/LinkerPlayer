@@ -562,7 +562,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                     // Restore last selected track in Library if available
                     if (!string.IsNullOrWhiteSpace(_settingsManager.Settings.LastLibrarySelectedTrackId))
                     {
-                        MediaFile? restored = _musicLibrary.MainLibrary.FirstOrDefault(t => 
+                        MediaFile? restored = _musicLibrary.MainLibrary.FirstOrDefault(t =>
                             string.Equals(t.Id, _settingsManager.Settings.LastLibrarySelectedTrackId, StringComparison.Ordinal));
 
                         if (restored != null)

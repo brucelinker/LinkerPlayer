@@ -201,7 +201,7 @@ public class LyricsCommentLoaderAtl
             // Check common lyrics field names
             foreach (string key in new[] { "LYRICS", "UNSYNCEDLYRICS", "UNSYNCED LYRICS", "----:com.apple.iTunes:LYRICS" })
             {
-                if (track.AdditionalFields.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+                if (track.AdditionalFields.TryGetValue(key, out string? value) && !string.IsNullOrWhiteSpace(value))
                 {
                     return value;
                 }

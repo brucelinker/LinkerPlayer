@@ -32,7 +32,7 @@ public sealed class TrackMetadataRefresher : ITrackMetadataRefresher
             }
 
             DateTime utcWriteTime = File.GetLastWriteTimeUtc(path);
-            bool shouldRefresh = !track.FileLastWriteTimeUtc.HasValue || 
+            bool shouldRefresh = !track.FileLastWriteTimeUtc.HasValue ||
                                 track.FileLastWriteTimeUtc.Value != utcWriteTime ||
                                 track.Duration == 0 || // Force refresh if duration is missing
                                 string.IsNullOrWhiteSpace(track.Artist); // Or if key metadata is missing

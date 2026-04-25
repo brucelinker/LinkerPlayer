@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0-windows</TargetFramework>
@@ -22,20 +22,21 @@
         <PackageReference Include="ManagedBass.Fx" Version="4.0.2" />
         <PackageReference Include="ManagedBass.Mix" Version="4.0.2" />
         <PackageReference Include="ManagedBass.Wasapi" Version="4.0.2" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.6" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.6">
+        <PackageReference Include="MaterialDesignThemes" Version="5.3.1" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.6" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.6" />
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.6" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
         <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.142" />
         <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
         <PackageReference Include="PlaylistsNET" Version="1.4.1" />
         <PackageReference Include="RestoreWindowPlace" Version="3.1.0" />
         <PackageReference Include="runtime.native.System.Net.Http" Version="4.3.1" />
-        <PackageReference Include="z440.atl.core" Version="7.12.0" />
+        <PackageReference Include="z440.atl.core" Version="7.13.0" />
     </ItemGroup>
 
     <ItemGroup>

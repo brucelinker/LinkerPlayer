@@ -49,7 +49,7 @@ public class CustomMetadataLoaderAtl : IAtlMetadataLoader
         }
 
         // Add custom fields from AdditionalFields
-        foreach (var field in track.AdditionalFields.OrderBy(f => f.Key))
+        foreach (KeyValuePair<string, string> field in track.AdditionalFields.OrderBy(f => f.Key))
         {
             string fieldName = field.Key;
             string fieldValue = field.Value;
@@ -104,7 +104,7 @@ public class CustomMetadataLoaderAtl : IAtlMetadataLoader
                 continue;
             }
 
-            foreach (var field in track.AdditionalFields)
+            foreach (KeyValuePair<string, string> field in track.AdditionalFields)
             {
                 string fieldName = field.Key;
                 string fieldValue = field.Value;
@@ -136,10 +136,10 @@ public class CustomMetadataLoaderAtl : IAtlMetadataLoader
         }
 
         // Add aggregated fields to collection
-        foreach (var fieldGroup in allCustomFields.OrderBy(f => f.Key))
+        foreach (KeyValuePair<string, Dictionary<string, int>> fieldGroup in allCustomFields.OrderBy(f => f.Key))
         {
             string fieldName = fieldGroup.Key;
-            var valueCounts = fieldGroup.Value;
+            Dictionary<string, int> valueCounts = fieldGroup.Value;
 
             string displayValue;
             bool isEditable = false;

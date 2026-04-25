@@ -8,7 +8,7 @@ namespace LinkerPlayer.UserControls;
 
 public class WatermarkBehavior : Behavior<ComboBox>
 {
-    private WaterMarkAdorner _adorner;
+    private WaterMarkAdorner? _adorner;
 
     public string Text
     {
@@ -100,7 +100,7 @@ public class WatermarkBehavior : Behavior<ComboBox>
 
 public class TextBoxWatermarkBehavior : Behavior<TextBox>
 {
-    private WaterMarkAdorner _adorner;
+    private WaterMarkAdorner? _adorner;
 
     public string Text
     {

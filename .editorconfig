@@ -36,7 +36,7 @@ dotnet_sort_system_directives_first = false
 dotnet_separate_import_directive_groups = false
 
 # Formatting severity (Roslyn)
-dotnet_diagnostic.IDE0055.severity = warning
+dotnet_diagnostic.IDE0055.severity = none
 
 # Wrap and newline preferences
 csharp_preserve_single_line_blocks = true
