@@ -40,11 +40,24 @@
       x:Name="CoverGrid"
       Grid.Row="0"
       MinHeight="250"
-      Margin="0,1,0,0"
+      Margin="10,1,0,0"
       HorizontalAlignment="Stretch"
-      VerticalAlignment="Stretch">
+      VerticalAlignment="Stretch"
+      AllowDrop="True"
+      DragOver="CoverGrid_DragOver"
+      Drop="CoverGrid_Drop">
+      <Grid.ContextMenu>
+        <ContextMenu>
+          <MenuItem Click="CopyImageMenuItem_Click" Header="Copy Image" IsEnabled="{Binding HasAlbumCover}" />
+          <MenuItem Click="PasteImageMenuItem_Click" Header="Paste Image" />
+          <Separator />
+          <MenuItem Click="SaveImageMenuItem_Click" Header="Save Image As..." IsEnabled="{Binding HasAlbumCover}" />
+          <MenuItem Click="RemoveImageMenuItem_Click" Header="Remove Image" IsEnabled="{Binding HasAlbumCover}" />
+        </ContextMenu>
+      </Grid.ContextMenu>
       <Grid
         x:Name="ImageGrid"
+        AllowDrop="True"
         RenderOptions.BitmapScalingMode="HighQuality"
         RenderOptions.EdgeMode="Aliased">
         <Image
@@ -52,6 +65,9 @@
           HorizontalAlignment="Stretch"
           VerticalAlignment="Stretch"
           Panel.ZIndex="0"
+          AllowDrop="True"
+          DragOver="CoverGrid_DragOver"
+          Drop="CoverGrid_Drop"
           Source="{Binding SelectedMediaFile.AlbumCover, FallbackValue={StaticResource DefaultAlbumImage}}">
           <Image.Style>
             <Style TargetType="Image">
@@ -83,7 +99,7 @@
     <!--  TrackInfo Section  -->
     <Grid
       Grid.Row="2"
-      Margin="0,0,0,0"
+      Margin="10,0,0,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch">
       <Grid.RowDefinitions>
@@ -183,6 +199,7 @@
     <audio:SpectrumAnalyzer
       x:Name="Spectrum"
       Grid.Row="4"
+      Margin="10,0,0,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
       AveragePeaks="False"
@@ -225,7 +242,7 @@
       x:Name="VuMeter"
       Grid.Row="6"
       MinHeight="60"
-      Margin="1,0,2,0"
+      Margin="10,0,2,0"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch"
       ChannelLabelFontSize="10"

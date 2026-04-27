@@ -38,6 +38,8 @@ public interface IMusicLibrary
     Task LoadFromDatabaseAsync();
     Task CleanOrphanedTracksAsync();
     Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true);
+    Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default);
+    Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default);
 }
 
 public class MusicLibrary : IMusicLibrary
@@ -149,6 +151,14 @@ public class MusicLibrary : IMusicLibrary
                         context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"NeedsMetadataRefresh\" INTEGER NOT NULL DEFAULT 0;");
                         _logger.LogInformation("Added NeedsMetadataRefresh column to Tracks table");
                     }
+
+                    List<int> hasEmbeddedCoverResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='HasEmbeddedCover'").ToList();
+                    if (hasEmbeddedCoverResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"HasEmbeddedCover\" INTEGER NOT NULL DEFAULT 0;");
+                        _logger.LogInformation("Added HasEmbeddedCover column to Tracks table");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -240,6 +250,146 @@ public class MusicLibrary : IMusicLibrary
             _logger.LogError(ex, "Failed to load data from database");
             throw;
         }
+    }
+
+    /// <summary>
+    /// One-time background pass that sets <see cref="MediaFile.HasEmbeddedCover"/> for any
+    /// tracks that were loaded from the DB before the column existed (i.e. value is false).
+    /// Only reads the ATL picture-list count — no image bytes are decoded.
+    /// </summary>
+    public async Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default)
+    {
+        List<MediaFile> needsBackfill = MainLibrary.Where(t => !t.HasEmbeddedCover).ToList();
+        if (needsBackfill.Count == 0)
+            return;
+
+        _logger.LogInformation("Backfilling HasEmbeddedCover for {Count} tracks…", needsBackfill.Count);
+
+        // Parallelise the ATL file probes — NAS I/O is the bottleneck, not CPU.
+        // 64 concurrent readers works well on a 2.5 GbE+ NAS; lower if you see
+        // SMB errors or the NAS becomes unresponsive.
+        const int dbBatchSize = 500;
+        SemaphoreSlim semaphore = new(64, 64);
+        System.Collections.Concurrent.ConcurrentBag<string> updatedIds = new();
+
+        IEnumerable<Task> probeTasks = needsBackfill.Select(async track =>
+        {
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (CoverProber.HasEmbeddedCover(track.Path))
+                {
+                    track.HasEmbeddedCover = true;   // update in-memory immediately → icon appears live
+                    updatedIds.Add(track.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "BackfillEmbeddedCover: skipping {Path}", track.Path);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(probeTasks).ConfigureAwait(false);
+
+        if (updatedIds.IsEmpty)
+        {
+            _logger.LogInformation("BackfillEmbeddedCover: no tracks with embedded covers found");
+            return;
+        }
+
+        // Persist to DB in batches — one transaction per batch keeps SQLite happy
+        // and avoids a 43 000-row single UPDATE.
+        List<string> ids = updatedIds.ToList();
+        _logger.LogInformation("BackfillEmbeddedCover: persisting {Count} tracks to DB in batches of {Batch}",
+            ids.Count, dbBatchSize);
+        try
+        {
+            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+            for (int i = 0; i < ids.Count; i += dbBatchSize)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                List<string> batch = ids.GetRange(i, Math.Min(dbBatchSize, ids.Count - i));
+                string idList = string.Join(",", batch.Select(id => $"'{id}'"));
+                context.Database.ExecuteSqlRaw(
+                    $"UPDATE Tracks SET HasEmbeddedCover = 1 WHERE Id IN ({idList})");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BackfillEmbeddedCover: failed to persist to DB");
+        }
+
+        _logger.LogInformation("BackfillEmbeddedCover complete");
+    }
+
+    public async Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default)
+    {
+        // Only re-probe tracks stored as plain "MP3" — i.e. loaded before this feature.
+        List<MediaFile> needsBackfill = MainLibrary
+            .Where(t => string.Equals(t.Codec, "MP3", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (needsBackfill.Count == 0)
+            return;
+
+        _logger.LogInformation("BackfillMp3Vbr: probing {Count} MP3 tracks…", needsBackfill.Count);
+
+        const int dbBatchSize = 500;
+        SemaphoreSlim semaphore = new(64, 64);
+        System.Collections.Concurrent.ConcurrentBag<(string Id, string Codec)> updates = new();
+
+        IEnumerable<Task> probeTasks = needsBackfill.Select(async track =>
+        {
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                ATL.Track atlTrack = new(track.Path);
+                string codec = $"MP3 {(atlTrack.IsVBR ? "VBR" : "CBR")}";
+                track.Codec = codec;   // update in-memory immediately
+                updates.Add((track.Id, codec));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "BackfillMp3Vbr: skipping {Path}", track.Path);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(probeTasks).ConfigureAwait(false);
+
+        if (updates.IsEmpty)
+            return;
+
+        List<(string Id, string Codec)> updateList = updates.ToList();
+        _logger.LogInformation("BackfillMp3Vbr: persisting {Count} tracks in batches of {Batch}",
+            updateList.Count, dbBatchSize);
+        try
+        {
+            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+            for (int i = 0; i < updateList.Count; i += dbBatchSize)
+            {
+                if (cancellationToken.IsCancellationRequested) break;
+
+                List<(string Id, string Codec)> batch = updateList.GetRange(i, Math.Min(dbBatchSize, updateList.Count - i));
+                foreach ((string id, string codec) in batch)
+                    context.Database.ExecuteSqlRaw(
+                        $"UPDATE Tracks SET Codec = '{codec}' WHERE Id = '{id}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BackfillMp3Vbr: failed to persist to DB");
+        }
+
+        _logger.LogInformation("BackfillMp3Vbr complete");
     }
 
     public async Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks)
@@ -830,6 +980,7 @@ public class MusicLibrary : IMusicLibrary
 
                     existing.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                     existing.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
+                    existing.HasEmbeddedCover = incoming.HasEmbeddedCover;
                 }
 
                 if (updateAnalysis)
@@ -852,37 +1003,53 @@ public class MusicLibrary : IMusicLibrary
 
                 if (inMemory != null)
                 {
-                    if (updateMetadata)
+                    // Disable dirty tracking before the sync so property assignments
+                    // do not immediately re-mark the track dirty (which would cause
+                    // the Save button to re-enable and the close warning to reappear).
+                    // Restore only to the previous state — do NOT unconditionally enable,
+                    // because clones added via AddTracksToLibraryBatchAsync never had
+                    // dirty tracking turned on and should not have it turned on here.
+                    bool wasTrackingEnabled = inMemory.IsDirtyTrackingEnabled;
+                    inMemory.DisableDirtyTracking();
+                    try
                     {
-                        inMemory.FileName = incoming.FileName;
-                        inMemory.Title = incoming.Title;
-                        inMemory.Artist = incoming.Artist;
-                        inMemory.Album = incoming.Album;
-                        inMemory.AlbumArtist = incoming.AlbumArtist;
-                        inMemory.Performers = incoming.Performers;
-                        inMemory.Composers = incoming.Composers;
-                        inMemory.Genres = incoming.Genres;
-                        inMemory.Copyright = incoming.Copyright;
-                        inMemory.Comment = incoming.Comment;
-                        inMemory.Track = incoming.Track;
-                        inMemory.TrackCount = incoming.TrackCount;
-                        inMemory.Disc = incoming.Disc;
-                        inMemory.DiscCount = incoming.DiscCount;
-                        inMemory.Year = incoming.Year;
-                        inMemory.Duration = incoming.Duration;
-                        inMemory.Bitrate = incoming.Bitrate;
-                        inMemory.SampleRate = incoming.SampleRate;
-                        inMemory.Channels = incoming.Channels;
-                        inMemory.Codec = incoming.Codec;
+                        if (updateMetadata)
+                        {
+                            inMemory.FileName = incoming.FileName;
+                            inMemory.Title = incoming.Title;
+                            inMemory.Artist = incoming.Artist;
+                            inMemory.Album = incoming.Album;
+                            inMemory.AlbumArtist = incoming.AlbumArtist;
+                            inMemory.Performers = incoming.Performers;
+                            inMemory.Composers = incoming.Composers;
+                            inMemory.Genres = incoming.Genres;
+                            inMemory.Copyright = incoming.Copyright;
+                            inMemory.Comment = incoming.Comment;
+                            inMemory.Track = incoming.Track;
+                            inMemory.TrackCount = incoming.TrackCount;
+                            inMemory.Disc = incoming.Disc;
+                            inMemory.DiscCount = incoming.DiscCount;
+                            inMemory.Year = incoming.Year;
+                            inMemory.Duration = incoming.Duration;
+                            inMemory.Bitrate = incoming.Bitrate;
+                            inMemory.SampleRate = incoming.SampleRate;
+                            inMemory.Channels = incoming.Channels;
+                            inMemory.Codec = incoming.Codec;
 
-                        inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
-                        inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
+                            inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
+                            inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
+                            inMemory.HasEmbeddedCover = incoming.HasEmbeddedCover;
+                        }
+
+                        if (updateAnalysis)
+                        {
+                            inMemory.LeadingSilenceMs = incoming.LeadingSilenceMs;
+                            inMemory.TrailingSilenceMs = incoming.TrailingSilenceMs;
+                        }
                     }
-
-                    if (updateAnalysis)
+                    finally
                     {
-                        inMemory.LeadingSilenceMs = incoming.LeadingSilenceMs;
-                        inMemory.TrailingSilenceMs = incoming.TrailingSilenceMs;
+                        if (wasTrackingEnabled) inMemory.EnableDirtyTracking();
                     }
                 }
             }

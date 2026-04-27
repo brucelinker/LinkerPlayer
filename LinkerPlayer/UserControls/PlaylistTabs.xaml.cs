@@ -113,6 +113,9 @@ public partial class PlaylistTabs
         if (dg.Columns.Count > 0 && dg.Columns[0] is DataGridTemplateColumn)
         {
             staticColumnsToPreserve = 1;
+            // Library grids also get a cover-indicator column at index 1
+            if (libTab != null && dg.Columns.Count > 1 && dg.Columns[1] is DataGridTemplateColumn)
+                staticColumnsToPreserve = 2;
         }
         else if (dg.Columns.Count > 1
             && dg.Columns[0] is DataGridTextColumn txt
@@ -146,6 +149,31 @@ public partial class PlaylistTabs
             };
             dg.Columns.Insert(0, playCol);
             staticColumnsToPreserve = 1;
+        }
+
+        // === 2b. Library only: ensure the album-cover indicator column is at index 1 ===
+        if (libTab != null && staticColumnsToPreserve == 1)
+        {
+            DataTemplate? coverTemplate = dg.TryFindResource("AlbumCoverCellTemplate") as DataTemplate
+                               ?? Application.Current?.TryFindResource("AlbumCoverCellTemplate") as DataTemplate;
+
+            if (coverTemplate == null)
+            {
+                FrameworkElementFactory factory = new FrameworkElementFactory(typeof(Grid));
+                coverTemplate = new DataTemplate { VisualTree = factory };
+            }
+
+            DataGridTemplateColumn coverCol = new DataGridTemplateColumn
+            {
+                Header = "",
+                Width = new DataGridLength(22),
+                MaxWidth = 22,
+                CanUserResize = false,
+                IsReadOnly = true,
+                CellTemplate = coverTemplate
+            };
+            dg.Columns.Insert(1, coverCol);
+            staticColumnsToPreserve = 2;
         }
 
         // === 3. Remove only dynamic columns ===
@@ -686,6 +714,50 @@ public partial class PlaylistTabs
                 vm.OnDataGridLoaded(sender, e);
                 RegenerateColumns(dg);
 
+                // Scroll to the restored selection once layout is settled.
+                if (vm.SelectedTrack != null)
+                {
+                    Dispatcher.BeginInvoke(() =>
+                    {
+                        if (dg.SelectedItem != null)
+                            dg.ScrollIntoView(dg.SelectedItem);
+                    }, DispatcherPriority.Background);
+                }
+
+                // Restore library column sort if this is the Music Library DataGrid.
+                if (dg.DataContext is MusicLibraryTab)
+                {
+                    ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
+                    if (sm != null &&
+                        !string.IsNullOrWhiteSpace(sm.Settings.LibrarySortColumn) &&
+                        !string.IsNullOrWhiteSpace(sm.Settings.LibrarySortDirection))
+                    {
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            DataGridColumn? col = dg.Columns.FirstOrDefault(c =>
+                                string.Equals(c.SortMemberPath, sm.Settings.LibrarySortColumn, StringComparison.Ordinal));
+
+                            if (col != null &&
+                                Enum.TryParse(sm.Settings.LibrarySortDirection, out ListSortDirection dir))
+                            {
+                                ICollectionView? view = CollectionViewSource.GetDefaultView(dg.ItemsSource);
+                                if (view != null)
+                                {
+                                    view.SortDescriptions.Clear();
+                                    view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
+                                    col.SortDirection = dir;
+                                    // Clear sort glyph from all other columns
+                                    foreach (DataGridColumn other in dg.Columns)
+                                    {
+                                        if (!ReferenceEquals(other, col))
+                                            other.SortDirection = null;
+                                    }
+                                }
+                            }
+                        }, DispatcherPriority.Background);
+                    }
+                }
+
                 // Run after all pending layout/render passes from RegenerateColumns have settled.
                 Dispatcher.BeginInvoke(() => FixHeaderScrollShimmy(dg), DispatcherPriority.Background);
 
@@ -760,6 +832,28 @@ public partial class PlaylistTabs
             Dispatcher.BeginInvoke(() => viewModel.NotifyDirtyStateChanged(),
                 System.Windows.Threading.DispatcherPriority.DataBind);
         }
+    }
+
+    private void MusicLibraryDataGrid_Sorting(object sender, DataGridSortingEventArgs e)
+    {
+        // Let WPF apply the sort normally, then persist the sort state after the next render pass.
+        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
+        if (settingsManager == null)
+            return;
+
+        // The new direction is the opposite of the current one (WPF toggles on click).
+        ListSortDirection newDirection = e.Column.SortDirection == ListSortDirection.Ascending
+            ? ListSortDirection.Descending
+            : ListSortDirection.Ascending;
+
+        string sortPath = e.Column.SortMemberPath ?? e.Column.Header?.ToString() ?? string.Empty;
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            settingsManager.Settings.LibrarySortColumn = sortPath;
+            settingsManager.Settings.LibrarySortDirection = newDirection.ToString();
+            settingsManager.SaveSettings(nameof(AppSettings.LibrarySortColumn));
+        }, DispatcherPriority.Background);
     }
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)

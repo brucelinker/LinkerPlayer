@@ -56,3 +56,6 @@ csharp_style_var_when_type_is_apparent = false:warning
 # Disable 'use var' suggestions and enable 'use explicit type'
 dotnet_diagnostic.IDE0007.severity = none
 dotnet_diagnostic.IDE0008.severity = warning
+
+# IDE0001: Simplify Names
+dotnet_diagnostic.IDE0001.severity = none

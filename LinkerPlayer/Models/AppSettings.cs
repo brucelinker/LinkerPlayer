@@ -54,6 +54,10 @@ public class AppSettings
     public List<string> LastLibrarySelectedAlbums { get; set; } = new();
     public List<string> LastLibrarySelectedCodecs { get; set; } = new();
 
+    // Library column sort state
+    public string LibrarySortColumn { get; set; } = string.Empty;      // SortMemberPath of the sorted column
+    public string LibrarySortDirection { get; set; } = string.Empty;   // "Ascending" | "Descending"
+
     // Watched folders — scanned on startup to auto-import audio files
     public List<string> WatchedFolders { get; set; } = new();
 

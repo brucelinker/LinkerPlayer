@@ -22,6 +22,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -64,6 +65,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     [ObservableProperty] private Playlist? _selectedPlaylist;
     [ObservableProperty] private PlaybackState _state;
     [ObservableProperty] private bool _allowDrop;
+    private int _saveProgressCount;
     [ObservableProperty]
     private ProgressData _progressInfo = new()
     {
@@ -98,6 +100,11 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private DataGrid? _dataGrid;     // holds current DataGrid reference
     private bool _shuffleMode;       // shuffle flag
     private MusicLibraryTab? _musicLibraryTab; // The permanent Music Library tab (always first)
+
+    // Debounce timer — collapses rapid dirty-state bursts (e.g. editing 25 tracks at once)
+    // into a single HasDirtyTracks notification so the Save button updates promptly but
+    // doesn't thrash on every individual PropertyChanged event.
+    private System.Windows.Threading.DispatcherTimer? _dirtyDebounceTimer;
 
     // ADD back filter constants used by dialogs
     private const string SupportedAudioFilter = "(*.mp3; *.flac; *.ape; *.ac3; *.dsd; *.dsf; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv)|*.mp3; *.flac; *.ape; *.ac3; *.dts; *.m4k; *.mka; *.mp4; *.mpc; *.ofr; *.ogg; *.opus; *.wav; *.wma; *.wv";
@@ -208,6 +215,19 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _logger.LogError(ex, "Error in PlaylistTabsViewModel constructor: {Message}", ex.Message);
             throw;
         }
+
+        // Debounce timer for dirty-state notifications; fires 80 ms after the last change.
+        // Must be created on the UI thread (DispatcherTimer requires it).
+        _dirtyDebounceTimer = new System.Windows.Threading.DispatcherTimer(
+            System.Windows.Threading.DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(80)
+        };
+        _dirtyDebounceTimer.Tick += (_, __) =>
+        {
+            _dirtyDebounceTimer.Stop();
+            OnPropertyChanged(nameof(HasDirtyTracks));
+        };
 
         WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         {
@@ -399,35 +419,13 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         {
             List<MediaFile> selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
 
-            // Only treat as multi-selection when the grid is actually in a multi-selected state.
-            if (selectedTracks.Count > 1)
-            {
-                _selectionService.SetMultiSelection(selectedTracks);
-            }
-            else
-            {
-                _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
-            }
+            // Always keep MultiSelection in sync — single-row selection is still a valid selection target.
+            _selectionService.SetMultiSelection(selectedTracks);
 
             MediaFile selectedTrack = _dataGrid.SelectedItem as MediaFile ?? selectedTracks[0];
             int index = _dataGrid.Items.IndexOf(selectedTrack);
             _selectionService.SetTrack(selectedTrack, index);
             SelectedTrack = selectedTrack; // property updates index in shared model
-
-            Task refreshTask = Task.Run(async () =>
-             {
-                 try
-                 {
-                     Services.Metadata.ITrackMetadataRefresher refresher = App.AppHost.Services.GetRequiredService<Services.Metadata.ITrackMetadataRefresher>();
-                     LinkerPlayer.Services.Metadata.TrackMetadataRefreshResult refresh = await refresher.RefreshIfChangedAsync(selectedTrack);
-                     if (refresh.WasRefreshed)
-                     {
-                         await _musicLibrary.UpdateTracksAsync(new List<MediaFile> { selectedTrack }, updateMetadata: true, updateAnalysis: false);
-                     }
-                 }
-                 catch { }
-             });
-            _ = refreshTask;
 
             Playlist? playlist = GetSelectedPlaylist();
             if (playlist != null)
@@ -2138,10 +2136,24 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
     public bool HasDirtyTracks => _musicLibrary.MainLibrary.Any(t => t.IsDirty);
 
+    public List<MediaFile> DirtyTracks => _musicLibrary.MainLibrary.Where(t => t.IsDirty).ToList();
     /// <summary>
     /// Call this when a library track's dirty state may have changed (e.g., after editing a cell).
+    /// Debounced — bursts of changes (e.g. editing 25 tracks) collapse to a single notification.
     /// </summary>
-    public void NotifyDirtyStateChanged() => OnPropertyChanged(nameof(HasDirtyTracks));
+    public void NotifyDirtyStateChanged()
+    {
+        if (_dirtyDebounceTimer == null)
+        {
+            // Fallback: no timer (unit-test context), fire immediately
+            OnPropertyChanged(nameof(HasDirtyTracks));
+            return;
+        }
+
+        // Restart the timer so rapid back-to-back calls are coalesced.
+        _dirtyDebounceTimer.Stop();
+        _dirtyDebounceTimer.Start();
+    }
 
     [RelayCommand]
     private async Task SaveDirtyTracksAsync()
@@ -2151,68 +2163,116 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             .ToList();
 
         if (dirtyTracks.Count == 0)
-        {
             return;
-        }
 
         _logger.LogInformation("Saving {Count} dirty track(s) to file and database", dirtyTracks.Count);
+        foreach (MediaFile t in dirtyTracks)
+        {
+            _logger.LogInformation("  DIRTY  [{Props}]  {Path}",
+                string.Join(", ", t.DirtyProperties),
+                t.Path);
+        }
 
+        void SendProgress(bool isProcessing, int processed, int total, string status)
+        {
+            _uiDispatcher.InvokeAsync(() =>
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(new ProgressData
+                {
+                    IsProcessing = isProcessing,
+                    ProcessedTracks = processed,
+                    TotalTracks = total,
+                    Status = status,
+                    Phase = isProcessing ? "Saving" : string.Empty
+                })));
+        }
+
+        SendProgress(true, 0, dirtyTracks.Count, $"Saving 0/{dirtyTracks.Count} tracks...");
+
+        // BitmapImage is UI-thread-affine — encode cover bytes before any await.
+        List<(MediaFile MediaFile, HashSet<string> DirtyProps, byte[]? CoverBytes)> snapshots = [];
         foreach (MediaFile mediaFile in dirtyTracks)
         {
+            byte[]? coverBytes = null;
+            if (mediaFile.DirtyProperties.Contains(nameof(MediaFile.AlbumCover)) && mediaFile.AlbumCover != null)
+            {
+                try
+                {
+                    using System.IO.MemoryStream ms = new();
+                    PngBitmapEncoder encoder = new();
+                    encoder.Frames.Add(BitmapFrame.Create(mediaFile.AlbumCover));
+                    encoder.Save(ms);
+                    coverBytes = ms.ToArray();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to encode cover image for {Path}", mediaFile.Path);
+                }
+            }
+            snapshots.Add((mediaFile, new HashSet<string>(mediaFile.DirtyProperties), coverBytes));
+        }
+
+        // Save tracks in parallel (up to 8 concurrent) so a full album saves
+        // in a few seconds rather than many minutes over a UNC/NAS share.
+        System.Collections.Concurrent.ConcurrentBag<MediaFile> savedBag = new();
+        SemaphoreSlim semaphore = new(8, 8);
+        _saveProgressCount = 0;
+
+        IEnumerable<Task> saveTasks = snapshots.Select(async snapshot =>
+        {
+            (MediaFile mediaFile, HashSet<string> dirtyProps, byte[]? coverBytes) = snapshot;
+            await semaphore.WaitAsync();
             try
             {
-                ATL.Track atlTrack = new ATL.Track(mediaFile.Path);
-
-                foreach (string prop in mediaFile.DirtyProperties)
+                // Run all ATL I/O on a thread-pool thread.  new ATL.Track(path) does a
+                // synchronous full-file read which blocks for several seconds on a UNC/NAS
+                // share.  Without Task.Run the async lambda resumes on the WPF dispatcher
+                // (SynchronizationContext is captured at call site), so every save would
+                // serialize through the UI thread regardless of the semaphore parallelism.
+                bool ok = await Task.Run(async () =>
                 {
-                    switch (prop)
+                    ATL.Track atlTrack = new(mediaFile.Path);
+
+                    foreach (string prop in dirtyProps)
                     {
-                        case nameof(MediaFile.Title):
-                            atlTrack.Title = mediaFile.Title;
-                            break;
-                        case nameof(MediaFile.Artist):
-                            atlTrack.Artist = mediaFile.Artist;
-                            break;
-                        case nameof(MediaFile.Album):
-                            atlTrack.Album = mediaFile.Album;
-                            break;
-                        case nameof(MediaFile.AlbumArtist):
-                            atlTrack.AlbumArtist = mediaFile.AlbumArtist;
-                            break;
-                        case nameof(MediaFile.Genres):
-                            atlTrack.Genre = mediaFile.Genres;
-                            break;
-                        case nameof(MediaFile.Track):
-                            atlTrack.TrackNumber = mediaFile.Track;
-                            break;
-                        case nameof(MediaFile.TrackCount):
-                            atlTrack.TrackTotal = mediaFile.TrackCount;
-                            break;
-                        case nameof(MediaFile.Disc):
-                            atlTrack.DiscNumber = mediaFile.Disc;
-                            break;
-                        case nameof(MediaFile.DiscCount):
-                            atlTrack.DiscTotal = mediaFile.DiscCount;
-                            break;
-                        case nameof(MediaFile.Year):
-                            atlTrack.Year = mediaFile.Year;
-                            break;
-                        case nameof(MediaFile.Composers):
-                            atlTrack.Composer = mediaFile.Composers;
-                            break;
-                        case nameof(MediaFile.Comment):
-                            atlTrack.Comment = mediaFile.Comment;
-                            break;
-                        case nameof(MediaFile.Copyright):
-                            atlTrack.Copyright = mediaFile.Copyright;
-                            break;
+                        switch (prop)
+                        {
+                            case nameof(MediaFile.Title):        atlTrack.Title        = mediaFile.Title;        break;
+                            case nameof(MediaFile.Artist):       atlTrack.Artist       = mediaFile.Artist;       break;
+                            case nameof(MediaFile.Album):        atlTrack.Album        = mediaFile.Album;        break;
+                            case nameof(MediaFile.AlbumArtist):  atlTrack.AlbumArtist  = mediaFile.AlbumArtist;  break;
+                            case nameof(MediaFile.Genres):       atlTrack.Genre        = mediaFile.Genres;       break;
+                            case nameof(MediaFile.Track):        atlTrack.TrackNumber  = mediaFile.Track;        break;
+                            case nameof(MediaFile.TrackCount):   atlTrack.TrackTotal   = mediaFile.TrackCount;   break;
+                            case nameof(MediaFile.Disc):         atlTrack.DiscNumber   = mediaFile.Disc;         break;
+                            case nameof(MediaFile.DiscCount):    atlTrack.DiscTotal    = mediaFile.DiscCount;    break;
+                            case nameof(MediaFile.Year):         atlTrack.Year         = mediaFile.Year;         break;
+                            case nameof(MediaFile.Composers):    atlTrack.Composer     = mediaFile.Composers;    break;
+                            case nameof(MediaFile.Comment):      atlTrack.Comment      = mediaFile.Comment;      break;
+                            case nameof(MediaFile.Copyright):    atlTrack.Copyright    = mediaFile.Copyright;    break;
+                            case nameof(MediaFile.AlbumCover):
+                                atlTrack.EmbeddedPictures.Clear();
+                                if (coverBytes != null)
+                                {
+                                    ATL.PictureInfo pic = ATL.PictureInfo.fromBinaryData(
+                                        coverBytes,
+                                        ATL.PictureInfo.PIC_TYPE.Front,
+                                        ATL.AudioData.MetaDataIOFactory.TagType.ANY,
+                                        0,
+                                        0);
+                                    atlTrack.EmbeddedPictures.Add(pic);
+                                }
+                                break;
+                        }
                     }
-                }
 
-                bool saved = atlTrack.Save();
-                if (saved)
+                    return await atlTrack.SaveAsync(writeProgress: null);
+                });
+
+                if (ok)
                 {
-                    mediaFile.ClearDirty();
+                    mediaFile.LastSavedByAppUtc = DateTime.UtcNow;
+                    try { mediaFile.FileLastWriteTimeUtc = File.GetLastWriteTimeUtc(mediaFile.Path); } catch { }
+                    savedBag.Add(mediaFile);
                     _logger.LogDebug("Saved dirty track: {Path}", mediaFile.Path);
                 }
                 else
@@ -2224,17 +2284,45 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             {
                 _logger.LogError(ex, "Failed to save dirty track: {Path}", mediaFile.Path);
             }
+            finally
+            {
+                semaphore.Release();
+                int done = Interlocked.Increment(ref _saveProgressCount);
+                SendProgress(true, done, dirtyTracks.Count, $"Saving {done}/{dirtyTracks.Count} tracks...");
+            }
+        });
+
+        await Task.WhenAll(saveTasks);
+        List<MediaFile> saved = savedBag.ToList();
+
+        // Update HasEmbeddedCover on saved tracks based on whether cover bytes were written.
+        foreach ((MediaFile mediaFile, HashSet<string> dirtyProps, byte[]? coverBytes) in snapshots)
+        {
+            if (!saved.Contains(mediaFile))
+                continue;
+            if (dirtyProps.Contains(nameof(MediaFile.AlbumCover)))
+                mediaFile.HasEmbeddedCover = coverBytes != null;
         }
 
-        // Persist to database
+        // ClearDirty raises PropertyChanged — must happen on the UI thread, and BEFORE
+        // UpdateTracksAsync so that the in-memory property-copy loop inside that method
+        // does not re-trigger dirty tracking on the live MediaFile objects.
+        foreach (MediaFile mediaFile in saved)
+            mediaFile.ClearDirty();
+
+        // Persist to database.  updateMetadata:true syncs FileLastWriteTimeUtc and all
+        // scalar fields; UpdateTracksAsync now wraps the in-memory copy in
+        // DisableDirtyTracking/EnableDirtyTracking so the assignments cannot re-dirty the tracks.
         try
         {
-            await _musicLibrary.UpdateTracksAsync(dirtyTracks, updateMetadata: true, updateAnalysis: false);
+            await _musicLibrary.UpdateTracksAsync(saved, updateMetadata: true, updateAnalysis: false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to persist dirty tracks to database");
         }
+
+        SendProgress(false, saved.Count, dirtyTracks.Count, $"Saved {saved.Count} of {dirtyTracks.Count} track(s)");
 
         NotifyDirtyStateChanged();
     }

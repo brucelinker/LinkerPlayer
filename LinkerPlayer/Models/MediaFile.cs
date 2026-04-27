@@ -80,7 +80,14 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     /// Set of property names that have been edited by the user in the Library DataGrid.
     /// </summary>
     [NotMapped]
-    public HashSet<string> DirtyProperties { get; } = new();
+    private readonly object _dirtyLock = new();
+    private readonly HashSet<string> _dirtyProperties = new();
+
+    [NotMapped]
+    public IReadOnlyCollection<string> DirtyProperties
+    {
+        get { lock (_dirtyLock) { return _dirtyProperties.ToArray(); } }
+    }
 
     /// <summary>
     /// Properties that can be edited inline in the Library DataGrid.
@@ -90,21 +97,57 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumArtist),
         nameof(Genres), nameof(Track), nameof(TrackCount), nameof(Disc),
         nameof(DiscCount), nameof(Year), nameof(Composers), nameof(Comment),
-        nameof(Copyright)
+        nameof(Copyright), nameof(AlbumCover)
     };
 
     [NotMapped]
-    public bool IsDirty => DirtyProperties.Count > 0;
+    public bool IsDirty { get { lock (_dirtyLock) { return _dirtyProperties.Count > 0; } } }
 
     [NotMapped]
-    public int DirtyCount => DirtyProperties.Count;
+    public int DirtyCount { get { lock (_dirtyLock) { return _dirtyProperties.Count; } } }
 
-    public bool IsPropertyDirty(string propertyName) => DirtyProperties.Contains(propertyName);
+    /// <summary>
+    /// Set by the save pipeline immediately after ATL writes this file.
+    /// The metadata refresher uses this to skip re-reading files that were just saved by
+    /// this app — SMB/NAS write-flush and metadata-propagation delays mean the on-disk
+    /// write-time may differ from our stamped value for 10–30 s, which would otherwise
+    /// cause a spurious refresh attempt while the file handle is still held by the OS.
+    /// </summary>
+    [NotMapped]
+    public DateTime? LastSavedByAppUtc { get; set; }
+
+    public void MarkPropertyDirty(string propertyName)
+    {
+        if (!EditableProperties.Contains(propertyName))
+            return;
+
+        bool added;
+        lock (_dirtyLock)
+        {
+            added = _dirtyProperties.Add(propertyName);
+        }
+
+        if (added)
+        {
+            OnPropertyChanged(nameof(IsDirty));
+            OnPropertyChanged(nameof(DirtyCount));
+        }
+    }
+
+    public bool IsPropertyDirty(string propertyName)
+    {
+        lock (_dirtyLock) { return _dirtyProperties.Contains(propertyName); }
+    }
 
     public void ClearDirty()
     {
-        List<string> previouslyDirty = DirtyProperties.ToList();
-        DirtyProperties.Clear();
+        string[] previouslyDirty;
+        lock (_dirtyLock)
+        {
+            previouslyDirty = _dirtyProperties.ToArray();
+            _dirtyProperties.Clear();
+        }
+
         OnPropertyChanged(nameof(IsDirty));
         OnPropertyChanged(nameof(DirtyCount));
         foreach (string prop in previouslyDirty)
@@ -121,19 +164,28 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     public void DisableDirtyTracking() => _isDirtyTrackingEnabled = false;
 
+    public bool IsDirtyTrackingEnabled => _isDirtyTrackingEnabled;
+
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
 
         if (_isDirtyTrackingEnabled &&
             e.PropertyName != null &&
-            EditableProperties.Contains(e.PropertyName) &&
-            !DirtyProperties.Contains(e.PropertyName))
+            EditableProperties.Contains(e.PropertyName))
         {
-            DirtyProperties.Add(e.PropertyName);
-            OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsDirty)));
-            OnPropertyChanged(new PropertyChangedEventArgs(nameof(DirtyCount)));
-            OnPropertyChanged(new PropertyChangedEventArgs($"IsDirty_{e.PropertyName}"));
+            bool added;
+            lock (_dirtyLock)
+            {
+                added = _dirtyProperties.Add(e.PropertyName);
+            }
+
+            if (added)
+            {
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsDirty)));
+                OnPropertyChanged(new PropertyChangedEventArgs(nameof(DirtyCount)));
+                OnPropertyChanged(new PropertyChangedEventArgs($"IsDirty_{e.PropertyName}"));
+            }
         }
     }
 
@@ -233,6 +285,29 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     private BitmapImage? _albumCover;
 
     /// <summary>
+    /// True when the track has a loaded album cover image in memory.
+    /// For display-column use prefer <see cref="HasEmbeddedCover"/> which is set
+    /// during the ATL metadata scan and does not require the image to be loaded.
+    /// </summary>
+    [NotMapped]
+    public bool HasAlbumCover => _albumCover != null || _hasEmbeddedCover;
+
+    partial void OnAlbumCoverChanged(BitmapImage? value) =>
+        OnPropertyChanged(nameof(HasAlbumCover));
+
+    /// <summary>
+    /// Persisted flag: true when the audio file has at least one embedded picture tag,
+    /// regardless of whether the image has been decoded into memory yet.
+    /// Set during <see cref="UpdateFromFileMetadata"/> so it is known for every track
+    /// immediately after the library loads — no per-track click required.
+    /// </summary>
+    [ObservableProperty]
+    private bool _hasEmbeddedCover;
+
+    partial void OnHasEmbeddedCoverChanged(bool value) =>
+        OnPropertyChanged(nameof(HasAlbumCover));
+
+    /// <summary>
     /// Set when <see cref="LoadAlbumCover"/> encounters an embedded image in a format
     /// WPF cannot decode (e.g. "WebP", "AVIF"). Null when the cover loaded successfully
     /// or there is no embedded picture at all.
@@ -266,6 +341,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if (string.IsNullOrWhiteSpace(Path))
             return;
 
+        bool wasTrackingEnabled = _isDirtyTrackingEnabled;
         DisableDirtyTracking();
         Track? track = null;
 
@@ -273,8 +349,16 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             track = new Track(Path);   // ATL auto-detects format (including AC3)
         }
+        catch (IOException)
+        {
+            // Let IOExceptions bubble up to callers (e.g. TrackMetadataRefresher) that
+            // have retry logic for transient file-lock errors on UNC/NAS shares.
+            if (wasTrackingEnabled) EnableDirtyTracking();
+            throw;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            if (wasTrackingEnabled) EnableDirtyTracking(); // restore only if it was on before
             try { Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path); } catch { }
             try
             {
@@ -323,11 +407,15 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         SampleRate = track.SampleRate;
         Channels = track.ChannelsArrangement?.NbChannels ?? 0;
 
-        Codec = !string.IsNullOrWhiteSpace(Path)
+        string ext = !string.IsNullOrWhiteSpace(Path)
             ? System.IO.Path.GetExtension(Path).TrimStart('.').ToUpperInvariant()
             : track.AudioFormat?.ShortName?.ToUpperInvariant()
               ?? track.CodecFamily.ToString().ToUpperInvariant()
               ?? string.Empty;
+
+        Codec = string.Equals(ext, "MP3", StringComparison.OrdinalIgnoreCase)
+            ? $"MP3 {(track.IsVBR ? "VBR" : "CBR")}"
+            : ext;
 
         // ATL.Duration is seconds (int); store as seconds (int)
         try
@@ -360,11 +448,17 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                     int stream = ManagedBass.Bass.CreateStream(Path, 0, 0, ManagedBass.BassFlags.Decode);
                     if (stream != 0)
                     {
-                        long len = ManagedBass.Bass.ChannelGetLength(stream);
-                        double seconds = ManagedBass.Bass.ChannelBytes2Seconds(stream, len);
-                        Duration = (int)seconds;
-                        Logger?.LogDebug("Set Duration to {Duration}s from BASS", Duration);
-                        ManagedBass.Bass.StreamFree(stream);
+                        try
+                        {
+                            long len = ManagedBass.Bass.ChannelGetLength(stream);
+                            double seconds = ManagedBass.Bass.ChannelBytes2Seconds(stream, len);
+                            Duration = (int)seconds;
+                            Logger?.LogDebug("Set Duration to {Duration}s from BASS", Duration);
+                        }
+                        finally
+                        {
+                            ManagedBass.Bass.StreamFree(stream);
+                        }
                     }
                     else
                     {
@@ -390,32 +484,22 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             // Optional: OnPropertyChanged for all if needed
         }
 
-        EnableDirtyTracking();
+        // Set the lightweight cover-present flag from the ATL picture list.
+        // This does NOT load image bytes — it is a cheap O(1) check that lets
+        // the Library DataGrid show the cover indicator for every track on startup.
+        HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
+
+        if (wasTrackingEnabled) EnableDirtyTracking();
     }
 
     private void SetFallbackMetadata(bool raisePropertyChanged)
     {
-        Title = FileName;
-        Album = UnknownString;
-        Artist = UnknownString;
-        AlbumArtist = UnknownString;
-        Performers = string.Empty;
-        Composers = string.Empty;
-        Genres = string.Empty;
-        Copyright = string.Empty;
-        Comment = string.Empty;
-
-        Track = 0;
-        TrackCount = 0;
-        Disc = 0;
-        DiscCount = 0;
-        Year = 0;
-
-        Bitrate = 0;
-        SampleRate = 0;
-        Channels = 2; // Default to stereo
-        Duration = 0;
-        Codec = string.Empty;
+        // Only fill in fields that are genuinely empty — never overwrite real data
+        // with placeholder values just because ATL failed to re-read the file.
+        if (string.IsNullOrWhiteSpace(Title))       Title = FileName;
+        if (string.IsNullOrWhiteSpace(Album))       Album = UnknownString;
+        if (string.IsNullOrWhiteSpace(Artist))      Artist = UnknownString;
+        if (string.IsNullOrWhiteSpace(AlbumArtist)) AlbumArtist = UnknownString;
     }
 
     // WPF's built-in imaging pipeline only supports these MIME types natively.
@@ -429,6 +513,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     public void LoadAlbumCover()
     {
+        // Disable dirty tracking so setting AlbumCover here doesn't mark the track
+        // as needing a save — this is a display-only load, not a user edit.
+        bool wasTrackingEnabled = _isDirtyTrackingEnabled;
+        DisableDirtyTracking();
         try
         {
             Track track = new Track(Path);
@@ -450,7 +538,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             // Skip formats WPF can't decode natively (e.g. WebP, AVIF, HEIF)
             if (!string.IsNullOrEmpty(pic.MimeType) && !SupportedCoverMimeTypes.Contains(pic.MimeType))
             {
-                // Derive a friendly label from the MIME type: "image/webp" → "WebP"
                 string label = pic.MimeType.Contains('/')
                     ? pic.MimeType[(pic.MimeType.LastIndexOf('/') + 1)..].ToUpperInvariant()
                     : pic.MimeType.ToUpperInvariant();
@@ -464,7 +551,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             BitmapImage bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.StreamSource = ms;
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;  // Reads all data before EndInit returns; safe to dispose stream after
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
             bitmap.EndInit();
             bitmap.Freeze();
             AlbumCover = bitmap;
@@ -472,7 +559,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (NotSupportedException)
         {
-            // Image data is in a format WPF can't decode (codec not available on this machine)
             Logger?.LogDebug("Cover image format not supported by WPF decoder for {Path}", Path);
             AlbumCover = null;
             UnsupportedCoverFormat = "Unknown Format";
@@ -482,6 +568,13 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Logger?.LogError(ex, "Failed to load album cover for {Path}", Path);
             AlbumCover = null;
             UnsupportedCoverFormat = null;
+        }
+        finally
+        {
+            if (wasTrackingEnabled) EnableDirtyTracking();
+            // ATL.Track has no IDisposable — nudge the GC to collect it promptly
+            // so it releases the OS file handle on the UNC share.
+            GC.Collect(0, GCCollectionMode.Optimized, blocking: false);
         }
     }
 
@@ -515,6 +608,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Channels = Channels,
             Copyright = Copyright,
             AlbumCover = AlbumCover,
+            HasEmbeddedCover = HasEmbeddedCover,
             State = State,
             Codec = Codec
         };

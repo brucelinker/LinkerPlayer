@@ -28,6 +28,20 @@
       <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
       <converters:ZeroToEmptyConverter x:Key="ZeroToEmptyConverter" />
 
+      <!--  Album-cover indicator column cell template (Library only)  -->
+      <DataTemplate x:Key="AlbumCoverCellTemplate">
+        <iconPacks:PackIconMaterial
+          Width="12"
+          Height="12"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Foreground="{StaticResource TrackListItemForegroundBrush}"
+          Kind="ImageOutline"
+          Opacity="0.75"
+          ToolTip="Has album cover"
+          Visibility="{Binding HasEmbeddedCover, Converter={StaticResource BooleanToVisibilityConverter}}" />
+      </DataTemplate>
+
       <DataTemplate x:Key="PlayPauseCellTemplate">
         <Grid>
           <!-- Badge for items that still need metadata refresh (quick-imported) -->
@@ -435,6 +449,7 @@
             BeginningEdit="MusicLibraryDataGrid_BeginningEdit"
             PreviewMouseLeftButtonDown="MusicLibraryDataGrid_PreviewMouseLeftButtonDown"
             Loaded="DataGrid_Loaded"
+            Sorting="MusicLibraryDataGrid_Sorting"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
             RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"

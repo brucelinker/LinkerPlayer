@@ -36,7 +36,7 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
-                logging.SetMinimumLevel(LogLevel.Information);
+                logging.SetMinimumLevel(LogLevel.Debug);
                 //Trace = 0, Debug = 1, Information = 2, Warning = 3, Error = 4, Critical = 5, and None = 6
                 logging.AddSimpleConsole(options =>
                 {
@@ -141,6 +141,12 @@ public partial class App
 
     private async Task InitializeApplicationAsync()
     {
+        // ATL defaults to a 512-byte I/O buffer — fine for local disks but causes
+        // tens-of-thousands of tiny SMB round-trips on NAS shares, making every read
+        // and write take 30-60 seconds. Set a large buffer so each file is read in
+        // a small number of network round-trips, matching what tools like Mp3tag do.
+        ATL.Settings.FileBufferSize = 512 * 1024; // 512 KB
+
         try
         {
             _logger.LogInformation("Background init started");
@@ -179,6 +185,13 @@ public partial class App
                     _logger.LogInformation("Starting library load from database");
                     await library.LoadFromDatabaseAsync();
                     _logger.LogInformation("Library load completed successfully");
+
+                    // One-time backfill: set HasEmbeddedCover for tracks loaded before
+                    // the column existed (all default to false in the DB).
+                    await library.BackfillEmbeddedCoverAsync().ConfigureAwait(false);
+
+                    // One-time backfill: refine plain "MP3" codec to "MP3 VBR" / "MP3 CBR".
+                    await library.BackfillMp3VbrAsync().ConfigureAwait(false);
 
                     // Phase 1: scan watched folders after library is loaded
                     IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();

@@ -1,6 +1,5 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Models;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace LinkerPlayer.Tests.Fakes;
@@ -35,9 +34,11 @@ public sealed class FakeAudioEngine : IAudioEngine, IChannelLevelProvider
 
     public int ExpectedFftSize => 0;
 
+#pragma warning disable CS0067 // Events are unused in fake implementation
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public event System.Action<float[]>? OnFftCalculated;
+#pragma warning restore CS0067
 
     public event System.Action? OnPlaybackStopped;
 

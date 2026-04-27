@@ -1,11 +1,7 @@
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Linq;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel;
 
 namespace LinkerPlayer.Services;
 
@@ -76,12 +72,12 @@ public class SelectionService : ISelectionService
                 return; // no effective change
             }
 
-            _logger.LogDebug(
-                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> {NewId}@{NewIndex}",
-                previous?.Id ?? "null",
-                previousIndex,
-                track.Id,
-                index);
+            //_logger.LogDebug(
+            //    "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> {NewId}@{NewIndex}",
+            //    previous?.Id ?? "null",
+            //    previousIndex,
+            //    track.Id,
+            //    index);
 
             _shared.UpdateSelectedTrack(track);
             _shared.UpdateSelectedTrackIndex(index);
@@ -93,10 +89,10 @@ public class SelectionService : ISelectionService
                 return; // already null selection
             }
 
-            _logger.LogDebug(
-                "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> null@-1",
-                previous?.Id ?? "null",
-                previousIndex);
+            //_logger.LogDebug(
+            //    "SelectionService.SetTrack: {PrevId}@{PrevIndex} -> null@-1",
+            //    previous?.Id ?? "null",
+            //    previousIndex);
 
             _shared.UpdateSelectedTrackIndex(-1);
             _shared.UpdateSelectedTrack(null!);

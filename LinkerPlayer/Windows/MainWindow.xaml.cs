@@ -1,13 +1,17 @@
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Core;
+using LinkerPlayer.Interop;
 using LinkerPlayer.Messages;
+using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace LinkerPlayer.Windows;
 
@@ -21,6 +25,8 @@ public partial class MainWindow : Window
     private readonly ILogger<MainWindow> _logger;
     private readonly ISettingsManager _settingsManager;
     private readonly IImportCancellationService _importCancellationService;
+    private PlaylistTabsViewModel? _playlistVm;
+    private bool _isClosing;
 
     public MainWindow(IServiceProvider serviceProvider, ILogger<MainWindow> logger)
     {
@@ -45,6 +51,7 @@ public partial class MainWindow : Window
             LocationChanged += (_, _) => UpdateCurrentMonitorSetting();
             StateChanged += (_, _) => UpdateCurrentMonitorSetting();
             PreviewKeyDown += MainWindow_PreviewKeyDown;
+            Closing += MainWindow_Closing;
         }
         catch (IOException ex)
         {
@@ -84,6 +91,17 @@ public partial class MainWindow : Window
         _mainViewModel.OnWindowLoaded();
         WeakReferenceMessenger.Default.Send(new MainWindowLoadedMessage(true));
 
+        // Wire up TrackInfo IsLibraryMode after all controls are loaded
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (PlaylistTabs.DataContext is PlaylistTabsViewModel playlistVm)
+            {
+                _playlistVm = playlistVm;
+                UpdateTrackInfoLibraryMode(playlistVm);
+                playlistVm.PropertyChanged += PlaylistVm_PropertyChanged;
+            }
+        }, DispatcherPriority.Loaded);
+
         _logger.LogInformation("MainWindow: Regular WPF Window loaded successfully");
     }
 
@@ -105,6 +123,32 @@ public partial class MainWindow : Window
     private void Window_StateChanged(object sender, EventArgs e)
     {
         _logger.LogInformation("MainWindow: Window state changed to: {State}", WindowState);
+
+        // WindowStyle="None" removes OS chrome, so WPF maximizes to the full screen
+        // rect instead of the work area (screen minus taskbar).  Fix it manually.
+        if (WindowState == WindowState.Maximized)
+        {
+            // Use the work area of the monitor this window is on.
+            System.Windows.Interop.WindowInteropHelper helper = new(this);
+            nint hMonitor = NativeMethods.MonitorFromWindow(
+                helper.Handle, NativeMethods.MONITOR_DEFAULTTONEAREST);
+
+            NativeMethods.MONITORINFO mi = new();
+            mi.cbSize = System.Runtime.InteropServices.Marshal.SizeOf(mi);
+            if (NativeMethods.GetMonitorInfo(hMonitor, ref mi))
+            {
+                // rcWork is in physical pixels; convert to WPF device-independent units
+                double dpiScale = PresentationSource.FromVisual(this)
+                                      ?.CompositionTarget?.TransformFromDevice.M11 ?? 1.0;
+                MaxWidth  = (mi.rcWork.right  - mi.rcWork.left) * dpiScale;
+                MaxHeight = (mi.rcWork.bottom - mi.rcWork.top)  * dpiScale;
+            }
+        }
+        else
+        {
+            MaxWidth  = double.PositiveInfinity;
+            MaxHeight = double.PositiveInfinity;
+        }
     }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -150,6 +194,59 @@ public partial class MainWindow : Window
         else
         {
             _importCancellationService.Cancel();
+        }
+    }
+
+    private void UpdateTrackInfoLibraryMode(PlaylistTabsViewModel vm)
+    {
+        bool isLibrary = vm.SelectedTab is MusicLibraryTab;
+        _logger.LogInformation("UpdateTrackInfoLibraryMode: SelectedTab={Tab}, IsLibrary={IsLibrary}", vm.SelectedTab?.Name ?? "null", isLibrary);
+        TrackInfo.IsLibraryMode = isLibrary;
+    }
+
+    private void PlaylistVm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(PlaylistTabsViewModel.SelectedTab) && sender is PlaylistTabsViewModel vm)
+        {
+            _logger.LogInformation("PlaylistVm_PropertyChanged: SelectedTab changed");
+            UpdateTrackInfoLibraryMode(vm);
+        }
+    }
+
+    private async void MainWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        // If we're already in the process of saving-then-closing, just let it proceed.
+        // A second click during the async save would re-enter here and WPF would throw
+        // because you can't show a MessageBox while a window is already closing.
+        if (_isClosing)
+            return;
+
+        if (_playlistVm?.HasDirtyTracks == true)
+        {
+            List<LinkerPlayer.Models.MediaFile> dirty = _playlistVm.DirtyTracks;
+            _logger.LogInformation("Close requested with {Count} dirty track(s):", dirty.Count);
+            foreach (LinkerPlayer.Models.MediaFile t in dirty)
+                _logger.LogInformation("  DIRTY  [{Props}]  {Path}", string.Join(", ", t.DirtyProperties), t.Path);
+
+            MessageBoxResult result = MessageBox.Show(
+                $"You have {dirty.Count} unsaved track(s). Do you want to save before closing?",
+                "Unsaved Changes",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                // Cancel this close event, save, then shut down for real.
+                e.Cancel = true;
+                _isClosing = true;
+                await _playlistVm.SaveDirtyTracksCommand.ExecuteAsync(null);
+                Application.Current.Shutdown();
+            }
+            else if (result == MessageBoxResult.Cancel)
+            {
+                e.Cancel = true;
+            }
+            // result == No → allow close without saving (fall through)
         }
     }
 }

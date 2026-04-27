@@ -66,6 +66,9 @@ public sealed class FakeMusicLibrary : IMusicLibrary
 
     public Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true) => Task.CompletedTask;
 
+    public Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     public Task<int> RemoveTracksFromFolderAsync(string folderPath)
     {
         string normalizedFolder = folderPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)

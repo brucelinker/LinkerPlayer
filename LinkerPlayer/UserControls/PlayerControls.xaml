@@ -285,7 +285,7 @@
       VerticalAlignment="Bottom">
       <Border BorderBrush="Transparent" BorderThickness="1">
         <Grid
-          Margin="6,0,6,0"
+          Margin="10,0,6,0"
           VerticalAlignment="Bottom"
           Background="Transparent">
           <Grid.ColumnDefinitions>
