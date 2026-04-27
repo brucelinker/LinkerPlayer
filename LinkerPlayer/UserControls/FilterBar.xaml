@@ -94,29 +94,145 @@
           Kind="Magnify" />
 
 
-        <!--  Keywords TextBox  -->
+        <!--  Keywords TextBox with inline help button  -->
 
-        <TextBox
-          x:Name="KeywordsTextBox"
-          Grid.Column="1"
-          MinWidth="200"
-          Padding="6,4"
-          VerticalAlignment="Center"
-          FontSize="{DynamicResource FontSizeNormal}"
-          Text="{Binding KeywordSearch, UpdateSourceTrigger=PropertyChanged, Delay=300}"
-          ToolTip="Search across all track metadata (Artist, Album, Title, Genre, etc.)">
-          <TextBox.Style>
-            <Style TargetType="TextBox">
-              <Setter Property="Background" Value="{DynamicResource ControlBackgroundBrush}" />
-              <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
-              <Setter Property="BorderBrush" Value="{DynamicResource ControlBorderBrush}" />
-              <Setter Property="BorderThickness" Value="1" />
-            </Style>
-          </TextBox.Style>
-          <i:Interaction.Behaviors>
-            <local:TextBoxWatermarkBehavior Foreground="{DynamicResource TrackListItemForegroundBrush}" Text="Search keywords or title..." />
-          </i:Interaction.Behaviors>
-        </TextBox>
+        <Grid Grid.Column="1" VerticalAlignment="Center">
+
+          <local:SyntaxSearchBox
+            x:Name="KeywordsTextBox"
+            MinWidth="200"
+            VerticalAlignment="Center"
+            Placeholder="Search keywords or query (? for help)..."
+            Text="{Binding KeywordSearch, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+            ToolTip="Search keywords, or type a query: bitrate &gt; 320 · year &gt; 1980 · genre = jazz · click ? for help" />
+
+          <!--  Query help toggle button — sits inside the right edge of the TextBox  -->
+          <Button
+            x:Name="QueryHelpButton"
+            Width="22"
+            Height="22"
+            Margin="0,0,3,0"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            Click="QueryHelpButton_Click"
+            Cursor="Hand"
+            Focusable="False"
+            ToolTip="Query syntax help">
+            <Button.Style>
+              <Style TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="Bold" />
+                <Setter Property="Template">
+                  <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                      <Border
+                        x:Name="Bd"
+                        Width="20"
+                        Height="20"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{DynamicResource ControlBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter TargetName="Bd" Property="Background" Value="{DynamicResource TrackListItemMouseOverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                          <Setter TargetName="Bd" Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
+                        </Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Setter.Value>
+                </Setter>
+              </Style>
+            </Button.Style>
+            <TextBlock
+              FontSize="11"
+              FontWeight="Bold"
+              Foreground="{DynamicResource TrackListItemForegroundBrush}"
+              Text="?" />
+          </Button>
+
+          <!--  Query syntax help popup  -->
+          <Popup
+            x:Name="QueryHelpPopup"
+            AllowsTransparency="True"
+            HorizontalOffset="-320"
+            IsOpen="False"
+            Placement="Bottom"
+            PlacementTarget="{Binding ElementName=QueryHelpButton}"
+            PopupAnimation="Fade"
+            StaysOpen="False"
+            VerticalOffset="4"
+            Width="420">
+            <Border
+              Padding="14,12"
+              Background="{DynamicResource PlaylistTabBackgroundBrush}"
+              BorderBrush="{DynamicResource ControlBorderBrush}"
+              BorderThickness="1"
+              CornerRadius="4">
+              <Border.Effect>
+                <DropShadowEffect BlurRadius="12" Direction="270" Opacity="0.4" ShadowDepth="4" />
+              </Border.Effect>
+              <StackPanel>
+
+                <TextBlock
+                  Margin="0,0,0,8"
+                  FontSize="{DynamicResource FontSizeNormal}"
+                  FontWeight="Bold"
+                  Foreground="{DynamicResource TrackListItemForegroundBrush}"
+                  Text="Query Syntax" />
+
+                <!--  Fields  -->
+                <TextBlock
+                  Margin="0,0,0,4"
+                  FontSize="{DynamicResource FontSizeSmall}"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource TrackListItemForegroundBrush}"
+                  Text="FIELDS" />
+                <local:QueryHelpRow Label="title, artist, album, genre" Description="Text fields" />
+                <local:QueryHelpRow Label="year  ·  date" Description="Release year (numeric)" />
+                <local:QueryHelpRow Label="bitrate  ·  kbps" Description="Bitrate in kbps (numeric)" />
+                <local:QueryHelpRow Label="codec  ·  format  ·  ext" Description="File extension / codec" />
+                <local:QueryHelpRow Label="performer, composer" Description="Additional text fields" />
+
+                <!--  Operators  -->
+                <TextBlock
+                  Margin="0,10,0,4"
+                  FontSize="{DynamicResource FontSizeSmall}"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource TrackListItemForegroundBrush}"
+                  Text="OPERATORS" />
+                <local:QueryHelpRow Label="=  or  ==" Description="Exact match" />
+                <local:QueryHelpRow Label="!=" Description="Not equal" />
+                <local:QueryHelpRow Label="contains  or  ~" Description="Text contains" />
+                <local:QueryHelpRow Label="&gt;  &gt;=  &lt;  &lt;=" Description="Numeric comparison" />
+                <local:QueryHelpRow Label="OR  ·  ||  ·  |" Description="Either condition" />
+
+                <!--  Examples  -->
+                <TextBlock
+                  Margin="0,10,0,4"
+                  FontSize="{DynamicResource FontSizeSmall}"
+                  FontWeight="SemiBold"
+                  Foreground="{DynamicResource TrackListItemForegroundBrush}"
+                  Text="EXAMPLES" />
+                <local:QueryHelpRow Label="bitrate &gt; 320" Description="High-quality tracks" />
+                <local:QueryHelpRow Label="year &gt; 1960 &lt; 1990" Description="Tracks from the 60s–80s" />
+                <local:QueryHelpRow Label="genre = jazz OR genre = blues" Description="Jazz or blues" />
+                <local:QueryHelpRow Label="artist contains miles" Description="Artist name contains 'miles'" />
+                <local:QueryHelpRow Label="bitrate &gt;= 192 genre = jazz" Description="Both must match (AND)" />
+                <local:QueryHelpRow Label="metallica" Description="Plain text search (no operator)" />
+
+              </StackPanel>
+            </Border>
+          </Popup>
+
+        </Grid>
 
 
         <!--  Clear All Button  -->

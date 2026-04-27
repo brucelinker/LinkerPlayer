@@ -101,7 +101,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private bool _shuffleMode;       // shuffle flag
     private MusicLibraryTab? _musicLibraryTab; // The permanent Music Library tab (always first)
 
-    // Debounce timer — collapses rapid dirty-state bursts (e.g. editing 25 tracks at once)
+    // Debounce timer â€” collapses rapid dirty-state bursts (e.g. editing 25 tracks at once)
     // into a single HasDirtyTracks notification so the Save button updates promptly but
     // doesn't thrash on every individual PropertyChanged event.
     private System.Windows.Threading.DispatcherTimer? _dirtyDebounceTimer;
@@ -195,6 +195,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
             AllowDrop = true;
             RegisterMessages();
+            _musicLibrary.LibraryLoaded += OnLibraryLoaded;
 
             if (_settingsManager.Settings.VisibleColumns == null ||
                 _settingsManager.Settings.VisibleColumns.Count == 0)
@@ -297,7 +298,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                     SelectedTrackIndex = TabList[SelectedTabIndex].Tracks.IndexOf(SelectedTrack);
                 }
                 _dataGrid.SelectedItem = SelectedTrack;
-                _dataGrid.SelectedIndex = SelectedTrackIndex;
                 _selectionService.SetTrack(SelectedTrack, SelectedTrackIndex);
             }
             else
@@ -306,11 +306,62 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 if (SelectedTrack != null)
                 {
                     _dataGrid.SelectedItem = SelectedTrack;
-                    _dataGrid.SelectedIndex = SelectedTrackIndex;
                     _selectionService.SetTrack(SelectedTrack, SelectedTrackIndex);
                 }
             }
         }
+    }
+
+    private void OnLibraryLoaded(object? sender, EventArgs e)
+    {
+        // MainLibrary is now populated â€” re-apply the saved Library selection
+        // because the DataGrid had an empty ItemsSource when LoadPlaylistTabs() ran.
+        string? savedId = _settingsManager.Settings.LastLibrarySelectedTrackId;
+        if (string.IsNullOrWhiteSpace(savedId))
+            return;
+
+        MediaFile? track = _musicLibrary.MainLibrary.FirstOrDefault(t =>
+            string.Equals(t.Id, savedId, StringComparison.Ordinal));
+
+        if (track == null)
+            return;
+
+        SelectedTrack = track;
+        SelectedTrackIndex = _musicLibrary.MainLibrary.IndexOf(track);
+        _logger.LogInformation("OnLibraryLoaded: restored Library selection to '{Title}'", track.Title);
+
+        if (_dataGrid != null)
+        {
+            _dataGrid.SelectedItem = track;
+            _dataGrid.Dispatcher.BeginInvoke(() => _dataGrid.ScrollIntoView(track),
+                System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        // Subscribe to ViewRefreshed so each filter/sort refresh re-applies the selection.
+        // CollectionView.Refresh() fires a Reset which clears DataGrid.SelectedItem.
+        if (_musicLibraryTab != null)
+        {
+            _musicLibraryTab.ViewRefreshed -= OnLibraryViewRefreshed;
+            _musicLibraryTab.ViewRefreshed += OnLibraryViewRefreshed;
+        }
+    }
+
+    private void OnLibraryViewRefreshed(object? sender, EventArgs e)
+    {
+        // After any filter/sort refresh the DataGrid clears its selection â€” restore it.
+        if (_dataGrid == null || SelectedTrack == null || SelectedTab is not MusicLibraryTab)
+            return;
+
+        // Only re-apply if the DataGrid has lost the selection
+        if (ReferenceEquals(_dataGrid.SelectedItem, SelectedTrack))
+            return;
+
+        _dataGrid.SelectedItem = SelectedTrack;
+        _dataGrid.Dispatcher.BeginInvoke(() =>
+        {
+            if (_dataGrid.SelectedItem != null)
+                _dataGrid.ScrollIntoView(_dataGrid.SelectedItem);
+        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     partial void OnSelectedTabIndexChanged(int value)
@@ -419,7 +470,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         {
             List<MediaFile> selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
 
-            // Always keep MultiSelection in sync — single-row selection is still a valid selection target.
+            // Always keep MultiSelection in sync â€” single-row selection is still a valid selection target.
             _selectionService.SetMultiSelection(selectedTracks);
 
             MediaFile selectedTrack = _dataGrid.SelectedItem as MediaFile ?? selectedTracks[0];
@@ -2139,7 +2190,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     public List<MediaFile> DirtyTracks => _musicLibrary.MainLibrary.Where(t => t.IsDirty).ToList();
     /// <summary>
     /// Call this when a library track's dirty state may have changed (e.g., after editing a cell).
-    /// Debounced — bursts of changes (e.g. editing 25 tracks) collapse to a single notification.
+    /// Debounced â€” bursts of changes (e.g. editing 25 tracks) collapse to a single notification.
     /// </summary>
     public void NotifyDirtyStateChanged()
     {
@@ -2188,7 +2239,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
         SendProgress(true, 0, dirtyTracks.Count, $"Saving 0/{dirtyTracks.Count} tracks...");
 
-        // BitmapImage is UI-thread-affine — encode cover bytes before any await.
+        // BitmapImage is UI-thread-affine â€” encode cover bytes before any await.
         List<(MediaFile MediaFile, HashSet<string> DirtyProps, byte[]? CoverBytes)> snapshots = [];
         foreach (MediaFile mediaFile in dirtyTracks)
         {
@@ -2304,7 +2355,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 mediaFile.HasEmbeddedCover = coverBytes != null;
         }
 
-        // ClearDirty raises PropertyChanged — must happen on the UI thread, and BEFORE
+        // ClearDirty raises PropertyChanged â€” must happen on the UI thread, and BEFORE
         // UpdateTracksAsync so that the in-memory property-copy loop inside that method
         // does not re-trigger dirty tracking on the live MediaFile objects.
         foreach (MediaFile mediaFile in saved)

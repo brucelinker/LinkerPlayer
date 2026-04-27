@@ -26,6 +26,12 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
     /// </summary>
     public event EventHandler? FacetsRebuilt;
 
+    /// <summary>
+    /// Raised after the filtered CollectionView is refreshed (filter/sort change).
+    /// Subscribers should re-apply DataGrid.SelectedItem to survive the CollectionView Reset.
+    /// </summary>
+    public event EventHandler? ViewRefreshed;
+
     // Reference to the main library collection (exposed via Tracks property)
     private readonly ObservableCollection<MediaFile> _sourceLibrary;
 
@@ -206,6 +212,7 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
 
                 TracksView?.View?.Refresh();
                 OnPropertyChanged(nameof(FilteredTrackCount));
+                ViewRefreshed?.Invoke(this, EventArgs.Empty);
             });
             return;
         }
@@ -219,9 +226,8 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
 
         TracksView?.View?.Refresh();
         OnPropertyChanged(nameof(FilteredTrackCount));
+        ViewRefreshed?.Invoke(this, EventArgs.Empty);
     }
-
-    // Selection change handling is managed via collection change events for multi-select selections.
 
     /// <summary>
     /// Public entry point for UI to notify that multi-select selections changed.
@@ -316,6 +322,38 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
         if (SelectedCodecs.Count == 0 && Codecs.Contains("(All)"))
         {
             SelectedCodecs.Add("(All)");
+        }
+
+        // Restore keyword/query search
+        KeywordSearch = settings.LastLibraryKeywordSearch ?? string.Empty;
+
+        // Restore explicit filter rows
+        if (settings.LastLibraryActiveFilters != null)
+        {
+            ActiveFilters.Clear();
+            foreach (AppSettings.FilterCriteriaSettings dto in settings.LastLibraryActiveFilters)
+            {
+                if (!Enum.TryParse(dto.Type, out FilterType filterType))
+                {
+                    continue;
+                }
+
+                if (!Enum.TryParse(dto.Operator, out FilterOperator filterOp))
+                {
+                    continue;
+                }
+
+                FilterCriteria fc = new FilterCriteria
+                {
+                    Type           = filterType,
+                    Operator       = filterOp,
+                    Value          = dto.Value,
+                    ValueSecondary = dto.ValueSecondary,
+                    IsEnabled      = dto.IsEnabled,
+                    OnFilterChanged = RefreshView
+                };
+                ActiveFilters.Add(fc);
+            }
         }
 
         // Notify to refresh dependent lists and view
@@ -715,27 +753,50 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
             return false;
         }
 
-        // Apply keyword search first (searches across all metadata)
+        // Apply keyword search first — try structured query, fall back to plain text
         if (!string.IsNullOrWhiteSpace(KeywordSearch))
         {
-            string keyword = KeywordSearch.ToLowerInvariant();
-            bool matchesKeyword =
-                track.Title?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Artist?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Album?.ToLowerInvariant().Contains(keyword) == true ||
-                track.AlbumArtist?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Genres?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Performers?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Composers?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Comment?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Copyright?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Codec?.ToLowerInvariant().Contains(keyword) == true ||
-                track.FileName?.ToLowerInvariant().Contains(keyword) == true ||
-                track.Path?.ToLowerInvariant().Contains(keyword) == true;
-
-            if (!matchesKeyword)
+            if (QueryParser.TryParse(KeywordSearch, out List<List<FilterCriteria>> orGroups))
             {
-                return false;
+                // Structured query: track must satisfy at least one AND-group (OR logic between groups)
+                bool matchesQuery = false;
+                foreach (List<FilterCriteria> andGroup in orGroups)
+                {
+                    bool groupMatches = andGroup.All(qc => qc.Matches(track));
+                    if (groupMatches)
+                    {
+                        matchesQuery = true;
+                        break;
+                    }
+                }
+
+                if (!matchesQuery)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                // Plain-text fallback: search across all metadata fields
+                string keyword = KeywordSearch.ToLowerInvariant();
+                bool matchesKeyword =
+                    track.Title?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Artist?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Album?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.AlbumArtist?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Genres?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Performers?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Composers?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Comment?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Copyright?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Codec?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.FileName?.ToLowerInvariant().Contains(keyword) == true ||
+                    track.Path?.ToLowerInvariant().Contains(keyword) == true;
+
+                if (!matchesKeyword)
+                {
+                    return false;
+                }
             }
         }
 
@@ -888,9 +949,12 @@ public partial class FilterCriteria : ObservableObject
         return Operator switch
         {
             FilterOperator.Equals => MatchesEquals(trackValue),
+            FilterOperator.NotEquals => !MatchesEquals(trackValue),
             FilterOperator.Contains => MatchesContains(trackValue),
             FilterOperator.GreaterThan => MatchesGreaterThan(track),
+            FilterOperator.GreaterThanOrEqual => MatchesGreaterThanOrEqual(track),
             FilterOperator.LessThan => MatchesLessThan(track),
+            FilterOperator.LessThanOrEqual => MatchesLessThanOrEqual(track),
             FilterOperator.Between => MatchesBetween(track),
             _ => true
         };
@@ -900,6 +964,7 @@ public partial class FilterCriteria : ObservableObject
     {
         return Type switch
         {
+            FilterType.Title => track.Title,
             FilterType.Artist => track.Artist,
             FilterType.Album => track.Album,
             FilterType.Genre => track.Genres,
@@ -962,6 +1027,36 @@ public partial class FilterCriteria : ObservableObject
         return false;
     }
 
+    private bool MatchesGreaterThanOrEqual(MediaFile track)
+    {
+        if (Type == FilterType.Year && uint.TryParse(Value, out uint yearValue))
+        {
+            return track.Year >= yearValue;
+        }
+
+        if (Type == FilterType.Bitrate && int.TryParse(Value, out int bitrateValue))
+        {
+            return track.Bitrate >= bitrateValue;
+        }
+
+        return false;
+    }
+
+    private bool MatchesLessThanOrEqual(MediaFile track)
+    {
+        if (Type == FilterType.Year && uint.TryParse(Value, out uint yearValue))
+        {
+            return track.Year <= yearValue;
+        }
+
+        if (Type == FilterType.Bitrate && int.TryParse(Value, out int bitrateValue))
+        {
+            return track.Bitrate <= bitrateValue;
+        }
+
+        return false;
+    }
+
     private bool MatchesBetween(MediaFile track)
     {
         if (string.IsNullOrWhiteSpace(ValueSecondary))
@@ -993,6 +1088,7 @@ public partial class FilterCriteria : ObservableObject
 public enum FilterType
 {
     None,
+    Title,
     Artist,
     Album,
     Genre,
@@ -1009,8 +1105,11 @@ public enum FilterType
 public enum FilterOperator
 {
     Equals,
+    NotEquals,
     Contains,
     GreaterThan,
+    GreaterThanOrEqual,
     LessThan,
+    LessThanOrEqual,
     Between
 }

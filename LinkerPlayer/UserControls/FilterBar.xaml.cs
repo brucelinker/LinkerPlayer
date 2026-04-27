@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using System.Collections.ObjectModel;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace LinkerPlayer.UserControls;
@@ -80,6 +81,18 @@ public partial class FilterBar : UserControl
                 new Action(() => ApplyAllSelections(libraryTab)),
                 DispatcherPriority.Background);
         };
+
+        // Persist keyword/query search changes
+        libraryTab.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MusicLibraryTab.KeywordSearch))
+            {
+                SaveFilterSelections(libraryTab);
+            }
+        };
+
+        // Persist explicit filter row changes (add/remove/edit)
+        libraryTab.ActiveFilters.CollectionChanged += (_, __) => SaveFilterSelections(libraryTab);
     }
 
     /// <summary>
@@ -245,10 +258,23 @@ public partial class FilterBar : UserControl
                 return;
             }
 
-            settingsManager.Settings.LastLibrarySelectedGenres = new List<string>(libraryTab.SelectedGenres);
+            settingsManager.Settings.LastLibrarySelectedGenres  = new List<string>(libraryTab.SelectedGenres);
             settingsManager.Settings.LastLibrarySelectedArtists = new List<string>(libraryTab.SelectedArtists);
-            settingsManager.Settings.LastLibrarySelectedAlbums = new List<string>(libraryTab.SelectedAlbums);
-            settingsManager.Settings.LastLibrarySelectedCodecs = new List<string>(libraryTab.SelectedCodecs);
+            settingsManager.Settings.LastLibrarySelectedAlbums  = new List<string>(libraryTab.SelectedAlbums);
+            settingsManager.Settings.LastLibrarySelectedCodecs  = new List<string>(libraryTab.SelectedCodecs);
+
+            settingsManager.Settings.LastLibraryKeywordSearch = libraryTab.KeywordSearch;
+
+            settingsManager.Settings.LastLibraryActiveFilters = libraryTab.ActiveFilters
+                .Select(f => new AppSettings.FilterCriteriaSettings
+                {
+                    Type           = f.Type.ToString(),
+                    Operator       = f.Operator.ToString(),
+                    Value          = f.Value,
+                    ValueSecondary = f.ValueSecondary,
+                    IsEnabled      = f.IsEnabled
+                })
+                .ToList();
 
             settingsManager.SaveSettings(nameof(AppSettings.LastLibrarySelectedGenres));
         }
@@ -320,5 +346,10 @@ public partial class FilterBar : UserControl
         }
 
         libraryTab.ClearAllFilters();
+    }
+
+    private void QueryHelpButton_Click(object sender, RoutedEventArgs e)
+    {
+        QueryHelpPopup.IsOpen = !QueryHelpPopup.IsOpen;
     }
 }

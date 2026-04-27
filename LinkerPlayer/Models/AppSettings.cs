@@ -58,6 +58,13 @@ public class AppSettings
     public string LibrarySortColumn { get; set; } = string.Empty;      // SortMemberPath of the sorted column
     public string LibrarySortDirection { get; set; } = string.Empty;   // "Ascending" | "Descending"
 
+    // Library query/filter state
+    public string LastLibraryKeywordSearch { get; set; } = string.Empty;
+    public List<FilterCriteriaSettings> LastLibraryActiveFilters { get; set; } = new();
+
+    // Per-playlist column sort state — keyed by playlist name
+    public Dictionary<string, PlaylistSortState> PlaylistSortStates { get; set; } = new();
+
     // Watched folders — scanned on startup to auto-import audio files
     public List<string> WatchedFolders { get; set; } = new();
 
@@ -66,5 +73,22 @@ public class AppSettings
     {
         public double Width { get; set; } = 100;
         public int Position { get; set; } = -1;   // -1 = far right
+    }
+
+    /// <summary>Serializable snapshot of a single FilterCriteria row.</summary>
+    public class FilterCriteriaSettings
+    {
+        public string Type { get; set; } = string.Empty;       // FilterType enum name
+        public string Operator { get; set; } = string.Empty;   // FilterOperator enum name
+        public string Value { get; set; } = string.Empty;
+        public string? ValueSecondary { get; set; }
+        public bool IsEnabled { get; set; } = true;
+    }
+
+    /// <summary>Serializable sort state for a single playlist's DataGrid.</summary>
+    public class PlaylistSortState
+    {
+        public string SortColumn { get; set; } = string.Empty;    // SortMemberPath
+        public string SortDirection { get; set; } = string.Empty; // "Ascending" | "Descending"
     }
 }

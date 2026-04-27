@@ -714,9 +714,11 @@ public partial class PlaylistTabs
                 vm.OnDataGridLoaded(sender, e);
                 RegenerateColumns(dg);
 
-                // Scroll to the restored selection once layout is settled.
+                // RegenerateColumns removes/adds columns which clears DataGrid selection — re-apply from the viewmodel.
                 if (vm.SelectedTrack != null)
                 {
+                    dg.SelectedItem = vm.SelectedTrack;
+
                     Dispatcher.BeginInvoke(() =>
                     {
                         if (dg.SelectedItem != null)
@@ -747,6 +749,51 @@ public partial class PlaylistTabs
                                     view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
                                     col.SortDirection = dir;
                                     // Clear sort glyph from all other columns
+                                    foreach (DataGridColumn other in dg.Columns)
+                                    {
+                                        if (!ReferenceEquals(other, col))
+                                            other.SortDirection = null;
+                                    }
+                                }
+
+                                // Re-apply selection — CollectionView Reset clears DataGrid selection
+                                if (vm.SelectedTrack != null)
+                                {
+                                    dg.SelectedItem = vm.SelectedTrack;
+                                    dg.ScrollIntoView(vm.SelectedTrack);
+                                }
+                            }
+                        }, DispatcherPriority.Background);
+                    }
+                }
+
+                // Restore + wire sort for playlist DataGrids.
+                if (dg.DataContext is PlaylistTab playlistTab)
+                {
+                    // Attach sorting event to save state when user clicks a column header
+                    dg.Sorting += PlaylistDataGrid_Sorting;
+
+                    // Restore previously saved sort for this playlist
+                    ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
+                    if (sm != null &&
+                        sm.Settings.PlaylistSortStates.TryGetValue(playlistTab.Name, out AppSettings.PlaylistSortState? sortState) &&
+                        !string.IsNullOrWhiteSpace(sortState.SortColumn) &&
+                        !string.IsNullOrWhiteSpace(sortState.SortDirection))
+                    {
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            DataGridColumn? col = dg.Columns.FirstOrDefault(c =>
+                                string.Equals(c.SortMemberPath, sortState.SortColumn, StringComparison.Ordinal));
+
+                            if (col != null &&
+                                Enum.TryParse(sortState.SortDirection, out ListSortDirection dir))
+                            {
+                                ICollectionView? view = CollectionViewSource.GetDefaultView(dg.ItemsSource);
+                                if (view != null)
+                                {
+                                    view.SortDescriptions.Clear();
+                                    view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
+                                    col.SortDirection = dir;
                                     foreach (DataGridColumn other in dg.Columns)
                                     {
                                         if (!ReferenceEquals(other, col))
@@ -853,6 +900,32 @@ public partial class PlaylistTabs
             settingsManager.Settings.LibrarySortColumn = sortPath;
             settingsManager.Settings.LibrarySortDirection = newDirection.ToString();
             settingsManager.SaveSettings(nameof(AppSettings.LibrarySortColumn));
+        }, DispatcherPriority.Background);
+    }
+
+    private void PlaylistDataGrid_Sorting(object sender, DataGridSortingEventArgs e)
+    {
+        if (sender is not DataGrid dg || dg.DataContext is not PlaylistTab playlistTab)
+            return;
+
+        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
+        if (settingsManager == null)
+            return;
+
+        ListSortDirection newDirection = e.Column.SortDirection == ListSortDirection.Ascending
+            ? ListSortDirection.Descending
+            : ListSortDirection.Ascending;
+
+        string sortPath = e.Column.SortMemberPath ?? e.Column.Header?.ToString() ?? string.Empty;
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            settingsManager.Settings.PlaylistSortStates[playlistTab.Name] = new AppSettings.PlaylistSortState
+            {
+                SortColumn    = sortPath,
+                SortDirection = newDirection.ToString()
+            };
+            settingsManager.SaveSettings(nameof(AppSettings.PlaylistSortStates));
         }, DispatcherPriority.Background);
     }
 

@@ -60,6 +60,7 @@ public sealed class FakeMusicLibrary : IMusicLibrary
     {
     }
 
+    public event EventHandler? LibraryLoaded;
     public Task LoadFromDatabaseAsync() => Task.CompletedTask;
 
     public Task CleanOrphanedTracksAsync() => Task.CompletedTask;

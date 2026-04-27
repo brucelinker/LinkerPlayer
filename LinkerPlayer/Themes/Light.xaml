@@ -78,4 +78,17 @@
   <Color x:Key="SpectrumLineColor">LightSteelBlue</Color>
   <Color x:Key="SpectrumBackgroundColor">#FFFFFF</Color>
 
+  <!--  Query syntax highlighting  -->
+  <Color x:Key="QueryFieldColor">#B18D00</Color>
+  <Color x:Key="QueryOperatorColor">#C07000</Color>
+  <Color x:Key="QueryValueColor">#1A7060</Color>
+  <Color x:Key="QueryOrColor">#7B3FA0</Color>
+  <Color x:Key="QueryErrorColor">#C0000C</Color>
+
+  <SolidColorBrush x:Key="QueryFieldBrush" Color="{StaticResource QueryFieldColor}" />
+  <SolidColorBrush x:Key="QueryOperatorBrush" Color="{StaticResource QueryOperatorColor}" />
+  <SolidColorBrush x:Key="QueryValueBrush" Color="{StaticResource QueryValueColor}" />
+  <SolidColorBrush x:Key="QueryOrBrush" Color="{StaticResource QueryOrColor}" />
+  <SolidColorBrush x:Key="QueryErrorBrush" Color="{StaticResource QueryErrorColor}" />
+
 </ResourceDictionary>

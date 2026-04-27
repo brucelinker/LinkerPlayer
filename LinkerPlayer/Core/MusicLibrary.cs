@@ -35,6 +35,7 @@ public interface IMusicLibrary
     Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks);
     Task SaveToDatabaseAsync();
     void SaveToDatabase();
+    event EventHandler LibraryLoaded;
     Task LoadFromDatabaseAsync();
     Task CleanOrphanedTracksAsync();
     Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true);
@@ -51,6 +52,8 @@ public class MusicLibrary : IMusicLibrary
         "LinkerPlayer", "music_library.db");
 
     private readonly IDbContextFactory<MusicLibraryDbContext> _dbContextFactory;
+    public event EventHandler? LibraryLoaded;
+
     public RangeObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
     public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
@@ -202,6 +205,9 @@ public class MusicLibrary : IMusicLibrary
                 track.EnableDirtyTracking();
             }
             MainLibrary.AddRange(tracks);
+
+            // Notify subscribers (e.g. PlaylistTabsViewModel) that the library is populated
+            Application.Current?.Dispatcher.BeginInvoke(() => LibraryLoaded?.Invoke(this, EventArgs.Empty));
 
             // Process playlists
             foreach (Playlist playlist in playlists)
