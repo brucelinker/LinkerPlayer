@@ -825,6 +825,12 @@ public partial class PlaylistTabs
                 dg.AddHandler(UIElement.PreviewMouseLeftButtonDownEvent,
                     new MouseButtonEventHandler(DataGrid_PreviewMouseLeftButtonDown),
                     handledEventsToo: true);
+
+                // Keep keyboard focus inside the DataGrid when the selection is at the
+                // first/last row so it cannot escape to the ScrollBar.
+                dg.AddHandler(UIElement.PreviewKeyDownEvent,
+                    new KeyEventHandler(DataGrid_PreviewKeyDown),
+                    handledEventsToo: false);
             }
         }, DispatcherPriority.Loaded);
     }
@@ -835,6 +841,55 @@ public partial class PlaylistTabs
         {
             e.Handled = true;
         }
+    }
+
+    /// <summary>
+    /// Keeps keyboard focus inside the DataGrid when navigation reaches the first or last row.
+    /// Without this, pressing ↓ on the last row lets WPF shift focus to the vertical ScrollBar,
+    /// after which ↑/↓ moves the scroll thumb instead of the selection.
+    /// </summary>
+    private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Down && e.Key != Key.Up)
+            return;
+
+        if (sender is not DataGrid dg)
+            return;
+
+        // If focus has already escaped to a ScrollBar inside the DataGrid, reclaim it.
+        if (Keyboard.FocusedElement is ScrollBar sb &&
+            FindAncestor<DataGrid>(sb) == dg)
+        {
+            // Return focus to the selected row (or the first item as a fallback).
+            DataGridRow? row = GetSelectedRow(dg) ?? GetRowAt(dg, 0);
+            row?.Focus();
+            // Don't eat the key — let DataGrid handle navigation from the refocused row.
+            return;
+        }
+
+        // Prevent navigation past the last row (↓) or past the first row (↑).
+        if (e.Key == Key.Down && dg.SelectedIndex >= dg.Items.Count - 1)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Up && dg.SelectedIndex <= 0)
+        {
+            e.Handled = true;
+        }
+    }
+
+    private static DataGridRow? GetSelectedRow(DataGrid dg)
+    {
+        if (dg.SelectedItem == null) return null;
+        return dg.ItemContainerGenerator.ContainerFromItem(dg.SelectedItem) as DataGridRow;
+    }
+
+    private static DataGridRow? GetRowAt(DataGrid dg, int index)
+    {
+        if (index < 0 || index >= dg.Items.Count) return null;
+        return dg.ItemContainerGenerator.ContainerFromIndex(index) as DataGridRow;
     }
 
     private void TracksTable_OnSelectionChanged(object sender, SelectionChangedEventArgs e)

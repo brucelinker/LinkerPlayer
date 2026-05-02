@@ -489,6 +489,8 @@
                 <MenuItem Command="{Binding PlacementTarget.Tag.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Play" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Delete from Library" />
                 <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.RescanSelectedTracksCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Rescan Track(s)" />
+                <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze Silence" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.CancelAnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Cancel Analyze" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.ClearSilenceAnalysisCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Clear Silence Analysis" />
@@ -710,6 +712,8 @@
               <ContextMenu>
                 <MenuItem Command="{Binding PlacementTarget.Tag.PlayTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Play" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.RemoveTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Remove" />
+                <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.RescanSelectedTracksCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Rescan Track(s)" />
                 <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze Silence" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.CancelAnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Cancel Analyze" />

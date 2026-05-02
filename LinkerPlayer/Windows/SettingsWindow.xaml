@@ -6,7 +6,7 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   Title="Settings"
-  Width="845"
+  Width="612"
   Height="460"
   BorderBrush="{DynamicResource MainWindowBorderBrush}"
   BorderThickness="1"
@@ -205,7 +205,7 @@
             <ComboBox
               x:Name="OutputDeviceCombo"
               Grid.Column="1"
-              Width="520"
+              Width="260"
               Height="32"
               HorizontalContentAlignment="Center"
               Background="{DynamicResource ComboboxItemBackgroundBrush}"
@@ -604,7 +604,8 @@
       <Grid x:Name="LibraryPage" Visibility="Collapsed">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
-          <RowDefinition Height="*" />
+          <RowDefinition Height="200" />
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -631,7 +632,7 @@
 
         <StackPanel
           Grid.Row="2"
-          Margin="0,10,0,0"
+          Margin="0,20,0,0"
           Orientation="Horizontal">
           <Button
             x:Name="AddFolderButton"
@@ -665,6 +666,39 @@
             FontWeight="Light"
             Foreground="{DynamicResource ControlForegroundBrush}"
             Style="{StaticResource LinkerRectangleButton}" />
+          <Button
+            x:Name="ShowLogsButton"
+            Width="110"
+            Height="32"
+            Margin="10,0,0,0"
+            Click="OnShowLogsClick"
+            Content="Show Logs"
+            FontSize="{DynamicResource FontSizeButton}"
+            FontWeight="Light"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Style="{StaticResource LinkerRectangleButton}" />
+        </StackPanel>
+
+        <!--  Scan status strip  -->
+        <StackPanel
+          Grid.Row="3"
+          Margin="0,12,0,0"
+          Orientation="Horizontal"
+          VerticalAlignment="Center">
+          <TextBlock
+            x:Name="LibraryScanSpinner"
+            FontFamily="Consolas"
+            FontSize="14"
+            FontWeight="Bold"
+            Foreground="#5AACF0"
+            VerticalAlignment="Center"
+            Margin="0,0,8,0"
+            Visibility="Collapsed" />
+          <TextBlock
+            x:Name="LibraryScanStatusText"
+            FontSize="{DynamicResource FontSizeNormal}"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            VerticalAlignment="Center" />
         </StackPanel>
       </Grid>
     </Grid>

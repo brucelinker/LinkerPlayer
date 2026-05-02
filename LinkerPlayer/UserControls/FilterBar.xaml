@@ -103,7 +103,7 @@
             MinWidth="200"
             VerticalAlignment="Center"
             Placeholder="Search keywords or query (? for help)..."
-            Text="{Binding KeywordSearch, UpdateSourceTrigger=PropertyChanged, Delay=300}"
+            Text="{Binding KeywordSearch, UpdateSourceTrigger=PropertyChanged, Delay=1000}"
             ToolTip="Search keywords, or type a query: bitrate &gt; 320 · year &gt; 1980 · genre = jazz · click ? for help" />
 
           <!--  Query help toggle button — sits inside the right edge of the TextBox  -->

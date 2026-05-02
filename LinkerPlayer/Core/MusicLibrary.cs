@@ -21,6 +21,7 @@ public interface IMusicLibrary
     Task<MediaFile?> AddTrackToLibraryAsync(MediaFile mediaFile, bool saveImmediately = true);
     Task AddTracksToLibraryBatchAsync(IEnumerable<MediaFile> mediaFiles);
     Task RemoveTrackFromLibraryAsync(string trackId);
+    Task RemoveTracksAsync(IEnumerable<string> trackIds);
     Task<int> RemoveTracksFromFolderAsync(string folderPath);
     Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId);
     Task<Playlist> AddNewPlaylistAsync(string playlistName);
@@ -285,7 +286,8 @@ public class MusicLibrary : IMusicLibrary
             {
                 if (CoverProber.HasEmbeddedCover(track.Path))
                 {
-                    track.HasEmbeddedCover = true;   // update in-memory immediately → icon appears live
+                    using (track.SuspendDirtyTracking())
+                        track.HasEmbeddedCover = true;   // update in-memory immediately → icon appears live
                     updatedIds.Add(track.Id);
                 }
             }
@@ -356,7 +358,8 @@ public class MusicLibrary : IMusicLibrary
             {
                 ATL.Track atlTrack = new(track.Path);
                 string codec = $"MP3 {(atlTrack.IsVBR ? "VBR" : "CBR")}";
-                track.Codec = codec;   // update in-memory immediately
+                using (track.SuspendDirtyTracking())
+                    track.Codec = codec;   // update in-memory immediately
                 updates.Add((track.Id, codec));
             }
             catch (Exception ex)
@@ -724,6 +727,34 @@ public class MusicLibrary : IMusicLibrary
         }
     }
 
+    public async Task RemoveTracksAsync(IEnumerable<string> trackIds)
+    {
+        HashSet<string> removeIds = trackIds.ToHashSet();
+        if (removeIds.Count == 0) return;
+
+        List<MediaFile> toRemove = MainLibrary.Where(t => removeIds.Contains(t.Id)).ToList();
+        foreach (MediaFile track in toRemove)
+            MainLibrary.Remove(track);
+
+        foreach (Playlist playlist in Playlists)
+        {
+            List<string> affected = playlist.TrackIds.Where(id => removeIds.Contains(id)).ToList();
+            foreach (string id in affected)
+                playlist.TrackIds.Remove(id);
+            if (playlist.SelectedTrackId != null && removeIds.Contains(playlist.SelectedTrackId))
+                playlist.SelectedTrackId = null;
+        }
+
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+        List<MediaFile> dbTracks = await context.Tracks
+            .Where(t => removeIds.Contains(t.Id))
+            .ToListAsync();
+        context.Tracks.RemoveRange(dbTracks);
+        await context.SaveChangesAsync();
+
+        await SaveToDatabaseAsync();
+    }
+
     public async Task<int> RemoveTracksFromFolderAsync(string folderPath)
     {
         // Find all tracks whose path starts with the watched folder (case-insensitive)
@@ -1009,53 +1040,40 @@ public class MusicLibrary : IMusicLibrary
 
                 if (inMemory != null)
                 {
-                    // Disable dirty tracking before the sync so property assignments
-                    // do not immediately re-mark the track dirty (which would cause
-                    // the Save button to re-enable and the close warning to reappear).
-                    // Restore only to the previous state — do NOT unconditionally enable,
-                    // because clones added via AddTracksToLibraryBatchAsync never had
-                    // dirty tracking turned on and should not have it turned on here.
-                    bool wasTrackingEnabled = inMemory.IsDirtyTrackingEnabled;
-                    inMemory.DisableDirtyTracking();
-                    try
+                    using IDisposable _suspend = inMemory.SuspendDirtyTracking();
+
+                    if (updateMetadata)
                     {
-                        if (updateMetadata)
-                        {
-                            inMemory.FileName = incoming.FileName;
-                            inMemory.Title = incoming.Title;
-                            inMemory.Artist = incoming.Artist;
-                            inMemory.Album = incoming.Album;
-                            inMemory.AlbumArtist = incoming.AlbumArtist;
-                            inMemory.Performers = incoming.Performers;
-                            inMemory.Composers = incoming.Composers;
-                            inMemory.Genres = incoming.Genres;
-                            inMemory.Copyright = incoming.Copyright;
-                            inMemory.Comment = incoming.Comment;
-                            inMemory.Track = incoming.Track;
-                            inMemory.TrackCount = incoming.TrackCount;
-                            inMemory.Disc = incoming.Disc;
-                            inMemory.DiscCount = incoming.DiscCount;
-                            inMemory.Year = incoming.Year;
-                            inMemory.Duration = incoming.Duration;
-                            inMemory.Bitrate = incoming.Bitrate;
-                            inMemory.SampleRate = incoming.SampleRate;
-                            inMemory.Channels = incoming.Channels;
-                            inMemory.Codec = incoming.Codec;
+                        inMemory.FileName = incoming.FileName;
+                        inMemory.Title = incoming.Title;
+                        inMemory.Artist = incoming.Artist;
+                        inMemory.Album = incoming.Album;
+                        inMemory.AlbumArtist = incoming.AlbumArtist;
+                        inMemory.Performers = incoming.Performers;
+                        inMemory.Composers = incoming.Composers;
+                        inMemory.Genres = incoming.Genres;
+                        inMemory.Copyright = incoming.Copyright;
+                        inMemory.Comment = incoming.Comment;
+                        inMemory.Track = incoming.Track;
+                        inMemory.TrackCount = incoming.TrackCount;
+                        inMemory.Disc = incoming.Disc;
+                        inMemory.DiscCount = incoming.DiscCount;
+                        inMemory.Year = incoming.Year;
+                        inMemory.Duration = incoming.Duration;
+                        inMemory.Bitrate = incoming.Bitrate;
+                        inMemory.SampleRate = incoming.SampleRate;
+                        inMemory.Channels = incoming.Channels;
+                        inMemory.Codec = incoming.Codec;
 
-                            inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
-                            inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
-                            inMemory.HasEmbeddedCover = incoming.HasEmbeddedCover;
-                        }
-
-                        if (updateAnalysis)
-                        {
-                            inMemory.LeadingSilenceMs = incoming.LeadingSilenceMs;
-                            inMemory.TrailingSilenceMs = incoming.TrailingSilenceMs;
-                        }
+                        inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
+                        inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
+                        inMemory.HasEmbeddedCover = incoming.HasEmbeddedCover;
                     }
-                    finally
+
+                    if (updateAnalysis)
                     {
-                        if (wasTrackingEnabled) inMemory.EnableDirtyTracking();
+                        inMemory.LeadingSilenceMs = incoming.LeadingSilenceMs;
+                        inMemory.TrailingSilenceMs = incoming.TrailingSilenceMs;
                     }
                 }
             }

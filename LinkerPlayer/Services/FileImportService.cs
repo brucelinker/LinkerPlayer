@@ -45,6 +45,13 @@ public interface IFileImportService
     /// <param name="folderPath">Path to the folder</param>
     /// <returns>Number of audio files found</returns>
     int GetAudioFileCount(string folderPath);
+
+    /// <summary>
+    /// Returns the paths of all audio files in a folder recursively
+    /// </summary>
+    /// <param name="folderPath">Path to the folder</param>
+    /// <returns>List of audio file paths</returns>
+    List<string> GetAudioFilesFromFolder(string folderPath);
 }
 
 public class FileImportService : IFileImportService
@@ -602,7 +609,7 @@ public class FileImportService : IFileImportService
         }
     }
 
-    private List<string> GetAudioFilesFromFolder(string folderPath)
+    public List<string> GetAudioFilesFromFolder(string folderPath)
     {
         try
         {

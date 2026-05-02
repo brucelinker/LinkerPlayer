@@ -228,8 +228,26 @@ public partial class MainWindow : Window
             foreach (LinkerPlayer.Models.MediaFile t in dirty)
                 _logger.LogInformation("  DIRTY  [{Props}]  {Path}", string.Join(", ", t.DirtyProperties), t.Path);
 
+            // Build a readable list of tracks for the user — cap at 20 to keep the box manageable.
+            const int maxListed = 20;
+            System.Text.StringBuilder sb = new();
+            sb.AppendLine($"You have {dirty.Count} unsaved track change(s).");
+            sb.AppendLine();
+            sb.AppendLine("Tracks with changes:");
+            for (int i = 0; i < Math.Min(dirty.Count, maxListed); i++)
+            {
+                LinkerPlayer.Models.MediaFile t = dirty[i];
+                string props = string.Join(", ", t.DirtyProperties);
+                string name = !string.IsNullOrWhiteSpace(t.Title) ? t.Title : t.FileName;
+                sb.AppendLine($"  • {name}  [{props}]");
+            }
+            if (dirty.Count > maxListed)
+                sb.AppendLine($"  … and {dirty.Count - maxListed} more.");
+            sb.AppendLine();
+            sb.AppendLine("Yes = save changes   |   No = discard all changes   |   Cancel = go back");
+
             MessageBoxResult result = MessageBox.Show(
-                $"You have {dirty.Count} unsaved track(s). Do you want to save before closing?",
+                sb.ToString(),
                 "Unsaved Changes",
                 MessageBoxButton.YesNoCancel,
                 MessageBoxImage.Warning);
@@ -242,11 +260,18 @@ public partial class MainWindow : Window
                 await _playlistVm.SaveDirtyTracksCommand.ExecuteAsync(null);
                 Application.Current.Shutdown();
             }
-            else if (result == MessageBoxResult.Cancel)
+            else if (result == MessageBoxResult.No)
+            {
+                // Discard all in-memory changes so the next startup starts clean.
+                foreach (LinkerPlayer.Models.MediaFile t in dirty)
+                    t.ClearDirty();
+                _logger.LogInformation("User discarded {Count} unsaved change(s) on close.", dirty.Count);
+                // fall through → allow close
+            }
+            else // Cancel
             {
                 e.Cancel = true;
             }
-            // result == No → allow close without saving (fall through)
         }
     }
 }

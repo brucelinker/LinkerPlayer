@@ -76,6 +76,9 @@ public partial class App
                 // Register ImportErrorsWindow as transient so a window instance is available for DI when needed
                 services.AddTransient<ImportErrorsWindow>();
 
+                services.AddSingleton<IRescanLogger, RescanLogger>();
+                services.AddSingleton<RescanLogWindow>();
+
                 services.AddSingleton<ISettingsManager, SettingsManager>();
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
@@ -193,11 +196,12 @@ public partial class App
                     // One-time backfill: refine plain "MP3" codec to "MP3 VBR" / "MP3 CBR".
                     await library.BackfillMp3VbrAsync().ConfigureAwait(false);
 
-                    // Phase 1: scan watched folders after library is loaded
+                    // Phase 1: full diff-scan watched folders after library is loaded
+                    // (finds adds, removes missing tracks, refreshes modified metadata)
                     IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();
                     IProgress<ProgressData> startupProgress = new Progress<ProgressData>(data =>
                         WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
-                    await watchedFolderService.ScanAllAsync(startupProgress).ConfigureAwait(false);
+                    await Task.Run(async () => await watchedFolderService.FullScanAllAsync(startupProgress));
                 }
                 catch (Exception ex)
                 {

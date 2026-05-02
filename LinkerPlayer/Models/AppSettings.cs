@@ -68,6 +68,9 @@ public class AppSettings
     // Watched folders — scanned on startup to auto-import audio files
     public List<string> WatchedFolders { get; set; } = new();
 
+    // UTC timestamp of the most recent successful full diff-scan completion
+    public DateTime? LastScanCompletedUtc { get; set; } = null;
+
     [Serializable]
     public class ColumnInfo
     {

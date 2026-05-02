@@ -21,6 +21,14 @@ public enum TrackSource
     WatchedFolder
 }
 
+public enum TrackHealthStatus
+{
+    Unknown,   // not yet checked
+    Ok,        // file exists and write-time matches
+    Missing,   // file no longer exists on disk
+    Changed    // file exists but metadata/write-time has drifted
+}
+
 public interface IMediaFile
 {
     string Id { get; }
@@ -90,14 +98,17 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     }
 
     /// <summary>
-    /// Properties that can be edited inline in the Library DataGrid.
+    /// Properties that are auto-dirtied when changed while dirty tracking is enabled.
+    /// AlbumCover is intentionally absent: it is loaded by background infrastructure on
+    /// scroll and must only become dirty via an explicit <see cref="MarkPropertyDirty"/> call
+    /// from a user action (e.g. paste/drag cover art).
     /// </summary>
     private static readonly HashSet<string> EditableProperties = new()
     {
         nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumArtist),
         nameof(Genres), nameof(Track), nameof(TrackCount), nameof(Disc),
         nameof(DiscCount), nameof(Year), nameof(Composers), nameof(Comment),
-        nameof(Copyright), nameof(AlbumCover)
+        nameof(Copyright)
     };
 
     [NotMapped]
@@ -118,9 +129,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     public void MarkPropertyDirty(string propertyName)
     {
-        if (!EditableProperties.Contains(propertyName))
-            return;
-
         bool added;
         lock (_dirtyLock)
         {
@@ -165,6 +173,39 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     public void DisableDirtyTracking() => _isDirtyTrackingEnabled = false;
 
     public bool IsDirtyTrackingEnabled => _isDirtyTrackingEnabled;
+
+    /// <summary>
+    /// Temporarily suspends dirty tracking for the duration of the returned scope.
+    /// Restores the previous state on <see cref="IDisposable.Dispose"/>, even if an
+    /// exception is thrown. Replaces the scattered <c>bool wasEnabled / Disable / if (wasEnabled) Enable</c>
+    /// pattern — callers just write <c>using (track.SuspendDirtyTracking()) { … }</c>.
+    /// </summary>
+    public IDisposable SuspendDirtyTracking()
+    {
+        bool wasEnabled = _isDirtyTrackingEnabled;
+        _isDirtyTrackingEnabled = false;
+        return new DirtyTrackingScope(this, wasEnabled);
+    }
+
+    private sealed class DirtyTrackingScope : IDisposable
+    {
+        private readonly MediaFile _owner;
+        private readonly bool _restore;
+        private bool _disposed;
+
+        internal DirtyTrackingScope(MediaFile owner, bool restore)
+        {
+            _owner = owner;
+            _restore = restore;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            if (_restore) _owner._isDirtyTrackingEnabled = true;
+        }
+    }
 
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
@@ -280,6 +321,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private string _watchedFolderPath = string.Empty;
 
+    [property: NotMapped]
+    [ObservableProperty]
+    private TrackHealthStatus _healthStatus = TrackHealthStatus.Unknown;
+
     [NotMapped]
     [ObservableProperty]
     private BitmapImage? _albumCover;
@@ -341,8 +386,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if (string.IsNullOrWhiteSpace(Path))
             return;
 
-        bool wasTrackingEnabled = _isDirtyTrackingEnabled;
-        DisableDirtyTracking();
+        using IDisposable _ = SuspendDirtyTracking();
         Track? track = null;
 
         try
@@ -353,12 +397,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             // Let IOExceptions bubble up to callers (e.g. TrackMetadataRefresher) that
             // have retry logic for transient file-lock errors on UNC/NAS shares.
-            if (wasTrackingEnabled) EnableDirtyTracking();
             throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            if (wasTrackingEnabled) EnableDirtyTracking(); // restore only if it was on before
             try { Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path); } catch { }
             try
             {
@@ -489,7 +531,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         // the Library DataGrid show the cover indicator for every track on startup.
         HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
 
-        if (wasTrackingEnabled) EnableDirtyTracking();
+        try { FileLastWriteTimeUtc = File.GetLastWriteTimeUtc(Path); } catch { }
     }
 
     private void SetFallbackMetadata(bool raisePropertyChanged)
@@ -515,8 +557,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         // Disable dirty tracking so setting AlbumCover here doesn't mark the track
         // as needing a save — this is a display-only load, not a user edit.
-        bool wasTrackingEnabled = _isDirtyTrackingEnabled;
-        DisableDirtyTracking();
+        using IDisposable _suspend = SuspendDirtyTracking();
         try
         {
             Track track = new Track(Path);
@@ -571,7 +612,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         finally
         {
-            if (wasTrackingEnabled) EnableDirtyTracking();
             // ATL.Track has no IDisposable — nudge the GC to collect it promptly
             // so it releases the OS file handle on the UNC share.
             GC.Collect(0, GCCollectionMode.Optimized, blocking: false);

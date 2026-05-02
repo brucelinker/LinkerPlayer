@@ -4,22 +4,29 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace LinkerPlayer.Windows;
 
 public partial class SettingsWindow
 {
+    private static readonly string[] SpinnerFrames = ["|" , "/", "—", "\\"];
+
     private readonly ThemeManager _themeManager = new();
     private readonly IAudioEngine _audioEngine;
     private readonly ISettingsManager _settingsManager;
     private readonly IWatchedFolderService _watchedFolderService;
     private readonly IMusicLibrary _musicLibrary;
+    private readonly IRescanLogger _rescanLogger;
     private readonly ILogger _logger;
+    private readonly DispatcherTimer _scanSpinner;
+    private int _spinnerFrame;
 
     private const string DefaultDeviceName = "Primary Sound Driver";
     private bool _isLoaded = false;
@@ -43,13 +50,24 @@ public partial class SettingsWindow
         ISettingsManager settingsManager,
         IWatchedFolderService watchedFolderService,
         IMusicLibrary musicLibrary,
+        IRescanLogger rescanLogger,
         ILogger<SettingsWindow> logger)
     {
         _audioEngine = audioEngine;
         _settingsManager = settingsManager;
         _watchedFolderService = watchedFolderService;
         _musicLibrary = musicLibrary;
+        _rescanLogger = rescanLogger;
         _logger = logger;
+
+        _scanSpinner = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
+        _scanSpinner.Tick += (_, _) =>
+        {
+            _spinnerFrame = (_spinnerFrame + 1) % SpinnerFrames.Length;
+            LibraryScanSpinner.Text = SpinnerFrames[_spinnerFrame];
+        };
+
+        _rescanLogger.ScanStatusChanged += OnScanStatusChanged;
 
         try
         {
@@ -107,6 +125,7 @@ public partial class SettingsWindow
         try
         {
             LoadBehaviorSettings();
+            RefreshScanStatus();
 
             // Set theme with error handling
             try
@@ -432,6 +451,7 @@ public partial class SettingsWindow
             case 3:
                 LibraryPage.Visibility = Visibility.Visible;
                 LoadLibrarySettings();
+                RefreshScanStatus();
                 break;
         }
     }
@@ -533,6 +553,29 @@ public partial class SettingsWindow
 
     private void Window_Closing(object sender, EventArgs e)
     {
+        _rescanLogger.ScanStatusChanged -= OnScanStatusChanged;
+        _scanSpinner.Stop();
+    }
+
+    private void RefreshScanStatus()
+    {
+        LibraryScanStatusText.Text = _rescanLogger.ScanStatusText;
+        if (_rescanLogger.IsScanning)
+        {
+            LibraryScanSpinner.Visibility = Visibility.Visible;
+            if (!_scanSpinner.IsEnabled) _scanSpinner.Start();
+        }
+        else
+        {
+            _scanSpinner.Stop();
+            LibraryScanSpinner.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void OnScanStatusChanged(object? sender, EventArgs e)
+    {
+        // Already dispatched to UI thread by RescanLogger
+        RefreshScanStatus();
     }
 
     private void LoadBehaviorSettings()
@@ -816,7 +859,8 @@ public partial class SettingsWindow
         {
             IProgress<ProgressData> progress = new Progress<ProgressData>(data =>
                 WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
-            await _watchedFolderService.ScanAllAsync(progress).ConfigureAwait(false);
+
+            await Task.Run(async () => await _watchedFolderService.FullScanAllAsync(progress));
         }
         catch (Exception ex)
         {
@@ -824,11 +868,28 @@ public partial class SettingsWindow
         }
         finally
         {
-            Dispatcher.Invoke(() =>
-            {
-                AddFolderButton.IsEnabled = true;
-                RescanButton.IsEnabled = true;
-            });
+            AddFolderButton.IsEnabled = true;
+            RescanButton.IsEnabled = true;
+        }
+    }
+
+    private void OnShowLogsClick(object sender, RoutedEventArgs e)
+    {
+        RescanLogWindow? wnd = App.AppHost?.Services?.GetService<RescanLogWindow>();
+        if (wnd == null) return;
+
+        if (wnd.Owner != this)
+            wnd.Owner = this;
+
+        if (!wnd.IsVisible)
+        {
+            wnd.Left = Left + (ActualWidth  - wnd.Width)  / 2;
+            wnd.Top  = Top  + (ActualHeight - wnd.Height) / 2;
+            wnd.Show();
+        }
+        else
+        {
+            wnd.Activate();
         }
     }
 }

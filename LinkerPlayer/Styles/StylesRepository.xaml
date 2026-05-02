@@ -8,6 +8,7 @@
   xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
   xmlns:system="clr-namespace:System;assembly=System.Runtime"
+  xmlns:models="clr-namespace:LinkerPlayer.Models"
   mc:Ignorable="d">
 
   <!--  Converter used by play/pause visibility (matches original working behavior)  -->
@@ -645,6 +646,15 @@
         <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
         <Setter Property="FontWeight" Value="Normal" />
       </Trigger>
+      <!--  Track health: Missing (red) and Changed (steel-blue) override foreground.
+            DataTriggers are evaluated last so they win over the base Foreground setter,
+            but we re-apply on IsSelected too so the tint survives row selection.  -->
+      <DataTrigger Binding="{Binding HealthStatus}" Value="{x:Static models:TrackHealthStatus.Missing}">
+        <Setter Property="Foreground" Value="#E05555" />
+      </DataTrigger>
+      <DataTrigger Binding="{Binding HealthStatus}" Value="{x:Static models:TrackHealthStatus.Changed}">
+        <Setter Property="Foreground" Value="#5AACF0" />
+      </DataTrigger>
     </Style.Triggers>
   </Style>
 

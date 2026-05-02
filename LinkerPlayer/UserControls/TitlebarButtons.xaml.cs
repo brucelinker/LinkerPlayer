@@ -33,7 +33,9 @@ public partial class TitlebarButtons
         }
         else
         {
-            // Before showing settings, allow opening Import Errors window from settings
+            if (_settingsWindow.Owner == null)
+                _settingsWindow.Owner = Window.GetWindow(this);
+
             _settingsWindow.Show();
         }
     }

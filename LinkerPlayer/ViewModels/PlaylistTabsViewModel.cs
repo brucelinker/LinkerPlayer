@@ -493,6 +493,9 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             }
 
             SyncGridSelection(selectedTrack, index);
+
+            // Passively check health status for newly-selected Unknown tracks
+            CheckHealthForTracks(selectedTracks);
         }
         else
         {
@@ -500,6 +503,49 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _selectionService.SetTrack(null, -1);
             SelectedTrack = null;
         }
+    }
+
+    /// <summary>
+    /// Checks file-system health for any selected tracks that haven't been checked yet
+    /// (status == Unknown). Runs on a background thread; updates HealthStatus on the UI thread.
+    /// </summary>
+    private void CheckHealthForTracks(List<MediaFile> tracks)
+    {
+        List<MediaFile> toCheck = tracks.Where(t => t.HealthStatus == TrackHealthStatus.Unknown).ToList();
+        if (toCheck.Count == 0)
+            return;
+
+        Task.Run(() =>
+        {
+            foreach (MediaFile track in toCheck)
+            {
+                TrackHealthStatus status;
+                if (!File.Exists(track.Path))
+                {
+                    status = TrackHealthStatus.Missing;
+                }
+                else if (track.FileLastWriteTimeUtc.HasValue)
+                {
+                    try
+                    {
+                        DateTime diskTime = File.GetLastWriteTimeUtc(track.Path);
+                        status = Math.Abs((diskTime - track.FileLastWriteTimeUtc.Value).TotalSeconds) > 2
+                            ? TrackHealthStatus.Changed
+                            : TrackHealthStatus.Ok;
+                    }
+                    catch { status = TrackHealthStatus.Ok; }
+                }
+                else
+                {
+                    status = TrackHealthStatus.Ok;
+                }
+
+                if (status != TrackHealthStatus.Unknown)
+                {
+                    _uiDispatcher.InvokeAsync(() => track.HealthStatus = status);
+                }
+            }
+        });
     }
 
     private void SyncGridSelection(MediaFile? track, int index)
@@ -1182,6 +1228,59 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing track from playlist/library");
+        }
+    }
+
+    [RelayCommand]
+    private async Task RescanSelectedTracks()
+    {
+        if (_dataGrid == null) return;
+
+        List<MediaFile> targets = _dataGrid.SelectedItems.Cast<MediaFile>()
+            .Where(t => t.HealthStatus == TrackHealthStatus.Missing || t.HealthStatus == TrackHealthStatus.Changed)
+            .ToList();
+
+        if (targets.Count == 0) return;
+
+        List<MediaFile> missing  = targets.Where(t => t.HealthStatus == TrackHealthStatus.Missing).ToList();
+        List<MediaFile> changed  = targets.Where(t => t.HealthStatus == TrackHealthStatus.Changed).ToList();
+
+        // Confirm removal of missing tracks
+        if (missing.Count > 0)
+        {
+            string names = string.Join("\n  • ", missing.Select(t => t.FileName));
+            MessageBoxResult answer = MessageBox.Show(
+                $"The following {missing.Count} track(s) no longer exist on disk and will be removed from the library:\n\n  • {names}\n\nProceed?",
+                "Remove Missing Tracks",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (answer == MessageBoxResult.Yes)
+            {
+                await _musicLibrary.RemoveTracksAsync(missing.Select(t => t.Id)).ConfigureAwait(false);
+            }
+        }
+
+        // Refresh metadata for changed tracks
+        if (changed.Count > 0)
+        {
+            await Task.Run(() =>
+            {
+                foreach (MediaFile track in changed)
+                {
+                    try
+                    {
+                        track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                        _uiDispatcher.InvokeAsync(() => track.HealthStatus = TrackHealthStatus.Ok);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to refresh metadata for {Path}", track.Path);
+                    }
+                }
+            }).ConfigureAwait(false);
+
+            await _musicLibrary.UpdateTracksAsync(changed).ConfigureAwait(false);
         }
     }
 
