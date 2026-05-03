@@ -19,11 +19,19 @@ internal sealed class PlaceholderAdorner : Adorner
         set { _placeholderText = value; InvalidateVisual(); }
     }
 
-    public bool IsVisible
+    public new bool IsVisible
     {
         get => _isVisible;
-        set { _isVisible = value; InvalidateVisual(); }
+        set => SetIsVisible(value);
     }
+
+    public bool GetIsVisible()
+    {
+        return _isVisible;
+    }
+
+    public void SetIsVisible(bool value)
+    { _isVisible = value; InvalidateVisual(); }
 
     public PlaceholderAdorner(UIElement adornedElement, string placeholderText)
         : base(adornedElement)

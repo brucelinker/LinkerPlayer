@@ -84,7 +84,10 @@ internal static class CoverProber
 
     private static bool ProbeId3V2(string path)
     {
-        using FileStream fs = OpenRead(path);
+        using FileStream? fs = OpenRead(path);
+        if (fs is null)
+            return false;
+        
         Span<byte> hdr = stackalloc byte[10];
         if (fs.Read(hdr) < 10)
             return false;
@@ -147,7 +150,10 @@ internal static class CoverProber
 
     private static bool ProbeFlac(string path)
     {
-        using FileStream fs = OpenRead(path);
+        using FileStream? fs = OpenRead(path);
+        if (fs is null)
+            return false;
+        
         Span<byte> sig = stackalloc byte[4];
         if (fs.Read(sig) < 4)
             return false;
@@ -174,7 +180,10 @@ internal static class CoverProber
 
     private static bool ProbeOgg(string path)
     {
-        using FileStream fs = OpenRead(path);
+        using FileStream? fs = OpenRead(path);
+        if (fs is null)
+            return false;
+        
         // Scan only the first 128 KB — comment packet is always near the start
         byte[] buf = new byte[Math.Min(128 * 1024, fs.Length > 0 ? (int)fs.Length : 128 * 1024)];
         int read = ReadFull(fs, buf);
@@ -191,7 +200,10 @@ internal static class CoverProber
 
     private static bool ProbeMp4(string path)
     {
-        using FileStream fs = OpenRead(path);
+        using FileStream? fs = OpenRead(path);
+        if (fs is null)
+            return false;
+        
         // Walk top-level boxes looking for moov; inside moov walk for udta/ilst/covr
         return WalkMp4Boxes(fs, fs.Length, 0);
     }
@@ -202,6 +214,7 @@ internal static class CoverProber
             return false;
         long end = fs.Position + limit;
         Span<byte> boxHdr = stackalloc byte[8];
+        Span<byte> ext = stackalloc byte[8];
 
         while (fs.Position + 8 <= end)
         {
@@ -216,7 +229,6 @@ internal static class CoverProber
             if (size == 1)
             {
                 // Extended 64-bit size
-                Span<byte> ext = stackalloc byte[8];
                 if (fs.Read(ext) < 8)
                     break;
                 size = (long)BinaryPrimitives.ReadUInt64BigEndian(ext);
@@ -259,7 +271,10 @@ internal static class CoverProber
 
     private static bool ProbeAsf(string path)
     {
-        using FileStream fs = OpenRead(path);
+        using FileStream? fs = OpenRead(path);
+        if (fs is null)
+            return false;
+        
         Span<byte> guid = stackalloc byte[16];
         if (fs.Read(guid) < 16)
             return false;
@@ -272,10 +287,10 @@ internal static class CoverProber
             return false;
         // long headerSize = BinaryPrimitives.ReadInt64LittleEndian(meta[..8]);
         int numObjects = BinaryPrimitives.ReadInt32LittleEndian(meta[8..12]);
+        Span<byte> objHdr = stackalloc byte[24];
 
         for (int i = 0; i < numObjects && i < 64; i++)
         {
-            Span<byte> objHdr = stackalloc byte[24];
             if (fs.Read(objHdr) < 24)
                 break;
             long objSize = BinaryPrimitives.ReadInt64LittleEndian(objHdr[16..24]);
@@ -304,7 +319,10 @@ internal static class CoverProber
 
     private static bool ProbeApeTag(string path)
     {
-        using FileStream fs = OpenRead(path);
+        using FileStream? fs = OpenRead(path);
+        if (fs is null)
+            return false;
+        
         // APE tag is usually at the end. Preamble: "APETAGEX" at file end - 32 bytes
         if (fs.Length < 32)
             return false;

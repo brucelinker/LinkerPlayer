@@ -1,6 +1,5 @@
 using LinkerPlayer.Audio;
 using LinkerPlayer.Windows;
-using LinkerPlayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Input;
@@ -33,8 +32,11 @@ public partial class TitlebarButtons
         }
         else
         {
-            if (_settingsWindow.Owner == null)
-                _settingsWindow.Owner = Window.GetWindow(this);
+            //if (_settingsWindow.Owner == null)
+            //{
+                _settingsWindow.Owner = Application.Current.MainWindow;
+                _settingsWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            //}
 
             _settingsWindow.Show();
         }

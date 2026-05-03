@@ -630,13 +630,13 @@
           ScrollViewer.VerticalScrollBarVisibility="Auto"
           SelectionMode="Single" />
 
-        <StackPanel
+        <UniformGrid
           Grid.Row="2"
-          Margin="0,20,0,0"
-          Orientation="Horizontal">
+          Margin="0,10,0,0"
+          Rows="1">
           <Button
             x:Name="AddFolderButton"
-            Width="110"
+            Width="90"
             Height="32"
             Margin="0,0,10,0"
             Click="OnAddFolderClick"
@@ -647,7 +647,7 @@
             Style="{StaticResource LinkerRectangleButton}" />
           <Button
             x:Name="RemoveFolderButton"
-            Width="110"
+            Width="90"
             Height="32"
             Margin="0,0,10,0"
             Click="OnRemoveFolderClick"
@@ -658,7 +658,7 @@
             Style="{StaticResource LinkerRectangleButton}" />
           <Button
             x:Name="RescanButton"
-            Width="110"
+            Width="90"
             Height="32"
             Click="OnRescanClick"
             Content="Rescan Now"
@@ -668,7 +668,7 @@
             Style="{StaticResource LinkerRectangleButton}" />
           <Button
             x:Name="ShowLogsButton"
-            Width="110"
+            Width="90"
             Height="32"
             Margin="10,0,0,0"
             Click="OnShowLogsClick"
@@ -677,28 +677,28 @@
             FontWeight="Light"
             Foreground="{DynamicResource ControlForegroundBrush}"
             Style="{StaticResource LinkerRectangleButton}" />
-        </StackPanel>
+        </UniformGrid>
 
         <!--  Scan status strip  -->
         <StackPanel
           Grid.Row="3"
           Margin="0,12,0,0"
-          Orientation="Horizontal"
-          VerticalAlignment="Center">
+          VerticalAlignment="Center"
+          Orientation="Horizontal">
           <TextBlock
             x:Name="LibraryScanSpinner"
+            Margin="0,0,8,0"
+            VerticalAlignment="Center"
             FontFamily="Consolas"
             FontSize="14"
             FontWeight="Bold"
             Foreground="#5AACF0"
-            VerticalAlignment="Center"
-            Margin="0,0,8,0"
             Visibility="Collapsed" />
           <TextBlock
             x:Name="LibraryScanStatusText"
+            VerticalAlignment="Center"
             FontSize="{DynamicResource FontSizeNormal}"
-            Foreground="{DynamicResource ControlForegroundBrush}"
-            VerticalAlignment="Center" />
+            Foreground="{DynamicResource ControlForegroundBrush}" />
         </StackPanel>
       </Grid>
     </Grid>

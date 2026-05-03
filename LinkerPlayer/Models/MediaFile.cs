@@ -335,7 +335,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     /// during the ATL metadata scan and does not require the image to be loaded.
     /// </summary>
     [NotMapped]
-    public bool HasAlbumCover => _albumCover != null || _hasEmbeddedCover;
+    public bool HasAlbumCover => AlbumCover != null || HasEmbeddedCover;
 
     partial void OnAlbumCoverChanged(BitmapImage? value) =>
         OnPropertyChanged(nameof(HasAlbumCover));

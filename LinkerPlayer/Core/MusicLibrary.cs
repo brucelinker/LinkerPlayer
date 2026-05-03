@@ -322,9 +322,9 @@ public class MusicLibrary : IMusicLibrary
                 if (cancellationToken.IsCancellationRequested) break;
 
                 List<string> batch = ids.GetRange(i, Math.Min(dbBatchSize, ids.Count - i));
-                string idList = string.Join(",", batch.Select(id => $"'{id}'"));
-                context.Database.ExecuteSqlRaw(
-                    $"UPDATE Tracks SET HasEmbeddedCover = 1 WHERE Id IN ({idList})");
+                string placeholders = string.Join(",", batch.Select((_, idx) => $"@p{idx}"));
+                string sql = $"UPDATE Tracks SET HasEmbeddedCover = 1 WHERE Id IN ({placeholders})";
+                context.Database.ExecuteSqlRaw(sql, batch.Cast<object>().ToArray());
             }
         }
         catch (Exception ex)
@@ -390,7 +390,7 @@ public class MusicLibrary : IMusicLibrary
                 List<(string Id, string Codec)> batch = updateList.GetRange(i, Math.Min(dbBatchSize, updateList.Count - i));
                 foreach ((string id, string codec) in batch)
                     context.Database.ExecuteSqlRaw(
-                        $"UPDATE Tracks SET Codec = '{codec}' WHERE Id = '{id}'");
+                        "UPDATE Tracks SET Codec = @codec WHERE Id = @id", codec, id);
             }
         }
         catch (Exception ex)

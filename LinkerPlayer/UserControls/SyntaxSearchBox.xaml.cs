@@ -329,6 +329,6 @@ public partial class SyntaxSearchBox : UserControl
 
         bool isEmpty  = string.IsNullOrEmpty(GetPlainText());
         bool hasFocus = RichBox.IsFocused;
-        _placeholderAdorner.IsVisible = isEmpty && !hasFocus;
+        _placeholderAdorner.SetIsVisible(isEmpty && !hasFocus);
     }
 }
