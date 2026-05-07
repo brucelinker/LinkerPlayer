@@ -221,7 +221,9 @@ public partial class PlayerControls
     {
         if (!Application.Current.Dispatcher.CheckAccess())
         {
-            Application.Current.Dispatcher.Invoke(() => OnProgressDataChanged(progressData));
+            if (Application.Current.Dispatcher.HasShutdownStarted)
+                return;
+            Application.Current.Dispatcher.BeginInvoke(() => OnProgressDataChanged(progressData));
             return;
         }
 

@@ -455,20 +455,29 @@ public class MusicLibrary : IMusicLibrary
         {
             context.ChangeTracker.AutoDetectChangesEnabled = false;
 
-            // Ensure all MainLibrary tracks have their database Id set
+            // Build a single path→id map from the DB in one round-trip, then fix up
+            // any in-memory tracks whose Id hasn't been assigned yet (e.g. freshly cloned
+            // stubs that were inserted by SaveTracksBatchAsync just before this call).
+            // This replaces the previous O(N) per-track FirstOrDefaultAsync loop.
+            List<(string Path, string Id)> dbPathIds = (await context.Tracks
+                .AsNoTracking()
+                .Select(t => new { t.Path, t.Id })
+                .ToListAsync())
+                .Select(r => (r.Path, r.Id))
+                .ToList();
+
+            Dictionary<string, string> pathToId = dbPathIds
+                .GroupBy(r => r.Path, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+
             foreach (MediaFile track in MainLibrary)
             {
-                MediaFile? existingTrack = await context.Tracks.FirstOrDefaultAsync(t => t.Path == track.Path);
-                if (existingTrack != null)
-                {
-                    track.Id = existingTrack.Id;
-                }
+                if (pathToId.TryGetValue(track.Path, out string? dbId))
+                    track.Id = dbId;
             }
 
             // Get all valid track IDs from the database
-            HashSet<string> validTrackIdsSet = new HashSet<string>(
-                await context.Tracks.Select(t => t.Id).ToListAsync()
-            );
+            HashSet<string> validTrackIdsSet = new HashSet<string>(pathToId.Values);
 
             // Update Order property for all playlists based on their position in the collection
             for (int i = 0; i < Playlists.Count; i++)
@@ -602,6 +611,8 @@ public class MusicLibrary : IMusicLibrary
             }
 
             if (!string.IsNullOrEmpty(mediaFile.Path) &&
+                !string.IsNullOrEmpty(mediaFile.FileName) &&
+                File.Exists(mediaFile.Path) &&
                 _supportedAudioExtensions.Any(s =>
                     s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
             {
@@ -647,6 +658,8 @@ public class MusicLibrary : IMusicLibrary
         foreach (MediaFile mediaFile in mediaFiles)
         {
             if (!string.IsNullOrEmpty(mediaFile.Path) &&
+                !string.IsNullOrEmpty(mediaFile.FileName) &&
+                File.Exists(mediaFile.Path) &&
                 _supportedAudioExtensions.Any(s =>
                     s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
             {

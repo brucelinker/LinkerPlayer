@@ -850,20 +850,54 @@ public partial class PlaylistTabs
     /// </summary>
     private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Down && e.Key != Key.Up)
+        if (sender is not DataGrid dg)
             return;
 
-        if (sender is not DataGrid dg)
+        // Ctrl+Home — select and scroll to first row
+        if (e.Key == Key.Home && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (dg.Items.Count > 0)
+            {
+                dg.SelectedIndex = 0;
+                dg.ScrollIntoView(dg.Items[0]);
+                DataGridRow? row = GetRowAt(dg, 0);
+                row?.Focus();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+End — select and scroll to last row
+        if (e.Key == Key.End && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (dg.Items.Count > 0)
+            {
+                dg.SelectedIndex = dg.Items.Count - 1;
+                dg.ScrollIntoView(dg.Items[^1]);
+                DataGridRow? row = GetRowAt(dg, dg.Items.Count - 1);
+                row?.Focus();
+            }
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+A — select all rows
+        if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            dg.SelectAll();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key != Key.Down && e.Key != Key.Up)
             return;
 
         // If focus has already escaped to a ScrollBar inside the DataGrid, reclaim it.
         if (Keyboard.FocusedElement is ScrollBar sb &&
             FindAncestor<DataGrid>(sb) == dg)
         {
-            // Return focus to the selected row (or the first item as a fallback).
             DataGridRow? row = GetSelectedRow(dg) ?? GetRowAt(dg, 0);
             row?.Focus();
-            // Don't eat the key — let DataGrid handle navigation from the refocused row.
             return;
         }
 

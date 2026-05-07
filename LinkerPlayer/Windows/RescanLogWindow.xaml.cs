@@ -1,5 +1,8 @@
 using System.Collections.Specialized;
+using System.Text;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +74,50 @@ public partial class RescanLogWindow : Window
     private void Clear_Click(object sender, RoutedEventArgs e)
     {
         _rescanLogger.Entries.Clear();
+    }
+
+    private void CopyAll_Click(object sender, RoutedEventArgs e)
+    {
+        StringBuilder sb = new StringBuilder();
+        foreach (Models.RescanLogEntry entry in _rescanLogger.Entries)
+            sb.AppendLine($"{entry.Time:HH:mm:ss}  {entry.ActionLabel,-8}  {entry.Detail}");
+        if (sb.Length > 0)
+        {
+            Clipboard.SetText(sb.ToString());
+            LogList.SelectAll();
+            LogList.Focus();
+        }
+    }
+
+    private void LogList_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Home && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[0]);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.End && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[^1]);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            LogList.SelectAll();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            // Copy selected rows; fall back to all if nothing selected
+            System.Collections.IList items = LogList.SelectedItems.Count > 0
+                ? LogList.SelectedItems
+                : (System.Collections.IList)LogList.Items;
+            StringBuilder sb = new StringBuilder();
+            foreach (Models.RescanLogEntry entry in items.OfType<Models.RescanLogEntry>())
+                sb.AppendLine($"{entry.Time:HH:mm:ss}  {entry.ActionLabel,-8}  {entry.Detail}");
+            if (sb.Length > 0) Clipboard.SetText(sb.ToString());
+            e.Handled = true;
+        }
     }
 
     private void Close_Click(object sender, RoutedEventArgs e)

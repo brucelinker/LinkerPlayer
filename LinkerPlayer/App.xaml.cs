@@ -199,9 +199,10 @@ public partial class App
                     // Phase 1: full diff-scan watched folders after library is loaded
                     // (finds adds, removes missing tracks, refreshes modified metadata)
                     IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();
+                    IImportCancellationService importCancellation = AppHost.Services.GetRequiredService<IImportCancellationService>();
                     IProgress<ProgressData> startupProgress = new Progress<ProgressData>(data =>
                         WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
-                    await Task.Run(async () => await watchedFolderService.FullScanAllAsync(startupProgress));
+                    await Task.Run(async () => await watchedFolderService.FullScanAllAsync(startupProgress, importCancellation.Token));
                 }
                 catch (Exception ex)
                 {
@@ -251,6 +252,18 @@ public partial class App
         catch (Exception ex)
         {
             _logger.LogError(ex, "Shutdown error");
+        }
+
+        // Cancel any in-progress background scans BEFORE the DI container is disposed,
+        // otherwise tasks still running will call GetService<T>() on a dead container.
+        try
+        {
+            IImportCancellationService cancellation = AppHost.Services.GetRequiredService<IImportCancellationService>();
+            cancellation.Cancel();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cancelling background tasks on shutdown");
         }
 
         try

@@ -1,6 +1,7 @@
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
+using System.IO;
 
 namespace LinkerPlayer.Services;
 
@@ -48,7 +49,7 @@ public interface IWatchedFolderService
     IReadOnlyList<string> WatchedFolders { get; }
 }
 
-public class WatchedFolderService : IWatchedFolderService
+public class WatchedFolderService : IWatchedFolderService, IDisposable
 {
     private readonly ISettingsManager _settingsManager;
     private readonly IFileImportService _fileImportService;
@@ -56,6 +57,11 @@ public class WatchedFolderService : IWatchedFolderService
     private readonly ILogger<WatchedFolderService> _logger;
     private readonly IRescanLogger _rescanLogger;
     private readonly SemaphoreSlim _scanSemaphore = new(1, 1);
+    private readonly SemaphoreSlim _fswProcessSemaphore = new(1, 1);
+    private readonly List<FileSystemWatcher> _watchers = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Threading.Timer> _debounceTimers = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan DebounceDelay = TimeSpan.FromSeconds(2);
+    private bool _disposed;
 
     public WatchedFolderService(
         ISettingsManager settingsManager,
@@ -69,6 +75,29 @@ public class WatchedFolderService : IWatchedFolderService
         _musicLibrary = musicLibrary;
         _logger = logger;
         _rescanLogger = rescanLogger;
+
+        InitializeWatchers();
+    }
+
+    private void InitializeWatchers()
+    {
+        foreach (string folder in WatchedFolders)
+        {
+            if (System.IO.Directory.Exists(folder))
+            {
+                FileSystemWatcher watcher = new(folder)
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size,
+                    EnableRaisingEvents = true
+                };
+                watcher.Changed += OnFileChanged;
+                watcher.Created += OnFileChanged;
+                watcher.Deleted += OnFileChanged;
+                watcher.Renamed += OnFileRenamed;
+                _watchers.Add(watcher);
+            }
+        }
     }
 
     public IReadOnlyList<string> WatchedFolders => _settingsManager.Settings.WatchedFolders.AsReadOnly();
@@ -83,6 +112,19 @@ public class WatchedFolderService : IWatchedFolderService
             _settingsManager.Settings.WatchedFolders.Add(folderPath);
             _settingsManager.SaveSettings(nameof(AppSettings.WatchedFolders));
             _logger.LogInformation("Added watched folder: {Path}", folderPath);
+
+            // Add FileSystemWatcher
+            FileSystemWatcher watcher = new(folderPath)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size,
+                EnableRaisingEvents = true
+            };
+            watcher.Changed += OnFileChanged;
+            watcher.Created += OnFileChanged;
+            watcher.Deleted += OnFileDeleted;
+            watcher.Renamed += OnFileRenamed;
+            _watchers.Add(watcher);
         }
     }
 
@@ -96,6 +138,15 @@ public class WatchedFolderService : IWatchedFolderService
             _settingsManager.Settings.WatchedFolders.Remove(existing);
             _settingsManager.SaveSettings(nameof(AppSettings.WatchedFolders));
             _logger.LogInformation("Removed watched folder: {Path}", folderPath);
+
+            // Remove and dispose FileSystemWatcher
+            FileSystemWatcher? watcher = _watchers.FirstOrDefault(w => string.Equals(w.Path, folderPath, StringComparison.OrdinalIgnoreCase));
+            if (watcher != null)
+            {
+                watcher.EnableRaisingEvents = false;
+                watcher.Dispose();
+                _watchers.Remove(watcher);
+            }
         }
     }
 
@@ -216,7 +267,9 @@ public class WatchedFolderService : IWatchedFolderService
                 try
                 {
                     DateTime diskTime = System.IO.File.GetLastWriteTimeUtc(t.Path);
-                    return Math.Abs((diskTime - t.FileLastWriteTimeUtc.Value).TotalSeconds) > 2;
+                    long diskSize = new FileInfo(t.Path).Length;
+                    return Math.Abs((diskTime - t.FileLastWriteTimeUtc.Value).TotalSeconds) > 10 ||
+                           t.FileSize != diskSize;
                 }
                 catch { return false; }
             })
@@ -358,5 +411,157 @@ public class WatchedFolderService : IWatchedFolderService
         {
             _scanSemaphore.Release();
         }
+    }
+
+    private void OnFileChanged(object sender, FileSystemEventArgs e)
+    {
+        if (_disposed || !IsAudioFile(e.FullPath))
+            return;
+
+        // Debounce: reset the timer each time an event fires for this path.
+        // The callback runs only after DebounceDelay of silence on that file.
+        _debounceTimers.AddOrUpdate(
+            e.FullPath,
+            _ => new System.Threading.Timer(OnDebounceElapsed, e.FullPath, DebounceDelay, System.Threading.Timeout.InfiniteTimeSpan),
+            (_, existing) =>
+            {
+                existing.Change(DebounceDelay, System.Threading.Timeout.InfiniteTimeSpan);
+                return existing;
+            });
+    }
+
+    private void OnDebounceElapsed(object? state)
+    {
+        if (_disposed || state is not string path)
+            return;
+
+        if (_debounceTimers.TryRemove(path, out System.Threading.Timer? t))
+            t.Dispose();
+
+        // Serialize FSW-triggered refreshes so they don't pile up and saturate I/O
+        _ = Task.Run(async () =>
+        {
+            if (_disposed)
+                return;
+
+            if (!await _fswProcessSemaphore.WaitAsync(TimeSpan.FromSeconds(30)).ConfigureAwait(false))
+                return;
+
+            try
+            {
+                if (_disposed)
+                    return;
+
+                MediaFile? track = _musicLibrary.MainLibrary
+                    .FirstOrDefault(t => string.Equals(t.Path, path, StringComparison.OrdinalIgnoreCase));
+
+                if (track != null)
+                {
+                    // Guard against the file being deleted during the debounce window.
+                    if (!File.Exists(path))
+                    {
+                        track.HealthStatus = TrackHealthStatus.Missing;
+                        await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                        _logger.LogInformation("File removed during debounce window, marked missing: {Path}", path);
+                        return;
+                    }
+
+                    track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                    await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                    _logger.LogInformation("Auto-updated metadata for modified file: {Path}", path);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-update metadata for {Path}", path);
+            }
+            finally
+            {
+                _fswProcessSemaphore.Release();
+            }
+        });
+    }
+
+    private void OnFileDeleted(object sender, FileSystemEventArgs e)
+    {
+        if (_disposed || !IsAudioFile(e.FullPath))
+            return;
+
+        // Cancel any pending debounce for this path — no metadata refresh needed.
+        if (_debounceTimers.TryRemove(e.FullPath, out System.Threading.Timer? t))
+            t.Dispose();
+
+        _ = Task.Run(async () =>
+        {
+            if (_disposed)
+                return;
+
+            try
+            {
+                MediaFile? track = _musicLibrary.MainLibrary
+                    .FirstOrDefault(t => string.Equals(t.Path, e.FullPath, StringComparison.OrdinalIgnoreCase));
+
+                if (track != null)
+                {
+                    track.HealthStatus = TrackHealthStatus.Missing;
+                    await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                    _logger.LogInformation("File deleted, marked missing in library: {Path}", e.FullPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to handle deletion for {Path}", e.FullPath);
+            }
+        });
+    }
+
+    private void OnFileRenamed(object sender, RenamedEventArgs e)
+    {
+        if (!IsAudioFile(e.FullPath))
+            return;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                MediaFile? track = _musicLibrary.MainLibrary.FirstOrDefault(t => string.Equals(t.Path, e.OldFullPath, StringComparison.OrdinalIgnoreCase));
+                if (track != null)
+                {
+                    track.Path = e.FullPath;
+                    track.FileName = System.IO.Path.GetFileName(e.FullPath);
+                    track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                    await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                    _logger.LogInformation("Auto-updated metadata for renamed file: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to auto-update metadata for renamed file {Path}", e.FullPath);
+            }
+        });
+    }
+
+    private static bool IsAudioFile(string path)
+    {
+        string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
+        return ext is ".mp3" or ".flac" or ".ogg" or ".opus" or ".m4a" or ".mp4" or ".wma" or ".ape" or ".wv" or ".mpc";
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+
+        foreach (FileSystemWatcher watcher in _watchers)
+        {
+            watcher.EnableRaisingEvents = false;
+            watcher.Dispose();
+        }
+        _watchers.Clear();
+
+        foreach (System.Threading.Timer t in _debounceTimers.Values)
+            t.Dispose();
+        _debounceTimers.Clear();
+
+        _fswProcessSemaphore.Dispose();
     }
 }

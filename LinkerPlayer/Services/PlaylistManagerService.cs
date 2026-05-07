@@ -234,26 +234,34 @@ public class PlaylistManagerService : IPlaylistManagerService
 
         try
         {
-            // Ensure all tracks are in the MainLibrary collection (auto-population)
-            // AddTrackToLibraryAsync handles duplicates and adds to MainLibrary
-            List<MediaFile> addedTracks = new List<MediaFile>();
+            // Split into tracks already in the Library vs genuinely new ones.
+            // Tracks that already exist in MainLibrary do NOT need to be re-imported;
+            // only new tracks need to be saved to the DB first.
+            List<MediaFile> newTracks = new List<MediaFile>();
             foreach (MediaFile track in trackList)
             {
-                MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(track, saveImmediately: false);
-                if (addedTrack != null)
+                MediaFile? existing = _musicLibrary.IsTrackInLibrary(track);
+                if (existing == null)
                 {
-                    addedTracks.Add(addedTrack);
+                    MediaFile? addedTrack = await _musicLibrary.AddTrackToLibraryAsync(track, saveImmediately: false);
+                    if (addedTrack != null)
+                        newTracks.Add(addedTrack);
                 }
+                // If it's already in the Library the in-memory Id is already correct;
+                // AddTracksToPlaylistAsync below will pick it up from MainLibrary.
             }
 
-            // Batch save all new tracks to database
-            if (addedTracks.Any())
+            // Batch save only the genuinely new tracks to the database
+            if (newTracks.Any())
             {
-                await _musicLibrary.SaveTracksBatchAsync(addedTracks);
+                await _musicLibrary.SaveTracksBatchAsync(newTracks);
             }
 
-            // Add track IDs to playlist (now guaranteed to be in MainLibrary)
-            List<string> trackIds = trackList.Select(t => t.Id).ToList();
+            // Add track IDs to playlist (all tracks are now guaranteed to be in MainLibrary)
+            List<string> trackIds = trackList
+                .Select(t => _musicLibrary.IsTrackInLibrary(t)?.Id ?? t.Id)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .ToList();
             await _musicLibrary.AddTracksToPlaylistAsync(trackIds, playlistName, saveImmediately: false);
 
             await _musicLibrary.SaveToDatabaseAsync();

@@ -118,10 +118,11 @@ public static class BackgroundMetadataRefresher
             return;
 
         // Build a single O(1) path lookup from the live in-memory objects.
-        // Snapshot once — the same object references remain valid for the whole batch.
+        // Use GroupBy + First to safely handle any duplicate paths in the library.
         Dictionary<string, MediaFile> libraryIndex = library.MainLibrary
             .ToList()
-            .ToDictionary(t => t.Path, t => t, StringComparer.OrdinalIgnoreCase);
+            .GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         // Mark tracks as refreshing before the DB write
         foreach (MediaFile mf in updates)

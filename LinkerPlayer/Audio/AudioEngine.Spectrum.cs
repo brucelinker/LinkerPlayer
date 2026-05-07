@@ -249,21 +249,21 @@ public partial class AudioEngine
                         PlaybackState decodeState = _decodeStream != 0 ? Bass.ChannelIsActive(_decodeStream) : PlaybackState.Stopped;
                         PlaybackState mixerState = _mixerStream != 0 ? Bass.ChannelIsActive(_mixerStream) : PlaybackState.Stopped;
 
-                        _logger.LogDebug("PositionTelemetry WASAPI (Tick={Tick}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, PositionStream={PositionStream}, PosBytes={PosBytes}, PosSeconds={PosSeconds}, LenSeconds={LenSeconds}, WasapiStarted={WasapiStarted}, IsPlaying={IsPlaying}, CurrentState={CurrentState}, DecodeState={DecodeState}, MixerState={MixerState}, LoadedPath={LoadedPath})",
-                            tick,
-                            CurrentStream,
-                            _decodeStream,
-                            _mixerStream,
-                            positionStream,
-                            posBytes,
-                            posSeconds,
-                            CurrentTrackLength,
-                            BassWasapi.IsStarted,
-                            IsPlaying,
-                            state,
-                            decodeState,
-                            mixerState,
-                            LoadedTrackPath);
+                        //_logger.LogDebug("PositionTelemetry WASAPI (Tick={Tick}, CurrentStream={CurrentStream}, DecodeStream={DecodeStream}, MixerStream={MixerStream}, PositionStream={PositionStream}, PosBytes={PosBytes}, PosSeconds={PosSeconds}, LenSeconds={LenSeconds}, WasapiStarted={WasapiStarted}, IsPlaying={IsPlaying}, CurrentState={CurrentState}, DecodeState={DecodeState}, MixerState={MixerState}, LoadedPath={LoadedPath})",
+                        //    tick,
+                        //    CurrentStream,
+                        //    _decodeStream,
+                        //    _mixerStream,
+                        //    positionStream,
+                        //    posBytes,
+                        //    posSeconds,
+                        //    CurrentTrackLength,
+                        //    BassWasapi.IsStarted,
+                        //    IsPlaying,
+                        //    state,
+                        //    decodeState,
+                        //    mixerState,
+                        //    LoadedTrackPath);
                     }
 
                     if (CurrentTrackLength > 0 && posSeconds >= 0)

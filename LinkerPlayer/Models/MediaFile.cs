@@ -307,6 +307,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private DateTime? _fileLastWriteTimeUtc;
 
+    [NotMapped]
+    public long FileSize { get; private set; }
+
     [ObservableProperty]
     private DateTime? _lastMetadataRefreshUtc;
 
@@ -393,9 +396,16 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             track = new Track(Path);   // ATL auto-detects format (including AC3)
         }
+        catch (FileNotFoundException)
+        {
+            // File was deleted — mark it missing and bail out gracefully.
+            try { Logger?.LogWarning("File no longer exists, skipping metadata refresh: {Path}", Path); } catch { }
+            HealthStatus = TrackHealthStatus.Missing;
+            return;
+        }
         catch (IOException)
         {
-            // Let IOExceptions bubble up to callers (e.g. TrackMetadataRefresher) that
+            // Let other IOExceptions bubble up to callers (e.g. TrackMetadataRefresher) that
             // have retry logic for transient file-lock errors on UNC/NAS shares.
             throw;
         }
@@ -443,7 +453,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         Disc = track.DiscNumber ?? 0;
         DiscCount = track.DiscTotal ?? 0;
         Year = track.Year ?? 0;
-        Logger?.LogDebug("ATL Year for {Path}: {AtlYear}, Set Year to {Year}", Path, track.Year, Year);
 
         Bitrate = track.Bitrate;
         SampleRate = track.SampleRate;
@@ -463,13 +472,11 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         try
         {
             int atlDurationSeconds = track.Duration;
-            Logger?.LogDebug("ATL Duration for {Path}: {DurationSeconds}s", Path, atlDurationSeconds);
 
             // Check if ATL duration is reasonable (> 0 for audio files)
             if (atlDurationSeconds > 0)
             {
                 Duration = atlDurationSeconds;
-                Logger?.LogDebug("Set Duration to {Duration}s from ATL", Duration);
             }
             else
             {
@@ -532,6 +539,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
 
         try { FileLastWriteTimeUtc = File.GetLastWriteTimeUtc(Path); } catch { }
+        try { FileSize = new FileInfo(Path).Length; } catch { }
     }
 
     private void SetFallbackMetadata(bool raisePropertyChanged)

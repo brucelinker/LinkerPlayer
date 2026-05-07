@@ -505,6 +505,41 @@
       <!--  Playlist Tab Content Template (DataGrid only)  -->
       <DataTemplate x:Key="PlaylistContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <Grid>
+          <!--  Loading overlay — visible while IsLoading=true  -->
+          <Grid Panel.ZIndex="10"
+                Background="{DynamicResource PlaylistTabBackgroundBrush}">
+            <Grid.Style>
+              <Style TargetType="Grid">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Grid.Style>
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="360">
+              <TextBlock Text="{Binding LoadingStatus}"
+                         HorizontalAlignment="Center"
+                         Margin="0,0,0,12"
+                         FontSize="13"
+                         Foreground="{DynamicResource PlaylistTabForegroundBrush}"/>
+              <ProgressBar Value="{Binding LoadingProgress}"
+                           Maximum="{Binding LoadingTotal}"
+                           Height="6"
+                           Minimum="0"/>
+              <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0"
+                         FontSize="11"
+                         Foreground="{DynamicResource PlaylistTabForegroundBrush}">
+                <TextBlock.Text>
+                  <MultiBinding StringFormat="{}{0} / {1}">
+                    <Binding Path="LoadingProgress"/>
+                    <Binding Path="LoadingTotal"/>
+                  </MultiBinding>
+                </TextBlock.Text>
+              </TextBlock>
+            </StackPanel>
+          </Grid>
           <DataGrid
             Name="PlaylistDataGrid"
             Margin="0,0,0,0"

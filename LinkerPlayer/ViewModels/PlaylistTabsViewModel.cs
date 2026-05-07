@@ -1576,134 +1576,303 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
             await _uiDispatcher.InvokeAsync(() =>
             {
+                newTab.IsLoading = true;
+                newTab.LoadingStatus = $"Loading \"{playlistName}\"…";
+                newTab.LoadingProgress = 0;
+                newTab.LoadingTotal = 1;
                 TabList.Add(newTab);
                 SelectedTab = newTab;
                 SelectedTabIndex = TabList.Count - 1;
-                _tabControl!.SelectedIndex = SelectedTabIndex;
+                if (_tabControl != null)
+                    _tabControl.SelectedIndex = SelectedTabIndex;
             });
 
-            List<string> paths = ExtractPathsFromPlaylistFile(fileName);
-            List<string> validPaths = new List<string>();
+            // ---------------------------------------------------------------
+            // PHASE 1 — Instant population (no I/O, pure in-memory)
+            // Normalise each M3U path to an absolute candidate, resolve against
+            // the in-memory library index, create a lightweight stub for anything
+            // unknown, and push the full list to the DataGrid immediately.
+            // Missing / unresolved rows appear red straight away via the existing
+            // TrackHealthStatus.Missing DataTrigger in StylesRepository.xaml.
+            // ---------------------------------------------------------------
 
-            foreach (string path in paths)
+            List<string> rawPaths = ExtractPathsFromPlaylistFile(fileName);
+
+            Dictionary<string, MediaFile> libraryIndex = _musicLibrary.MainLibrary
+                .GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            // Each entry: the resolved MediaFile + the original raw candidate path
+            // (used in Phase 2 to attempt fuzzy recovery).
+            List<(MediaFile Track, string CandidatePath)> entries = new List<(MediaFile, string)>();
+
+            foreach (string path in rawPaths)
             {
                 try
                 {
                     string candidatePath = path;
 
-                    // Convert file:// URIs to local paths
                     if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
-                    {
                         candidatePath = uri.LocalPath;
-                    }
 
-                    // Unescape any percent-encoded characters
                     candidatePath = Uri.UnescapeDataString(candidatePath);
 
-                    // If relative, combine with playlist directory
                     if (!Path.IsPathRooted(candidatePath))
-                    {
                         candidatePath = Path.GetFullPath(Path.Combine(directoryName, candidatePath));
-                    }
 
-                    if (File.Exists(candidatePath))
+                    if (libraryIndex.TryGetValue(candidatePath, out MediaFile? known))
                     {
-                        validPaths.Add(candidatePath);
-                        continue;
-                    }
-
-                    // Fallbacks: fuzzy recovery
-                    string? fileNameOnly = Path.GetFileName(candidatePath);
-                    string? immediateDir = null;
-                    try
-                    {
-                        immediateDir = Path.GetDirectoryName(candidatePath);
-                    }
-                    catch { /* ignore */ }
-
-                    // Case A: directory exists but file name is wrong -> fuzzy file match in the directory
-                    if (!string.IsNullOrEmpty(immediateDir) && Directory.Exists(immediateDir))
-                    {
-                        string? recovered = TryFindClosestFileInDirectory(immediateDir, fileNameOnly);
-                        if (!string.IsNullOrEmpty(recovered))
-                        {
-                            _logger.LogInformation("Recovered missing file by fuzzy match: '{Orig}' => '{Match}'", candidatePath, recovered);
-                            validPaths.Add(recovered);
-                            continue;
-                        }
+                        // Already in the library — use the live object directly.
+                        entries.Add((known, candidatePath));
                     }
                     else
                     {
-                        // Case B: the directory segment itself is wrong (e.g., diacritics replaced by '?')
-                        // Try recover the album directory within its parent (one level up), then search recursively for the file
-                        try
+                        // Unknown path: create a stub so the row appears immediately.
+                        // HealthStatus.Missing renders it red; Phase 2 will resolve it.
+                        MediaFile stub = new MediaFile(candidatePath)
                         {
-                            // candidatePath = ...\\<AlbumDir>\\<SubDir?>\\<FileName>
-                            // albumDirPath = ...\\<AlbumDir>
-                            string? albumDirPath = string.IsNullOrEmpty(immediateDir) ? null : Path.GetDirectoryName(immediateDir);
-                            if (!string.IsNullOrEmpty(albumDirPath))
-                            {
-                                string? artistDir = Path.GetDirectoryName(albumDirPath);
-                                string albumDirName = Path.GetFileName(albumDirPath);
-
-                                if (!string.IsNullOrEmpty(artistDir) && Directory.Exists(artistDir))
-                                {
-                                    string? recoveredAlbum = TryFindClosestDirectoryInParent(artistDir, albumDirName);
-                                    if (!string.IsNullOrEmpty(recoveredAlbum) && Directory.Exists(recoveredAlbum))
-                                    {
-                                        // Search recursively under the recovered album directory for the closest file
-                                        string? recoveredDeep = TryFindClosestFileRecursively(recoveredAlbum, fileNameOnly);
-                                        if (!string.IsNullOrEmpty(recoveredDeep))
-                                        {
-                                            _logger.LogInformation("Recovered missing file by directory+file fuzzy match: '{Orig}' => '{Match}'", candidatePath, recoveredDeep);
-                                            validPaths.Add(recoveredDeep);
-                                            continue;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Directory fuzzy recovery failed for {Path}", candidatePath);
-                        }
+                            HealthStatus = TrackHealthStatus.Missing
+                        };
+                        entries.Add((stub, candidatePath));
                     }
-
-                    _logger.LogWarning("Playlist file references missing file: {FilePath}", candidatePath);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to resolve path from playlist entry: {Entry}", path);
+                    _logger.LogWarning(ex, "Failed to normalise path from playlist entry: {Entry}", path);
                 }
             }
 
-            if (validPaths.Any())
+            if (entries.Count == 0)
             {
-                // Create progress callback to send ProgressValueMessage so the bottom progress bar updates
-                Progress<ProgressData> progress = new Progress<ProgressData>(data =>
+                await _uiDispatcher.InvokeAsync(() => newTab.IsLoading = false);
+                return;
+            }
+
+            // Split known (already in library) from unknown (need resolution)
+            List<MediaFile> knownTracks = entries
+                .Where(e => e.Track.HealthStatus != TrackHealthStatus.Missing)
+                .Select(e => e.Track)
+                .ToList();
+
+            List<(MediaFile Track, string CandidatePath)> stubs = entries
+                .Where(e => e.Track.HealthStatus == TrackHealthStatus.Missing)
+                .ToList();
+
+            // Phase 1 — add only known tracks to the DataGrid immediately
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                newTab.LoadingTotal = entries.Count;
+                newTab.LoadingProgress = knownTracks.Count;
+                newTab.LoadingStatus = stubs.Count > 0
+                    ? $"Loaded {knownTracks.Count} tracks, resolving {stubs.Count} unmatched…"
+                    : $"Loading {knownTracks.Count} tracks…";
+
+                foreach (MediaFile track in knownTracks)
+                    newTab.Tracks.Add(track);
+            });
+
+            await _playlistManagerService.AddTracksToPlaylistAsync(playlistName, knownTracks);
+
+            if (stubs.Count == 0)
+            {
+                await _uiDispatcher.InvokeAsync(() => newTab.IsLoading = false);
+                return;
+            }
+
+            // Phase 2 — attempt to resolve each unknown path; only add to DataGrid on success
+            _logger.LogInformation("Playlist '{Name}': {Known} known, {Stubs} unmatched — attempting resolution", playlistName, knownTracks.Count, stubs.Count);
+
+            // Switch overlay to resolution progress
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                newTab.LoadingTotal = stubs.Count;
+                newTab.LoadingProgress = 0;
+                newTab.LoadingStatus = $"Resolving {stubs.Count} unmatched track(s)…";
+            });
+
+            Progress<ProgressData> progress = new Progress<ProgressData>(data =>
+            {
+                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
+            });
+
+            CancellationToken ct = _importCancellationService.Token;
+            List<PlaylistImportLogEntry> importLog = new List<PlaylistImportLogEntry>();
+
+            await Task.Run(async () =>
+            {
+                int resolved = 0;
+
+                for (int i = 0; i < stubs.Count; i++)
                 {
-                    WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
+                    if (ct.IsCancellationRequested) break;
+
+                    (MediaFile _, string candidatePath) = stubs[i];
+
+                    try
+                    {
+                        string? resolvedPath = null;
+                        string? fuzzyRecoveredPath = null;
+
+                        if (File.Exists(candidatePath))
+                        {
+                            resolvedPath = candidatePath;
+                        }
+                        else
+                        {
+                            // Fuzzy recovery — same logic as the old synchronous loop.
+                            string? fileNameOnly = Path.GetFileName(candidatePath);
+                            string? immediateDir = null;
+                            try { immediateDir = Path.GetDirectoryName(candidatePath); } catch { }
+
+                            if (!string.IsNullOrEmpty(immediateDir) && Directory.Exists(immediateDir))
+                            {
+                                string? recovered = TryFindClosestFileInDirectory(immediateDir, fileNameOnly);
+                                if (!string.IsNullOrEmpty(recovered))
+                                {
+                                    _logger.LogInformation("Recovered missing file by fuzzy match: '{Orig}' => '{Match}'", candidatePath, recovered);
+                                    resolvedPath = recovered;
+                                    fuzzyRecoveredPath = recovered;
+                                }
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    string? albumDirPath = string.IsNullOrEmpty(immediateDir) ? null : Path.GetDirectoryName(immediateDir);
+                                    if (!string.IsNullOrEmpty(albumDirPath))
+                                    {
+                                        string? artistDir = Path.GetDirectoryName(albumDirPath);
+                                        string albumDirName = Path.GetFileName(albumDirPath);
+
+                                        if (!string.IsNullOrEmpty(artistDir) && Directory.Exists(artistDir))
+                                        {
+                                            string? recoveredAlbum = TryFindClosestDirectoryInParent(artistDir, albumDirName);
+                                            if (!string.IsNullOrEmpty(recoveredAlbum) && Directory.Exists(recoveredAlbum))
+                                            {
+                                                string? recoveredDeep = TryFindClosestFileRecursively(recoveredAlbum, fileNameOnly);
+                                                if (!string.IsNullOrEmpty(recoveredDeep))
+                                                {
+                                                    _logger.LogInformation("Recovered missing file by directory+file fuzzy match: '{Orig}' => '{Match}'", candidatePath, recoveredDeep);
+                                                    resolvedPath = recoveredDeep;
+                                                    fuzzyRecoveredPath = recoveredDeep;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogDebug(ex, "Directory fuzzy recovery failed for {Path}", candidatePath);
+                                }
+                            }
+                        }
+
+                        if (resolvedPath != null)
+                        {
+                            // Re-check library index with the resolved path (may differ after fuzzy recovery).
+                            MediaFile? imported;
+                            if (libraryIndex.TryGetValue(resolvedPath, out MediaFile? alreadyKnown))
+                            {
+                                imported = alreadyKnown;
+                            }
+                            else
+                            {
+                                imported = await _fileImportService.ImportFileAsync(resolvedPath).ConfigureAwait(false);
+                            }
+
+                            if (imported != null && !string.IsNullOrEmpty(imported.FileName))
+                            {
+                                // Add the resolved track to the DataGrid now that we know it's real
+                                await _uiDispatcher.InvokeAsync(() => newTab.Tracks.Add(imported));
+                                resolved++;
+                                if (fuzzyRecoveredPath != null)
+                                {
+                                    importLog.Add(new PlaylistImportLogEntry
+                                    {
+                                        Action = PlaylistImportAction.Recovered,
+                                        Path = candidatePath,
+                                        RecoveredPath = fuzzyRecoveredPath
+                                    });
+                                }
+                            }
+                            else if (imported != null)
+                            {
+                                _logger.LogWarning("Playlist '{Name}': imported track has no metadata — skipped: {Path}", playlistName, resolvedPath);
+                                importLog.Add(new PlaylistImportLogEntry
+                                {
+                                    Action = PlaylistImportAction.Skipped,
+                                    Path = candidatePath
+                                });
+                            }
+                            else
+                            {
+                                _logger.LogWarning("Playlist '{Name}': could not import resolved path — skipped: {Path}", playlistName, resolvedPath);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Playlist '{Name}': track not found on disk — skipped: {Path}", playlistName, candidatePath);
+                            importLog.Add(new PlaylistImportLogEntry
+                            {
+                                Action = PlaylistImportAction.Missing,
+                                Path = candidatePath
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to resolve stub track: {Path}", candidatePath);
+                    }
+
+                    ((IProgress<ProgressData>)progress).Report(new ProgressData
+                    {
+                        IsProcessing = true,
+                        TotalTracks = stubs.Count,
+                        ProcessedTracks = i + 1,
+                        Status = $"Resolving tracks… {i + 1} / {stubs.Count}",
+                        Phase = "Resolving"
+                    });
+                    await _uiDispatcher.InvokeAsync(() => newTab.LoadingProgress = i + 1);
+                }
+
+                _logger.LogInformation(
+                    "Playlist '{Name}': load complete — {Known} direct, {Resolved} recovered, {Skipped} not found",
+                    playlistName, knownTracks.Count, resolved, stubs.Count - resolved);
+
+                ((IProgress<ProgressData>)progress).Report(new ProgressData
+                {
+                    IsProcessing = false,
+                    TotalTracks = stubs.Count,
+                    ProcessedTracks = stubs.Count,
+                    Status = string.Empty,
+                    Phase = string.Empty
                 });
 
-                List<MediaFile> importedTracks = await _fileImportService.ImportFilesAsync(validPaths.ToArray(), progress);
-
-                if (importedTracks.Any())
+                await _uiDispatcher.InvokeAsync(() =>
                 {
-                    await _playlistManagerService.AddTracksToPlaylistAsync(playlistName, importedTracks);
+                    newTab.IsLoading = false;
 
-                    await _uiDispatcher.InvokeAsync(() =>
+                    if (importLog.Count > 0)
                     {
-                        foreach (MediaFile track in importedTracks)
-                        {
-                            SelectedTab!.Tracks.Add(track);
-                        }
-                    });
-                }
-            }
+                        PlaylistImportLogWindow logWindow = new PlaylistImportLogWindow(
+                            playlistName,
+                            knownTracks.Count + resolved,
+                            resolved,
+                            importLog);
+                        logWindow.Owner = System.Windows.Application.Current.MainWindow;
+                        logWindow.Show();
+                    }
+                });
+            }, ct);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load playlist file: {FileName}", fileName);
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                if (SelectedTab is PlaylistTab pt)
+                    pt.IsLoading = false;
+            });
         }
     }
 

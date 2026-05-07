@@ -85,6 +85,13 @@ public sealed class TrackMetadataRefresher : ITrackMetadataRefresher
                     _logger.LogDebug("Refreshed metadata for {Path} (attempt {Attempt})", path, attempt);
                     return new TrackMetadataRefreshResult { Track = track, WasRefreshed = true };
                 }
+                catch (FileNotFoundException)
+                {
+                    // File was deleted — no point retrying. Mark it missing and bail.
+                    _logger.LogWarning("Metadata refresh aborted (file deleted): {Path}", path);
+                    track.HealthStatus = TrackHealthStatus.Missing;
+                    return new TrackMetadataRefreshResult { Track = track, WasRefreshed = false };
+                }
                 catch (IOException ex)
                 {
                     if (attempt < MaxRetries)

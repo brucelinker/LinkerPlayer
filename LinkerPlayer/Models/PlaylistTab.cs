@@ -22,6 +22,11 @@ public partial class PlaylistTab : ObservableObject, ITabData
     [ObservableProperty] private MediaFile? _selectedTrack;
     [ObservableProperty] private int? _selectedIndex;
 
+    [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private int _loadingProgress;
+    [ObservableProperty] private int _loadingTotal;
+    [ObservableProperty] private string _loadingStatus = string.Empty;
+
     // Implements ITabData.Name via generated property
     string ITabData.Name => Name;
 
