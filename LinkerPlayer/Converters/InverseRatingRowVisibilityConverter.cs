@@ -5,16 +5,16 @@ using System.Windows.Data;
 namespace LinkerPlayer.Converters;
 
 /// <summary>
-/// Returns Collapsed for rows that use a custom display control ("Beats Per Minute", "Rating");
-/// returns Visible for all other rows so the plain TextBlock is shown.
+/// Returns Visible for the "Rating" metadata row; Collapsed for all other rows.
+/// Used in PropertiesWindow to show the StarRatingControl only on the Rating row.
 /// </summary>
-public class BpmRowVisibilityConverter : IValueConverter
+public class InverseRatingRowVisibilityConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        if (value is string name && (name == "Beats Per Minute" || name == "Rating"))
-            return Visibility.Collapsed;
-        return Visibility.Visible;
+        if (value is string name && name == "Rating")
+            return Visibility.Visible;
+        return Visibility.Collapsed;
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

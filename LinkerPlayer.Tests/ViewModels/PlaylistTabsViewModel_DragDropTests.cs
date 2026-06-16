@@ -16,45 +16,47 @@ public class PlaylistTabsViewModel_DragDropTests
 {
     private static PlaylistTabsViewModel CreateViewModel()
     {
-        Mock<IMusicLibrary> musicLibrary = new Mock<IMusicLibrary>(MockBehavior.Strict);
-        musicLibrary.SetupGet(m => m.Playlists).Returns(new System.Collections.ObjectModel.ObservableCollection<Playlist>());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
+        Mock<IMusicLibrary> _mockMusicLibrary = new Mock<IMusicLibrary>(MockBehavior.Strict);
+        _mockMusicLibrary.SetupGet(m => m.Playlists).Returns(new System.Collections.ObjectModel.ObservableCollection<Playlist>());
+        _mockMusicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
 
-        Mock<ISettingsManager> settings = new Mock<ISettingsManager>();
-        settings.SetupGet(s => s.Settings).Returns(new AppSettings());
-        settings.Setup(s => s.SaveSettings(It.IsAny<string>()));
+        Mock<ISettingsManager> _mockSettingsManager = new Mock<ISettingsManager>();
+        _mockSettingsManager.SetupGet(s => s.Settings).Returns(new AppSettings());
+        _mockSettingsManager.Setup(s => s.SaveSettings(It.IsAny<string>()));
 
-        Mock<IFileImportService> fileImport = new Mock<IFileImportService>();
-        Mock<IPlaylistManagerService> playlistManager = new Mock<IPlaylistManagerService>();
-        Mock<ITrackNavigationService> trackNav = new Mock<ITrackNavigationService>();
+        Mock<IFileImportService> _mockFileImportService = new Mock<IFileImportService>();
+        Mock<IPlaylistManagerService> _mockPlaylistManagerService = new Mock<IPlaylistManagerService>();
+        Mock<ITrackNavigationService> _mockTrackNavigationService = new Mock<ITrackNavigationService>();
 
-        Mock<IUiDispatcher> uiDispatcher = new Mock<IUiDispatcher>();
-        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Action>())).Returns<Action>(a => { a(); return Task.CompletedTask; });
-        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task>>())).Returns<Func<Task>>(async f => await f());
-        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<object>>())).Returns<Func<object>>(f => Task.FromResult(f()));
-        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task<object>>>())).Returns<Func<Task<object>>>(async f => await f());
-        uiDispatcher.Setup(d => d.CheckAccess()).Returns(true);
+        Mock<IUiDispatcher> _mockUiDispatcher = new Mock<IUiDispatcher>();
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Action>())).Returns<Action>(a => { a(); return Task.CompletedTask; });
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task>>())).Returns<Func<Task>>(async f => await f());
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<object>>())).Returns<Func<object>>(f => Task.FromResult(f()));
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task<object>>>())).Returns<Func<Task<object>>>(async f => await f());
+        _mockUiDispatcher.Setup(d => d.CheckAccess()).Returns(true);
 
-        Mock<IDatabaseSaveService> dbSave = new Mock<IDatabaseSaveService>();
-        ILogger<PlaylistTabsViewModel> logger = Mock.Of<ILogger<PlaylistTabsViewModel>>();
+        Mock<IDatabaseSaveService> _mockDbSave = new Mock<IDatabaseSaveService>();
+        Mock<IMusicBrainzRatingService> _mockMbService = new Mock<IMusicBrainzRatingService>();
+        Mock<ILogger<PlaylistTabsViewModel>> _mockLogger = new Mock<ILogger<PlaylistTabsViewModel>>();
 
         SharedDataModel shared = new SharedDataModel();
         ISelectionService selection = new TestSelectionService();
         IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
 
         return new PlaylistTabsViewModel(
-            musicLibrary.Object,
+            _mockMusicLibrary.Object,
             shared,
-            settings.Object,
-            fileImport.Object,
-            playlistManager.Object,
-            trackNav.Object,
-            uiDispatcher.Object,
-            dbSave.Object,
+            _mockSettingsManager.Object,
+            _mockFileImportService.Object,
+            _mockPlaylistManagerService.Object,
+            _mockTrackNavigationService.Object,
+            _mockUiDispatcher.Object,
+            _mockDbSave.Object,
             selection,
             playbackCoordinator,
             Mock.Of<IImportCancellationService>(),
-            logger);
+            _mockMbService.Object,
+            _mockLogger.Object);
     }
 
     [StaFact]

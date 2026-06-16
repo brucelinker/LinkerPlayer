@@ -7,9 +7,11 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:local="clr-namespace:LinkerPlayer.Windows"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   Title="PropertiesWindow"
   Width="600"
   Height="800"
+  ShowInTaskbar="False"
   WindowStyle="None"
   mc:Ignorable="d">
 
@@ -29,6 +31,9 @@
       <converters:InvertedBooleanToVisibilityConverter x:Key="InvertedBooleanToVisibilityConverter" />
       <converters:BpmRowVisibilityConverter x:Key="BpmRowVisibilityConverter" />
       <converters:InverseBpmRowVisibilityConverter x:Key="InverseBpmRowVisibilityConverter" />
+      <converters:RatingRowVisibilityConverter x:Key="RatingRowVisibilityConverter" />
+      <converters:InverseRatingRowVisibilityConverter x:Key="InverseRatingRowVisibilityConverter" />
+      <converters:RatingStringToDoubleConverter x:Key="RatingStringToDoubleConverter" />
 
       <!--  Properties Window Specific DataGrid Cell Style (matches transparent theme)  -->
       <Style
@@ -313,6 +318,13 @@
                             FontSize="10"
                             Visibility="{Binding DataContext.IsBpmDetecting, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </Grid>
+
+                        <!--  Rating star control - only visible for "Rating" row  -->
+                        <userControls:StarRatingControl
+                          VerticalAlignment="Center"
+                          IsReadOnly="True"
+                          Rating="{Binding Value, Converter={StaticResource RatingStringToDoubleConverter}}"
+                          Visibility="{Binding Name, Converter={StaticResource InverseRatingRowVisibilityConverter}}" />
                       </Grid>
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>

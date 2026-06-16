@@ -44,7 +44,7 @@
 
       <DataTemplate x:Key="PlayPauseCellTemplate">
         <Grid>
-          <!-- Badge for items that still need metadata refresh (quick-imported) -->
+          <!--  Badge for items that still need metadata refresh (quick-imported)  -->
           <iconPacks:PackIconMaterial
             Width="10"
             Height="10"
@@ -71,10 +71,24 @@
               </MultiBinding>
             </iconPacks:PackIconFontAwesome.Visibility>
           </iconPacks:PackIconFontAwesome>
-          <!-- Spinner while a background metadata refresh is active -->
-          <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="16" Height="16" Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Ellipse Width="16" Height="16" Stroke="LightGray" StrokeThickness="2" Opacity="0.6" />
-            <Ellipse Width="10" Height="10" Stroke="Orange" StrokeThickness="2">
+          <!--  Spinner while a background metadata refresh is active  -->
+          <Grid
+            Width="16"
+            Height="16"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Ellipse
+              Width="16"
+              Height="16"
+              Opacity="0.6"
+              Stroke="LightGray"
+              StrokeThickness="2" />
+            <Ellipse
+              Width="10"
+              Height="10"
+              Stroke="Orange"
+              StrokeThickness="2">
               <Ellipse.RenderTransform>
                 <RotateTransform x:Name="rt" Angle="0" CenterX="5" CenterY="5" />
               </Ellipse.RenderTransform>
@@ -82,7 +96,12 @@
                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                   <BeginStoryboard>
                     <Storyboard RepeatBehavior="Forever">
-                      <DoubleAnimation Storyboard.TargetName="rt" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:1" />
+                      <DoubleAnimation
+                        Storyboard.TargetName="rt"
+                        Storyboard.TargetProperty="Angle"
+                        From="0"
+                        To="360"
+                        Duration="0:0:1" />
                     </Storyboard>
                   </BeginStoryboard>
                 </EventTrigger>
@@ -237,9 +256,7 @@
                 </Style>
               </iconPacks:PackIconMaterial.Style>
             </iconPacks:PackIconMaterial>
-            <TextBlock
-              VerticalAlignment="Center"
-              FontSize="{DynamicResource FontSizeNormal}">
+            <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource FontSizeNormal}">
               <Run Text="{Binding Name, Mode=OneWay}" />
               <Run Text=" (" />
               <Run Text="{Binding FilteredTrackCount, Mode=OneWay}" />
@@ -407,9 +424,7 @@
           </Grid.RowDefinitions>
 
           <!--  Filter Bar  -->
-          <userControls:FilterBar
-            Grid.Row="0"
-            DataContext="{Binding}" />
+          <userControls:FilterBar Grid.Row="0" DataContext="{Binding}" />
 
           <!--  Horizontal Splitter  -->
           <GridSplitter
@@ -417,9 +432,9 @@
             Height="4"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Center"
+            local:GridSplitterPersistence.PersistKey="LibraryFilterSplitter"
             Background="{DynamicResource PlaylistTabBorderBrush}"
-            ResizeDirection="Rows"
-            local:GridSplitterPersistence.PersistKey="LibraryFilterSplitter" />
+            ResizeDirection="Rows" />
 
           <!--  Track List DataGrid  -->
           <DataGrid
@@ -433,10 +448,12 @@
             AlternationCount="2"
             AutoGenerateColumns="False"
             Background="Transparent"
+            BeginningEdit="MusicLibraryDataGrid_BeginningEdit"
             BorderThickness="0"
             CanUserAddRows="False"
             CanUserDeleteRows="False"
             CanUserReorderColumns="True"
+            CellEditEnding="MusicLibraryDataGrid_CellEditEnding"
             CellStyle="{StaticResource SharedDataGridCellStyle}"
             ColumnHeaderStyle="{StaticResource SharedDataGridColumnHeaderStyle}"
             EnableColumnVirtualization="True"
@@ -445,23 +462,21 @@
             HorizontalScrollBarVisibility="Visible"
             IsReadOnly="False"
             ItemsSource="{Binding TracksView.View}"
-            CellEditEnding="MusicLibraryDataGrid_CellEditEnding"
-            BeginningEdit="MusicLibraryDataGrid_BeginningEdit"
-            PreviewMouseLeftButtonDown="MusicLibraryDataGrid_PreviewMouseLeftButtonDown"
             Loaded="DataGrid_Loaded"
-            Sorting="MusicLibraryDataGrid_Sorting"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
+            PreviewMouseLeftButtonDown="MusicLibraryDataGrid_PreviewMouseLeftButtonDown"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
             RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"
             RowHeaderWidth="0"
             RowHeight="20"
-            RowStyle="{StaticResource SharedDataGridRowStyle}"
+            RowStyle="{StaticResource PlaylistDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
+            Sorting="MusicLibraryDataGrid_Sorting"
             Style="{StaticResource SharedDataGridStyle}"
             ToolTipService.IsEnabled="False"
             VerticalScrollBarVisibility="Visible"
@@ -495,6 +510,8 @@
                 <MenuItem Command="{Binding PlacementTarget.Tag.CancelAnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Cancel Analyze" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.ClearSilenceAnalysisCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Clear Silence Analysis" />
                 <Separator />
+                <MenuItem Command="{Binding PlacementTarget.Tag.GetRatingsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Get MusicBrainz Ratings" />
+                <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Properties" />
               </ContextMenu>
             </DataGrid.ContextMenu>
@@ -506,35 +523,41 @@
       <DataTemplate x:Key="PlaylistContentTemplate" DataType="{x:Type models:PlaylistTab}">
         <Grid>
           <!--  Loading overlay — visible while IsLoading=true  -->
-          <Grid Panel.ZIndex="10"
-                Background="{DynamicResource PlaylistTabBackgroundBrush}">
+          <Grid Panel.ZIndex="10" Background="{DynamicResource PlaylistTabBackgroundBrush}">
             <Grid.Style>
               <Style TargetType="Grid">
-                <Setter Property="Visibility" Value="Collapsed"/>
+                <Setter Property="Visibility" Value="Collapsed" />
                 <Style.Triggers>
                   <DataTrigger Binding="{Binding IsLoading}" Value="True">
-                    <Setter Property="Visibility" Value="Visible"/>
+                    <Setter Property="Visibility" Value="Visible" />
                   </DataTrigger>
                 </Style.Triggers>
               </Style>
             </Grid.Style>
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Width="360">
-              <TextBlock Text="{Binding LoadingStatus}"
-                         HorizontalAlignment="Center"
-                         Margin="0,0,0,12"
-                         FontSize="13"
-                         Foreground="{DynamicResource PlaylistTabForegroundBrush}"/>
-              <ProgressBar Value="{Binding LoadingProgress}"
-                           Maximum="{Binding LoadingTotal}"
-                           Height="6"
-                           Minimum="0"/>
-              <TextBlock HorizontalAlignment="Center" Margin="0,8,0,0"
-                         FontSize="11"
-                         Foreground="{DynamicResource PlaylistTabForegroundBrush}">
+            <StackPanel
+              Width="360"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center">
+              <TextBlock
+                Margin="0,0,0,12"
+                HorizontalAlignment="Center"
+                FontSize="13"
+                Foreground="{DynamicResource PlaylistTabForegroundBrush}"
+                Text="{Binding LoadingStatus}" />
+              <ProgressBar
+                Height="6"
+                Maximum="{Binding LoadingTotal}"
+                Minimum="0"
+                Value="{Binding LoadingProgress}" />
+              <TextBlock
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                FontSize="11"
+                Foreground="{DynamicResource PlaylistTabForegroundBrush}">
                 <TextBlock.Text>
                   <MultiBinding StringFormat="{}{0} / {1}">
-                    <Binding Path="LoadingProgress"/>
-                    <Binding Path="LoadingTotal"/>
+                    <Binding Path="LoadingProgress" />
+                    <Binding Path="LoadingTotal" />
                   </MultiBinding>
                 </TextBlock.Text>
               </TextBlock>
@@ -569,7 +592,7 @@
             RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"
             RowHeaderWidth="0"
             RowHeight="20"
-            RowStyle="{StaticResource SharedDataGridRowStyle}"
+            RowStyle="{StaticResource PlaylistDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"

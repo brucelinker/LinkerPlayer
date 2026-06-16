@@ -154,10 +154,27 @@ public class CoreMetadataLoader : IAtlMetadataLoader
                 track.ISRC = string.IsNullOrEmpty(v) ? null : v;
             });
         }
+
+        // Rating (0–5 stars, mapped from ATL Popularity 0–255)
+        double rawPop = (double)(track.Popularity ?? 0f);
+        double ratingStars = rawPop > 0 ? Math.Round(rawPop * 5.0 / 255.0, 1) : 0.0;
+        AddMetadataItem(targetCollection, "Rating", ratingStars > 0 ? ratingStars.ToString("0.0") : "", true, v =>
+        {
+            if (double.TryParse(v, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double stars))
+            {
+                stars = Math.Clamp(Math.Round(stars, 1), 0.0, 5.0);
+                track.Popularity = (float)Math.Round(stars * 255.0 / 5.0, 1);
+            }
+            else
+            {
+                track.Popularity = 0f;
+            }
+        });
     }
 
     /// <summary>
-    /// Load metadata for multiple files (shows <various> when values differ)
+    /// Load metadata for multiple files (shows &lt;various&gt; when values differ)
     /// </summary>
     public void LoadMultiple(IReadOnlyList<Track> audioFiles, ObservableCollection<TagItem> targetCollection)
     {
@@ -182,6 +199,8 @@ public class CoreMetadataLoader : IAtlMetadataLoader
         AddMetadataItemMultiple(targetCollection, audioFiles, "Grouping", f => ""); // ATL doesn't have Grouping
         AddMetadataItemMultiple(targetCollection, audioFiles, "Beats Per Minute", f => ""); // ATL doesn't have BPM
         AddMetadataItemMultiple(targetCollection, audioFiles, "Publisher", f => f.Publisher ?? "");
+        AddMetadataItemMultiple(targetCollection, audioFiles, "Rating",
+            f => (f.Popularity ?? 0f) > 0 ? Math.Round((double)f.Popularity! * 5.0 / 255.0, 1).ToString("0.0") : "");
 
         _logger.LogDebug("Loaded core metadata for {Count} files", audioFiles.Count);
     }
@@ -284,6 +303,18 @@ public class CoreMetadataLoader : IAtlMetadataLoader
                     break;
                 case "Publisher":
                     track.Publisher = string.IsNullOrEmpty(value) ? null : value;
+                    break;
+                case "Rating":
+                    if (double.TryParse(value, System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out double stars))
+                    {
+                        stars = Math.Clamp(Math.Round(stars, 1), 0.0, 5.0);
+                        track.Popularity = (float)Math.Round(stars * 255.0 / 5.0, 1);
+                    }
+                    else
+                    {
+                        track.Popularity = 0f;
+                    }
                     break;
             }
         }

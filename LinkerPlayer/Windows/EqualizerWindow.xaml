@@ -16,6 +16,7 @@
   BorderThickness="1"
   FontStyle="Normal"
   FontWeight="Normal"
+  ShowInTaskbar="False"
   Loaded="Window_Loaded"
   WindowStyle="None"
   mc:Ignorable="d">

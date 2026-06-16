@@ -291,6 +291,30 @@ public partial class PlaylistTabs
             dg.Columns.Add(col);
         }
 
+        // === 4b. Rating column (DataGridTemplateColumn with StarRatingControl) ===
+        if (visibleProps.Contains("Rating") &&
+            !dg.Columns.Any(c => c is DataGridTemplateColumn tc && tc.SortMemberPath == "Rating"))
+        {
+            FrameworkElementFactory ratingFactory = new FrameworkElementFactory(typeof(StarRatingControl));
+            ratingFactory.SetBinding(
+                StarRatingControl.RatingProperty,
+                new Binding("Rating") { Mode = BindingMode.TwoWay });
+
+            DataGridTemplateColumn ratingCol = new DataGridTemplateColumn
+            {
+                Header = "Rating",
+                SortMemberPath = "Rating",
+                CellTemplate = new DataTemplate { VisualTree = ratingFactory },
+            };
+
+            double ratingWidth = savedInfo.TryGetValue("Rating", out AppSettings.ColumnInfo? rci) && rci.Width > 10
+                ? rci.Width : 90;
+            ratingCol.Width = new DataGridLength(ratingWidth, DataGridLengthUnitType.Pixel);
+
+            HookColumnEvents(ratingCol, "Rating");
+            dg.Columns.Add(ratingCol);
+        }
+
         // === 5. Restore saved order ===
         int displayIndex = staticColumnsToPreserve;
         if (savedInfo != null && savedInfo.Count > 0)
@@ -302,6 +326,10 @@ public partial class PlaylistTabs
                     {
                         string key = bind.Path.Path;
                         return savedInfo.TryGetValue(key, out AppSettings.ColumnInfo? ci) && ci.Position >= 0 ? ci.Position : int.MaxValue;
+                    }
+                    if (col is DataGridTemplateColumn tmpl && !string.IsNullOrEmpty(tmpl.SortMemberPath))
+                    {
+                        return savedInfo.TryGetValue(tmpl.SortMemberPath, out AppSettings.ColumnInfo? ci) && ci.Position >= 0 ? ci.Position : int.MaxValue;
                     }
                     return int.MaxValue;
                 })
@@ -396,6 +424,14 @@ public partial class PlaylistTabs
                     Position = col.DisplayIndex
                 };
             }
+            else if (col is DataGridTemplateColumn tmpl && !string.IsNullOrEmpty(tmpl.SortMemberPath))
+            {
+                info[tmpl.SortMemberPath] = new AppSettings.ColumnInfo
+                {
+                    Width = col.ActualWidth,
+                    Position = col.DisplayIndex
+                };
+            }
         }
 
         // If the active DataGrid belongs to the Music Library, persist to library-specific settings
@@ -403,10 +439,19 @@ public partial class PlaylistTabs
         {
             // Persist library visible columns in display order
             List<string> visible = dg.Columns.Skip(1)
-                .OfType<DataGridTextColumn>()
-                .Where(c => c.Binding is Binding bind && bind.Path?.Path != null)
+                .Where(c =>
+                    (c is DataGridTextColumn txtC && txtC.Binding is Binding bindC && bindC.Path?.Path != null) ||
+                    (c is DataGridTemplateColumn tmplC && !string.IsNullOrEmpty(tmplC.SortMemberPath)))
                 .OrderBy(c => c.DisplayIndex)
-                .Select(c => ((Binding)c.Binding).Path.Path)
+                .Select(c =>
+                {
+                    if (c is DataGridTextColumn txtC2 && txtC2.Binding is Binding bindC2)
+                        return bindC2.Path.Path;
+                    if (c is DataGridTemplateColumn tmplC2 && !string.IsNullOrEmpty(tmplC2.SortMemberPath))
+                        return tmplC2.SortMemberPath;
+                    return string.Empty;
+                })
+                .Where(k => !string.IsNullOrEmpty(k))
                 .ToList();
 
             settingsManager.Settings.LibraryVisibleColumns = visible;
@@ -654,7 +699,10 @@ public partial class PlaylistTabs
                 vm.ApplySelectedColumns(m.SelectedColumns);
         }
 
-        RegenerateCurrentColumns();
+        // Only regenerate columns when there is a live PlaylistTabsViewModel (guard against
+        // unit-test scenarios where DataContext is not set but the message handler fires).
+        if (vm != null)
+            RegenerateCurrentColumns();
 
         if (_columnSelectorPopup?.IsOpen == true)
             _columnSelectorPopup.IsOpen = false;
@@ -943,6 +991,12 @@ public partial class PlaylistTabs
     {
         if (e.ClickCount >= 2)
         {
+            // Don't interfere with the rating popup — rapid clicks on the spinner
+            // buttons must not be treated as a double-click on the row.
+            if (e.OriginalSource is DependencyObject src &&
+                FindAncestor<StarRatingControl>(src) != null)
+                return;
+
             _suppressNextEdit = true;
         }
     }
@@ -1092,6 +1146,14 @@ public partial class PlaylistTabs
         }
 
         DependencyObject origin = (DependencyObject)e.OriginalSource;
+
+        // Rapid clicks on the rating popup's spinner buttons must never trigger play.
+        if (FindAncestor<StarRatingControl>(origin) != null)
+        {
+            e.Handled = true;
+            return;
+        }
+
         DataGridColumnHeader? header = FindAncestor<DataGridColumnHeader>(origin);
         if (header != null)
         {
@@ -1511,7 +1573,22 @@ public partial class PlaylistTabs
         }
     }
 
-    internal DataGrid? GetActiveDataGrid() => FindDescendant<DataGrid>(Tabs123);
+    internal DataGrid? GetActiveDataGrid()
+    {
+        // Primary path: visual tree walk (works at runtime when tabs are rendered)
+        DataGrid? vt = FindDescendant<DataGrid>(Tabs123);
+        if (vt != null)
+            return vt;
+
+        // Fallback: logical tree via selected TabItem content (works in unit tests
+        // where the TabControl is not part of a rendered visual tree)
+        if (Tabs123?.SelectedItem is TabItem selected && selected.Content is DataGrid dg)
+            return dg;
+        if (Tabs123?.Items.Count > 0 && Tabs123.Items[0] is TabItem first && first.Content is DataGrid dgFirst)
+            return dgFirst;
+
+        return null;
+    }
 
     // The filler element inside DataGridColumnHeadersPresenter binds its Width to
     // CellsPanelHorizontalOffset via the DataGrid's default control template.  When

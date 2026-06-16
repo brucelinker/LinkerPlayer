@@ -60,6 +60,10 @@ public sealed class FakeMusicLibrary : IMusicLibrary
     {
     }
 
+    public void MarkLibraryDirty()
+    {
+    }
+
     public event EventHandler? LibraryLoaded;
     public Task LoadFromDatabaseAsync() => Task.CompletedTask;
     public Task RemoveTracksAsync(IEnumerable<string> trackIds) => Task.CompletedTask;
@@ -67,6 +71,8 @@ public sealed class FakeMusicLibrary : IMusicLibrary
     public Task CleanOrphanedTracksAsync() => Task.CompletedTask;
 
     public Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true) => Task.CompletedTask;
+
+    public Task UpdateRatingAsync(string trackId, double rating) => Task.CompletedTask;
 
     public Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     public Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

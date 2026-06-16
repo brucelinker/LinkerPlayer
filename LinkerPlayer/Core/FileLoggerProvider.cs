@@ -61,13 +61,27 @@ public class BackgroundLogWriter : IDisposable
     {
         try
         {
-            // Flush every 100ms OR when queue has 10+ items
-            using Timer flushTimer = new Timer(_ => FlushWriter(), null, 100, 100);
+            int messagesSinceFlush = 0;
+            DateTime lastFlush = DateTime.UtcNow;
 
             foreach (string message in _logQueue.GetConsumingEnumerable())
             {
-                await _writer.WriteAsync(message);
+                await _writer.WriteAsync(message).ConfigureAwait(false);
+                messagesSinceFlush++;
+
+                // Flush every 10 messages or every 100ms, whichever comes first.
+                bool shouldFlush = messagesSinceFlush >= 10 ||
+                                   (DateTime.UtcNow - lastFlush).TotalMilliseconds >= 100;
+                if (shouldFlush)
+                {
+                    await _writer.FlushAsync().ConfigureAwait(false);
+                    messagesSinceFlush = 0;
+                    lastFlush = DateTime.UtcNow;
+                }
             }
+
+            // Drain complete — final flush.
+            await _writer.FlushAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -77,24 +91,19 @@ public class BackgroundLogWriter : IDisposable
 
     private void FlushWriter()
     {
-        if (!_disposed)
-        {
-            _writer.Flush();
-        }
+        // Intentionally empty — flushing is now handled inside ProcessQueue using
+        // FlushAsync to avoid mixing sync Flush() with in-flight WriteAsync calls.
     }
 
     public void Dispose()
     {
         if (_disposed)
-        {
             return;
-        }
 
         _disposed = true;
 
         _logQueue.CompleteAdding();
-        _writerTask.Wait(TimeSpan.FromSeconds(2)); // Wait for queue to finish
-        _writer.Flush();
+        _writerTask.Wait(TimeSpan.FromSeconds(2)); // ProcessQueue does final FlushAsync before exiting
         _writer.Dispose();
         _logQueue.Dispose();
     }

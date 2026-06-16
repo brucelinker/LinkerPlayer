@@ -5,6 +5,7 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
+using LinkerPlayer.Services.Metadata;
 using LinkerPlayer.Services.Playback;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.ViewModels.Properties.Loaders;
@@ -109,6 +110,8 @@ public partial class App
                 services.AddTransient<ReplayGainLoaderAtl>();
                 services.AddTransient<PictureInfoLoaderAtl>();
                 services.AddTransient<LyricsCommentLoaderAtl>();
+
+                services.AddSingleton<IMusicBrainzRatingService, MusicBrainzRatingService>();
             })
             .Build();
 
@@ -188,6 +191,17 @@ public partial class App
                     _logger.LogInformation("Starting library load from database");
                     await library.LoadFromDatabaseAsync();
                     _logger.LogInformation("Library load completed successfully");
+
+                    // Schedule background metadata refresh for tracks flagged during startup
+                    // (e.g. the one-time artist-parser fix migration).
+                    List<MediaFile> needsRefresh = library.MainLibrary
+                        .Where(t => t.NeedsMetadataRefresh)
+                        .ToList();
+                    if (needsRefresh.Count > 0)
+                    {
+                        _logger.LogInformation("Scheduling background metadata refresh for {Count} tracks", needsRefresh.Count);
+                        BackgroundMetadataRefresher.Enqueue(needsRefresh);
+                    }
 
                     // One-time backfill: set HasEmbeddedCover for tracks loaded before
                     // the column existed (all default to false in the DB).

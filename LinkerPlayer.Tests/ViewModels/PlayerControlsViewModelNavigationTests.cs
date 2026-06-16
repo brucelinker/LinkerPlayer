@@ -98,6 +98,7 @@ public class PlayerControlsViewModelNavigationTests
         selectionService.SetupGet(s => s.CurrentTrack).Returns((MediaFile?)null);
 
         Mock<IPlaybackCoordinator> playbackCoordinator = new Mock<IPlaybackCoordinator>();
+        Mock<IMusicBrainzRatingService> musicBrainzRatingService = new Mock<IMusicBrainzRatingService>();
         ILogger<PlaylistTabsViewModel> logger = Mock.Of<ILogger<PlaylistTabsViewModel>>();
 
         return new PlaylistTabsViewModel(
@@ -112,6 +113,7 @@ public class PlayerControlsViewModelNavigationTests
             selectionService.Object,
             playbackCoordinator.Object,
             Mock.Of<IImportCancellationService>(),
+            musicBrainzRatingService.Object,
             logger);
     }
 }

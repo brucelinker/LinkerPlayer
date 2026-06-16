@@ -1,11 +1,9 @@
+using ATL;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
-using LinkerPlayer.Audio;
+using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
-using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels.Properties.Loaders;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,9 +13,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using ATL;
-using System.Linq;
-using LinkerPlayer.BassLibs;
 
 namespace LinkerPlayer.ViewModels;
 
@@ -448,6 +443,32 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         }
 
         OnPropertyChanged(nameof(AlbumCoverSource));
+
+        // Rating (special handling because ATL uses Popularity 0-255)
+        double currentRating = _atlTrack?.Popularity != null
+            ? Math.Round(_atlTrack.Popularity.Value * 5.0 / 255.0, 1)
+            : 0.0;
+
+        TagItem ratingItem = new TagItem
+        {
+            Name = "Rating",
+            Value = currentRating.ToString("0.0"),
+            OriginalValue = currentRating.ToString("0.0"),
+            IsEditable = true,
+            UpdateAction = newValue =>
+            {
+                if (double.TryParse(newValue, out double r))
+                {
+                    double clamped = Math.Round(Math.Clamp(r, 0.0, 5.0), 1);
+                    _atlTrack!.Popularity = (float)(clamped * 255.0 / 5.0);
+                }
+            }
+        };
+
+        MetadataItems.Add(ratingItem);
+        ratingItem.PropertyChanged += TagItem_PropertyChanged!;
+        IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
+        musicLibrary.MarkLibraryDirty();
     }
 
     private void LoadAllSectionsMultipleAtl(IReadOnlyList<Track> atlTracks)
@@ -527,6 +548,32 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         catch (Exception ex) { _logger.LogError(ex, "Error loading lyrics (multiple ATL)"); }
 
         OnPropertyChanged(nameof(AlbumCoverSource));
+
+        // Rating (special handling because ATL uses Popularity 0-255)
+        double currentRating = _atlTrack?.Popularity != null
+            ? Math.Round(_atlTrack.Popularity.Value * 5.0 / 255.0, 1)
+            : 0.0;
+
+        TagItem ratingItem = new TagItem
+        {
+            Name = "Rating",
+            Value = currentRating.ToString("0.0"),
+            OriginalValue = currentRating.ToString("0.0"),
+            IsEditable = true,
+            UpdateAction = newValue =>
+            {
+                if (double.TryParse(newValue, out double r))
+                {
+                    double clamped = Math.Round(Math.Clamp(r, 0.0, 5.0), 1);
+                    _atlTrack!.Popularity = (float)(clamped * 255.0 / 5.0);
+                }
+            }
+        };
+
+        MetadataItems.Add(ratingItem);
+        ratingItem.PropertyChanged += TagItem_PropertyChanged!;
+        IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
+        musicLibrary.MarkLibraryDirty();
     }
 
     public System.Windows.Media.Imaging.BitmapImage? AlbumCoverSource
@@ -758,16 +805,16 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             try
             {
                 IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
-                _ = Task.Run(async () => await musicLibrary.UpdateTracksAsync(_sharedDataModel.SelectedTracks, updateMetadata: true, updateAnalysis: false));
+                _ = Task.Run(async () =>
+                    await musicLibrary.UpdateTracksAsync(_sharedDataModel.SelectedTracks,
+                        updateMetadata: true, updateAnalysis: false));
             }
             catch { }
         }
         else
         {
             if (_sharedDataModel.SelectedTrack == null)
-            {
                 return;
-            }
 
             _sharedDataModel.SelectedTrack.UpdateFromFileMetadata();
 
@@ -780,11 +827,16 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             {
                 IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
                 List<MediaFile> updated = new List<MediaFile> { _sharedDataModel.SelectedTrack };
-                if (_sharedDataModel.ActiveTrack != null && !_sharedDataModel.ActiveTrack.Id.Equals(_sharedDataModel.SelectedTrack.Id, StringComparison.Ordinal))
+
+                if (_sharedDataModel.ActiveTrack != null &&
+                    !_sharedDataModel.ActiveTrack.Id.Equals(_sharedDataModel.SelectedTrack.Id, StringComparison.Ordinal))
                 {
                     updated.Add(_sharedDataModel.ActiveTrack);
                 }
-                _ = Task.Run(async () => await musicLibrary.UpdateTracksAsync(updated, updateMetadata: true, updateAnalysis: false));
+
+                _ = Task.Run(async () =>
+                    await musicLibrary.UpdateTracksAsync(updated,
+                        updateMetadata: true, updateAnalysis: false));
             }
             catch { }
         }

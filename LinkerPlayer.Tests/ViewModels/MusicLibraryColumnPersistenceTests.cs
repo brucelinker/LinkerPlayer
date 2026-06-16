@@ -110,7 +110,8 @@ public class MusicLibraryColumnPersistenceTests
         Mock<IUiDispatcher> mockUi = new Mock<LinkerPlayer.Services.IUiDispatcher>();
         Mock<IDatabaseSaveService> mockSave = new Mock<LinkerPlayer.Services.IDatabaseSaveService>();
         Mock<ISelectionService> mockSelection = new Mock<LinkerPlayer.Services.ISelectionService>();
-        Mock<ILogger<PlaylistTabsViewModel>> mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<PlaylistTabsViewModel>>();
+        Mock<IMusicBrainzRatingService> mockMbService = new Mock<LinkerPlayer.Services.IMusicBrainzRatingService>();
+        Mock< ILogger<PlaylistTabsViewModel>> mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<PlaylistTabsViewModel>>();
 
         PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
             mockLibrary.Object,
@@ -124,6 +125,7 @@ public class MusicLibraryColumnPersistenceTests
             mockSelection.Object,
             new LinkerPlayer.Tests.Mocks.TestPlaybackCoordinator(),
             Mock.Of<IImportCancellationService>(),
+            mockMbService.Object,
             mockLogger.Object);
 
         // use reflection to set DataContext

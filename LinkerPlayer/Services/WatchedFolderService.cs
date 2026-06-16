@@ -1,3 +1,4 @@
+using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
@@ -54,6 +55,7 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
     private readonly ISettingsManager _settingsManager;
     private readonly IFileImportService _fileImportService;
     private readonly IMusicLibrary _musicLibrary;
+    private readonly IAudioEngine _audioEngine;
     private readonly ILogger<WatchedFolderService> _logger;
     private readonly IRescanLogger _rescanLogger;
     private readonly SemaphoreSlim _scanSemaphore = new(1, 1);
@@ -67,12 +69,14 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
         ISettingsManager settingsManager,
         IFileImportService fileImportService,
         IMusicLibrary musicLibrary,
+        IAudioEngine audioEngine,
         ILogger<WatchedFolderService> logger,
         IRescanLogger rescanLogger)
     {
         _settingsManager = settingsManager;
         _fileImportService = fileImportService;
         _musicLibrary = musicLibrary;
+        _audioEngine = audioEngine;
         _logger = logger;
         _rescanLogger = rescanLogger;
 
@@ -89,6 +93,7 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
                 {
                     IncludeSubdirectories = true,
                     NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size,
+                    InternalBufferSize = 65536, // 64 KB — reduces dropped events on busy NAS shares
                     EnableRaisingEvents = true
                 };
                 watcher.Changed += OnFileChanged;
@@ -118,6 +123,7 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
             {
                 IncludeSubdirectories = true,
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.Size,
+                InternalBufferSize = 65536, // 64 KB — reduces dropped events on busy NAS shares
                 EnableRaisingEvents = true
             };
             watcher.Changed += OnFileChanged;
@@ -293,6 +299,17 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
                 if (cancellationToken.IsCancellationRequested) break;
                 try
                 {
+                    // Guard against files that vanished between enumeration and the read —
+                    // common on UNC/NAS shares. UpdateFromFileMetadata handles this too,
+                    // but avoiding the throw entirely is cleaner and quieter in the debugger.
+                    if (!File.Exists(track.Path))
+                    {
+                        track.HealthStatus = TrackHealthStatus.Missing;
+                        _logger.LogWarning("File no longer exists during scan, marking missing: {Path}", track.Path);
+                        _rescanLogger.LogWarning($"File missing during scan: {track.Path}");
+                        continue;
+                    }
+
                     track.UpdateFromFileMetadata(raisePropertyChanged: true);
                     _rescanLogger.LogUpdated(track.Path);
                 }
@@ -466,9 +483,33 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
                         return;
                     }
 
-                    track.UpdateFromFileMetadata(raisePropertyChanged: true);
-                    await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
-                    _logger.LogInformation("Auto-updated metadata for modified file: {Path}", path);
+                    // BASS holds an exclusive file lock for the lifetime of playback.
+                    // ATL cannot open the same file — skip the refresh; metadata is current.
+                    if (string.Equals(_audioEngine.LoadedTrackPath, path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _logger.LogDebug("Metadata refresh skipped — file in use by BASS: {Path}", path);
+                        return;
+                    }
+
+                    // An external process (tag editor, Windows Search, etc.) may briefly hold
+                    // the file after writing it. Retry with the same pattern as TrackMetadataRefresher.
+                    const int maxRetries = 5;
+                    for (int attempt = 1; attempt <= maxRetries; attempt++)
+                    {
+                        try
+                        {
+                            track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                            await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                            _logger.LogInformation("Auto-updated metadata for modified file: {Path}", path);
+                            break;
+                        }
+                        catch (IOException) when (attempt < maxRetries)
+                        {
+                            _logger.LogWarning("Metadata read attempt {Attempt}/{Max} failed for {Path} — retrying in 500ms",
+                                attempt, maxRetries, path);
+                            await Task.Delay(500).ConfigureAwait(false);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -515,8 +556,55 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
         });
     }
 
+    private void OnDirectoryRenamed(string oldPath, string newPath)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                // Update the Path (and WatchedFolderPath when it matches) of every track
+                // whose path sits under the renamed directory. Use a char-after check so
+                // "Rock" doesn't accidentally match "Rock and Roll".
+                List<MediaFile> affected = _musicLibrary.MainLibrary
+                    .Where(t => t.Path.Length > oldPath.Length &&
+                                t.Path.StartsWith(oldPath, StringComparison.OrdinalIgnoreCase) &&
+                                (t.Path[oldPath.Length] == System.IO.Path.DirectorySeparatorChar ||
+                                 t.Path[oldPath.Length] == '/'))
+                    .ToList();
+
+                if (affected.Count == 0)
+                    return;
+
+                foreach (MediaFile track in affected)
+                {
+                    track.Path = newPath + track.Path.Substring(oldPath.Length);
+
+                    // If the renamed dir IS the watched root, update that too.
+                    if (string.Equals(track.WatchedFolderPath, oldPath, StringComparison.OrdinalIgnoreCase))
+                        track.WatchedFolderPath = newPath;
+                }
+
+                await _musicLibrary.UpdateTracksAsync(affected).ConfigureAwait(false);
+                _logger.LogInformation("Directory renamed: {OldPath} -> {NewPath}, updated {Count} track path(s)",
+                    oldPath, newPath, affected.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to handle directory rename {OldPath} -> {NewPath}", oldPath, newPath);
+            }
+        });
+    }
+
     private void OnFileRenamed(object sender, RenamedEventArgs e)
     {
+        // A directory rename fires here too (NotifyFilters.DirectoryName).
+        // Route it to the dedicated handler so all child track paths stay current.
+        if (Directory.Exists(e.FullPath))
+        {
+            OnDirectoryRenamed(e.OldFullPath, e.FullPath);
+            return;
+        }
+
         if (!IsAudioFile(e.FullPath))
             return;
 
@@ -529,9 +617,46 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
                 {
                     track.Path = e.FullPath;
                     track.FileName = System.IO.Path.GetFileName(e.FullPath);
-                    track.UpdateFromFileMetadata(raisePropertyChanged: true);
-                    await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
-                    _logger.LogInformation("Auto-updated metadata for renamed file: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
+
+                    // BASS holds an exclusive file lock for the lifetime of playback.
+                    // The path is already updated above — that's all we need for the playing track.
+                    if (string.Equals(_audioEngine.LoadedTrackPath, e.FullPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                        _logger.LogInformation("Renamed playing track path updated (metadata refresh skipped — file in use by BASS): {NewPath}", e.FullPath);
+                        return;
+                    }
+
+                    // The process that triggered the rename (e.g. a tag editor or the OS on a
+                    // UNC/NAS share) may still hold the file handle briefly. Retry with a short
+                    // delay, matching the same pattern used by TrackMetadataRefresher.
+                    const int maxRetries = 5;
+                    bool refreshed = false;
+                    for (int attempt = 1; attempt <= maxRetries; attempt++)
+                    {
+                        try
+                        {
+                            track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                            refreshed = true;
+                            break;
+                        }
+                        catch (IOException) when (attempt < maxRetries)
+                        {
+                            _logger.LogWarning("Metadata read attempt {Attempt}/{Max} failed for renamed file {Path} — retrying in 500ms",
+                                attempt, maxRetries, e.FullPath);
+                            await Task.Delay(500).ConfigureAwait(false);
+                        }
+                    }
+
+                    if (refreshed)
+                    {
+                        await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                        _logger.LogInformation("Auto-updated metadata for renamed file: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Giving up metadata refresh for renamed file after {Max} attempts: {Path}", maxRetries, e.FullPath);
+                    }
                 }
             }
             catch (Exception ex)
@@ -544,7 +669,9 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
     private static bool IsAudioFile(string path)
     {
         string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
-        return ext is ".mp3" or ".flac" or ".ogg" or ".opus" or ".m4a" or ".mp4" or ".wma" or ".ape" or ".wv" or ".mpc";
+        return ext is ".mp3" or ".flac" or ".ape" or ".ac3" or ".dsd" or ".dsf" or ".dts"
+                   or ".m4a" or ".mka" or ".mp4" or ".mpc" or ".ofr" or ".ogg" or ".opus"
+                   or ".wav" or ".wma" or ".wv";
     }
 
     public void Dispose()

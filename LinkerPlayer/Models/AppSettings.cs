@@ -1,6 +1,8 @@
-namespace LinkerPlayer.Models;
-
 using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
+using System.Text.Json.Serialization;   // ← for JsonIgnore
+
+namespace LinkerPlayer.Models;
 
 public class AppSettings
 {
@@ -34,6 +36,7 @@ public class AppSettings
 
     // New: Remember which monitor the MainWindow was on last close to position Splash on the same screen next launch
     public string LastMainWindowMonitorDeviceName { get; set; } = string.Empty;
+    public Dictionary<string, WindowBoundsSettings> WindowBounds { get; set; } = new();
     public List<string> VisibleColumns { get; set; } = new();
     public Dictionary<string, ColumnInfo> ColumnSettings { get; set; } = new();
 
@@ -71,11 +74,38 @@ public class AppSettings
     // UTC timestamp of the most recent successful full diff-scan completion
     public DateTime? LastScanCompletedUtc { get; set; } = null;
 
+    public string? EncryptedMusicBrainzUsername { get; set; }
+    public string? EncryptedMusicBrainzPassword { get; set; }
+
+    // Helper properties (not serialized)
+    [JsonIgnore]
+    public string MusicBrainzUsername
+    {
+        get => EncryptedMusicBrainzUsername?.Unprotect() ?? string.Empty;
+        set => EncryptedMusicBrainzUsername = value.Protect();
+    }
+
+    [JsonIgnore]
+    public string MusicBrainzPassword
+    {
+        get => EncryptedMusicBrainzPassword?.Unprotect() ?? string.Empty;
+        set => EncryptedMusicBrainzPassword = value.Protect();
+    }
+
     [Serializable]
     public class ColumnInfo
     {
         public double Width { get; set; } = 100;
         public int Position { get; set; } = -1;   // -1 = far right
+    }
+
+    [Serializable]
+    public class WindowBoundsSettings
+    {
+        public double Left { get; set; }
+        public double Top { get; set; }
+        public double Width { get; set; }
+        public double Height { get; set; }
     }
 
     /// <summary>Serializable snapshot of a single FilterCriteria row.</summary>

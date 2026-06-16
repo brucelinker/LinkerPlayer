@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Interop;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
@@ -10,12 +11,14 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace LinkerPlayer.Windows;
 
 public partial class SettingsWindow
 {
+    private const string WindowBoundsSettingsKey = "SettingsWindow";
     private static readonly string[] SpinnerFrames = ["|" , "/", "—", "\\"];
 
     private readonly ThemeManager _themeManager = new();
@@ -71,12 +74,11 @@ public partial class SettingsWindow
 
         try
         {
-            ((App)Application.Current).WindowPlace.Register(this, "SettingsWindow");
-
             // Initialize component with error handling
             try
             {
                 InitializeComponent();
+                ((App)Application.Current).WindowPlace.Register(this, "SettingsWindow");
             }
             catch (Exception ex)
             {
@@ -124,6 +126,11 @@ public partial class SettingsWindow
     {
         try
         {
+            if (!_isLoaded)
+            {
+                OwnedWindowHelper.RestoreBounds(this, _settingsManager, WindowBoundsSettingsKey, Owner ?? Application.Current.MainWindow);
+            }
+
             LoadBehaviorSettings();
             RefreshScanStatus();
 
@@ -183,11 +190,11 @@ public partial class SettingsWindow
 
             // ItemTemplate is defined in XAML to avoid runtime Visual reuse issues.
 
-            ShowPage(0);
+//            ShowPage(0);
             NavigationListBox.SelectedIndex = 0;
 
             // Now it's safe to attach the event handler
-            NavigationListBox.SelectionChanged += Navigation_SelectionChanged;
+            NavigationListBox.SelectionChanged += NavigationListBox_SelectionChanged;
 
             _isLoaded = true;
         }
@@ -417,42 +424,28 @@ public partial class SettingsWindow
         }
     }
 
-    private void Navigation_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void NavigationListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_isLoaded)
-            return; // Extra safety, though not needed after attaching post-load
-
-        if (sender is ListBox listBox && listBox.SelectedIndex >= 0)
-        {
-            ShowPage(listBox.SelectedIndex);
-        }
-    }
-
-    private void ShowPage(int index)
-    {
-        // Hide all
         OutputPage.Visibility = Visibility.Collapsed;
         AppearancePage.Visibility = Visibility.Collapsed;
         BehaviorPage.Visibility = Visibility.Collapsed;
         LibraryPage.Visibility = Visibility.Collapsed;
+        MusicBrainzPage.Visibility = Visibility.Collapsed;
 
-        // Show selected
-        switch (index)
+        if (NavigationListBox.SelectedItem is ListBoxItem item)
         {
-            case 0:
+            string page = item.Content?.ToString() ?? "";
+
+            if (page == "Output")
                 OutputPage.Visibility = Visibility.Visible;
-                break;
-            case 1:
+            else if (page == "Appearance")
                 AppearancePage.Visibility = Visibility.Visible;
-                break;
-            case 2:
+            else if (page == "Behavior")
                 BehaviorPage.Visibility = Visibility.Visible;
-                break;
-            case 3:
+            else if (page == "Library")
                 LibraryPage.Visibility = Visibility.Visible;
-                LoadLibrarySettings();
-                RefreshScanStatus();
-                break;
+            else if (page == "MusicBrainz")
+                MusicBrainzPage.Visibility = Visibility.Visible;
         }
     }
 
@@ -553,13 +546,21 @@ public partial class SettingsWindow
 
     private void Window_Closing(object sender, EventArgs e)
     {
+        OwnedWindowHelper.SaveBounds(this, _settingsManager, WindowBoundsSettingsKey);
         _rescanLogger.ScanStatusChanged -= OnScanStatusChanged;
         _scanSpinner.Stop();
     }
 
     private void RefreshScanStatus()
     {
-        LibraryScanStatusText.Text = _rescanLogger.ScanStatusText;
+        // Always recompute from the raw UTC timestamp so "today" never goes stale
+        // after the window has been sitting open (or re-opened) across midnight.
+        LibraryScanStatusText.Text = _rescanLogger.IsScanning
+            ? _rescanLogger.ScanStatusText
+            : _rescanLogger.LastScanCompletedUtc.HasValue
+                ? FormatLastScanText(_rescanLogger.LastScanCompletedUtc.Value)
+                : _rescanLogger.ScanStatusText;
+
         if (_rescanLogger.IsScanning)
         {
             LibraryScanSpinner.Visibility = Visibility.Visible;
@@ -576,6 +577,13 @@ public partial class SettingsWindow
     {
         // Already dispatched to UI thread by RescanLogger
         RefreshScanStatus();
+    }
+
+    private static string FormatLastScanText(DateTime utc)
+    {
+        DateTime local = utc.ToLocalTime();
+        string datePart = local.Date == DateTime.Today ? "today" : local.ToString("ddd MMM d");
+        return $"Last scan: {datePart} at {local:h:mm tt}";
     }
 
     private void LoadBehaviorSettings()
@@ -878,18 +886,31 @@ public partial class SettingsWindow
         RescanLogWindow? wnd = App.AppHost?.Services?.GetService<RescanLogWindow>();
         if (wnd == null) return;
 
-        if (wnd.Owner != this)
-            wnd.Owner = this;
+        OwnedWindowHelper.Show(wnd, this);
+    }
 
-        if (!wnd.IsVisible)
+    private void MbPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is AppSettings settings)
         {
-            wnd.Left = Left + (ActualWidth  - wnd.Width)  / 2;
-            wnd.Top  = Top  + (ActualHeight - wnd.Height) / 2;
-            wnd.Show();
+            settings.MusicBrainzPassword = MbPasswordBox.Password;
         }
-        else
+    }
+
+    private void SaveMusicBrainzCredentials_Click(object sender, RoutedEventArgs e)
+    {
+        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
+
+        if (settingsManager != null)
         {
-            wnd.Activate();
+            settingsManager.Settings.MusicBrainzUsername = MbUsernameTextBox.Text?.Trim() ?? "";
+            settingsManager.Settings.MusicBrainzPassword = MbPasswordBox.Password ?? "";
+
+            settingsManager.SaveSettings(nameof(AppSettings.MusicBrainzUsername));
+            settingsManager.SaveSettings(nameof(AppSettings.MusicBrainzPassword))
+                ;
+            MbStatusText.Text = "✅ Credentials saved successfully!";
+            MbStatusText.Foreground = Brushes.LimeGreen;   // Full namespace
         }
     }
 }

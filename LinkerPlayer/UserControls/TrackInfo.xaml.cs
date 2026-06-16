@@ -1,4 +1,5 @@
 using LinkerPlayer.Audio;
+using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
@@ -12,12 +13,15 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using static LinkerPlayer.Audio.SpectrumAnalyzer;
+using static MaterialDesignThemes.Wpf.Theme;
 
 namespace LinkerPlayer.UserControls;
 
 public partial class TrackInfo : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    private readonly IMusicLibrary _musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
 
     private readonly IAudioEngine _audioEngine;
     private readonly ILogger<TrackInfo> _logger;

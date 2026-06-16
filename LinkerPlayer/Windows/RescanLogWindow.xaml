@@ -32,6 +32,7 @@
                   CanUserResizeRows="False"
                   CanUserReorderColumns="False"
                   PreviewKeyDown="LogList_PreviewKeyDown"
+                  ScrollViewer.ScrollChanged="LogList_ScrollChanged"
                   VirtualizingPanel.IsVirtualizing="True"
                   VirtualizingPanel.VirtualizationMode="Recycling"
                   Background="#1E1E1E"

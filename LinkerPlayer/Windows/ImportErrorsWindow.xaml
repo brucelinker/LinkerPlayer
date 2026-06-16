@@ -5,6 +5,7 @@
         Width="700"
         Height="400"
         WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
         ResizeMode="CanResize"
         MinWidth="400"
         MinHeight="200">

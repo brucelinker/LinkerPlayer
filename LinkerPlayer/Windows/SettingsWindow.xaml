@@ -150,6 +150,10 @@
         Content="Library"
         FontSize="14"
         Tag="LibraryOutline" />
+      <ListBoxItem
+        Content="MusicBrainz"
+        FontSize="14"
+        Tag="AccountMusic" />
     </ListBox>
 
     <!--  OUTPUT PAGE  -->
@@ -699,6 +703,58 @@
             VerticalAlignment="Center"
             FontSize="{DynamicResource FontSizeNormal}"
             Foreground="{DynamicResource ControlForegroundBrush}" />
+        </StackPanel>
+      </Grid>
+
+      <!--  MUSICBRAINZ PAGE  -->
+      <Grid x:Name="MusicBrainzPage" Visibility="Collapsed">
+        <StackPanel
+          Margin="20,40,30,30"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top">
+
+          <TextBlock
+            Margin="0,0,0,20"
+            FontSize="18"
+            FontWeight="SemiBold"
+            Foreground="{DynamicResource ControlForegroundBrush}"
+            Text="MusicBrainz" />
+
+          <StackPanel Margin="0,0,0,15">
+            <TextBlock
+              Margin="0,0,0,5"
+              Foreground="{DynamicResource ControlForegroundBrush}"
+              Text="Username" />
+            <TextBox
+              x:Name="MbUsernameTextBox"
+              Width="320"
+              Height="26"
+              FontSize="16" />
+          </StackPanel>
+
+          <StackPanel Margin="0,0,0,20">
+            <TextBlock
+              Margin="0,0,0,5"
+              Foreground="{DynamicResource ControlForegroundBrush}"
+              Text="Password" />
+            <PasswordBox
+              x:Name="MbPasswordBox"
+              Width="320"
+              Height="26"
+              FontSize="16" />
+          </StackPanel>
+
+          <Button
+            Width="200"
+            Height="38"
+            Click="SaveMusicBrainzCredentials_Click"
+            Content="Save Credentials"
+            Style="{StaticResource LinkerRectangleButton}" />
+
+          <TextBlock
+            x:Name="MbStatusText"
+            Margin="0,15,0,0"
+            FontSize="13" />
         </StackPanel>
       </Grid>
     </Grid>

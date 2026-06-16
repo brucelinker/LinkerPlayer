@@ -55,6 +55,7 @@ public interface IMediaFile
     string? Copyright { get; }
     BitmapImage? AlbumCover { get; }
     PlaybackState State { get; set; }
+    double Rating { get; set; }
 }
 
 [Index(nameof(Id), nameof(Path), IsUnique = true)]
@@ -64,11 +65,12 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     private CoverManager? _coverManager;
     private bool _isDirtyTrackingEnabled;
 
-    private IMediaFileHelper? MediaFileHelper
+    private IMediaFileHelper? MediaFileHelperService
     {
         get
         {
-            try { return App.AppHost?.Services?.GetService<IMediaFileHelper>(); }
+            try
+            { return App.AppHost?.Services?.GetService<IMediaFileHelper>(); }
             catch { return null; }
         }
     }
@@ -77,7 +79,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         get
         {
-            try { return App.AppHost?.Services?.GetService<ILogger<MediaFile>>(); }
+            try
+            { return App.AppHost?.Services?.GetService<ILogger<MediaFile>>(); }
             catch { return null; }
         }
     }
@@ -108,7 +111,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         nameof(Title), nameof(Artist), nameof(Album), nameof(AlbumArtist),
         nameof(Genres), nameof(Track), nameof(TrackCount), nameof(Disc),
         nameof(DiscCount), nameof(Year), nameof(Composers), nameof(Comment),
-        nameof(Copyright)
+        nameof(Copyright), nameof(Rating)
     };
 
     [NotMapped]
@@ -144,7 +147,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     public bool IsPropertyDirty(string propertyName)
     {
-        lock (_dirtyLock) { return _dirtyProperties.Contains(propertyName); }
+        lock (_dirtyLock)
+        { return _dirtyProperties.Contains(propertyName); }
     }
 
     public void ClearDirty()
@@ -201,14 +205,54 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
         public void Dispose()
         {
-            if (_disposed) return;
+            if (_disposed)
+                return;
             _disposed = true;
-            if (_restore) _owner._isDirtyTrackingEnabled = true;
+            if (_restore)
+                _owner._isDirtyTrackingEnabled = true;
+        }
+    }
+
+    // Suppresses individual PropertyChanged events during bulk property updates.
+    // On dispose fires a single OnPropertyChanged("") so all bindings refresh once.
+    private volatile int _notificationsSuspended;
+
+    /// <summary>
+    /// Suppresses <see cref="INotifyPropertyChanged.PropertyChanged"/> for the duration
+    /// of the returned scope.  On dispose, one <c>OnPropertyChanged("")</c> is raised so
+    /// every binding refreshes exactly once.  Use for bulk property copies to avoid
+    /// flooding the UI thread with dozens of events per track.
+    /// </summary>
+    public IDisposable SuspendNotifications()
+    {
+        Interlocked.Increment(ref _notificationsSuspended);
+        return new NotificationsScope(this);
+    }
+
+    private sealed class NotificationsScope : IDisposable
+    {
+        private readonly MediaFile _owner;
+        private bool _disposed;
+
+        internal NotificationsScope(MediaFile owner) => _owner = owner;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            _disposed = true;
+            if (Interlocked.Decrement(ref _owner._notificationsSuspended) == 0)
+                _owner.OnPropertyChanged(new PropertyChangedEventArgs(string.Empty));
         }
     }
 
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
+        // While a SuspendNotifications scope is active, swallow individual notifications.
+        // The scope's Dispose will fire OnPropertyChanged("") once to refresh all bindings.
+        if (_notificationsSuspended > 0)
+            return;
+
         base.OnPropertyChanged(e);
 
         if (_isDirtyTrackingEnabled &&
@@ -298,6 +342,14 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private string? _codec = string.Empty;
 
+    /// <summary>
+    /// User-assigned star rating (0.0 = unrated, 0.1–5.0 in tenth-star increments).
+    /// Persisted in the app database and also written to the audio file
+    /// as an ID3v2 POPM / Vorbis RATING tag via ATL Popularity (0–255).
+    /// </summary>
+    [ObservableProperty]
+    private double _rating;
+
     [ObservableProperty]
     private int? _leadingSilenceMs;
 
@@ -343,6 +395,31 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     partial void OnAlbumCoverChanged(BitmapImage? value) =>
         OnPropertyChanged(nameof(HasAlbumCover));
 
+    partial void OnRatingChanged(double oldValue, double newValue)
+    {
+        if (Math.Abs(oldValue - newValue) < 0.01)
+            return;
+
+        // Force save when rating is changed (including by MusicBrainz enrichment)
+        IMusicLibrary? library = App.AppHost?.Services?.GetService<IMusicLibrary>();
+        if (library != null)
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await library.UpdateRatingAsync(Id, newValue);
+                    await library.SaveToDatabaseAsync();
+                }
+                catch (Exception ex)
+                {
+                    ILogger<MediaFile>? logger = App.AppHost?.Services?.GetService<ILogger<MediaFile>>();
+                    logger?.LogError(ex, "Failed to save rating for {Path}", Path);
+                }
+            });
+        }
+    }
+
     /// <summary>
     /// Persisted flag: true when the audio file has at least one embedded picture tag,
     /// regardless of whether the image has been decoded into memory yet.
@@ -363,7 +440,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [NotMapped]
     public string? UnsupportedCoverFormat { get; private set; }
 
-    [NotMapped] 
+    [NotMapped]
     [ObservableProperty]
     private PlaybackState _state = PlaybackState.Stopped;
 
@@ -399,7 +476,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         catch (FileNotFoundException)
         {
             // File was deleted — mark it missing and bail out gracefully.
-            try { Logger?.LogWarning("File no longer exists, skipping metadata refresh: {Path}", Path); } catch { }
+            try
+            { Logger?.LogWarning("File no longer exists, skipping metadata refresh: {Path}", Path); }
+            catch { }
             HealthStatus = TrackHealthStatus.Missing;
             return;
         }
@@ -411,7 +490,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            try { Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path); } catch { }
+            try
+            { Logger?.LogWarning(ex, "Failed to read metadata with ATL for {Path}", Path); }
+            catch { }
             try
             {
                 IImportErrorLogger? importLogger = App.AppHost?.Services?.GetService<Services.IImportErrorLogger>();
@@ -432,12 +513,12 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
         Title = track.Title ?? FileName;
 
-        string artist = MediaFileHelper?.GetBestArtistField(track) ?? UnknownString;
+        string artist = MediaFileHelper.ParseArtist(track);
         Artist = artist;
 
         Album = track.Album ?? UnknownString;
 
-        string albumArtist = MediaFileHelper?.GetBestAlbumArtistField(track) ?? UnknownString;
+        string albumArtist = MediaFileHelper.ParseAlbumArtist(track);
         AlbumArtist = albumArtist;
 
         // ATL uses single string for these (no array like TagLib)
@@ -533,23 +614,79 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             // Optional: OnPropertyChanged for all if needed
         }
 
-        // Set the lightweight cover-present flag from the ATL picture list.
-        // This does NOT load image bytes — it is a cheap O(1) check that lets
-        // the Library DataGrid show the cover indicator for every track on startup.
-        HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
+        // Read star rating from ATL Popularity (0–255) and map to 0–5 scale.
+        // Only overwrite when the file actually carries a rating tag; if Popularity
+        // is null or 0 the DB-stored value (set by the user in the app) is preserved.
+        if (track.Popularity is float pop && pop > 0)
+        {
+            Rating = Math.Round(pop * 5.0 / 255.0, 1);
 
-        try { FileLastWriteTimeUtc = File.GetLastWriteTimeUtc(Path); } catch { }
-        try { FileSize = new FileInfo(Path).Length; } catch { }
+            // Set the lightweight cover-present flag from the ATL picture list.
+            // This does NOT load image bytes — it is a cheap O(1) check that lets
+            // the Library DataGrid show the cover indicator for every track on startup.
+            HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
+
+            try
+            {
+                FileInfo fi = new FileInfo(Path);
+                fi.Refresh(); // force fresh stat (important for UNC/NAS paths)
+                if (fi.Exists)
+                {
+                    FileLastWriteTimeUtc = fi.LastWriteTimeUtc;
+                    FileSize = fi.Length;
+                }
+                // Do not mark Missing here — if ATL opened the file successfully above,
+                // a false fi.Exists is a transient NAS stat failure, not a deleted file.
+                // HealthStatus = Missing is set only by the FileNotFoundException catch
+                // at the top of this method, when ATL itself cannot open the file.
+            }
+            catch { } // swallow transient I/O errors (e.g. UNC share briefly unreachable)
+        }
     }
+
+    /// <summary>
+    /// Reads a specific tag from the audio file on disk using ATL.
+    /// Use this for MusicBrainz IDs and other less-common tags.
+    /// </summary>
+    //public string? GetTag(string tagName)
+    //{
+    //    if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
+    //        return null;
+
+    //    try
+    //    {
+    //        Track track = new Track(Path);   // ATL Track
+
+    //        return tagName.ToUpperInvariant() switch
+    //        {
+    //            "MUSICBRAINZ_TRACKID" or "MUSICBRAINZ_TRACK_ID" => track.MusicBrainzTrackId,
+    //            "MUSICBRAINZ_RELEASETRACKID" => track.MusicBrainzReleaseTrackId,
+    //            "MUSICBRAINZ_ALBUMID" => track.MusicBrainzAlbumId,
+    //            "MUSICBRAINZ_ARTISTID" => track.MusicBrainzArtistId,
+    //            "MUSICBRAINZ_ALBUMARTISTID" => track.MusicBrainzAlbumArtistId,
+    //            "MUSICBRAINZ_RELEASEGROUPID" => track.MusicBrainzReleaseGroupId,
+    //            _ => track.AdditionalFields.TryGetValue(tagName, out string? value) ? value : null
+    //        };
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Logger?.LogWarning(ex, "Failed to read tag '{TagName}' for {Path}", tagName, Path);
+    //        return null;
+    //    }
+    //}
 
     private void SetFallbackMetadata(bool raisePropertyChanged)
     {
         // Only fill in fields that are genuinely empty — never overwrite real data
         // with placeholder values just because ATL failed to re-read the file.
-        if (string.IsNullOrWhiteSpace(Title))       Title = FileName;
-        if (string.IsNullOrWhiteSpace(Album))       Album = UnknownString;
-        if (string.IsNullOrWhiteSpace(Artist))      Artist = UnknownString;
-        if (string.IsNullOrWhiteSpace(AlbumArtist)) AlbumArtist = UnknownString;
+        if (string.IsNullOrWhiteSpace(Title))
+            Title = FileName;
+        if (string.IsNullOrWhiteSpace(Album))
+            Album = UnknownString;
+        if (string.IsNullOrWhiteSpace(Artist))
+            Artist = UnknownString;
+        if (string.IsNullOrWhiteSpace(AlbumArtist))
+            AlbumArtist = UnknownString;
     }
 
     // WPF's built-in imaging pipeline only supports these MIME types natively.
@@ -658,7 +795,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             AlbumCover = AlbumCover,
             HasEmbeddedCover = HasEmbeddedCover,
             State = State,
-            Codec = Codec
+            Codec = Codec,
+            Rating = Rating
         };
     }
 
@@ -716,5 +854,45 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             return System.Text.Json.JsonSerializer.Serialize(new { Error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Reads any tag (especially MusicBrainz IDs) using ATL's AdditionalFields.
+    /// </summary>
+    public string? GetTag(string tagName)
+    {
+        if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
+            return null;
+
+        try
+        {
+            Track atlTrack = new Track(Path);
+
+            if (atlTrack.AdditionalFields.TryGetValue(tagName, out string? value))
+                return value;
+
+            // Case-insensitive fallback
+            KeyValuePair<string, string> match = atlTrack.AdditionalFields.FirstOrDefault(kv =>
+                string.Equals(kv.Key, tagName, StringComparison.OrdinalIgnoreCase));
+
+            return match.Value;
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Failed to read tag '{TagName}' for {Path}", tagName, Path);
+            return null;
+        }
+    }
+
+    private static string? GetAdditionalField(Track track, string key)
+    {
+        if (track.AdditionalFields.TryGetValue(key, out string? value))
+            return value;
+
+        // Try case-insensitive fallback
+        KeyValuePair<string, string> match = track.AdditionalFields.FirstOrDefault(kv =>
+            string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase));
+
+        return match.Value;
     }
 }

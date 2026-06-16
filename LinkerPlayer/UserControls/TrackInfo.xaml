@@ -48,11 +48,20 @@
       Drop="CoverGrid_Drop">
       <Grid.ContextMenu>
         <ContextMenu>
-          <MenuItem Click="CopyImageMenuItem_Click" Header="Copy Image" IsEnabled="{Binding HasAlbumCover}" />
+          <MenuItem
+            Click="CopyImageMenuItem_Click"
+            Header="Copy Image"
+            IsEnabled="{Binding HasAlbumCover}" />
           <MenuItem Click="PasteImageMenuItem_Click" Header="Paste Image" />
           <Separator />
-          <MenuItem Click="SaveImageMenuItem_Click" Header="Save Image As..." IsEnabled="{Binding HasAlbumCover}" />
-          <MenuItem Click="RemoveImageMenuItem_Click" Header="Remove Image" IsEnabled="{Binding HasAlbumCover}" />
+          <MenuItem
+            Click="SaveImageMenuItem_Click"
+            Header="Save Image As..."
+            IsEnabled="{Binding HasAlbumCover}" />
+          <MenuItem
+            Click="RemoveImageMenuItem_Click"
+            Header="Remove Image"
+            IsEnabled="{Binding HasAlbumCover}" />
         </ContextMenu>
       </Grid.ContextMenu>
       <Grid

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using LinkerPlayer.Interop;
 using LinkerPlayer.Models;
 using LinkerPlayer.Windows;
 
@@ -67,15 +68,7 @@ public class ImportErrorLogger : IImportErrorLogger
                 wnd.Owner = Application.Current?.MainWindow;
             }
 
-            if (!wnd.IsVisible)
-            {
-                wnd.Show();
-            }
-            else
-            {
-                // Bring to foreground
-                wnd.Activate();
-            }
+            OwnedWindowHelper.Show(wnd, Application.Current?.MainWindow);
         }
         catch
         {

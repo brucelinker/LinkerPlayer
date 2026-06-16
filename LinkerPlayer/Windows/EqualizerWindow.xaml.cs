@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
+using LinkerPlayer.Interop;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
@@ -18,6 +19,7 @@ namespace LinkerPlayer.Windows;
 [ObservableObject]
 public partial class EqualizerWindow
 {
+    private const string WindowBoundsSettingsKey = "EqualizerWindow";
     [ObservableProperty] private string _selectedPresetName = FlatPreset;
     private Preset? _selectedPreset;
     private const string FlatPreset = "Flat";
@@ -36,10 +38,9 @@ public partial class EqualizerWindow
         _logger = logger;
         try
         {
-            ((App)Application.Current).WindowPlace.Register(this, "EqualizerWindow");
-
             _logger.LogInformation("Initializing EqualizerWindow");
             InitializeComponent();
+            ((App)Application.Current).WindowPlace.Register(this, "EqualizerWindow");
             DataContext = _equalizerViewModel;
 
             DataContext = viewModel;
@@ -345,6 +346,8 @@ public partial class EqualizerWindow
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        OwnedWindowHelper.RestoreBounds(this, _settingsManager, WindowBoundsSettingsKey, Owner ?? Application.Current.MainWindow);
+
         Preset? bandsSettings = _equalizerViewModel.EqPresets.FirstOrDefault();
 
         if (bandsSettings == null)
@@ -362,6 +365,8 @@ public partial class EqualizerWindow
 
     private void Window_Closed(object sender, EventArgs e)
     {
+        OwnedWindowHelper.SaveBounds(this, _settingsManager, WindowBoundsSettingsKey);
+
         if (Properties.Settings.Default.EqualizerOnStartEnabled)
         {
             Properties.Settings.Default.EqualizerProfileName =

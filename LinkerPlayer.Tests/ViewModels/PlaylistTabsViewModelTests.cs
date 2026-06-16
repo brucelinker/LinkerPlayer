@@ -16,47 +16,81 @@ namespace LinkerPlayer.Tests.ViewModels;
 
 public class PlaylistTabsViewModelTests : IDisposable
 {
-    private readonly Mock<IMusicLibrary> _mockLibrary;
-    private readonly Mock<ISharedDataModel> _mockShared;
-    private readonly Mock<ISettingsManager> _mockSettings;
-    private readonly Mock<IFileImportService> _mockFileImport;
-    private readonly Mock<IPlaylistManagerService> _mockPlaylist;
-    private readonly Mock<ITrackNavigationService> _mockNav;
-    private readonly Mock<IUiDispatcher> _mockDispatcher;
-    private readonly Mock<IDatabaseSaveService> _mockSave;
-    private readonly Mock<ISelectionService> _mockSelection;
+    private readonly Mock<IMusicLibrary> _mockMusicLibrary;
+    private readonly Mock<ISharedDataModel> _mockSharedDataModel;
+    private readonly Mock<ISettingsManager> _mockSettingsManager;
+    private readonly Mock<IFileImportService> _mockFileImportService;
+    private readonly Mock<IPlaylistManagerService> _mockPlaylistManagerService;
+    private readonly Mock<ITrackNavigationService> _mockTrackNavigationService;
+    private readonly Mock<IUiDispatcher> _mockUiDispatcher;
+    private readonly Mock<IDatabaseSaveService> _mockDatabaseSaveService;
+    private readonly Mock<ISelectionService> _mockSelectionService;
     private readonly IPlaybackCoordinator _playbackCoordinator;
+    private readonly Mock<IMusicBrainzRatingService> _mockMusicBrainzRatingService;
     private readonly Mock<ILogger<PlaylistTabsViewModel>> _mockLogger;
     private readonly PlaylistTabsViewModel _vm;
 
     public PlaylistTabsViewModelTests()
     {
-        _mockLibrary = new Mock<IMusicLibrary>();
-        _mockShared = new Mock<ISharedDataModel>();
-        _mockSettings = new Mock<ISettingsManager>();
-        _mockFileImport = new Mock<IFileImportService>();
-        _mockPlaylist = new Mock<IPlaylistManagerService>();
-        _mockNav = new Mock<ITrackNavigationService>();
-        _mockDispatcher = new Mock<IUiDispatcher>();
-        _mockSave = new Mock<IDatabaseSaveService>();
-        _mockSelection = new Mock<ISelectionService>();
+        _mockMusicLibrary = new Mock<IMusicLibrary>();
+        _mockSharedDataModel = new Mock<ISharedDataModel>();
+        _mockSettingsManager = new Mock<ISettingsManager>();
+        _mockFileImportService = new Mock<IFileImportService>();
+        _mockPlaylistManagerService = new Mock<IPlaylistManagerService>();
+        _mockTrackNavigationService = new Mock<ITrackNavigationService>();
+        _mockUiDispatcher = new Mock<IUiDispatcher>();
+
+        // Ensure UI dispatcher executes actions immediately in tests
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Action>())).Returns<Action>(a => { a(); return Task.CompletedTask; });
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task>>())).Returns<Func<Task>>(async f => await f());
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<object>>())).Returns<Func<object>>(f => Task.FromResult(f()));
+        _mockUiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task<object>>>())).Returns<Func<Task<object>>>(async f => await f());
+        _mockDatabaseSaveService = new Mock<IDatabaseSaveService>();
+        _mockSelectionService = new Mock<ISelectionService>();
+
+        // Provide a simple backing store for CurrentTrack/CurrentTrackIndex and raise events when SetTrack is called
+        MediaFile? currentTrack = null;
+        int currentIndex = -1;
+        _mockSelectionService.SetupGet(s => s.CurrentTrack).Returns(() => currentTrack);
+        _mockSelectionService.SetupGet(s => s.CurrentTrackIndex).Returns(() => currentIndex);
+        _mockSelectionService.SetupGet(s => s.MultiSelection).Returns(() => Array.Empty<MediaFile>());
+        _mockSelectionService.SetupGet(s => s.CurrentTab).Returns(() => null as PlaylistTab);
+        _mockSelectionService.Setup(s => s.SetTrack(It.IsAny<MediaFile?>(), It.IsAny<int>()))
+            .Callback<MediaFile?, int>((t, idx) =>
+            {
+                currentTrack = t;
+                currentIndex = idx;
+                _mockSelectionService.Raise(s => s.TrackChanged += null, t);
+                _mockSelectionService.Raise(s => s.PropertyChanged += null, new System.ComponentModel.PropertyChangedEventArgs(nameof(ISelectionService.CurrentTrack)));
+                _mockSelectionService.Raise(s => s.PropertyChanged += null, new System.ComponentModel.PropertyChangedEventArgs(nameof(ISelectionService.CurrentTrackIndex)));
+            });
         _playbackCoordinator = new TestPlaybackCoordinator();
+        _mockMusicBrainzRatingService = new Mock<IMusicBrainzRatingService>();
         _mockLogger = new Mock<ILogger<PlaylistTabsViewModel>>();
 
-        _mockSettings.Setup(s => s.Settings).Returns(new AppSettings());
+        _mockSettingsManager.Setup(s => s.Settings).Returns(new AppSettings());
+
+        // Backing store for shared data model used by the view model
+        MediaFile? sharedSelectedTrack = null;
+        int sharedSelectedIndex = -1;
+        _mockSharedDataModel.SetupGet(s => s.SelectedTrack).Returns(() => sharedSelectedTrack);
+        _mockSharedDataModel.SetupGet(s => s.SelectedTrackIndex).Returns(() => sharedSelectedIndex);
+        _mockSharedDataModel.Setup(s => s.UpdateSelectedTrack(It.IsAny<MediaFile>())).Callback<MediaFile>(t => sharedSelectedTrack = t);
+        _mockSharedDataModel.Setup(s => s.UpdateSelectedTrackIndex(It.IsAny<int>())).Callback<int>(i => sharedSelectedIndex = i);
 
         _vm = new PlaylistTabsViewModel(
-            _mockLibrary.Object,
-            _mockShared.Object,
-            _mockSettings.Object,
-            _mockFileImport.Object,
-            _mockPlaylist.Object,
-            _mockNav.Object,
-            _mockDispatcher.Object,
-            _mockSave.Object,
-            _mockSelection.Object,
+            _mockMusicLibrary.Object,
+            _mockSharedDataModel.Object,
+            _mockSettingsManager.Object,
+            _mockFileImportService.Object,
+            _mockPlaylistManagerService.Object,
+            _mockTrackNavigationService.Object,
+            _mockUiDispatcher.Object,
+            _mockDatabaseSaveService.Object,
+            _mockSelectionService.Object,
             _playbackCoordinator,
             Mock.Of<IImportCancellationService>(),
+            _mockMusicBrainzRatingService.Object,
             _mockLogger.Object
         );
     }
@@ -76,7 +110,7 @@ public class PlaylistTabsViewModelTests : IDisposable
 
         _vm.OnDoubleClickDataGrid(); // with track selected
 
-        _mockShared.Verify(s => s.UpdateActiveTrack(track), Times.Once); // or twice with the null trick
+        _mockSharedDataModel.Verify(s => s.UpdateActiveTrack(track), Times.Once); // or twice with the null trick
     }
 
     [StaFact]
@@ -106,8 +140,7 @@ public class PlaylistTabsViewModelTests : IDisposable
     public void Startup_LoadPlaylistTabs_ShouldRestoreSelectedTrack()
     {
         // Arrange
-        Mock<IMusicLibrary> musicLibrary = new Mock<IMusicLibrary>();
-        ObservableCollection<Playlist> playlists = new ObservableCollection<Playlist>
+       ObservableCollection<Playlist> playlists = new ObservableCollection<Playlist>
         {
             new Playlist
             {
@@ -121,58 +154,32 @@ public class PlaylistTabsViewModelTests : IDisposable
             new MediaFile { Id = "trk1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "trk2", FileName = "B", Path = "B.mp3" }
         };
-        musicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
-        musicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(mainLibrary);
+        _mockMusicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
+        _mockMusicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
+        _mockMusicLibrary.SetupGet(m => m.MainLibrary).Returns(mainLibrary);
 
-        Mock<ISettingsManager> settingsManager = new Mock<ISettingsManager>();
-        AppSettings appSettings = new AppSettings { SelectedTabIndex = 0 };
-        settingsManager.SetupGet(s => s.Settings).Returns(appSettings);
+        AppSettings appSettings = new AppSettings { SelectedTabIndex = 1 };
+        _mockSettingsManager.SetupGet(s => s.Settings).Returns(appSettings);
 
-        Mock<IFileImportService> fileImport = new Mock<IFileImportService>();
-        Mock<IPlaylistManagerService> playlistManager = new Mock<IPlaylistManagerService>();
-        playlistManager.Setup(p => p.LoadPlaylistTracks("TestPlaylist")).Returns(new List<MediaFile>
+        _mockPlaylistManagerService.Setup(p => p.LoadPlaylistTracks("TestPlaylist")).Returns(new List<MediaFile>
         {
             new MediaFile { Id = "trk1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "trk2", FileName = "B", Path = "B.mp3" }
         });
-        Mock<ITrackNavigationService> nav = new Mock<ITrackNavigationService>();
-        IUiDispatcher ui = new MockUIDispatcher();
-        Mock<IDatabaseSaveService> saveSvc = new Mock<IDatabaseSaveService>();
-        Mock<ILogger<PlaylistTabsViewModel>> logger = new Mock<ILogger<PlaylistTabsViewModel>>();
-
-        SharedDataModel shared = new SharedDataModel();
-        ISelectionService selection = new TestSelectionService();
-        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
-
-        PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
-            musicLibrary.Object,
-            shared,
-            settingsManager.Object,
-            fileImport.Object,
-            playlistManager.Object,
-            nav.Object,
-            ui,
-            saveSvc.Object,
-            selection,
-            playbackCoordinator,
-            Mock.Of<IImportCancellationService>(),
-            logger.Object);
 
         // Act
-        vm.LoadPlaylistTabs();
+        _vm.LoadPlaylistTabs();
 
         // Assert
-        vm.SelectedTrack.ShouldNotBeNull();
-        vm.SelectedTrack!.Id.ShouldBe("trk2");
-        vm.SelectedTrackIndex.ShouldBe(1);
+        _vm.SelectedTrack.ShouldNotBeNull();
+        _vm.SelectedTrack!.Id.ShouldBe("trk2");
+        _vm.SelectedTrackIndex.ShouldBe(1);
     }
 
     [StaFact]
     public async Task LoadSelectedPlaylistTracksAsync_ShouldPopulateSelectedTab()
     {
         // Arrange
-        Mock<IMusicLibrary> musicLibrary = new Mock<IMusicLibrary>();
         ObservableCollection<Playlist> playlists = new ObservableCollection<Playlist>
         {
             new Playlist
@@ -182,124 +189,75 @@ public class PlaylistTabsViewModelTests : IDisposable
                 SelectedTrackId = "t1"
             }
         };
-        musicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
-        musicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>
+        _mockMusicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
+        _mockMusicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
+        _mockMusicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>
         {
             new MediaFile { Id = "t1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "t2", FileName = "B", Path = "B.mp3" }
         });
 
-        Mock<ISettingsManager> settingsManager = new Mock<ISettingsManager>();
-        settingsManager.SetupGet(s => s.Settings).Returns(new AppSettings { SelectedTabIndex = 0 });
+        //Mock<ISettingsManager> settingsManager = new Mock<ISettingsManager>();
+        _mockSettingsManager.SetupGet(s => s.Settings).Returns(new AppSettings { SelectedTabIndex = 0 });
 
-        Mock<IFileImportService> fileImport = new Mock<IFileImportService>();
-        Mock<IPlaylistManagerService> playlistManager = new Mock<IPlaylistManagerService>();
-        playlistManager.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>
+        _mockPlaylistManagerService.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>
         {
             new MediaFile { Id = "t1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "t2", FileName = "B", Path = "B.mp3" }
         });
-        Mock<ITrackNavigationService> nav = new Mock<ITrackNavigationService>();
-        IUiDispatcher ui = new MockUIDispatcher();
-        Mock<IDatabaseSaveService> saveSvc = new Mock<IDatabaseSaveService>();
-        Mock<ILogger<PlaylistTabsViewModel>> logger = new Mock<ILogger<PlaylistTabsViewModel>>();
-
-        SharedDataModel shared = new SharedDataModel();
-        ISelectionService selection = new TestSelectionService();
-        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
-
-        PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
-            musicLibrary.Object,
-            shared,
-            settingsManager.Object,
-            fileImport.Object,
-            playlistManager.Object,
-            nav.Object,
-            ui,
-            saveSvc.Object,
-            selection,
-            playbackCoordinator,
-            Mock.Of<IImportCancellationService>(),
-            logger.Object);
 
         // Seed tabs
-        vm.LoadPlaylistTabs();
+        _vm.LoadPlaylistTabs();
         // Make selected tab empty to force load via async method:
         // Instead of clearing (not possible on read-only), recreate playlist manager mock to return empty then populate.
-        playlistManager.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>());
-        vm.LoadPlaylistTabs(); // reload with empty
-        playlistManager.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>
+        _mockPlaylistManagerService.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>());
+        _vm.LoadPlaylistTabs(); // reload with empty
+        _mockPlaylistManagerService.Setup(p => p.LoadPlaylistTracks("P1")).Returns(new List<MediaFile>
         {
             new MediaFile { Id = "t1", FileName = "A", Path = "A.mp3" },
             new MediaFile { Id = "t2", FileName = "B", Path = "B.mp3" }
         });
 
         // Act
-        await vm.LoadSelectedPlaylistTracksAsync();
+        await _vm.LoadSelectedPlaylistTracksAsync();
 
         // Assert
-        vm.TabList[0].Tracks.Count.ShouldBe(2);
+        _vm.TabList[0].Tracks.Count.ShouldBe(2);
     }
 
     [StaFact]
     public async Task ReorderTabs_ShouldMoveTab_AndPreserveSelection()
     {
         // Arrange
-        Mock<IMusicLibrary> musicLibrary = new Mock<IMusicLibrary>();
         ObservableCollection<Playlist> playlists = new ObservableCollection<Playlist>
         {
             new Playlist { Name = "A", TrackIds = new ObservableCollection<string>(), SelectedTrackId = null },
             new Playlist { Name = "B", TrackIds = new ObservableCollection<string>(), SelectedTrackId = null },
             new Playlist { Name = "C", TrackIds = new ObservableCollection<string>(), SelectedTrackId = null }
         };
-        musicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
-        musicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
-        musicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
+        _mockMusicLibrary.SetupGet(m => m.Playlists).Returns(playlists);
+        _mockMusicLibrary.Setup(m => m.GetPlaylists()).Returns(playlists.ToList());
+        _mockMusicLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
 
-        Mock<ISettingsManager> settingsManager = new Mock<ISettingsManager>();
-        settingsManager.SetupGet(s => s.Settings).Returns(new AppSettings { SelectedTabIndex = 1 });
+        _mockSettingsManager.SetupGet(s => s.Settings).Returns(new AppSettings { SelectedTabIndex = 1 });
+        _mockPlaylistManagerService.Setup(p => p.ReorderPlaylistsAsync(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(true);
 
-        Mock<IFileImportService> fileImport = new Mock<IFileImportService>();
-        Mock<IPlaylistManagerService> playlistManager = new Mock<IPlaylistManagerService>();
-        playlistManager.Setup(p => p.ReorderPlaylistsAsync(It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync(true);
         // Tracks loading isn't relevant here
-        playlistManager.Setup(p => p.LoadPlaylistTracks(It.IsAny<string>())).Returns(new List<MediaFile>());
-        Mock<ITrackNavigationService> nav = new Mock<ITrackNavigationService>();
-        IUiDispatcher ui = new MockUIDispatcher();
-        Mock<IDatabaseSaveService> saveSvc = new Mock<IDatabaseSaveService>();
-        Mock<ILogger<PlaylistTabsViewModel>> logger = new Mock<ILogger<PlaylistTabsViewModel>>();
+        _mockPlaylistManagerService.Setup(p => p.LoadPlaylistTracks(It.IsAny<string>())).Returns(new List<MediaFile>());
 
-        SharedDataModel shared = new SharedDataModel();
-        ISelectionService selection = new TestSelectionService();
-        IPlaybackCoordinator playbackCoordinator = new TestPlaybackCoordinator();
+        _vm.LoadPlaylistTabs();
+        // TabList is now ["Music Library"(0), "A"(1), "B"(2), "C"(3)]
+        // Select "A" (the first playlist, index 1)
+        _vm.SelectedTabIndex = 1;
+        string selectedName = _vm.TabList[_vm.SelectedTabIndex].Name;
 
-        PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
-            musicLibrary.Object,
-            shared,
-            settingsManager.Object,
-            fileImport.Object,
-            playlistManager.Object,
-            nav.Object,
-            ui,
-            saveSvc.Object,
-            selection,
-            playbackCoordinator,
-            Mock.Of<IImportCancellationService>(),
-            logger.Object);
+        // Act: move "C" (index 3) to the first playlist slot (index 1), pushing A and B down
+        await _vm.ReorderTabsCommand.ExecuteAsync((3, 1));
 
-        vm.LoadPlaylistTabs();
-        // Select middle tab "B"
-        vm.SelectedTabIndex = 1;
-        string selectedName = vm.TabList[vm.SelectedTabIndex].Name;
-
-        // Act: move last tab (index 2) to front (index 0)
-        await vm.ReorderTabsCommand.ExecuteAsync((2, 0));
-
-        // Assert order changed
-        vm.TabList.Select(t => t.Name).ShouldBe(new[] { "C", "A", "B" });
-        // Selected tab should still be the same logical tab ("B") now at index 2
-        vm.TabList[vm.SelectedTabIndex].Name.ShouldBe(selectedName);
+        // Assert: playlist order is now C, A, B (Music Library stays at index 0)
+        _vm.TabList.Skip(1).Select(t => t.Name).ShouldBe(new[] { "C", "A", "B" });
+        // Selected tab should still be the same logical tab ("A"), now at index 2
+        _vm.TabList[_vm.SelectedTabIndex].Name.ShouldBe(selectedName);
     }
 
     [StaFact]

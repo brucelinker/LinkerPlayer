@@ -18,6 +18,8 @@ public partial class RescanLogWindow : Window
     private readonly IRescanLogger _rescanLogger;
     private readonly DispatcherTimer _spinner;
     private int _spinnerFrame;
+    private bool _isAtBottom = true;
+    private ScrollViewer? _logScrollViewer;
 
     public RescanLogWindow()
     {
@@ -29,6 +31,12 @@ public partial class RescanLogWindow : Window
 
         _spinner = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         _spinner.Tick += Spinner_Tick;
+
+        Loaded += (_, _) =>
+        {
+            _logScrollViewer = FindScrollViewer(LogList);
+            _logScrollViewer?.ScrollToBottom();
+        };
     }
 
     public void StartSpinner()
@@ -67,8 +75,27 @@ public partial class RescanLogWindow : Window
 
     private void Entries_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action == NotifyCollectionChangedAction.Add && LogList.Items.Count > 0)
-            LogList.ScrollIntoView(LogList.Items[^1]);
+        if (e.Action == NotifyCollectionChangedAction.Add && _isAtBottom)
+            _logScrollViewer?.ScrollToBottom();
+    }
+
+    private void LogList_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        // Use the event args directly — no OriginalSource cast needed.
+        // At the bottom when there is no more room to scroll down (with 1px tolerance).
+        _isAtBottom = e.VerticalOffset + e.ViewportHeight >= e.ExtentHeight - 1.0;
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is ScrollViewer sv) return sv;
+            ScrollViewer? found = FindScrollViewer(child);
+            if (found != null) return found;
+        }
+        return null;
     }
 
     private void Clear_Click(object sender, RoutedEventArgs e)

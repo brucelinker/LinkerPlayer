@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
+using LinkerPlayer.Interop;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
@@ -377,7 +378,8 @@ public partial class PlayerControls
         }
         else
         {
-            _equalizerWindow.Show();
+            Window? owner = Window.GetWindow(this) ?? Application.Current.MainWindow;
+            OwnedWindowHelper.Show(_equalizerWindow, owner);
         }
     }
 

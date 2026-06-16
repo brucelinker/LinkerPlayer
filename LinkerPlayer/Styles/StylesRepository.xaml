@@ -7,8 +7,8 @@
   xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
   xmlns:managedBass="clr-namespace:ManagedBass;assembly=ManagedBass"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:system="clr-namespace:System;assembly=System.Runtime"
   xmlns:models="clr-namespace:LinkerPlayer.Models"
+  xmlns:system="clr-namespace:System;assembly=System.Runtime"
   mc:Ignorable="d">
 
   <!--  Converter used by play/pause visibility (matches original working behavior)  -->
@@ -646,9 +646,23 @@
         <Setter Property="Background" Value="{DynamicResource TrackListSelectedItemBackgroundBrush}" />
         <Setter Property="FontWeight" Value="Normal" />
       </Trigger>
-      <!--  Track health: Missing (red) and Changed (steel-blue) override foreground.
-            DataTriggers are evaluated last so they win over the base Foreground setter,
-            but we re-apply on IsSelected too so the tint survives row selection.  -->
+    </Style.Triggers>
+  </Style>
+
+  <!--
+    Playlist DataGridRow Style — extends SharedDataGridRowStyle with MediaFile health-status coloring.
+    Only apply this to DataGrids whose ItemsSource contains MediaFile rows.
+  -->
+  <Style
+    x:Key="PlaylistDataGridRowStyle"
+    BasedOn="{StaticResource SharedDataGridRowStyle}"
+    TargetType="DataGridRow">
+    <Style.Triggers>
+      <!--
+        Track health: Missing (red) and Changed (steel-blue) override foreground.
+        DataTriggers are evaluated last so they win over the base Foreground setter,
+        but we re-apply on IsSelected too so the tint survives row selection.
+      -->
       <DataTrigger Binding="{Binding HealthStatus}" Value="{x:Static models:TrackHealthStatus.Missing}">
         <Setter Property="Foreground" Value="#E05555" />
       </DataTrigger>

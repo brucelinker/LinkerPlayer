@@ -92,6 +92,8 @@ public class MusicLibraryDbContext : DbContext
             .Property(m => m.SampleRate);
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.Channels);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.Rating);
 
         // Runtime-only properties - ignored for database
         modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);

@@ -1,15 +1,14 @@
 using LinkerPlayer.Database;
 using LinkerPlayer.Models;
-using ManagedBass;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Threading;
 
 namespace LinkerPlayer.Core;
 
@@ -38,8 +37,10 @@ public interface IMusicLibrary
     void SaveToDatabase();
     event EventHandler LibraryLoaded;
     Task LoadFromDatabaseAsync();
+    void MarkLibraryDirty();
     Task CleanOrphanedTracksAsync();
     Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true);
+    Task UpdateRatingAsync(string trackId, double rating);
     Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default);
     Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default);
 }
@@ -57,11 +58,18 @@ public class MusicLibrary : IMusicLibrary
 
     public RangeObservableCollection<MediaFile> MainLibrary { get; } = new();
     public ObservableCollection<Playlist> Playlists { get; } = new();
-    public static string[] _supportedAudioExtensions = [".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv"];
+    public static string[] _supportedAudioExtensions = new[] { ".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4a", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
 
     private readonly object _mainLibraryLock = new();
     private readonly object _playlistsLock = new();
     private readonly object _batchAddLock = new();  // Serialize batch UI adds to prevent overlapping CollectionChanged events
+
+    private readonly DispatcherTimer _autoSaveTimer = new()
+    {
+        Interval = TimeSpan.FromSeconds(8)
+    };
+
+    private bool _hasUnsavedLibraryChanges;
 
     public MusicLibrary(ILogger<MusicLibrary> logger)
     {
@@ -163,15 +171,44 @@ public class MusicLibrary : IMusicLibrary
                         context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"HasEmbeddedCover\" INTEGER NOT NULL DEFAULT 0;");
                         _logger.LogInformation("Added HasEmbeddedCover column to Tracks table");
                     }
+
+                    List<int> ratingResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='Rating'").ToList();
+                    if (ratingResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"Rating\" REAL NOT NULL DEFAULT 0.0;");
+                        _logger.LogInformation("Added Rating column to Tracks table");
+                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error checking/adding analysis/metadata columns to Tracks table");
                 }
+
+                // One-time fix: re-read artist fields for all tracks now that comma is no longer
+                // treated as a multi-artist separator (fixes names like "10,000 Maniacs").
+                try
+                {
+                    List<int> artistFixResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='ArtistParserV2Applied'").ToList();
+                    if (artistFixResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"ArtistParserV2Applied\" INTEGER NOT NULL DEFAULT 0;");
+                        context.Database.ExecuteSqlRaw("UPDATE Tracks SET NeedsMetadataRefresh = 1;");
+                        _logger.LogInformation("Artist parser fix: scheduled full library metadata refresh");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error applying artist parser v2 migration");
+                }
             }
 
             // Synchronous load to populate UI immediately
             LoadFromDatabaseAsync().GetAwaiter().GetResult();
+
+            _autoSaveTimer.Tick += async (s, e) => await AutoSaveIfNeededAsync();
+            _autoSaveTimer.Start();
         }
         catch (Exception ex)
         {
@@ -256,6 +293,30 @@ public class MusicLibrary : IMusicLibrary
         {
             _logger.LogError(ex, "Failed to load data from database");
             throw;
+        }
+    }
+
+    public void MarkLibraryDirty()
+    {
+        _hasUnsavedLibraryChanges = true;
+        _autoSaveTimer.Stop();
+        _autoSaveTimer.Start();        // Reset debounce
+    }
+
+    private async Task AutoSaveIfNeededAsync()
+    {
+        if (!_hasUnsavedLibraryChanges)
+            return;
+
+        _hasUnsavedLibraryChanges = false;
+        try
+        {
+            await SaveToDatabaseAsync();
+            _logger.LogDebug("Auto-saved library changes");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Auto-save failed");
         }
     }
 
@@ -1031,6 +1092,7 @@ public class MusicLibrary : IMusicLibrary
                     existing.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                     existing.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
                     existing.HasEmbeddedCover = incoming.HasEmbeddedCover;
+                    existing.NeedsMetadataRefresh = false;
                 }
 
                 if (updateAnalysis)
@@ -1054,6 +1116,7 @@ public class MusicLibrary : IMusicLibrary
                 if (inMemory != null)
                 {
                     using IDisposable _suspend = inMemory.SuspendDirtyTracking();
+                    using IDisposable _notify = inMemory.SuspendNotifications();
 
                     if (updateMetadata)
                     {
@@ -1081,6 +1144,7 @@ public class MusicLibrary : IMusicLibrary
                         inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                         inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
                         inMemory.HasEmbeddedCover = incoming.HasEmbeddedCover;
+                        inMemory.NeedsMetadataRefresh = false;
                     }
 
                     if (updateAnalysis)
@@ -1091,11 +1155,52 @@ public class MusicLibrary : IMusicLibrary
                 }
             }
 
+            MarkLibraryDirty();
             await context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to update tracks in database");
+            throw;
+        }
+    }
+
+    public async Task UpdateRatingAsync(string trackId, double rating)
+    {
+        if (string.IsNullOrWhiteSpace(trackId))
+            return;
+
+        double clamped = Math.Round(Math.Clamp(rating, 0.0, 5.0), 1);
+
+        // Update in-memory
+        MediaFile? inMemory = MainLibrary.FirstOrDefault(t => t.Id == trackId);
+        if (inMemory != null)
+        {
+            using IDisposable _ = inMemory.SuspendDirtyTracking();
+            inMemory.Rating = clamped;
+        }
+
+        // Update database
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+        try
+        {
+            MediaFile? track = await context.Tracks.FirstOrDefaultAsync(t => t.Id == trackId);
+            if (track != null)
+            {
+                track.Rating = clamped;
+                await context.SaveChangesAsync();
+                //_logger.LogDebug("Updated rating for track {TrackId} to {Rating}", trackId, clamped);
+            }
+            else
+            {
+                _logger.LogWarning("Track {TrackId} not found in database during rating update", trackId);
+            }
+
+            MarkLibraryDirty();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update rating for track {TrackId}", trackId);
             throw;
         }
     }

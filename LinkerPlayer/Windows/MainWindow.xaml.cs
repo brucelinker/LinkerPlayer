@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.IO;
+using System.Windows.Interop;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -27,6 +28,8 @@ public partial class MainWindow : Window
     private readonly IImportCancellationService _importCancellationService;
     private PlaylistTabsViewModel? _playlistVm;
     private bool _isClosing;
+    private IntPtr _smallIconHandle;
+    private IntPtr _bigIconHandle;
 
     public MainWindow(IServiceProvider serviceProvider, ILogger<MainWindow> logger)
     {
@@ -45,6 +48,7 @@ public partial class MainWindow : Window
             DataContext = _mainViewModel;
 
             ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
+            SourceInitialized += MainWindow_SourceInitialized;
 
             // Track monitor changes to persist which display MainWindow is on
             Loaded += (_, _) => UpdateCurrentMonitorSetting();
@@ -64,6 +68,62 @@ public partial class MainWindow : Window
             throw;
         }
     }
+
+    private void MainWindow_SourceInitialized(object? sender, EventArgs e)
+    {
+        try
+        {
+            IntPtr handle = new WindowInteropHelper(this).Handle;
+            if (handle == IntPtr.Zero)
+            {
+                return;
+            }
+
+            string? processPath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(processPath) || !File.Exists(processPath))
+            {
+                return;
+            }
+
+            using System.Drawing.Icon? applicationIcon = System.Drawing.Icon.ExtractAssociatedIcon(processPath);
+            if (applicationIcon == null)
+            {
+                return;
+            }
+
+            _smallIconHandle = CopyImage(applicationIcon.Handle, IMAGE_ICON, 16, 16, 0);
+            _bigIconHandle = CopyImage(applicationIcon.Handle, IMAGE_ICON, 32, 32, 0);
+
+            if (_smallIconHandle != IntPtr.Zero)
+            {
+                SendMessage(handle, WM_SETICON, ICON_SMALL, _smallIconHandle);
+            }
+
+            if (_bigIconHandle != IntPtr.Zero)
+            {
+                SendMessage(handle, WM_SETICON, ICON_BIG, _bigIconHandle);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set taskbar icons for MainWindow");
+        }
+    }
+
+    private const uint WM_SETICON = 0x0080;
+    private const uint IMAGE_ICON = 1;
+    private static readonly IntPtr ICON_SMALL = new(0);
+    private static readonly IntPtr ICON_BIG = new(1);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr CopyImage(IntPtr hImage, uint uType, int cxDesired, int cyDesired, uint fuFlags);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool DestroyIcon(IntPtr hIcon);
 
     private void UpdateCurrentMonitorSetting()
     {
@@ -117,6 +177,18 @@ public partial class MainWindow : Window
     {
         _logger.LogInformation("MainWindow: Shutting down application");
 
+        if (_smallIconHandle != IntPtr.Zero)
+        {
+            DestroyIcon(_smallIconHandle);
+            _smallIconHandle = IntPtr.Zero;
+        }
+
+        if (_bigIconHandle != IntPtr.Zero)
+        {
+            DestroyIcon(_bigIconHandle);
+            _bigIconHandle = IntPtr.Zero;
+        }
+
         base.OnClosing(e);
     }
 
@@ -140,13 +212,13 @@ public partial class MainWindow : Window
                 // rcWork is in physical pixels; convert to WPF device-independent units
                 double dpiScale = PresentationSource.FromVisual(this)
                                       ?.CompositionTarget?.TransformFromDevice.M11 ?? 1.0;
-                MaxWidth  = (mi.rcWork.right  - mi.rcWork.left) * dpiScale;
-                MaxHeight = (mi.rcWork.bottom - mi.rcWork.top)  * dpiScale;
+                MaxWidth = (mi.rcWork.right - mi.rcWork.left) * dpiScale;
+                MaxHeight = (mi.rcWork.bottom - mi.rcWork.top) * dpiScale;
             }
         }
         else
         {
-            MaxWidth  = double.PositiveInfinity;
+            MaxWidth = double.PositiveInfinity;
             MaxHeight = double.PositiveInfinity;
         }
     }
@@ -215,63 +287,78 @@ public partial class MainWindow : Window
 
     private async void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
-        // If we're already in the process of saving-then-closing, just let it proceed.
-        // A second click during the async save would re-enter here and WPF would throw
-        // because you can't show a MessageBox while a window is already closing.
         if (_isClosing)
             return;
 
-        if (_playlistVm?.HasDirtyTracks == true)
+        // Always silently save Library changes (ratings, metadata, etc.)
+        try
         {
-            List<LinkerPlayer.Models.MediaFile> dirty = _playlistVm.DirtyTracks;
-            _logger.LogInformation("Close requested with {Count} dirty track(s):", dirty.Count);
-            foreach (LinkerPlayer.Models.MediaFile t in dirty)
-                _logger.LogInformation("  DIRTY  [{Props}]  {Path}", string.Join(", ", t.DirtyProperties), t.Path);
-
-            // Build a readable list of tracks for the user — cap at 20 to keep the box manageable.
-            const int maxListed = 20;
-            System.Text.StringBuilder sb = new();
-            sb.AppendLine($"You have {dirty.Count} unsaved track change(s).");
-            sb.AppendLine();
-            sb.AppendLine("Tracks with changes:");
-            for (int i = 0; i < Math.Min(dirty.Count, maxListed); i++)
+            IMusicLibrary? musicLibrary = App.AppHost?.Services?.GetService<IMusicLibrary>();
+            if (musicLibrary != null)
             {
-                LinkerPlayer.Models.MediaFile t = dirty[i];
-                string props = string.Join(", ", t.DirtyProperties);
-                string name = !string.IsNullOrWhiteSpace(t.Title) ? t.Title : t.FileName;
-                sb.AppendLine($"  • {name}  [{props}]");
-            }
-            if (dirty.Count > maxListed)
-                sb.AppendLine($"  … and {dirty.Count - maxListed} more.");
-            sb.AppendLine();
-            sb.AppendLine("Yes = save changes   |   No = discard all changes   |   Cancel = go back");
-
-            MessageBoxResult result = MessageBox.Show(
-                sb.ToString(),
-                "Unsaved Changes",
-                MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Warning);
-
-            if (result == MessageBoxResult.Yes)
-            {
-                // Cancel this close event, save, then shut down for real.
-                e.Cancel = true;
-                _isClosing = true;
-                await _playlistVm.SaveDirtyTracksCommand.ExecuteAsync(null);
-                Application.Current.Shutdown();
-            }
-            else if (result == MessageBoxResult.No)
-            {
-                // Discard all in-memory changes so the next startup starts clean.
-                foreach (LinkerPlayer.Models.MediaFile t in dirty)
-                    t.ClearDirty();
-                _logger.LogInformation("User discarded {Count} unsaved change(s) on close.", dirty.Count);
-                // fall through → allow close
-            }
-            else // Cancel
-            {
-                e.Cancel = true;
+                await musicLibrary.SaveToDatabaseAsync();
+                _logger.LogInformation("Library auto-saved on close.");
             }
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Library save failed on close");
+        }
+
+        // *** MAY NOT NEED THIS SINCE THE PROPERTIES WINDOW HANDLES THIS ***
+        // === ONLY prompt for Playlist-specific dirty tracks ===
+        //if (_playlistVm?.HasDirtyTracks == true)
+        //{
+        //    List<LinkerPlayer.Models.MediaFile> dirty = _playlistVm.DirtyTracks;
+        //    _logger.LogInformation("Close requested with {Count} dirty track(s) in playlist:", dirty.Count);
+
+        //    // Keep your existing detailed MessageBox logic here unchanged
+        //    const int maxListed = 20;
+        //    System.Text.StringBuilder sb = new();
+        //    sb.AppendLine($"You have {dirty.Count} unsaved track change(s).");
+        //    sb.AppendLine();
+        //    sb.AppendLine("Tracks with changes:");
+        //    for (int i = 0; i < Math.Min(dirty.Count, maxListed); i++)
+        //    {
+        //        LinkerPlayer.Models.MediaFile t = dirty[i];
+        //        string props = string.Join(", ", t.DirtyProperties);
+        //        string name = !string.IsNullOrWhiteSpace(t.Title) ? t.Title : t.FileName;
+        //        sb.AppendLine($"  • {name}  [{props}]");
+        //    }
+        //    if (dirty.Count > maxListed)
+        //        sb.AppendLine($"  … and {dirty.Count - maxListed} more.");
+        //    sb.AppendLine();
+        //    sb.AppendLine("Yes = save changes   |   No = discard all changes   |   Cancel = go back");
+
+        //    MessageBoxResult result = MessageBox.Show(
+        //        sb.ToString(),
+        //        "Unsaved Changes",
+        //        MessageBoxButton.YesNoCancel,
+        //        MessageBoxImage.Warning);
+
+        //    if (result == MessageBoxResult.Yes)
+        //    {
+        //        e.Cancel = true;
+        //        _isClosing = true;
+        //        await _playlistVm.SaveDirtyTracksCommand.ExecuteAsync(null);
+        //        Application.Current.Shutdown();
+        //        return;
+        //    }
+        //    else if (result == MessageBoxResult.No)
+        //    {
+        //        foreach (LinkerPlayer.Models.MediaFile t in dirty)
+        //            t.ClearDirty();
+        //        _logger.LogInformation("User discarded {Count} unsaved playlist change(s) on close.", dirty.Count);
+        //        // fall through to allow close
+        //    }
+        //    else // Cancel
+        //    {
+        //        e.Cancel = true;
+        //        return;
+        //    }
+        //}
+
+        // No playlist changes → clean shutdown
+        _isClosing = true;
     }
 }

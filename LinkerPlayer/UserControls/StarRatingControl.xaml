@@ -1,0 +1,181 @@
+<UserControl
+  x:Class="LinkerPlayer.UserControls.StarRatingControl"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  HorizontalAlignment="Left"
+  VerticalAlignment="Center"
+  d:DesignHeight="20"
+  d:DesignWidth="80"
+  mc:Ignorable="d">
+
+  <Grid
+    x:Name="RootGrid"
+    VerticalAlignment="Center"
+    Background="Transparent"
+    ToolTipService.InitialShowDelay="500">
+
+    <!--  Empty star outlines (always visible as the base layer)  -->
+    <StackPanel
+      x:Name="EmptyStarsPanel"
+      VerticalAlignment="Center"
+      Orientation="Horizontal">
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="StarOutline"
+        Opacity="0.35" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="StarOutline"
+        Opacity="0.35" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="StarOutline"
+        Opacity="0.35" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="StarOutline"
+        Opacity="0.35" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource TrackListItemForegroundBrush}"
+        Kind="StarOutline"
+        Opacity="0.35" />
+    </StackPanel>
+
+    <!--  Filled stars clipped to the current (or hover-preview) rating width  -->
+    <StackPanel
+      x:Name="FilledStarsPanel"
+      VerticalAlignment="Center"
+      Orientation="Horizontal">
+      <StackPanel.Clip>
+        <RectangleGeometry x:Name="FilledClip" Rect="0,0,0,20" />
+      </StackPanel.Clip>
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource ControlAccentLightBrush}"
+        Kind="Star" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource ControlAccentLightBrush}"
+        Kind="Star" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource ControlAccentLightBrush}"
+        Kind="Star" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource ControlAccentLightBrush}"
+        Kind="Star" />
+      <iconPacks:PackIconMaterial
+        Width="13"
+        Height="13"
+        Margin="1,0"
+        Foreground="{DynamicResource ControlAccentLightBrush}"
+        Kind="Star" />
+    </StackPanel>
+
+    <!--  Editor popup — opens on click, anchored below the stars  -->
+    <Popup
+      x:Name="EditorPopup"
+      AllowsTransparency="True"
+      Closed="EditorPopup_Closed"
+      Opened="EditorPopup_Opened"
+      Placement="Bottom"
+      PlacementTarget="{Binding ElementName=RootGrid}"
+      StaysOpen="True">
+      <Border
+        Padding="4,3"
+        Background="{DynamicResource MainWindowGradientStartBrush}"
+        BorderBrush="{DynamicResource ControlAccentLightBrush}"
+        BorderThickness="1"
+        CornerRadius="3"
+        KeyDown="Border_KeyDown">
+        <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+
+          <!--  Decrement button  -->
+          <RepeatButton
+            x:Name="DecrementButton"
+            Width="22"
+            Height="22"
+            Padding="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="DecrementButton_Click"
+            Content="−"
+            Delay="400"
+            FontSize="14"
+            FontWeight="Bold"
+            Foreground="{DynamicResource TitleBarForegroundBrush}"
+            Interval="100"
+            ToolTip="−0.1" />
+
+          <!--  Numeric text box  -->
+          <TextBox
+            x:Name="EditorTextBox"
+            Width="40"
+            Height="22"
+            Margin="3,0"
+            Padding="2,1"
+            VerticalContentAlignment="Center"
+            Background="{DynamicResource MainWindowGradientStartBrush}"
+            BorderBrush="{DynamicResource ControlAccentLightBrush}"
+            BorderThickness="1"
+            FontSize="12"
+            Foreground="{DynamicResource TitleBarForegroundBrush}"
+            GotFocus="EditorTextBox_GotFocus"
+            KeyDown="EditorTextBox_KeyDown"
+            LostFocus="EditorTextBox_LostFocus"
+            TextAlignment="Center" />
+
+          <!--  Increment button  -->
+          <RepeatButton
+            x:Name="IncrementButton"
+            Width="22"
+            Height="22"
+            Padding="0"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="IncrementButton_Click"
+            Content="+"
+            Delay="400"
+            FontSize="14"
+            FontWeight="Bold"
+            Foreground="{DynamicResource TitleBarForegroundBrush}"
+            Interval="100"
+            ToolTip="+0.1" />
+
+
+
+        </StackPanel>
+      </Border>
+    </Popup>
+
+  </Grid>
+</UserControl>
+
+
