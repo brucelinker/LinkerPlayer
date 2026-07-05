@@ -13,6 +13,7 @@ public interface ISettingsManager
     }
     void LoadSettings();
     void SaveSettings(string propertyName);
+    void FlushPendingSave();
     event Action<string>? SettingsChanged;
 }
 
@@ -105,6 +106,12 @@ public class SettingsManager : ISettingsManager
         _saveTimer.Stop();
         _saveTimer.Start();
         SettingsChanged?.Invoke(propertyName);
+    }
+
+    public void FlushPendingSave()
+    {
+        _saveTimer.Stop();
+        SaveSettingsInternal();
     }
 
     private void SaveSettingsInternal()

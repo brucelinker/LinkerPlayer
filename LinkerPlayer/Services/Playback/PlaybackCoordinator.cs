@@ -1,15 +1,30 @@
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Audio;
 using LinkerPlayer.Core;
-using LinkerPlayer.Models;
 using LinkerPlayer.Messages;
+using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using Microsoft.Extensions.Logging;
 using ManagedBass;
-using CommunityToolkit.Mvvm.Messaging;
-using System.Diagnostics;
-using System.Threading;
+using Microsoft.Extensions.Logging;
 
 namespace LinkerPlayer.Services.Playback;
+
+public interface IPlaybackCoordinator
+{
+    PlaybackState PlaybackState { get; }
+    PlaybackCursor? PlaybackCursor { get; }
+
+    void SetUserSelection(string playlistName, int trackIndex, MediaFile track);
+
+    void PlaySelected();
+    void PlayTrack(string playlistName, int trackIndex, MediaFile track, double positionSeconds = 0);
+    void Pause();
+    void Resume();
+    void Stop();
+    void Seek(double positionSeconds);
+    void Next();
+    void Prev();
+}
 
 public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<ShuffleModeMessage>
 {

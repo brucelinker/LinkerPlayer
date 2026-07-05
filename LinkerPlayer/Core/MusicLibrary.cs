@@ -1023,8 +1023,11 @@ public class MusicLibrary : IMusicLibrary
             return new List<MediaFile>();
         }
 
+        // Take a snapshot to avoid collection modified exceptions during enumeration
+        List<MediaFile> librarySnapshot = MainLibrary.ToList();
+
         return playlist.TrackIds
-            .Select(trackId => MainLibrary.FirstOrDefault(p => p.Id == trackId))
+            .Select(trackId => librarySnapshot.FirstOrDefault(p => p.Id == trackId))
             .Where(t => t != null)
             .Select(t => t!)
             .ToList();

@@ -415,7 +415,7 @@
       </Style>
 
       <!--  Music Library Tab Content Template (FilterBar + DataGrid)  -->
-      <DataTemplate x:Key="MusicLibraryContentTemplate" DataType="{x:Type models:MusicLibraryTab}">
+      <DataTemplate x:Key="MusicLibraryContentTemplate" DataType="{x:Type models:LibraryTab}">
         <Grid>
           <Grid.RowDefinitions>
             <RowDefinition Height="1*" MinHeight="120" />
@@ -461,6 +461,7 @@
             GridLinesVisibility="None"
             HorizontalScrollBarVisibility="Visible"
             IsReadOnly="False"
+            IsSynchronizedWithCurrentItem="False"
             ItemsSource="{Binding TracksView.View}"
             Loaded="DataGrid_Loaded"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
@@ -473,6 +474,7 @@
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
+            SelectedItem="{Binding SelectedTrack, Mode=OneWay}"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
@@ -585,6 +587,7 @@
             GridLinesVisibility="None"
             HorizontalScrollBarVisibility="Visible"
             IsReadOnly="True"
+            IsSynchronizedWithCurrentItem="False"
             ItemsSource="{Binding Tracks}"
             Loaded="DataGrid_Loaded"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
@@ -596,6 +599,7 @@
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
+            SelectedItem="{Binding SelectedTrack, Mode=OneWay}"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"

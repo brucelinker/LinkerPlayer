@@ -9,9 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.IO;
-using System.Windows.Interop;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace LinkerPlayer.Windows;
@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     private readonly ILogger<MainWindow> _logger;
     private readonly ISettingsManager _settingsManager;
     private readonly IImportCancellationService _importCancellationService;
-    private PlaylistTabsViewModel? _playlistVm;
+    private MediaTabViewModel? _playlistVm;
     private bool _isClosing;
     private IntPtr _smallIconHandle;
     private IntPtr _bigIconHandle;
@@ -154,7 +154,7 @@ public partial class MainWindow : Window
         // Wire up TrackInfo IsLibraryMode after all controls are loaded
         Dispatcher.BeginInvoke(() =>
         {
-            if (PlaylistTabs.DataContext is PlaylistTabsViewModel playlistVm)
+            if (PlaylistTabs.DataContext is MediaTabViewModel playlistVm)
             {
                 _playlistVm = playlistVm;
                 UpdateTrackInfoLibraryMode(playlistVm);
@@ -237,8 +237,8 @@ public partial class MainWindow : Window
         if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
         {
             e.Handled = true;
-            IPlaylistTabsViewModel? vm = App.AppHost?.Services?.GetService<IPlaylistTabsViewModel>();
-            if (vm is PlaylistTabsViewModel ptvm)
+            IMediaTabViewModel? vm = App.AppHost?.Services?.GetService<IMediaTabViewModel>();
+            if (vm is MediaTabViewModel ptvm)
             {
                 _ = ptvm.SaveDirtyTracksCommand.ExecuteAsync(null);
             }
@@ -269,16 +269,16 @@ public partial class MainWindow : Window
         }
     }
 
-    private void UpdateTrackInfoLibraryMode(PlaylistTabsViewModel vm)
+    private void UpdateTrackInfoLibraryMode(MediaTabViewModel vm)
     {
-        bool isLibrary = vm.SelectedTab is MusicLibraryTab;
+        bool isLibrary = vm.SelectedTab is LibraryTab;
         _logger.LogInformation("UpdateTrackInfoLibraryMode: SelectedTab={Tab}, IsLibrary={IsLibrary}", vm.SelectedTab?.Name ?? "null", isLibrary);
         TrackInfo.IsLibraryMode = isLibrary;
     }
 
     private void PlaylistVm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(PlaylistTabsViewModel.SelectedTab) && sender is PlaylistTabsViewModel vm)
+        if (e.PropertyName == nameof(MediaTabViewModel.SelectedTab) && sender is MediaTabViewModel vm)
         {
             _logger.LogInformation("PlaylistVm_PropertyChanged: SelectedTab changed");
             UpdateTrackInfoLibraryMode(vm);

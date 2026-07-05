@@ -13,7 +13,7 @@ namespace LinkerPlayer.Models;
 /// Represents the Music Library tab - a special permanent tab that displays all tracks in the library.
 /// Unlike PlaylistTab, this tab cannot be renamed, moved, or deleted.
 /// </summary>
-public partial class MusicLibraryTab : ObservableObject, ITabData
+public partial class LibraryTab : ObservableObject, ITabData
 {
     // Display name for the library (not editable)
     public string Name { get; } = "Music Library";
@@ -71,7 +71,7 @@ public partial class MusicLibraryTab : ObservableObject, ITabData
         "Genre"
     };
 
-    public MusicLibraryTab(ObservableCollection<MediaFile> sourceLibrary)
+    public LibraryTab(ObservableCollection<MediaFile> sourceLibrary)
     {
         _sourceLibrary = sourceLibrary ?? throw new ArgumentNullException(nameof(sourceLibrary));
 

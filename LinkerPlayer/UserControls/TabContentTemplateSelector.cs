@@ -15,7 +15,7 @@ public class TabContentTemplateSelector : DataTemplateSelector
 
     public override DataTemplate? SelectTemplate(object item, DependencyObject container)
     {
-        if (item is MusicLibraryTab)
+        if (item is LibraryTab)
         {
             return MusicLibraryContentTemplate;
         }

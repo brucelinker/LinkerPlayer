@@ -18,7 +18,7 @@ public class MainViewModel : ObservableObject
     public MainViewModel(
         ISettingsManager settingsManager,
         PlayerControlsViewModel playerControlsViewModel,
-        PlaylistTabsViewModel playlistTabsViewModel,
+        MediaTabViewModel playlistTabsViewModel,
         IMusicLibrary musicLibrary,
         IDatabaseSaveService databaseSaveService,
         ILogger<MainViewModel> logger)
@@ -66,7 +66,7 @@ public class MainViewModel : ObservableObject
         get;
     }
 
-    public PlaylistTabsViewModel PlaylistTabsViewModel
+    public MediaTabViewModel PlaylistTabsViewModel
     {
         get;
     }

@@ -443,7 +443,10 @@ public partial class SettingsWindow
             else if (page == "Behavior")
                 BehaviorPage.Visibility = Visibility.Visible;
             else if (page == "Library")
+            {
                 LibraryPage.Visibility = Visibility.Visible;
+                LoadLibrarySettings(); // Populate watched folders list when page is shown
+            }
             else if (page == "MusicBrainz")
                 MusicBrainzPage.Visibility = Visibility.Visible;
         }
@@ -745,6 +748,9 @@ public partial class SettingsWindow
         {
             WatchedFoldersListBox.Items.Add(folder);
         }
+
+        // Load auto-rescan checkbox state from settings
+        AutoRescanCheckBox.IsChecked = _settingsManager.Settings.AutomaticallyRescanWatchedFolders;
     }
 
     private void OnAddFolderClick(object sender, RoutedEventArgs e)
@@ -911,6 +917,15 @@ public partial class SettingsWindow
                 ;
             MbStatusText.Text = "✅ Credentials saved successfully!";
             MbStatusText.Foreground = Brushes.LimeGreen;   // Full namespace
+        }
+    }
+
+    private void OnAutoRescanChanged(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox checkBox)
+        {
+            _settingsManager.Settings.AutomaticallyRescanWatchedFolders = checkBox.IsChecked == true;
+            _settingsManager.SaveSettings(nameof(AppSettings.AutomaticallyRescanWatchedFolders));
         }
     }
 }

@@ -17,4 +17,8 @@ public sealed class FakeSettingsManager : ISettingsManager
     {
         SettingsChanged?.Invoke(propertyName);
     }
+
+    public void FlushPendingSave()
+    {
+    }
 }

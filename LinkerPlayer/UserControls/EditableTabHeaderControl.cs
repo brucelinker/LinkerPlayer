@@ -87,7 +87,7 @@ public class EditableTabHeaderControl : ContentControl
                 _oldText = tab.Name;
             }
 
-            PlaylistTabsViewModel? viewModel = FindAncestorViewModel(this);
+            MediaTabViewModel? viewModel = FindAncestorViewModel(this);
             if (viewModel != null)
             {
                 Tag = viewModel;
@@ -137,7 +137,7 @@ public class EditableTabHeaderControl : ContentControl
         }
         else if (e.Key == Key.Enter)
         {
-            if (DataContext is PlaylistTab tab && Tag is PlaylistTabsViewModel viewModel)
+            if (DataContext is PlaylistTab tab && Tag is MediaTabViewModel viewModel)
             {
                 string newText = _textBox!.Text;
                 _oldText = newText;
@@ -151,7 +151,7 @@ public class EditableTabHeaderControl : ContentControl
         }
     }
 
-    private static PlaylistTabsViewModel? FindAncestorViewModel(DependencyObject obj)
+    private static MediaTabViewModel? FindAncestorViewModel(DependencyObject obj)
     {
         int depth = 0;
         const int maxDepth = 100; // Prevent infinite loops
@@ -160,7 +160,7 @@ public class EditableTabHeaderControl : ContentControl
         {
             depth++;
 
-            if (obj is FrameworkElement { DataContext: PlaylistTabsViewModel viewModel })
+            if (obj is FrameworkElement { DataContext: MediaTabViewModel viewModel })
             {
                 return viewModel;
             }

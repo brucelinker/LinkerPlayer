@@ -58,9 +58,10 @@ public partial class App
                 services.AddSingleton<MainViewModel>();
 
                 services.AddSingleton<IEqualizerViewModel, EqualizerViewModel>();
-                services.AddSingleton<IPlaylistTabsViewModel, PlaylistTabsViewModel>();
+                services.AddSingleton<IMediaTabViewModel, MediaTabViewModel>();
                 // Also register concrete types for backward compatibility where constructors request concrete classes
-                services.AddSingleton<PlaylistTabsViewModel>(sp => (PlaylistTabsViewModel)sp.GetRequiredService<IPlaylistTabsViewModel>());
+                services.AddSingleton<LibraryTabViewModel>();
+                services.AddSingleton<MediaTabViewModel>(sp => (MediaTabViewModel)sp.GetRequiredService<IMediaTabViewModel>());
                 services.AddSingleton<PlayerControlsViewModel>();
                 services.AddSingleton<IPlayerControlsViewModel, PlayerControlsViewModel>();
                 services.AddSingleton<IPropertiesViewModel, PropertiesViewModel>();
@@ -83,6 +84,7 @@ public partial class App
                 services.AddSingleton<ISettingsManager, SettingsManager>();
                 services.AddSingleton<IOutputDeviceManager, OutputDeviceManager>();
                 services.AddSingleton<IPlaylistManagerService, PlaylistManagerService>();
+                services.AddSingleton<IPlaylistFileService, PlaylistFileService>();
                 services.AddSingleton<ITrackNavigationService, TrackNavigationService>();
                 services.AddSingleton<IPlaybackCoordinator, PlaybackCoordinator>();
                 services.AddSingleton<IWatchedFolderService, WatchedFolderService>();
@@ -212,11 +214,28 @@ public partial class App
 
                     // Phase 1: full diff-scan watched folders after library is loaded
                     // (finds adds, removes missing tracks, refreshes modified metadata)
-                    IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();
-                    IImportCancellationService importCancellation = AppHost.Services.GetRequiredService<IImportCancellationService>();
-                    IProgress<ProgressData> startupProgress = new Progress<ProgressData>(data =>
-                        WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
-                    await Task.Run(async () => await watchedFolderService.FullScanAllAsync(startupProgress, importCancellation.Token));
+                    // Only runs if user has enabled automatic scanning in settings
+                    try
+                    {
+                        ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
+                        if (settingsManager.Settings.AutomaticallyRescanWatchedFolders)
+                        {
+                            IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();
+                            IImportCancellationService importCancellation = AppHost.Services.GetRequiredService<IImportCancellationService>();
+                            IProgress<ProgressData> startupProgress = new Progress<ProgressData>(data =>
+                                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
+                            await Task.Run(async () => await watchedFolderService.FullScanAllAsync(startupProgress, importCancellation.Token));
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Automatic rescan disabled by user; skipping startup scan");
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // App is shutting down; service provider already disposed
+                        _logger.LogDebug("Startup scan cancelled due to app shutdown");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -245,6 +264,8 @@ public partial class App
             try
             {
                 ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
+                settingsManager.FlushPendingSave();
+
                 IDatabaseSaveService databaseSaveService = AppHost.Services.GetRequiredService<IDatabaseSaveService>();
                 databaseSaveService.SaveImmediately();
             }

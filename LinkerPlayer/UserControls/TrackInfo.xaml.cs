@@ -437,8 +437,8 @@ public partial class TrackInfo : INotifyPropertyChanged
         }
 
         // Let the VM know dirty state changed so the Save button enables.
-        IPlaylistTabsViewModel? vm = App.AppHost?.Services?.GetService<IPlaylistTabsViewModel>();
-        if (vm is PlaylistTabsViewModel ptvm)
+        IMediaTabViewModel? vm = App.AppHost?.Services?.GetService<IMediaTabViewModel>();
+        if (vm is MediaTabViewModel ptvm)
             ptvm.NotifyDirtyStateChanged();
     }
 

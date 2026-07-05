@@ -35,7 +35,7 @@ public interface IPlayerControlsViewModel
 public partial class PlayerControlsViewModel : ObservableObject, IPlayerControlsViewModel
 {
     private readonly IAudioEngine _audioEngine;
-    private readonly PlaylistTabsViewModel _playlistTabsViewModel; // TODO: change to interface once selection APIs are exposed
+    private readonly MediaTabViewModel _playlistTabsViewModel; // TODO: change to interface once selection APIs are exposed
     private readonly IPlaybackCoordinator _playbackCoordinator;
     private readonly ISettingsManager _settingsManager;
     private readonly ISharedDataModel _sharedDataModel; // switched to interface
@@ -48,14 +48,14 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
 
     public PlayerControlsViewModel(
         IAudioEngine audioEngine,
-        PlaylistTabsViewModel playlistTabsViewModel,
+        MediaTabViewModel mediaTabViewModel,
         IPlaybackCoordinator playbackCoordinator,
         ISettingsManager settingsManager,
         ISharedDataModel sharedDataModel,
         ILogger<PlayerControlsViewModel> logger)
     {
         _audioEngine = audioEngine;
-        _playlistTabsViewModel = playlistTabsViewModel;
+        _playlistTabsViewModel = mediaTabViewModel;
         _playbackCoordinator = playbackCoordinator;
         _settingsManager = settingsManager;
         _sharedDataModel = sharedDataModel; // will be fixed by compiler if name mismatch

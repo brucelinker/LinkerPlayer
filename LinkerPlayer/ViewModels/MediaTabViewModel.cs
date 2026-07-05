@@ -12,14 +12,10 @@ using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
-using PlaylistsNET.Content;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -27,7 +23,7 @@ using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.ViewModels;
 
-public interface IPlaylistTabsViewModel
+public interface IMediaTabViewModel
 {
     ITabData? SelectedTab { get; } // Can be PlaylistTab or MusicLibraryTab
     int SelectedTabIndex { get; }
@@ -45,7 +41,7 @@ public interface IPlaylistTabsViewModel
     Task LoadOtherPlaylistTracksAsync();
 }
 
-public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsViewModel
+public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
 {
     // Manually implement SelectedTab and TabList to avoid source generator type conflicts
     private ITabData? _selectedTab; // Can be PlaylistTab or MusicLibraryTab
@@ -81,7 +77,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     public ObservableCollection<DataGridColumn> VisibleColumns { get; } = new ObservableCollection<DataGridColumn>();
 
     private readonly IMusicLibrary _musicLibrary;
-    private readonly ILogger<PlaylistTabsViewModel> _logger;
+    private readonly ILogger<MediaTabViewModel> _logger;
 
     // New services
     private readonly IFileImportService _fileImportService;
@@ -93,16 +89,20 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     private readonly ISharedDataModel _sharedDataModel; // switch to interface
     private readonly ISettingsManager _settingsManager; // restore
     private readonly IPlaybackCoordinator _playbackCoordinator;
+    private readonly IPlaylistFileService _playlistFileService;
     private readonly IImportCancellationService _importCancellationService;
+
+    private readonly LibraryTabViewModel _libraryTabViewModel;
 
     // Expose for legacy consumers if needed
     public ISharedDataModel SharedDataModel => _sharedDataModel;
 
-    // ADD missing internal UI/state fields
     private TabControl? _tabControl; // holds TabControl reference
     private DataGrid? _dataGrid;     // holds current DataGrid reference
     private bool _shuffleMode;       // shuffle flag
-    private MusicLibraryTab? _musicLibraryTab; // The permanent Music Library tab (always first)
+    private LibraryTab? _musicLibraryTab; // The permanent Music Library tab (always first)
+
+    private bool _isSyncingGridSelection;
 
     // Debounce timer — collapses rapid dirty-state bursts (e.g. editing 25 tracks at once)
     // into a single HasDirtyTracks notification so the Save button updates promptly but
@@ -168,9 +168,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     }
 
     public List<string> SelectedColumnNames => _selectedColumnNames;
-    private bool _isInitialLoad = true;
 
-    public PlaylistTabsViewModel(
+    public MediaTabViewModel(
         IMusicLibrary musicLibrary,
         ISharedDataModel sharedDataModel,
         ISettingsManager settingsManager,
@@ -181,9 +180,11 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         IDatabaseSaveService databaseSaveService,
         ISelectionService selectionService,
         IPlaybackCoordinator playbackCoordinator,
+        IPlaylistFileService playlistFileService,
         IImportCancellationService importCancellationService,
         IMusicBrainzRatingService mbService,
-        ILogger<PlaylistTabsViewModel> logger)
+        LibraryTabViewModel libraryTabViewModel,
+        ILogger<MediaTabViewModel> logger)
     {
         _musicLibrary = musicLibrary ?? throw new ArgumentNullException(nameof(musicLibrary));
         _fileImportService = fileImportService ?? throw new ArgumentNullException(nameof(fileImportService));
@@ -196,7 +197,9 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         _sharedDataModel = sharedDataModel ?? throw new ArgumentNullException(nameof(sharedDataModel));
         _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
         _playbackCoordinator = playbackCoordinator ?? throw new ArgumentNullException(nameof(playbackCoordinator));
+        _playlistFileService = playlistFileService ?? throw new ArgumentNullException(nameof(playlistFileService));
         _importCancellationService = importCancellationService ?? throw new ArgumentNullException(nameof(importCancellationService));
+        _libraryTabViewModel = libraryTabViewModel ?? throw new ArgumentNullException(nameof(libraryTabViewModel));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         try
@@ -204,7 +207,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _shuffleMode = _settingsManager.Settings.ShuffleMode;
             AllowDrop = true;
             RegisterMessages();
-            _musicLibrary.LibraryLoaded += OnLibraryLoaded;
 
             if (_settingsManager.Settings.VisibleColumns == null ||
                 _settingsManager.Settings.VisibleColumns.Count == 0)
@@ -247,6 +249,25 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             }
             OnPropertyChanged(nameof(ActiveTrack));
             OnPropertyChanged(nameof(State));
+
+            // Do not let ActiveTrack override Library selection on startup/tab activation
+            if (SelectedTab is LibraryTab && _libraryTabViewModel.SelectedTrack != null &&
+                !ReferenceEquals(_libraryTabViewModel.SelectedTrack, m.Value))
+            {
+                // ActiveTrack changed, but Library has its own selection - just refresh "Playing" column
+                if (_dataGrid != null)
+                {
+                    _ = _uiDispatcher.InvokeAsync(() =>
+                    {
+                        IEditableCollectionView? ecv = _dataGrid.Items as IEditableCollectionView;
+                        if (ecv == null || (!ecv.IsAddingNew && !ecv.IsEditingItem))
+                        {
+                            _dataGrid.Items.Refresh();
+                        }
+                    });
+                }
+                return;
+            }
 
             if (_dataGrid != null)
             {
@@ -301,38 +322,9 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
     public void OnDataGridLoaded(object sender, RoutedEventArgs _)
     {
-        if (sender is not DataGrid dataGrid)
-            return;
-
-        _dataGrid = dataGrid;
-
-        // Force restored selection if we have one (this runs after DataGrid is ready)
-        if (SelectedTab is MusicLibraryTab && SelectedTrack != null)
+        if (sender is DataGrid dataGrid)
         {
-            _logger.LogInformation("OnDataGridLoaded: Forcing restored Library selection '{Title}'", SelectedTrack.Title);
-
-            _isSyncingGridSelection = true;
-            try
-            {
-                dataGrid.SelectedItem = SelectedTrack;
-                dataGrid.SelectedIndex = SelectedTrackIndex;
-                dataGrid.ScrollIntoView(SelectedTrack);
-            }
-            finally
-            {
-                _isSyncingGridSelection = false;
-            }
-            return;
-        }
-
-        // Normal fallback for other cases
-        if (SelectedTrack != null && SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count)
-        {
-            if (SelectedTrackIndex < 0)
-                SelectedTrackIndex = TabList[SelectedTabIndex].Tracks.IndexOf(SelectedTrack);
-
-            dataGrid.SelectedItem = SelectedTrack;
-            _selectionService.SetTrack(SelectedTrack, SelectedTrackIndex);
+            _dataGrid = dataGrid;
         }
     }
 
@@ -345,151 +337,146 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         _logger.LogDebug("ResetSelectionState called");
     }
 
-    private void OnLibraryLoaded(object? sender, EventArgs e)
-    {
-        string? savedId = _settingsManager.Settings.LastLibrarySelectedTrackId;
-        if (string.IsNullOrWhiteSpace(savedId))
-        {
-            _logger.LogDebug("OnLibraryLoaded: No saved track ID");
-            return;
-        }
-
-        MediaFile? restored = _musicLibrary.MainLibrary.FirstOrDefault(t =>
-            string.Equals(t.Id, savedId, StringComparison.Ordinal));
-
-        if (restored == null)
-        {
-            _logger.LogWarning("OnLibraryLoaded: Saved ID {Id} not found", savedId);
-            return;
-        }
-
-        _logger.LogInformation("OnLibraryLoaded: FINAL restoration to '{Title}'", restored.Title);
-
-        // This is the last word on selection
-        SelectedTrack = restored;
-        SelectedTrackIndex = _musicLibrary.MainLibrary.IndexOf(restored);
-
-        if (_dataGrid != null)
-        {
-            _isSyncingGridSelection = true;
-            try
-            {
-                _dataGrid.SelectedItem = restored;
-                _dataGrid.SelectedIndex = SelectedTrackIndex;
-                _dataGrid.ScrollIntoView(restored);
-            }
-            finally
-            {
-                _isSyncingGridSelection = false;
-            }
-        }
-
-        if (_musicLibraryTab != null)
-        {
-            _musicLibraryTab.ViewRefreshed -= OnLibraryViewRefreshed;
-            _musicLibraryTab.ViewRefreshed += OnLibraryViewRefreshed;
-        }
-    }
-
-    private void OnLibraryViewRefreshed(object? sender, EventArgs e)
-    {
-        if (_dataGrid == null || SelectedTrack == null || SelectedTab is not MusicLibraryTab)
-            return;
-
-        // Only restore if the DataGrid lost the selection
-        if (ReferenceEquals(_dataGrid.SelectedItem, SelectedTrack))
-            return;
-
-        _dataGrid.SelectedItem = SelectedTrack;
-        _dataGrid.SelectedIndex = SelectedTrackIndex;
-
-        _dataGrid.Dispatcher.BeginInvoke(() =>
-        {
-            _dataGrid.ScrollIntoView(SelectedTrack);
-        }, System.Windows.Threading.DispatcherPriority.Background);
-    }
 
     partial void OnSelectedTabIndexChanged(int value)
     {
         try
         {
             if (value < 0 || value >= TabList.Count)
-            {
                 return;
-            }
 
-            // Keep TabControl selection in sync if available
-            if (_tabControl != null && _tabControl.SelectedIndex != value)
-            {
-                _tabControl.SelectedIndex = value;
-            }
-
-            // Update selection-sensitive state
             SelectedTab = TabList[value];
             SelectedPlaylist = GetSelectedPlaylist();
-            // Do not force DataGrid refresh here; preserves scroll/selection
+            _selectionService.SetTab(SelectedTab as PlaylistTab);
 
-            // Persist setting asynchronously to avoid blocking UI
-            _ = Task.Run(() =>
+            // Always persist the index
+            _settingsManager.Settings.SelectedTabIndex = value;
+            _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
+
+            if (SelectedTab is LibraryTab)
             {
-                _settingsManager.Settings.SelectedTabIndex = value;
-                _settingsManager.SaveSettings(nameof(AppSettings.SelectedTabIndex));
+                _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
+                _ = _libraryTabViewModel.ActivateAsync();
+            }
+            else if (SelectedTab is PlaylistTab playlistTab)
+            {
+                _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
+
+                if (playlistTab.Tracks.Count == 0)
+                {
+                    _ = LoadPlaylistTracksAndRestoreSelectionAsync(playlistTab);
+                }
+                else
+                {
+                    RestorePlaylistSelection(playlistTab);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "OnSelectedTabIndexChanged failed");
+        }
+    }
+
+    private void RestorePlaylistSelection(PlaylistTab playlistTab)
+    {
+        Playlist? playlist = _musicLibrary.Playlists.FirstOrDefault(p =>
+            string.Equals(p.Name, playlistTab.Name, StringComparison.Ordinal));
+
+        if (playlist == null || string.IsNullOrWhiteSpace(playlist.SelectedTrackId))
+        {
+            // Clear flag if we're not restoring anything
+            _isSyncingGridSelection = false;
+            return;
+        }
+
+        MediaFile? restored = playlistTab.Tracks.FirstOrDefault(t =>
+            string.Equals(t.Id, playlist.SelectedTrackId, StringComparison.Ordinal));
+
+        if (restored != null)
+        {
+            SelectedTrack = restored;
+            SelectedTrackIndex = playlistTab.Tracks.IndexOf(restored);
+            playlistTab.SelectedTrack = restored;
+            playlistTab.SelectedIndex = SelectedTrackIndex;
+
+            // Notify selection service
+            _selectionService.SetTrack(restored, SelectedTrackIndex);
+            _isSyncingGridSelection = false;
+        }
+        else
+        {
+            // Clear flag if track not found
+            _isSyncingGridSelection = false;
+        }
+    }
+
+    private async Task LoadPlaylistTracksAndRestoreSelectionAsync(PlaylistTab playlistTab)
+    {
+        try
+        {
+            IEnumerable<MediaFile> tracks = await Task.Run(() =>
+                _playlistManagerService.LoadPlaylistTracks(playlistTab.Name));
+
+            await _uiDispatcher.InvokeAsync(() =>
+            {
+                foreach (MediaFile track in tracks)
+                {
+                    playlistTab.Tracks.Add(track);
+                }
+
+                // Now restore selection
+                RestorePlaylistSelection(playlistTab);
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "OnSelectedTabIndexChanged failed for value {Value}", value);
+            _logger.LogError(ex, "Failed to load tracks for playlist '{Name}'", playlistTab.Name);
         }
     }
-
-    public void OnTabSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_tabControl == null && sender is TabControl tc)
-            _tabControl = tc;
-
-        if (SelectedTabIndex < 0 || SelectedTabIndex >= TabList.Count)
-            return;
-
-        ITabData tab = TabList[SelectedTabIndex];
-        _selectionService.SetTab(tab as PlaylistTab);
-
-        if (tab is MusicLibraryTab)
-            return; // Library doesn't need lazy loading
-
-        // Clear multi-selection when switching tabs
-        _selectionService.SetMultiSelection(Enumerable.Empty<MediaFile>());
-
-        if (_dataGrid == null)
-        {
-            SelectedPlaylist = GetSelectedPlaylist();
-            return;
-        }
-
-        if (tab is PlaylistTab playlistTab && playlistTab.Tracks.Count == 0)
-        {
-            // Background lazy load (existing logic is fine)
-            _ = Task.Run(async () => { /* ... existing lazy load ... */ });
-        }
-
-        SelectedPlaylist = GetSelectedPlaylist();
-    }
-
-    private bool _isSyncingGridSelection;
 
     public void OnTrackSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_isSyncingGridSelection)
             return;
 
-        _dataGrid = sender as DataGrid;
+        if (sender is not DataGrid dataGrid || dataGrid.DataContext is not ITabData senderTab)
+            return;
 
-        if (_dataGrid?.SelectedItems.Count > 0)
+        // Ignore selection changes from non-active tabs. Background loads and hidden DataGrids
+        // can fire SelectionChanged and must not overwrite the active tab's persisted selection.
+        if (SelectedTab == null || !ReferenceEquals(SelectedTab, senderTab))
+            return;
+
+        _dataGrid = dataGrid;
+
+        if (_dataGrid.SelectedItems.Count > 0)
         {
             List<MediaFile> selectedTracks = _dataGrid.SelectedItems.Cast<MediaFile>().ToList();
             MediaFile selectedTrack = _dataGrid.SelectedItem as MediaFile ?? selectedTracks[0];
             int index = _dataGrid.Items.IndexOf(selectedTrack);
 
-            _logger.LogDebug("OnTrackSelectionChanged: '{Title}' (multi: {Count})", selectedTrack.Title, selectedTracks.Count);
+            // Library grid can raise passive SelectionChanged during startup/layout refresh.
+            // Do not let that overwrite the restored Library selection.
+            if (senderTab is LibraryTab && _libraryTabViewModel.SelectedTrack != null &&
+                !_dataGrid.IsKeyboardFocusWithin &&
+                !ReferenceEquals(selectedTrack, _libraryTabViewModel.SelectedTrack))
+            {
+                _isSyncingGridSelection = true;
+                try
+                {
+                    _dataGrid.SelectedItem = _libraryTabViewModel.SelectedTrack;
+                    _dataGrid.ScrollIntoView(_libraryTabViewModel.SelectedTrack);
+                }
+                finally
+                {
+                    _isSyncingGridSelection = false;
+                }
+                return;
+            }
+
+            _logger.LogInformation("=== OnTrackSelectionChanged: '{Title}' (tab: {TabName}, multi: {Count})",
+                selectedTrack.Title, senderTab.Name, selectedTracks.Count);
 
             // SINGLE SOURCE OF TRUTH
             _selectionService.SetMultiSelection(selectedTracks);
@@ -499,15 +486,22 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             SelectedTrack = selectedTrack;
             SelectedTrackIndex = index;
 
-            // Persist
-            if (SelectedTab is MusicLibraryTab)
+            // Persist based on the sender tab (authoritative source for this event)
+            if (senderTab is LibraryTab libraryTab)
             {
                 _settingsManager.Settings.LastLibrarySelectedTrackId = selectedTrack.Id;
                 _settingsManager.SaveSettings(nameof(AppSettings.LastLibrarySelectedTrackId));
-                _logger.LogInformation("✅ Saved Library selection: '{Title}'", selectedTrack.Title);
+
+                libraryTab.SelectedTrack = selectedTrack;
+                libraryTab.SelectedIndex = index;
+                _libraryTabViewModel.SelectedTrack = selectedTrack;
+                _libraryTabViewModel.SelectedTrackIndex = index;
+                _libraryTabViewModel.LastSessionSelectedTrack = selectedTrack;
             }
-            else if (GetSelectedPlaylist() is Playlist p)
+            else if (senderTab is PlaylistTab currentTab && GetSelectedPlaylist() is Playlist p)
             {
+                currentTab.SelectedTrack = selectedTrack;
+                currentTab.SelectedIndex = index;
                 p.SelectedTrackId = selectedTrack.Id;
                 _databaseSaveService.RequestSave();
             }
@@ -521,6 +515,12 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             _selectionService.SetTrack(null, -1);
             SelectedTrack = null;
             SelectedTrackIndex = -1;
+
+            if (senderTab is PlaylistTab currentTab)
+            {
+                currentTab.SelectedTrack = null;
+                currentTab.SelectedIndex = -1;
+            }
         }
     }
 
@@ -617,114 +617,53 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     {
         try
         {
-            // Clear any stale selection from previous session
             ResetSelectionState();
-
             TabList.Clear();
 
-            // ALWAYS create the Music Library tab first (permanent, cannot be removed)
-            _musicLibraryTab = new MusicLibraryTab(_musicLibrary.MainLibrary);
+            // 1. Create Library tab (always first)
+            _libraryTabViewModel.InitializeLibraryTab(_musicLibrary.MainLibrary);
+            _musicLibraryTab = _libraryTabViewModel.LibraryTab ?? new LibraryTab(_musicLibrary.MainLibrary);
             TabList.Add(_musicLibraryTab);
-            _logger.LogInformation("Created Music Library tab with {Count} tracks", _musicLibrary.MainLibrary.Count);
 
-            // Load saved visible columns for the library tab
+            // Restore Library columns & filters (keep your existing code here)
             if (_settingsManager.Settings.LibraryVisibleColumns != null && _settingsManager.Settings.LibraryVisibleColumns.Count > 0)
-            {
                 _musicLibraryTab.VisibleColumns = new List<string>(_settingsManager.Settings.LibraryVisibleColumns);
-            }
-            // Ensure Year is always included
+
             if (!_musicLibraryTab.VisibleColumns.Contains("Year"))
             {
                 _musicLibraryTab.VisibleColumns.Add("Year");
                 _settingsManager.Settings.LibraryVisibleColumns = _musicLibraryTab.VisibleColumns;
                 _settingsManager.SaveSettings(nameof(AppSettings.LibraryVisibleColumns));
             }
-
-            // Restore filter selections from settings
             _musicLibraryTab.RestoreFilterSelections(_settingsManager.Settings);
 
-            // Then load user playlists
+            // 2. Create Playlist tabs (only once)
             List<Playlist> playlists = _musicLibrary.GetPlaylists();
             foreach (Playlist playlist in playlists)
             {
                 if (string.IsNullOrWhiteSpace(playlist.Name))
                     continue;
-
-                PlaylistTab tab = new PlaylistTab { Name = playlist.Name };
-                TabList.Add(tab);
+                TabList.Add(new PlaylistTab { Name = playlist.Name });
             }
-            _logger.LogInformation("Created {Count} playlist tabs (tracks not yet loaded)", TabList.Count - 1);
 
-            // Adjust saved index to account for Music Library tab at index 0
+            // 3. Restore the last selected tab + selection
             int savedIndex = _settingsManager.Settings.SelectedTabIndex;
             if (savedIndex < 0 || savedIndex >= TabList.Count)
+                savedIndex = 0;
+
+            // Ensure canonical tab activation runs even when saved index equals current value (e.g., 0 on startup).
+            if (SelectedTabIndex != savedIndex)
             {
-                savedIndex = TabList.Count > 1 ? 1 : 0;
+                SelectedTabIndex = savedIndex;
             }
-
-            if (savedIndex >= 0)
+            else
             {
-                ITabData initialTab = TabList[savedIndex];
-
-                // Handle Music Library tab selection
-                if (initialTab is MusicLibraryTab libraryTab)
-                {
-                    SelectedTabIndex = savedIndex;
-                    _logger.LogInformation("Selected Music Library tab with {Count} tracks", _musicLibrary.MainLibrary.Count);
-
-                    // Restore last selected track in Library if available
-                    if (!string.IsNullOrWhiteSpace(_settingsManager.Settings.LastLibrarySelectedTrackId))
-                    {
-                        MediaFile? restored = _musicLibrary.MainLibrary.FirstOrDefault(t =>
-                            string.Equals(t.Id, _settingsManager.Settings.LastLibrarySelectedTrackId, StringComparison.Ordinal));
-
-                        if (restored != null)
-                        {
-                            SelectedTrack = restored;
-                            SelectedTrackIndex = _musicLibrary.MainLibrary.IndexOf(restored);
-
-                            _logger.LogInformation("Restored last Library selection in LoadPlaylistTabs: '{Title}'", restored.Title);
-
-                            // Force if DataGrid is already available
-                            if (_dataGrid != null)
-                            {
-                                ForceLibrarySelection(restored);
-                            }
-
-                            // Final force after DataGrid is fully ready
-                            _ = _uiDispatcher.InvokeAsync(() => ForceLibrarySelection(restored));
-                        }
-                    }
-                }
+                OnSelectedTabIndexChanged(savedIndex);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to load playlist tabs");
-        }
-        finally
-        {
-            _isInitialLoad = false;
-        }
-    }
-
-    // Helper method
-    private void ForceLibrarySelection(MediaFile track)
-    {
-        if (_dataGrid == null || track == null)
-            return;
-
-        _isSyncingGridSelection = true;
-        try
-        {
-            _dataGrid.SelectedItem = track;
-            _dataGrid.SelectedIndex = SelectedTrackIndex;
-            _dataGrid.ScrollIntoView(track);
-            _logger.LogInformation("ForceLibrarySelection applied: '{Title}'", track.Title);
-        }
-        finally
-        {
-            _isSyncingGridSelection = false;
+            _logger.LogError(ex, "Failed to load tabs");
         }
     }
 
@@ -743,7 +682,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             ITabData selectedTab = TabList[SelectedTabIndex];
 
             // Music Library tab already has tracks via MainLibrary reference - no loading needed
-            if (selectedTab is MusicLibraryTab)
+            if (selectedTab is LibraryTab)
             {
                 _logger.LogInformation("Music Library tab selected - tracks already loaded from MainLibrary");
                 return;
@@ -797,7 +736,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 ITabData tab = TabList[i];
 
                 // Skip Music Library tab (always loaded)
-                if (tab is MusicLibraryTab)
+                if (tab is LibraryTab)
                 {
                     continue;
                 }
@@ -878,7 +817,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
 
         if (openFileDialog.ShowDialog() == true)
         {
-            await LoadPlaylistFileAsync(openFileDialog.FileName);
+            await _playlistFileService.LoadPlaylistFileAsync(openFileDialog.FileName, this);
         }
     }
 
@@ -1167,7 +1106,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
             }
         }
 
-        bool isLibraryTab = SelectedTab is MusicLibraryTab;
+        bool isLibraryTab = SelectedTab is LibraryTab;
         if (_dataGrid?.SelectedItem == null || (!isLibraryTab && SelectedPlaylist == null))
         {
             _logger.LogWarning("Cannot remove track - no track or playlist selected (IsLibrary={IsLib}, HasPlaylist={HasPlaylist})", isLibraryTab, SelectedPlaylist != null);
@@ -1211,7 +1150,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                 {
                     await _uiDispatcher.InvokeAsync(() =>
                     {
-                        if (SelectedTab is not MusicLibraryTab)
+                        if (SelectedTab is not LibraryTab)
                         {
                             tracks.Remove(trackToRemove);
                         }
@@ -1533,7 +1472,7 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         ITabData currentTab = TabList[SelectedTabIndex];
         SelectedTab = currentTab; // maintain compatibility
 
-        if (currentTab is MusicLibraryTab)
+        if (currentTab is LibraryTab)
         {
             return null;
         }
@@ -1547,602 +1486,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
         }
 
         return playlist;
-    }
-
-    private async Task LoadPlaylistFileAsync(string fileName)
-    {
-        if (!File.Exists(fileName))
-        {
-            _logger.LogWarning("Playlist file does not exist: {FileName}", fileName);
-            return;
-        }
-
-        try
-        {
-            string directoryName = Path.GetDirectoryName(fileName)!;
-            string playlistName = Path.GetFileNameWithoutExtension(fileName);
-
-            PlaylistTab newTab = await _playlistManagerService.CreatePlaylistTabAsync(playlistName);
-
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                newTab.IsLoading = true;
-                newTab.LoadingStatus = $"Loading \"{playlistName}\"…";
-                newTab.LoadingProgress = 0;
-                newTab.LoadingTotal = 1;
-                TabList.Add(newTab);
-                SelectedTab = newTab;
-                SelectedTabIndex = TabList.Count - 1;
-                if (_tabControl != null)
-                    _tabControl.SelectedIndex = SelectedTabIndex;
-            });
-
-            // ---------------------------------------------------------------
-            // PHASE 1 — Instant population (no I/O, pure in-memory)
-            // Normalise each M3U path to an absolute candidate, resolve against
-            // the in-memory library index, create a lightweight stub for anything
-            // unknown, and push the full list to the DataGrid immediately.
-            // Missing / unresolved rows appear red straight away via the existing
-            // TrackHealthStatus.Missing DataTrigger in StylesRepository.xaml.
-            // ---------------------------------------------------------------
-
-            List<string> rawPaths = ExtractPathsFromPlaylistFile(fileName);
-
-            Dictionary<string, MediaFile> libraryIndex = _musicLibrary.MainLibrary
-                .GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-            // Each entry: the resolved MediaFile + the original raw candidate path
-            // (used in Phase 2 to attempt fuzzy recovery).
-            List<(MediaFile Track, string CandidatePath)> entries = new List<(MediaFile, string)>();
-
-            foreach (string path in rawPaths)
-            {
-                try
-                {
-                    string candidatePath = path;
-
-                    if (Uri.TryCreate(candidatePath, UriKind.Absolute, out Uri? uri) && uri.IsFile)
-                        candidatePath = uri.LocalPath;
-
-                    candidatePath = Uri.UnescapeDataString(candidatePath);
-
-                    if (!Path.IsPathRooted(candidatePath))
-                        candidatePath = Path.GetFullPath(Path.Combine(directoryName, candidatePath));
-
-                    if (libraryIndex.TryGetValue(candidatePath, out MediaFile? known))
-                    {
-                        // Already in the library — use the live object directly.
-                        entries.Add((known, candidatePath));
-                    }
-                    else
-                    {
-                        // Unknown path: create a stub so the row appears immediately.
-                        // HealthStatus.Missing renders it red; Phase 2 will resolve it.
-                        MediaFile stub = new MediaFile(candidatePath)
-                        {
-                            HealthStatus = TrackHealthStatus.Missing
-                        };
-                        entries.Add((stub, candidatePath));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to normalise path from playlist entry: {Entry}", path);
-                }
-            }
-
-            if (entries.Count == 0)
-            {
-                await _uiDispatcher.InvokeAsync(() => newTab.IsLoading = false);
-                return;
-            }
-
-            // Split known (already in library) from unknown (need resolution)
-            List<MediaFile> knownTracks = entries
-                .Where(e => e.Track.HealthStatus != TrackHealthStatus.Missing)
-                .Select(e => e.Track)
-                .ToList();
-
-            List<(MediaFile Track, string CandidatePath)> stubs = entries
-                .Where(e => e.Track.HealthStatus == TrackHealthStatus.Missing)
-                .ToList();
-
-            // Phase 1 — add only known tracks to the DataGrid immediately
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                newTab.LoadingTotal = entries.Count;
-                newTab.LoadingProgress = knownTracks.Count;
-                newTab.LoadingStatus = stubs.Count > 0
-                    ? $"Loaded {knownTracks.Count} tracks, resolving {stubs.Count} unmatched…"
-                    : $"Loading {knownTracks.Count} tracks…";
-
-                foreach (MediaFile track in knownTracks)
-                    newTab.Tracks.Add(track);
-            });
-
-            await _playlistManagerService.AddTracksToPlaylistAsync(playlistName, knownTracks);
-
-            if (stubs.Count == 0)
-            {
-                await _uiDispatcher.InvokeAsync(() => newTab.IsLoading = false);
-                return;
-            }
-
-            // Phase 2 — attempt to resolve each unknown path; only add to DataGrid on success
-            _logger.LogInformation("Playlist '{Name}': {Known} known, {Stubs} unmatched — attempting resolution", playlistName, knownTracks.Count, stubs.Count);
-
-            // Switch overlay to resolution progress
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                newTab.LoadingTotal = stubs.Count;
-                newTab.LoadingProgress = 0;
-                newTab.LoadingStatus = $"Resolving {stubs.Count} unmatched track(s)…";
-            });
-
-            Progress<ProgressData> progress = new Progress<ProgressData>(data =>
-            {
-                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data));
-            });
-
-            CancellationToken ct = _importCancellationService.Token;
-            List<PlaylistImportLogEntry> importLog = new List<PlaylistImportLogEntry>();
-
-            await Task.Run(async () =>
-            {
-                int resolved = 0;
-
-                for (int i = 0; i < stubs.Count; i++)
-                {
-                    if (ct.IsCancellationRequested)
-                        break;
-
-                    (MediaFile _, string candidatePath) = stubs[i];
-
-                    try
-                    {
-                        string? resolvedPath = null;
-                        string? fuzzyRecoveredPath = null;
-
-                        if (File.Exists(candidatePath))
-                        {
-                            resolvedPath = candidatePath;
-                        }
-                        else
-                        {
-                            // Fuzzy recovery — same logic as the old synchronous loop.
-                            string? fileNameOnly = Path.GetFileName(candidatePath);
-                            string? immediateDir = null;
-                            try
-                            { immediateDir = Path.GetDirectoryName(candidatePath); }
-                            catch { }
-
-                            if (!string.IsNullOrEmpty(immediateDir) && Directory.Exists(immediateDir))
-                            {
-                                string? recovered = TryFindClosestFileInDirectory(immediateDir, fileNameOnly);
-                                if (!string.IsNullOrEmpty(recovered))
-                                {
-                                    _logger.LogInformation("Recovered missing file by fuzzy match: '{Orig}' => '{Match}'", candidatePath, recovered);
-                                    resolvedPath = recovered;
-                                    fuzzyRecoveredPath = recovered;
-                                }
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    string? albumDirPath = string.IsNullOrEmpty(immediateDir) ? null : Path.GetDirectoryName(immediateDir);
-                                    if (!string.IsNullOrEmpty(albumDirPath))
-                                    {
-                                        string? artistDir = Path.GetDirectoryName(albumDirPath);
-                                        string albumDirName = Path.GetFileName(albumDirPath);
-
-                                        if (!string.IsNullOrEmpty(artistDir) && Directory.Exists(artistDir))
-                                        {
-                                            string? recoveredAlbum = TryFindClosestDirectoryInParent(artistDir, albumDirName);
-                                            if (!string.IsNullOrEmpty(recoveredAlbum) && Directory.Exists(recoveredAlbum))
-                                            {
-                                                string? recoveredDeep = TryFindClosestFileRecursively(recoveredAlbum, fileNameOnly);
-                                                if (!string.IsNullOrEmpty(recoveredDeep))
-                                                {
-                                                    _logger.LogInformation("Recovered missing file by directory+file fuzzy match: '{Orig}' => '{Match}'", candidatePath, recoveredDeep);
-                                                    resolvedPath = recoveredDeep;
-                                                    fuzzyRecoveredPath = recoveredDeep;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogDebug(ex, "Directory fuzzy recovery failed for {Path}", candidatePath);
-                                }
-                            }
-                        }
-
-                        if (resolvedPath != null)
-                        {
-                            // Re-check library index with the resolved path (may differ after fuzzy recovery).
-                            MediaFile? imported;
-                            if (libraryIndex.TryGetValue(resolvedPath, out MediaFile? alreadyKnown))
-                            {
-                                imported = alreadyKnown;
-                            }
-                            else
-                            {
-                                imported = await _fileImportService.ImportFileAsync(resolvedPath).ConfigureAwait(false);
-                            }
-
-                            if (imported != null && !string.IsNullOrEmpty(imported.FileName))
-                            {
-                                // Add the resolved track to the DataGrid now that we know it's real
-                                await _uiDispatcher.InvokeAsync(() => newTab.Tracks.Add(imported));
-                                resolved++;
-                                if (fuzzyRecoveredPath != null)
-                                {
-                                    importLog.Add(new PlaylistImportLogEntry
-                                    {
-                                        Action = PlaylistImportAction.Recovered,
-                                        Path = candidatePath,
-                                        RecoveredPath = fuzzyRecoveredPath
-                                    });
-                                }
-                            }
-                            else if (imported != null)
-                            {
-                                _logger.LogWarning("Playlist '{Name}': imported track has no metadata — skipped: {Path}", playlistName, resolvedPath);
-                                importLog.Add(new PlaylistImportLogEntry
-                                {
-                                    Action = PlaylistImportAction.Skipped,
-                                    Path = candidatePath
-                                });
-                            }
-                            else
-                            {
-                                _logger.LogWarning("Playlist '{Name}': could not import resolved path — skipped: {Path}", playlistName, resolvedPath);
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Playlist '{Name}': track not found on disk — skipped: {Path}", playlistName, candidatePath);
-                            importLog.Add(new PlaylistImportLogEntry
-                            {
-                                Action = PlaylistImportAction.Missing,
-                                Path = candidatePath
-                            });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to resolve stub track: {Path}", candidatePath);
-                    }
-
-                    ((IProgress<ProgressData>)progress).Report(new ProgressData
-                    {
-                        IsProcessing = true,
-                        TotalTracks = stubs.Count,
-                        ProcessedTracks = i + 1,
-                        Status = $"Resolving tracks… {i + 1} / {stubs.Count}",
-                        Phase = "Resolving"
-                    });
-                    await _uiDispatcher.InvokeAsync(() => newTab.LoadingProgress = i + 1);
-                }
-
-                _logger.LogInformation(
-                    "Playlist '{Name}': load complete — {Known} direct, {Resolved} recovered, {Skipped} not found",
-                    playlistName, knownTracks.Count, resolved, stubs.Count - resolved);
-
-                ((IProgress<ProgressData>)progress).Report(new ProgressData
-                {
-                    IsProcessing = false,
-                    TotalTracks = stubs.Count,
-                    ProcessedTracks = stubs.Count,
-                    Status = string.Empty,
-                    Phase = string.Empty
-                });
-
-                await _uiDispatcher.InvokeAsync(() =>
-                {
-                    newTab.IsLoading = false;
-
-                    if (importLog.Count > 0)
-                    {
-                        PlaylistImportLogWindow logWindow = new PlaylistImportLogWindow(
-                            playlistName,
-                            knownTracks.Count + resolved,
-                            resolved,
-                            importLog);
-                        OwnedWindowHelper.Show(logWindow, System.Windows.Application.Current.MainWindow);
-                    }
-                });
-            }, ct);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to load playlist file: {FileName}", fileName);
-            await _uiDispatcher.InvokeAsync(() =>
-            {
-                if (SelectedTab is PlaylistTab pt)
-                    pt.IsLoading = false;
-            });
-        }
-    }
-
-    // Helpers restored and used across the class
-    private static List<string> ExtractPathsFromPlaylistFile(string fileName)
-    {
-        string extension = Path.GetExtension(fileName).ToLowerInvariant();
-
-        // Prefer robust manual parsing for M3U/M3U8 with encoding detection
-        if (extension is ".m3u" or ".m3u8")
-        {
-            return ExtractPathsFromM3u(fileName);
-        }
-
-        using FileStream stream = File.OpenRead(fileName);
-
-        return extension switch
-        {
-            ".pls" => new PlsContent().GetFromStream(stream).GetTracksPaths(),
-            ".wpl" => new WplContent().GetFromStream(stream).GetTracksPaths(),
-            ".zpl" => new ZplContent().GetFromStream(stream).GetTracksPaths(),
-            _ => new List<string>()
-        };
-    }
-
-    private static List<string> ExtractPathsFromM3u(string fileName)
-    {
-        List<string> results = new List<string>();
-
-        try
-        {
-            // Try UTF-8 with BOM detection, then Latin1, then UTF-16
-            foreach (Encoding? encoding in new[] { new UTF8Encoding(false, false), Encoding.Latin1, Encoding.Unicode })
-            {
-                try
-                {
-                    using StreamReader reader = new StreamReader(fileName, encoding, detectEncodingFromByteOrderMarks: true);
-                    string? line;
-                    results.Clear();
-
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        line = line.Trim();
-                        if (string.IsNullOrEmpty(line))
-                        {
-                            continue;
-                        }
-
-                        if (line.StartsWith("#"))
-                        {
-                            continue; // comment or directive
-                        }
-
-                        results.Add(line);
-                    }
-
-                    // If we successfully read any entries, break
-                    if (results.Count > 0)
-                    {
-                        break;
-                    }
-                }
-                catch
-                {
-                    // Try next encoding
-                    results.Clear();
-                }
-            }
-        }
-        catch
-        {
-            // Fallback to PlaylistsNET if manual parsing fails
-            try
-            {
-                using FileStream stream = File.OpenRead(fileName);
-                results = new M3uContent().GetFromStream(stream).GetTracksPaths();
-            }
-            catch
-            {
-                // ignore
-            }
-        }
-
-        return results;
-    }
-
-    // --- String normalization and distance helpers ---
-    private static string NormalizeForCompare(string input)
-    {
-        if (string.IsNullOrEmpty(input))
-        {
-            return string.Empty;
-        }
-
-        // Lowercase
-        string s = input.ToLowerInvariant();
-
-        // Replace curly quotes and similar punctuation with ASCII
-        s = s.Replace('\u2019', '\'')
-            .Replace('\u2018', '\'')
-            .Replace('\u201C', '"')
-            .Replace('\u201D', '"');
-
-        // Remove diacritics
-        string formD = s.Normalize(NormalizationForm.FormD);
-        StringBuilder sb = new StringBuilder(formD.Length);
-        foreach (char ch in formD)
-        {
-            UnicodeCategory uc = CharUnicodeInfo.GetUnicodeCategory(ch);
-            if (uc != UnicodeCategory.NonSpacingMark)
-            {
-                sb.Append(ch);
-            }
-        }
-        s = sb.ToString().Normalize(NormalizationForm.FormC);
-
-        // Remove punctuation (keep letters, digits, spaces), collapse spaces
-        s = Regex.Replace(s, "[^a-z0-9 ]", string.Empty);
-        s = Regex.Replace(s, "\\s+", " ").Trim();
-        return s;
-    }
-
-    // Correct small spacing issues in helpers
-    private static int LevenshteinDistance(string a, string b)
-    {
-        if (a == b)
-        {
-            return 0;
-        }
-
-        if (a.Length == 0)
-        {
-            return b.Length;
-        }
-
-        if (b.Length == 0)
-        {
-            return a.Length;
-        }
-
-        int[,] d = new int[a.Length + 1, b.Length + 1];
-        for (int i = 0; i <= a.Length; i++)
-        {
-            d[i, 0] = i;
-        }
-
-        for (int j = 0; j <= b.Length; j++)
-        {
-            d[0, j] = j;
-        }
-
-        for (int i = 1; i <= a.Length; i++)
-        {
-            for (int j = 1; j <= b.Length; j++)
-            {
-                int cost = a[i - 1] == b[j - 1] ? 0 : 1;
-                d[i, j] = Math.Min(
-                            Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1),
-                            d[i - 1, j - 1] + cost);
-            }
-        }
-        return d[a.Length, b.Length];
-    }
-
-    private static string? TryFindClosestFileInDirectory(string directory, string targetFileName)
-    {
-        try
-        {
-            string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
-            string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
-            HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-              { ".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4k", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
-            string? bestPath = null;
-            int bestScore = int.MaxValue;
-            foreach (string file in Directory.EnumerateFiles(directory, "*", SearchOption.TopDirectoryOnly))
-            {
-                string ext = Path.GetExtension(file);
-                if (!allowed.Contains(ext))
-                {
-                    continue;
-                }
-
-                string name = Path.GetFileName(file);
-                string nameNorm = NormalizeForCompare(name);
-                string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
-                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm)
-                {
-                    return file;
-                }
-
-                int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
-                if (dist < bestScore)
-                {
-                    bestScore = dist;
-                    bestPath = file;
-                    if (bestScore <= 2)
-                    {
-                        return bestPath;
-                    }
-                }
-            }
-            return bestScore <= 3 ? bestPath : null;
-        }
-        catch { return null; }
-    }
-
-    private static string? TryFindClosestFileRecursively(string baseDir, string targetFileName)
-    {
-        try
-        {
-            string targetNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(targetFileName));
-            string targetNorm = NormalizeForCompare(Path.GetFileName(targetFileName));
-            HashSet<string> allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-              { ".mp3", ".flac", ".ape", ".ac3", ".dsd", ".dsf", ".dts", ".m4k", ".mka", ".mp4", ".mpc", ".ofr", ".ogg", ".opus", ".wav", ".wma", ".wv" };
-            string? bestPath = null;
-            int bestScore = int.MaxValue;
-            foreach (string file in Directory.EnumerateFiles(baseDir, "*", SearchOption.AllDirectories))
-            {
-                string ext = Path.GetExtension(file);
-                if (!allowed.Contains(ext))
-                {
-                    continue;
-                }
-
-                string name = Path.GetFileName(file);
-                string nameNorm = NormalizeForCompare(name);
-                string nameNoExtNorm = NormalizeForCompare(Path.GetFileNameWithoutExtension(name));
-                if (nameNorm == targetNorm || nameNoExtNorm == targetNoExtNorm)
-                {
-                    return file;
-                }
-
-                int dist = LevenshteinDistance(nameNoExtNorm, targetNoExtNorm);
-                if (dist < bestScore)
-                {
-                    bestScore = dist;
-                    bestPath = file;
-                    if (bestScore <= 1)
-                    {
-                        return bestPath;
-                    }
-                }
-            }
-            return bestScore <= 2 ? bestPath : null;
-        }
-        catch { return null; }
-    }
-
-    private static string? TryFindClosestDirectoryInParent(string parentDir, string targetDirName)
-    {
-        try
-        {
-            string targetNorm = NormalizeForCompare(targetDirName);
-            string? bestPath = null;
-            int bestScore = int.MaxValue;
-            foreach (string dir in Directory.EnumerateDirectories(parentDir))
-            {
-                string name = Path.GetFileName(dir);
-                string nameNorm = NormalizeForCompare(name);
-                if (nameNorm == targetNorm)
-                {
-                    return dir;
-                }
-
-                int dist = LevenshteinDistance(nameNorm, targetNorm);
-                if (dist < bestScore)
-                {
-                    bestScore = dist;
-                    bestPath = dir;
-                    if (bestScore <= 2)
-                    {
-                        return bestPath;
-                    }
-                }
-            }
-            return bestScore <= 3 ? bestPath : null;
-        }
-        catch { return null; }
     }
 
     private async Task EnsureSelectedTabExistsAsync()
@@ -2280,26 +1623,6 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
                     Status = "Error creating playlist from folder"
                 });
             });
-        }
-    }
-
-    public void RightMouseDownTabSelect(string tabName)
-    {
-        try
-        {
-            ITabData? targetTab = TabList.FirstOrDefault(p => p.Name == tabName);
-            if (targetTab != null)
-            {
-                int index = TabList.IndexOf(targetTab);
-                if (index >= 0 && _tabControl != null)
-                {
-                    _tabControl.SelectedIndex = index;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error selecting tab by right-click: {TabName}", tabName);
         }
     }
 
@@ -2446,8 +1769,8 @@ public partial class PlaylistTabsViewModel : ObservableObject, IPlaylistTabsView
     // ==================================================================
 
     public bool HasDirtyTracks => _musicLibrary.MainLibrary.Any(t => t.IsDirty);
-
     public List<MediaFile> DirtyTracks => _musicLibrary.MainLibrary.Where(t => t.IsDirty).ToList();
+
     /// <summary>
     /// Call this when a library track's dirty state may have changed (e.g., after editing a cell).
     /// Debounced — bursts of changes (e.g. editing 25 tracks) collapse to a single notification.

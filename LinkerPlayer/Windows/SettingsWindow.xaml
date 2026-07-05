@@ -611,6 +611,7 @@
           <RowDefinition Height="200" />
           <RowDefinition Height="Auto" />
           <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <TextBlock
@@ -683,9 +684,20 @@
             Style="{StaticResource LinkerRectangleButton}" />
         </UniformGrid>
 
+        <!--  Auto-rescan checkbox  -->
+        <CheckBox
+          x:Name="AutoRescanCheckBox"
+          Grid.Row="3"
+          Margin="0,15,0,0"
+          Content="Automatically rescan watched folders on startup"
+          FontSize="14"
+          Foreground="{DynamicResource ControlForegroundBrush}"
+          Checked="OnAutoRescanChanged"
+          Unchecked="OnAutoRescanChanged" />
+
         <!--  Scan status strip  -->
         <StackPanel
-          Grid.Row="3"
+          Grid.Row="4"
           Margin="0,12,0,0"
           VerticalAlignment="Center"
           Orientation="Horizontal">

@@ -8,7 +8,7 @@ using System.Windows;
 
 namespace LinkerPlayer.ViewModels;
 
-public partial class PlaylistTabsViewModel
+public partial class MediaTabViewModel
 {
     [RelayCommand]
     private void DragOver(DragEventArgs args)

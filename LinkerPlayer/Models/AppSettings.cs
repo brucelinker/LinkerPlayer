@@ -74,6 +74,9 @@ public class AppSettings
     // UTC timestamp of the most recent successful full diff-scan completion
     public DateTime? LastScanCompletedUtc { get; set; } = null;
 
+    // Whether to automatically rescan watched folders on startup (default: false for better performance)
+    public bool AutomaticallyRescanWatchedFolders { get; set; } = false;
+
     public string? EncryptedMusicBrainzUsername { get; set; }
     public string? EncryptedMusicBrainzPassword { get; set; }
 

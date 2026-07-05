@@ -1,11 +1,10 @@
-using LinkerPlayer.Models;
 using LinkerPlayer.Core;
+using LinkerPlayer.Models;
+using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using System.Collections.ObjectModel;
-using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace LinkerPlayer.UserControls;
 
@@ -56,7 +55,7 @@ public partial class FilterBar : UserControl
 
     private void FilterBar_Loaded(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
         {
             return;
         }
@@ -85,7 +84,7 @@ public partial class FilterBar : UserControl
         // Persist keyword/query search changes
         libraryTab.PropertyChanged += (_, args) =>
         {
-            if (args.PropertyName == nameof(MusicLibraryTab.KeywordSearch))
+            if (args.PropertyName == nameof(LibraryTab.KeywordSearch))
             {
                 SaveFilterSelections(libraryTab);
             }
@@ -98,7 +97,7 @@ public partial class FilterBar : UserControl
     /// <summary>
     /// Reapplies all four listbox selections from the VM state in a single suppressed batch.
     /// </summary>
-    private void ApplyAllSelections(MusicLibraryTab libraryTab)
+    private void ApplyAllSelections(LibraryTab libraryTab)
     {
         _suppressSelectionChanged = true;
         try
@@ -142,7 +141,7 @@ public partial class FilterBar : UserControl
 
     private void ClearGenre_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is MusicLibraryTab libraryTab)
+        if (DataContext is LibraryTab libraryTab)
         {
             libraryTab.SelectedGenres.Clear();
             Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyGenresChanged()), DispatcherPriority.Background);
@@ -155,7 +154,7 @@ public partial class FilterBar : UserControl
         if (_suppressSelectionChanged)
             return;
 
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
             return;
         if (sender is not ListBox lb)
             return;
@@ -178,7 +177,7 @@ public partial class FilterBar : UserControl
         if (_suppressSelectionChanged)
             return;
 
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
             return;
         if (sender is not ListBox lb)
             return;
@@ -203,7 +202,7 @@ public partial class FilterBar : UserControl
         if (_suppressSelectionChanged)
             return;
 
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
             return;
         if (sender is not ListBox lb)
             return;
@@ -228,7 +227,7 @@ public partial class FilterBar : UserControl
         if (_suppressSelectionChanged)
             return;
 
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
             return;
         if (sender is not ListBox lb)
             return;
@@ -248,7 +247,7 @@ public partial class FilterBar : UserControl
         Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyAlbumsChanged()), DispatcherPriority.Background);
     }
 
-    private void SaveFilterSelections(MusicLibraryTab libraryTab)
+    private void SaveFilterSelections(LibraryTab libraryTab)
     {
         try
         {
@@ -258,21 +257,21 @@ public partial class FilterBar : UserControl
                 return;
             }
 
-            settingsManager.Settings.LastLibrarySelectedGenres  = new List<string>(libraryTab.SelectedGenres);
+            settingsManager.Settings.LastLibrarySelectedGenres = new List<string>(libraryTab.SelectedGenres);
             settingsManager.Settings.LastLibrarySelectedArtists = new List<string>(libraryTab.SelectedArtists);
-            settingsManager.Settings.LastLibrarySelectedAlbums  = new List<string>(libraryTab.SelectedAlbums);
-            settingsManager.Settings.LastLibrarySelectedCodecs  = new List<string>(libraryTab.SelectedCodecs);
+            settingsManager.Settings.LastLibrarySelectedAlbums = new List<string>(libraryTab.SelectedAlbums);
+            settingsManager.Settings.LastLibrarySelectedCodecs = new List<string>(libraryTab.SelectedCodecs);
 
             settingsManager.Settings.LastLibraryKeywordSearch = libraryTab.KeywordSearch;
 
             settingsManager.Settings.LastLibraryActiveFilters = libraryTab.ActiveFilters
                 .Select(f => new AppSettings.FilterCriteriaSettings
                 {
-                    Type           = f.Type.ToString(),
-                    Operator       = f.Operator.ToString(),
-                    Value          = f.Value,
+                    Type = f.Type.ToString(),
+                    Operator = f.Operator.ToString(),
+                    Value = f.Value,
                     ValueSecondary = f.ValueSecondary,
-                    IsEnabled      = f.IsEnabled
+                    IsEnabled = f.IsEnabled
                 })
                 .ToList();
 
@@ -289,7 +288,7 @@ public partial class FilterBar : UserControl
     /// </summary>
     private void AddFilterButton_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
         {
             return;
         }
@@ -327,7 +326,7 @@ public partial class FilterBar : UserControl
             return;
         }
 
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
         {
             return;
         }
@@ -340,7 +339,7 @@ public partial class FilterBar : UserControl
     /// </summary>
     private void ClearAllButton_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is not MusicLibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab)
         {
             return;
         }
