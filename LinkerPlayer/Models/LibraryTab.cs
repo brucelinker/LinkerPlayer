@@ -1,11 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Threading;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Threading;
-using System.Linq;
 
 namespace LinkerPlayer.Models;
 
@@ -50,6 +48,17 @@ public partial class LibraryTab : ObservableObject, ITabData
     [ObservableProperty]
     private int? _selectedIndex;
 
+    public MediaFile? SelectedMediaFile
+    {
+        get => SelectedTrack;
+        set => SelectedTrack = value;
+    }
+
+    partial void OnSelectedTrackChanged(MediaFile? value)
+    {
+        OnPropertyChanged(nameof(SelectedMediaFile));
+    }
+
     // Filter state
     [ObservableProperty]
     private ObservableCollection<FilterCriteria> _activeFilters = new();
@@ -68,8 +77,11 @@ public partial class LibraryTab : ObservableObject, ITabData
         "Year",
         "Duration",
         "Bitrate",
+        "ReplayGain",
         "Genre"
     };
+
+    private bool _isUpdatingFacets;
 
     public LibraryTab(ObservableCollection<MediaFile> sourceLibrary)
     {
@@ -87,8 +99,8 @@ public partial class LibraryTab : ObservableObject, ITabData
             TracksView.View.Filter = ApplyFilters;
         }
 
-        // Subscribe to filter collection changes to refresh view
-        ActiveFilters.CollectionChanged += (_, __) => RefreshView();
+        // ActiveFilters changes are applied through explicit filter commands/handlers.
+        // Avoid extra CollectionChanged-driven refresh churn during startup restore.
 
         // Debounce timer: fires once after 500 ms of quiet, coalescing rapid import batches
         _rebuildDebounceTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -99,13 +111,17 @@ public partial class LibraryTab : ObservableObject, ITabData
         {
             _rebuildDebounceTimer.Stop();
             RebuildMetadataLists();
-            RefreshView();
+            NotifyFilteredTrackCountChanged();
         };
 
         // Selection changes are driven by the UI and handled explicitly to avoid re-entrancy
 
         // Subscribe to source collection changes — debounce so import batches don't thrash the UI
-        _sourceLibrary.CollectionChanged += (_, __) => ScheduleRebuild();
+        _sourceLibrary.CollectionChanged += (_, __) =>
+        {
+            ScheduleRebuild();
+            NotifyFilteredTrackCountChanged();
+        };
 
         // Build metadata lists (genres, artists, albums) for the filter bar
         RebuildMetadataLists();
@@ -131,10 +147,6 @@ public partial class LibraryTab : ObservableObject, ITabData
             SelectedCodecs.Add("(All)");
         }
 
-        // Ensure view reflects initial selections
-        NotifyGenresChanged();
-        NotifyArtistsChanged();
-        NotifyAlbumsChanged();
     }
 
     /// <summary>
@@ -345,22 +357,16 @@ public partial class LibraryTab : ObservableObject, ITabData
 
                 FilterCriteria fc = new FilterCriteria
                 {
-                    Type           = filterType,
-                    Operator       = filterOp,
-                    Value          = dto.Value,
+                    Type = filterType,
+                    Operator = filterOp,
+                    Value = dto.Value,
                     ValueSecondary = dto.ValueSecondary,
-                    IsEnabled      = dto.IsEnabled,
+                    IsEnabled = dto.IsEnabled,
                     OnFilterChanged = RefreshView
                 };
                 ActiveFilters.Add(fc);
             }
         }
-
-        // Notify to refresh dependent lists and view
-        NotifyGenresChanged();
-        NotifyArtistsChanged();
-        NotifyAlbumsChanged();
-        NotifyCodecsChanged();
     }
 
     /// <summary>
@@ -491,19 +497,16 @@ public partial class LibraryTab : ObservableObject, ITabData
         if (SelectedGenres.Count == 0 && Genres.Contains("(All)"))
         {
             SelectedGenres.Add("(All)");
-            NotifyGenresChanged();
         }
 
         if (SelectedArtists.Count == 0 && Artists.Contains("(All)"))
         {
             SelectedArtists.Add("(All)");
-            NotifyArtistsChanged();
         }
 
         if (SelectedAlbums.Count == 0 && Albums.Contains("(All)"))
         {
             SelectedAlbums.Add("(All)");
-            NotifyAlbumsChanged();
         }
 
         if (SelectedCodecs.Count == 0 && Codecs.Contains("(All)"))
@@ -576,65 +579,90 @@ public partial class LibraryTab : ObservableObject, ITabData
         _rebuildDebounceTimer.Start();
     }
 
+    private void NotifyFilteredTrackCountChanged()
+    {
+        if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.BeginInvoke(
+                () => OnPropertyChanged(nameof(FilteredTrackCount)),
+                DispatcherPriority.Background);
+            return;
+        }
+
+        OnPropertyChanged(nameof(FilteredTrackCount));
+    }
+
     /// <summary>
     /// Rebuilds all four facet listboxes symmetrically so each one shows only values
     /// that appear in tracks matching all the *other* three active filters.
     /// </summary>
     private void UpdateAllFacetLists()
     {
-        List<MediaFile> all = _sourceLibrary.ToList();
+        if (_isUpdatingFacets)
+            return;
 
-        // Build a filtered base for each dimension by applying the OTHER three filters
-        List<MediaFile> ForGenres()
+        _isUpdatingFacets = true;
+
+        try
         {
-            IEnumerable<MediaFile> q = all;
-            q = ApplyArtistFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
-            return q.ToList();
+            List<MediaFile> all = _sourceLibrary.ToList();
+
+            // Build a filtered base for each dimension by applying the OTHER three filters
+            List<MediaFile> ForGenres()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyArtistFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
+                return q.ToList();
+            }
+
+            List<MediaFile> ForArtists()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
+                return q.ToList();
+            }
+
+            List<MediaFile> ForAlbums()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyArtistFilter(ApplyCodecFilter(q)));
+                return q.ToList();
+            }
+
+            List<MediaFile> ForCodecs()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyArtistFilter(ApplyAlbumFilter(q)));
+                return q.ToList();
+            }
+
+            RebuildFacet(Genres, SelectedGenres, ForGenres(), t =>
+            {
+                if (string.IsNullOrWhiteSpace(t.Genres))
+                    return Enumerable.Empty<string>();
+                return t.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s));
+            });
+
+            RebuildFacet(Artists, SelectedArtists, ForArtists(), t =>
+                string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist! });
+
+            RebuildFacet(Albums, SelectedAlbums, ForAlbums(), t =>
+                string.IsNullOrWhiteSpace(t.Album) ? Enumerable.Empty<string>() : new[] { t.Album! });
+
+            RebuildFacet(Codecs, SelectedCodecs, ForCodecs(), t =>
+                string.IsNullOrWhiteSpace(t.Codec) ? Enumerable.Empty<string>() : new[] { t.Codec! });
+
+            OnPropertyChanged(nameof(GenreCount));
+            OnPropertyChanged(nameof(ArtistCount));
+            OnPropertyChanged(nameof(AlbumCount));
+            OnPropertyChanged(nameof(CodecCount));
+
+            FacetsRebuilt?.Invoke(this, EventArgs.Empty);
         }
-
-        List<MediaFile> ForArtists()
+        finally
         {
-            IEnumerable<MediaFile> q = all;
-            q = ApplyGenreFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
-            return q.ToList();
+            _isUpdatingFacets = false;
         }
-
-        List<MediaFile> ForAlbums()
-        {
-            IEnumerable<MediaFile> q = all;
-            q = ApplyGenreFilter(ApplyArtistFilter(ApplyCodecFilter(q)));
-            return q.ToList();
-        }
-
-        List<MediaFile> ForCodecs()
-        {
-            IEnumerable<MediaFile> q = all;
-            q = ApplyGenreFilter(ApplyArtistFilter(ApplyAlbumFilter(q)));
-            return q.ToList();
-        }
-
-        RebuildFacet(Genres, SelectedGenres, ForGenres(), t =>
-        {
-            if (string.IsNullOrWhiteSpace(t.Genres))
-                return Enumerable.Empty<string>();
-            return t.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s));
-        });
-
-        RebuildFacet(Artists, SelectedArtists, ForArtists(), t =>
-            string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist! });
-
-        RebuildFacet(Albums, SelectedAlbums, ForAlbums(), t =>
-            string.IsNullOrWhiteSpace(t.Album) ? Enumerable.Empty<string>() : new[] { t.Album! });
-
-        RebuildFacet(Codecs, SelectedCodecs, ForCodecs(), t =>
-            string.IsNullOrWhiteSpace(t.Codec) ? Enumerable.Empty<string>() : new[] { t.Codec! });
-
-        OnPropertyChanged(nameof(GenreCount));
-        OnPropertyChanged(nameof(ArtistCount));
-        OnPropertyChanged(nameof(AlbumCount));
-        OnPropertyChanged(nameof(CodecCount));
-
-        FacetsRebuilt?.Invoke(this, EventArgs.Empty);
     }
 
     private static void RebuildFacet(
@@ -719,29 +747,10 @@ public partial class LibraryTab : ObservableObject, ITabData
         return source.Where(t => !string.IsNullOrWhiteSpace(t.Codec) && sel.Contains(t.Codec));
     }
 
-    public void NotifyGenresChanged()
-    {
-        UpdateAllFacetLists();
-        RefreshView();
-    }
-
-    public void NotifyArtistsChanged()
-    {
-        UpdateAllFacetLists();
-        RefreshView();
-    }
-
-    public void NotifyAlbumsChanged()
-    {
-        UpdateAllFacetLists();
-        RefreshView();
-    }
-
-    public void NotifyCodecsChanged()
-    {
-        UpdateAllFacetLists();
-        RefreshView();
-    }
+    public void NotifyGenresChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyArtistsChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyAlbumsChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyCodecsChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
 
     /// <summary>
     /// Applies all active filters to a track
@@ -778,22 +787,8 @@ public partial class LibraryTab : ObservableObject, ITabData
             else
             {
                 // Plain-text fallback: search across all metadata fields
-                string keyword = KeywordSearch.ToLowerInvariant();
-                bool matchesKeyword =
-                    track.Title?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Artist?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Album?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.AlbumArtist?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Genres?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Performers?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Composers?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Comment?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Copyright?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Codec?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.FileName?.ToLowerInvariant().Contains(keyword) == true ||
-                    track.Path?.ToLowerInvariant().Contains(keyword) == true;
-
-                if (!matchesKeyword)
+                string keyword = KeywordSearch.Trim();
+                if (!MatchesAnyMetadataField(track, keyword))
                 {
                     return false;
                 }
@@ -852,6 +847,44 @@ public partial class LibraryTab : ObservableObject, ITabData
         }
 
         return true;
+    }
+
+    private static bool MatchesAnyMetadataField(MediaFile track, string keyword)
+    {
+        return Contains(track.Title, keyword)
+               || Contains(track.Artist, keyword)
+               || Contains(track.Album, keyword)
+               || Contains(track.AlbumArtist, keyword)
+               || Contains(track.Performers, keyword)
+               || Contains(track.Composers, keyword)
+               || Contains(track.Genres, keyword)
+               || Contains(track.Comment, keyword)
+               || Contains(track.Copyright, keyword)
+               || Contains(track.Codec, keyword)
+               || Contains(track.ReplayGain, keyword)
+               || Contains(track.FileName, keyword)
+               || Contains(track.Path, keyword)
+               || Contains(track.Track.ToString(), keyword)
+               || Contains(track.TrackCount.ToString(), keyword)
+               || Contains(track.Disc.ToString(), keyword)
+               || Contains(track.DiscCount.ToString(), keyword)
+               || Contains(track.Year.ToString(), keyword)
+               || Contains(track.Duration.ToString(), keyword)
+               || Contains(track.Bitrate.ToString(), keyword)
+               || Contains(track.SampleRate.ToString(), keyword)
+               || Contains(track.Channels.ToString(), keyword)
+               || Contains(track.Rating.ToString(), keyword)
+               || Contains(track.LeadingSilenceMs?.ToString(), keyword)
+               || Contains(track.TrailingSilenceMs?.ToString(), keyword)
+               || Contains(track.Source.ToString(), keyword)
+               || Contains(track.WatchedFolderPath, keyword)
+               || Contains(track.HealthStatus.ToString(), keyword);
+    }
+
+    private static bool Contains(string? value, string keyword)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+               && value.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -973,6 +1006,7 @@ public partial class FilterCriteria : ObservableObject
             FilterType.FileType => System.IO.Path.GetExtension(track.Path),
             FilterType.Performer => track.Performers,
             FilterType.Composer => track.Composers,
+            FilterType.ReplayGain => track.ReplayGain,
             _ => null
         };
     }
@@ -1096,7 +1130,8 @@ public enum FilterType
     Bitrate,
     FileType,
     Performer,
-    Composer
+    Composer,
+    ReplayGain
 }
 
 /// <summary>

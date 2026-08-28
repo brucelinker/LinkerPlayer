@@ -1,5 +1,9 @@
+using ATL;
+using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Database;
+using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
+using LinkerPlayer.Windows;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -9,6 +13,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Threading;
+using System.Collections.Generic;
 
 namespace LinkerPlayer.Core;
 
@@ -37,11 +42,12 @@ public interface IMusicLibrary
     void SaveToDatabase();
     event EventHandler LibraryLoaded;
     Task LoadFromDatabaseAsync();
+    Task LoadFullLibraryAsync();
     void MarkLibraryDirty();
     Task CleanOrphanedTracksAsync();
     Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true);
     Task UpdateRatingAsync(string trackId, double rating);
-    Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default);
+    Task BackfillEmbeddedCoverAsync();
     Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default);
 }
 
@@ -179,6 +185,14 @@ public class MusicLibrary : IMusicLibrary
                         context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"Rating\" REAL NOT NULL DEFAULT 0.0;");
                         _logger.LogInformation("Added Rating column to Tracks table");
                     }
+
+                    List<int> replayGainResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='ReplayGain'").ToList();
+                    if (replayGainResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"ReplayGain\" TEXT NOT NULL DEFAULT ''; ");
+                        _logger.LogInformation("Added ReplayGain column to Tracks table");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -204,9 +218,6 @@ public class MusicLibrary : IMusicLibrary
                 }
             }
 
-            // Synchronous load to populate UI immediately
-            LoadFromDatabaseAsync().GetAwaiter().GetResult();
-
             _autoSaveTimer.Tick += async (s, e) => await AutoSaveIfNeededAsync();
             _autoSaveTimer.Start();
         }
@@ -222,30 +233,26 @@ public class MusicLibrary : IMusicLibrary
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
         {
-            // Load data from database on background thread
+            // Load tracks
             List<MediaFile> tracks = await context.Tracks.AsNoTracking().ToListAsync();
 
+            // Load playlists
             List<Playlist> playlists = await context.Playlists
                 .Include(p => p.PlaylistTracks)
-                .ThenInclude(pt => pt.Track)
                 .Include(p => p.SelectedTrackNavigation)
                 .AsNoTracking()
                 .OrderBy(p => p.Order)
                 .ToListAsync();
 
-            // Collection changes are now thread-safe via BindingOperations.EnableCollectionSynchronization
             Playlists.Clear();
             MainLibrary.Clear();
 
-            // Add all tracks to MainLibrary using AddRange for better performance
+            // Add tracks
             foreach (MediaFile track in tracks)
             {
                 track.EnableDirtyTracking();
             }
             MainLibrary.AddRange(tracks);
-
-            // Notify subscribers (e.g. PlaylistTabsViewModel) that the library is populated
-            Application.Current?.Dispatcher.BeginInvoke(() => LibraryLoaded?.Invoke(this, EventArgs.Empty));
 
             // Process playlists
             foreach (Playlist playlist in playlists)
@@ -255,17 +262,14 @@ public class MusicLibrary : IMusicLibrary
                     .OrderBy(pt => pt.Position)
                     .Select(pt => pt.TrackId!)
                     .ToList();
+
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
 
-                // Validate that SelectedTrackId exists in the TrackIds list (not MainLibrary)
                 if (playlist.SelectedTrackId != null && !validTrackIds.Contains(playlist.SelectedTrackId))
                 {
-                    _logger.LogWarning(
-                        $"Invalid SelectedTrack {playlist.SelectedTrackId} in playlist {playlist.Name}, clearing");
                     playlist.SelectedTrackId = null;
                 }
 
-                // Only set to first track if SelectedTrackId is actually null
                 if (playlist.SelectedTrackId == null && playlist.TrackIds.Any())
                 {
                     playlist.SelectedTrackId = playlist.TrackIds.First();
@@ -273,8 +277,6 @@ public class MusicLibrary : IMusicLibrary
 
                 Playlists.Add(playlist);
             }
-
-            // Do not clear play state here.
 
             if (!Playlists.Any())
             {
@@ -288,12 +290,27 @@ public class MusicLibrary : IMusicLibrary
                 Playlists.Add(newPlaylist);
                 await SaveToDatabaseAsync();
             }
+
+            // Notify UI
+            Application.Current?.Dispatcher.BeginInvoke(() => LibraryLoaded?.Invoke(this, EventArgs.Empty));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load data from database");
             throw;
         }
+    }
+
+    public async Task LoadFullLibraryAsync()
+    {
+        await PerformBackfillsAsync();
+    }
+
+    private async Task PerformBackfillsAsync()
+    {
+        await BackfillEmbeddedCoverAsync();
+        await BackfillMp3VbrAsync();
+        await BackfillReplayGainAsync();
     }
 
     public void MarkLibraryDirty()
@@ -325,75 +342,64 @@ public class MusicLibrary : IMusicLibrary
     /// tracks that were loaded from the DB before the column existed (i.e. value is false).
     /// Only reads the ATL picture-list count — no image bytes are decoded.
     /// </summary>
-    public async Task BackfillEmbeddedCoverAsync(CancellationToken cancellationToken = default)
+    public async Task BackfillEmbeddedCoverAsync()
     {
-        List<MediaFile> needsBackfill = MainLibrary.Where(t => !t.HasEmbeddedCover).ToList();
-        if (needsBackfill.Count == 0)
-            return;
-
-        _logger.LogInformation("Backfilling HasEmbeddedCover for {Count} tracks…", needsBackfill.Count);
-
-        // Parallelise the ATL file probes — NAS I/O is the bottleneck, not CPU.
-        // 64 concurrent readers works well on a 2.5 GbE+ NAS; lower if you see
-        // SMB errors or the NAS becomes unresponsive.
-        const int dbBatchSize = 500;
-        SemaphoreSlim semaphore = new(64, 64);
-        System.Collections.Concurrent.ConcurrentBag<string> updatedIds = new();
-
-        IEnumerable<Task> probeTasks = needsBackfill.Select(async track =>
-        {
-            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-            try
-            {
-                if (CoverProber.HasEmbeddedCover(track.Path))
-                {
-                    using (track.SuspendDirtyTracking())
-                        track.HasEmbeddedCover = true;   // update in-memory immediately → icon appears live
-                    updatedIds.Add(track.Id);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "BackfillEmbeddedCover: skipping {Path}", track.Path);
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        });
-
-        await Task.WhenAll(probeTasks).ConfigureAwait(false);
-
-        if (updatedIds.IsEmpty)
-        {
-            _logger.LogInformation("BackfillEmbeddedCover: no tracks with embedded covers found");
-            return;
-        }
-
-        // Persist to DB in batches — one transaction per batch keeps SQLite happy
-        // and avoids a 43 000-row single UPDATE.
-        List<string> ids = updatedIds.ToList();
-        _logger.LogInformation("BackfillEmbeddedCover: persisting {Count} tracks to DB in batches of {Batch}",
-            ids.Count, dbBatchSize);
         try
         {
-            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
-            for (int i = 0; i < ids.Count; i += dbBatchSize)
-            {
-                if (cancellationToken.IsCancellationRequested) break;
+            List<MediaFile> tracksToCheck = MainLibrary
+                .Where(t => t.HasEmbeddedCover == false)
+                .ToList();
 
-                List<string> batch = ids.GetRange(i, Math.Min(dbBatchSize, ids.Count - i));
-                string placeholders = string.Join(",", batch.Select((_, idx) => $"@p{idx}"));
-                string sql = $"UPDATE Tracks SET HasEmbeddedCover = 1 WHERE Id IN ({placeholders})";
-                context.Database.ExecuteSqlRaw(sql, batch.Cast<object>().ToArray());
+            if (tracksToCheck.Count == 0)
+            {
+                _logger.LogInformation("BackfillEmbeddedCover: no tracks with embedded covers found");
+                return;
             }
+
+            _logger.LogInformation("Backfilling HasEmbeddedCover for {Count} tracks…", tracksToCheck.Count);
+
+            int processed = 0;
+            const int batchSize = 1000;   // larger batch = fewer context switches
+
+            for (int i = 0; i < tracksToCheck.Count; i += batchSize)
+            {
+                List<MediaFile> batch = tracksToCheck.Skip(i).Take(batchSize).ToList();
+
+                await Task.Run(() =>
+                {
+                    foreach (MediaFile track in batch)
+                    {
+                        try
+                        {
+                            if (string.IsNullOrEmpty(track.Path) || !File.Exists(track.Path))
+                                continue;
+
+                            ATL.Track atlTrack = new ATL.Track(track.Path);
+                            track.HasEmbeddedCover = atlTrack.EmbeddedPictures?.Any() == true;
+                        }
+                        catch
+                        {
+                            // Ignore
+                        }
+                    }
+                });
+
+                processed += batch.Count;
+                _logger.LogInformation("Backfilling embedded covers... {Processed}/{Total}", processed, tracksToCheck.Count);
+
+                await Task.Delay(5);   // very small yield
+            }
+
+            await UpdateTracksAsync(tracksToCheck, updateMetadata: false, updateAnalysis: false);
+
+            _logger.LogInformation("Embedded cover backfill complete");
+            _logger.LogInformation("BackfillEmbeddedCover completed for {Count} tracks", tracksToCheck.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "BackfillEmbeddedCover: failed to persist to DB");
+            _logger.LogError(ex, "BackfillEmbeddedCoverAsync failed");
+            _logger.LogError("Embedded cover backfill failed");
         }
-
-        _logger.LogInformation("BackfillEmbeddedCover complete");
     }
 
     public async Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default)
@@ -419,8 +425,6 @@ public class MusicLibrary : IMusicLibrary
             {
                 ATL.Track atlTrack = new(track.Path);
                 string codec = $"MP3 {(atlTrack.IsVBR ? "VBR" : "CBR")}";
-                using (track.SuspendDirtyTracking())
-                    track.Codec = codec;   // update in-memory immediately
                 updates.Add((track.Id, codec));
             }
             catch (Exception ex)
@@ -446,7 +450,8 @@ public class MusicLibrary : IMusicLibrary
             await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
             for (int i = 0; i < updateList.Count; i += dbBatchSize)
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                if (cancellationToken.IsCancellationRequested)
+                    break;
 
                 List<(string Id, string Codec)> batch = updateList.GetRange(i, Math.Min(dbBatchSize, updateList.Count - i));
                 foreach ((string id, string codec) in batch)
@@ -460,6 +465,119 @@ public class MusicLibrary : IMusicLibrary
         }
 
         _logger.LogInformation("BackfillMp3Vbr complete");
+    }
+
+    private async Task BackfillReplayGainAsync(CancellationToken cancellationToken = default)
+    {
+        List<MediaFile> needsBackfill = MainLibrary
+            .Where(t => string.IsNullOrWhiteSpace(t.ReplayGain))
+            .ToList();
+
+        if (needsBackfill.Count == 0)
+            return;
+
+        _logger.LogInformation("BackfillReplayGain: probing {Count} tracks…", needsBackfill.Count);
+
+        const int dbBatchSize = 500;
+        SemaphoreSlim semaphore = new(64, 64);
+        System.Collections.Concurrent.ConcurrentBag<(string Id, string ReplayGain)> updates = new();
+
+        static string NormalizeReplayGainKey(string key) =>
+            new string(key.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+
+        static bool HasReplayGainGainField(ATL.Track atlTrack, string scope)
+        {
+            string replayGainGain = $"REPLAYGAIN{scope}GAIN";
+
+            return atlTrack.AdditionalFields.Any(kv =>
+            {
+                if (string.IsNullOrWhiteSpace(kv.Value))
+                    return false;
+
+                string normalized = NormalizeReplayGainKey(kv.Key);
+                return normalized.Equals(replayGainGain, StringComparison.Ordinal) ||
+                       normalized.EndsWith(replayGainGain, StringComparison.Ordinal);
+            });
+        }
+
+        IEnumerable<Task> probeTasks = needsBackfill.Select(async track =>
+        {
+            await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (string.IsNullOrWhiteSpace(track.Path) || !File.Exists(track.Path))
+                    return;
+
+                ATL.Track atlTrack = new(track.Path);
+
+                bool hasTrackReplayGain = HasReplayGainGainField(atlTrack, "TRACK");
+                bool hasAlbumReplayGain = HasReplayGainGainField(atlTrack, "ALBUM");
+
+                string replayGain = hasAlbumReplayGain ? "Album" : hasTrackReplayGain ? "Track" : string.Empty;
+                if (!string.IsNullOrEmpty(replayGain))
+                    updates.Add((track.Id, replayGain));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "BackfillReplayGain: skipping {Path}", track.Path);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        });
+
+        await Task.WhenAll(probeTasks).ConfigureAwait(false);
+
+        if (updates.IsEmpty)
+            return;
+
+        List<(string Id, string ReplayGain)> updateList = updates.ToList();
+        _logger.LogInformation("BackfillReplayGain: persisting {Count} tracks in batches of {Batch}",
+            updateList.Count, dbBatchSize);
+
+        try
+        {
+            if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+            {
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    foreach ((string id, string replayGain) in updateList)
+                    {
+                        MediaFile? inMemory = MainLibrary.FirstOrDefault(t => t.Id == id);
+                        if (inMemory != null)
+                            inMemory.ReplayGain = replayGain;
+                    }
+                });
+            }
+            else
+            {
+                foreach ((string id, string replayGain) in updateList)
+                {
+                    MediaFile? inMemory = MainLibrary.FirstOrDefault(t => t.Id == id);
+                    if (inMemory != null)
+                        inMemory.ReplayGain = replayGain;
+                }
+            }
+
+            await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+            for (int i = 0; i < updateList.Count; i += dbBatchSize)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                List<(string Id, string ReplayGain)> batch = updateList.GetRange(i, Math.Min(dbBatchSize, updateList.Count - i));
+                foreach ((string id, string replayGain) in batch)
+                    context.Database.ExecuteSqlRaw(
+                        "UPDATE Tracks SET ReplayGain = @replayGain WHERE Id = @id", replayGain, id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "BackfillReplayGain: failed to persist to DB");
+        }
+
+        _logger.LogInformation("BackfillReplayGain complete");
     }
 
     public async Task SaveTracksBatchAsync(IEnumerable<MediaFile> tracks)
@@ -554,12 +672,14 @@ public class MusicLibrary : IMusicLibrary
                     playlist.SelectedTrackId = null;
                 }
 
-                // Validate TrackIds
-                List<string> validTrackIds = playlist.TrackIds.Where(id => validTrackIdsSet.Contains(id)).ToList();
+                // Validate TrackIds and remove duplicates (PlaylistTrack PK is PlaylistId+TrackId)
+                List<string> validTrackIds = playlist.TrackIds
+                    .Where(id => validTrackIdsSet.Contains(id))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
                 playlist.TrackIds = new ObservableCollection<string>(validTrackIds);
 
                 Playlist? existingPlaylist = await context.Playlists
-                    .Include(p => p.PlaylistTracks)
                     .FirstOrDefaultAsync(p => p.Id == playlist.Id || p.Name == playlist.Name);
 
                 int playlistId;
@@ -585,27 +705,32 @@ public class MusicLibrary : IMusicLibrary
                     context.Entry(existingPlaylist).Property(p => p.SelectedTrackId).IsModified = true;
                     context.Entry(existingPlaylist).Property(p => p.Order).IsModified = true;
                     context.Entry(existingPlaylist).State = EntityState.Modified;
-                    context.PlaylistTracks.RemoveRange(existingPlaylist.PlaylistTracks);
+
+                    // Remove existing rows without tracking them, so re-adding the same keys in this
+                    // context does not trigger EF identity-map conflicts.
+                    await context.PlaylistTracks
+                        .Where(pt => pt.PlaylistId == playlistId)
+                        .ExecuteDeleteAsync();
+
                     playlist.Id = playlistId;
                 }
 
-                // Add PlaylistTracks only for valid tracks
-                if (playlist.TrackIds.Any())
+                // Rebuild PlaylistTracks for this playlist from the current in-memory TrackIds.
+                // Existing links were removed above, so we must re-add all desired links.
+                for (int i = 0; i < playlist.TrackIds.Count; i++)
                 {
-                    for (int i = 0; i < playlist.TrackIds.Count; i++)
-                    {
-                        context.PlaylistTracks.Add(new PlaylistTrack
-                        {
-                            PlaylistId = playlistId,
-                            TrackId = playlist.TrackIds[i],
-                            Position = i
-                        });
-                    }
-                }
-            }
+                    string trackId = playlist.TrackIds[i];
 
-            await context.SaveChangesAsync();
-            context.ChangeTracker.AutoDetectChangesEnabled = true;
+                    context.PlaylistTracks.Add(new PlaylistTrack
+                    {
+                        PlaylistId = playlistId,
+                        TrackId = trackId,
+                        Position = i
+                    });
+                }
+                await context.SaveChangesAsync();
+                context.ChangeTracker.AutoDetectChangesEnabled = true;
+            }
         }
         catch (SqliteException ex) when (ex.SqliteErrorCode == 5)
         {
@@ -714,42 +839,49 @@ public class MusicLibrary : IMusicLibrary
     /// </summary>
     public Task AddTracksToLibraryBatchAsync(IEnumerable<MediaFile> mediaFiles)
     {
-        List<MediaFile> tracksToAdd = new List<MediaFile>();
+        List<MediaFile> tracksToAdd = new();
+
+        HashSet<string> existingPaths;
+        lock (_mainLibraryLock)
+        {
+            existingPaths = MainLibrary
+                .Where(t => !string.IsNullOrWhiteSpace(t.Path))
+                .Select(t => t.Path)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
 
         foreach (MediaFile mediaFile in mediaFiles)
         {
-            if (!string.IsNullOrEmpty(mediaFile.Path) &&
-                !string.IsNullOrEmpty(mediaFile.FileName) &&
+            if (!string.IsNullOrWhiteSpace(mediaFile.Path) &&
                 File.Exists(mediaFile.Path) &&
-                _supportedAudioExtensions.Any(s =>
-                    s.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)))
+                _supportedAudioExtensions.Any(ext =>
+                    ext.Equals(Path.GetExtension(mediaFile.Path), StringComparison.OrdinalIgnoreCase)) &&
+                existingPaths.Add(mediaFile.Path))
             {
                 tracksToAdd.Add(mediaFile.Clone());
             }
         }
 
-        if (tracksToAdd.Count > 0)
+        if (tracksToAdd.Count == 0)
+            return Task.CompletedTask;
+
+        // Add without clearing the entire library!
+        if (Application.Current?.Dispatcher is Dispatcher dispatcher)
         {
-            // Use AddRange to add all items with a single CollectionChanged (Reset) notification.
-            // BeginInvoke at Background priority so the worker thread never blocks the UI thread,
-            // keeping input events (scroll, click, playback) responsive during large imports.
-            if (System.Windows.Application.Current?.Dispatcher is System.Windows.Threading.Dispatcher dispatcher)
-            {
-                if (dispatcher.CheckAccess())
-                {
-                    MainLibrary.AddRange(tracksToAdd);
-                }
-                else
-                {
-                    dispatcher.BeginInvoke(
-                        new Action(() => MainLibrary.AddRange(tracksToAdd)),
-                        System.Windows.Threading.DispatcherPriority.Background);
-                }
-            }
-            else
+            if (dispatcher.CheckAccess())
             {
                 MainLibrary.AddRange(tracksToAdd);
             }
+            else
+            {
+                dispatcher.BeginInvoke(
+                    () => MainLibrary.AddRange(tracksToAdd),
+                    DispatcherPriority.Background);
+            }
+        }
+        else
+        {
+            MainLibrary.AddRange(tracksToAdd);
         }
 
         return Task.CompletedTask;
@@ -804,7 +936,8 @@ public class MusicLibrary : IMusicLibrary
     public async Task RemoveTracksAsync(IEnumerable<string> trackIds)
     {
         HashSet<string> removeIds = trackIds.ToHashSet();
-        if (removeIds.Count == 0) return;
+        if (removeIds.Count == 0)
+            return;
 
         List<MediaFile> toRemove = MainLibrary.Where(t => removeIds.Contains(t.Id)).ToList();
         foreach (MediaFile track in toRemove)
@@ -1091,6 +1224,7 @@ public class MusicLibrary : IMusicLibrary
                     existing.SampleRate = incoming.SampleRate;
                     existing.Channels = incoming.Channels;
                     existing.Codec = incoming.Codec;
+                    existing.ReplayGain = incoming.ReplayGain;
 
                     existing.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                     existing.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
@@ -1143,6 +1277,7 @@ public class MusicLibrary : IMusicLibrary
                         inMemory.SampleRate = incoming.SampleRate;
                         inMemory.Channels = incoming.Channels;
                         inMemory.Codec = incoming.Codec;
+                        inMemory.ReplayGain = incoming.ReplayGain;
 
                         inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                         inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;

@@ -56,6 +56,7 @@ public interface IMediaFile
     BitmapImage? AlbumCover { get; }
     PlaybackState State { get; set; }
     double Rating { get; set; }
+    string ReplayGain { get; set; }
 }
 
 [Index(nameof(Id), nameof(Path), IsUnique = true)]
@@ -350,6 +351,14 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private double _rating;
 
+    /// <summary>
+    /// ReplayGain analysis status derived from metadata tags.
+    /// Empty = no ReplayGain tags, Track = track gain tags exist,
+    /// Album = album gain tags exist (takes precedence over Track).
+    /// </summary>
+    [ObservableProperty]
+    private string _replayGain = string.Empty;
+
     [ObservableProperty]
     private int? _leadingSilenceMs;
 
@@ -400,6 +409,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if (Math.Abs(oldValue - newValue) < 0.01)
             return;
 
+        // Skip persistence for metadata-driven assignments while dirty tracking is disabled.
+        if (!_isDirtyTrackingEnabled)
+            return;
+
         // Force save when rating is changed (including by MusicBrainz enrichment)
         IMusicLibrary? library = App.AppHost?.Services?.GetService<IMusicLibrary>();
         if (library != null)
@@ -410,6 +423,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 {
                     await library.UpdateRatingAsync(Id, newValue);
                     await library.SaveToDatabaseAsync();
+                    await PersistRatingToFileAsync(newValue);
                 }
                 catch (Exception ex)
                 {
@@ -417,6 +431,27 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                     logger?.LogError(ex, "Failed to save rating for {Path}", Path);
                 }
             });
+        }
+    }
+
+    private async Task PersistRatingToFileAsync(double rating)
+    {
+        if (string.IsNullOrWhiteSpace(Path))
+            return;
+
+        try
+        {
+            ATL.Track atlTrack = new(Path);
+            double clamped = Math.Round(Math.Clamp(rating, 0.0, 5.0), 1);
+            atlTrack.Popularity = (float)Math.Round(clamped * 255.0 / 5.0, 1);
+
+            bool saved = await atlTrack.SaveAsync(writeProgress: null);
+            if (!saved)
+                Logger?.LogWarning("ATL failed to persist rating tag for {Path}", Path);
+        }
+        catch (Exception ex)
+        {
+            Logger?.LogWarning(ex, "Failed to persist rating tag for {Path}", Path);
         }
     }
 
@@ -620,28 +655,51 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if (track.Popularity is float pop && pop > 0)
         {
             Rating = Math.Round(pop * 5.0 / 255.0, 1);
-
-            // Set the lightweight cover-present flag from the ATL picture list.
-            // This does NOT load image bytes — it is a cheap O(1) check that lets
-            // the Library DataGrid show the cover indicator for every track on startup.
-            HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
-
-            try
-            {
-                FileInfo fi = new FileInfo(Path);
-                fi.Refresh(); // force fresh stat (important for UNC/NAS paths)
-                if (fi.Exists)
-                {
-                    FileLastWriteTimeUtc = fi.LastWriteTimeUtc;
-                    FileSize = fi.Length;
-                }
-                // Do not mark Missing here — if ATL opened the file successfully above,
-                // a false fi.Exists is a transient NAS stat failure, not a deleted file.
-                // HealthStatus = Missing is set only by the FileNotFoundException catch
-                // at the top of this method, when ATL itself cannot open the file.
-            }
-            catch { } // swallow transient I/O errors (e.g. UNC share briefly unreachable)
         }
+
+        static string NormalizeReplayGainKey(string key) =>
+            new string(key.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+
+        static bool HasReplayGainGainField(Track atlTrack, string scope)
+        {
+            string replayGainGain = $"REPLAYGAIN{scope}GAIN";
+
+            return atlTrack.AdditionalFields.Any(kv =>
+            {
+                if (string.IsNullOrWhiteSpace(kv.Value))
+                    return false;
+
+                string normalized = NormalizeReplayGainKey(kv.Key);
+                return normalized.Equals(replayGainGain, StringComparison.Ordinal) ||
+                       normalized.EndsWith(replayGainGain, StringComparison.Ordinal);
+            });
+        }
+
+        bool hasTrackReplayGain = HasReplayGainGainField(track, "TRACK");
+        bool hasAlbumReplayGain = HasReplayGainGainField(track, "ALBUM");
+
+        ReplayGain = hasAlbumReplayGain ? "Album" : hasTrackReplayGain ? "Track" : string.Empty;
+
+        // Set the lightweight cover-present flag from the ATL picture list.
+        // This does NOT load image bytes — it is a cheap O(1) check that lets
+        // the Library DataGrid show the cover indicator for every track on startup.
+        HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
+
+        try
+        {
+            FileInfo fi = new FileInfo(Path);
+            fi.Refresh(); // force fresh stat (important for UNC/NAS paths)
+            if (fi.Exists)
+            {
+                FileLastWriteTimeUtc = fi.LastWriteTimeUtc;
+                FileSize = fi.Length;
+            }
+            // Do not mark Missing here — if ATL opened the file successfully above,
+            // a false fi.Exists is a transient NAS stat failure, not a deleted file.
+            // HealthStatus = Missing is set only by the FileNotFoundException catch
+            // at the top of this method, when ATL itself cannot open the file.
+        }
+        catch { } // swallow transient I/O errors (e.g. UNC share briefly unreachable)
     }
 
     /// <summary>

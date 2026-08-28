@@ -46,6 +46,7 @@ public class RescanLogger : IRescanLogger
         {
             Entries.Clear();
             ScanStatusChanged?.Invoke(this, EventArgs.Empty);
+            TryShowWindow();
         }, DispatcherPriority.Background);
     }
 

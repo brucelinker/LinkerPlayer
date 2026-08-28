@@ -12,11 +12,12 @@ namespace LinkerPlayer.Services.Playback;
 public interface IPlaybackCoordinator
 {
     PlaybackState PlaybackState { get; }
-    PlaybackCursor? PlaybackCursor { get; }
+    PlaybackCursor? PlaybackCursor { get; }   // can be null only before any playlist is loaded
 
-    void SetUserSelection(string playlistName, int trackIndex, MediaFile track);
+    // New unified method
+    void SetSelection(string playlistName, int trackIndex, MediaFile track);
 
-    void PlaySelected();
+    void PlaySelected();           // plays current cursor
     void PlayTrack(string playlistName, int trackIndex, MediaFile track, double positionSeconds = 0);
     void Pause();
     void Resume();
@@ -36,10 +37,6 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
     private readonly ILogger<PlaybackCoordinator> _logger;
 
     private readonly object _sync = new object();
-
-    private string? _userSelectedPlaylistName;
-    private int _userSelectedTrackIndex;
-    private MediaFile? _userSelectedTrack;
 
     private int _suppressNextEngineStopped;
 
@@ -83,6 +80,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
     private System.Threading.Timer? _eofWatchdogTimer;
     private long _eofWatchdogVersion;
     private bool _stopRequested;
+    private string? _activePlaybackSourcePlaylistName;
 
     public PlaybackCoordinator(
         IAudioEngine audioEngine,
@@ -110,39 +108,133 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
 
     public PlaybackCursor? PlaybackCursor { get; private set; }
 
-    public void SetUserSelection(string playlistName, int trackIndex, MediaFile track)
+    public void SetSelection(string playlistName, int trackIndex, MediaFile track)
     {
         if (playlistName == null)
-        {
             throw new ArgumentNullException(nameof(playlistName));
-        }
-
         if (track == null)
-        {
             throw new ArgumentNullException(nameof(track));
-        }
+
+        _logger.LogInformation("SetSelection CALLED (Playlist={Playlist}, Index={Index}, TrackId={TrackId}, Title={Title})", playlistName, trackIndex, track.Id, track.Title);
 
         lock (_sync)
         {
-            _userSelectedPlaylistName = playlistName;
-            _userSelectedTrackIndex = trackIndex;
-            _userSelectedTrack = track;
+            bool hasActivePlaybackSession = PlaybackCursor != null
+                && (_audioEngine.IsPlaying
+                    || PlaybackState == PlaybackState.Playing
+                    || PlaybackState == PlaybackState.Paused
+                    || _crossfadeInProgress);
+
+            if (hasActivePlaybackSession)
+            {
+                _logger.LogDebug(
+                    "SetSelection ignored while playback session is active. Keeping cursor at {PlaylistName}:{TrackIndex}",
+                    PlaybackCursor!.PlaylistName,
+                    PlaybackCursor.TrackIndex);
+                return;
+            }
+
+            PlaybackCursor = new PlaybackCursor
+            {
+                PlaylistName = playlistName,
+                TrackIndex = trackIndex,
+                TrackId = track.Id
+            };
+            _logger.LogInformation("SetSelection: PlaybackCursor set to {PlaylistName}:{TrackIndex}", playlistName, trackIndex);
         }
+    }
+
+    private void SetPlaybackState(PlaybackState newState)
+    {
+        if (PlaybackState == newState)
+            return;
+
+        PlaybackState = newState;
+        WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState));
+    }
+
+    private string? GetActivePlaybackSourcePlaylistName()
+    {
+        if (!string.IsNullOrWhiteSpace(_activePlaybackSourcePlaylistName))
+        {
+            return _activePlaybackSourcePlaylistName;
+        }
+
+        return PlaybackCursor?.PlaylistName;
+    }
+
+    private int ResolveCurrentIndex(IList<MediaFile> tracks, PlaybackCursor cursor)
+    {
+        if (tracks.Count == 0)
+        {
+            return -1;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_currentTrackId))
+        {
+            int currentTrackIndex = tracks.ToList().FindIndex(t => string.Equals(t.Id, _currentTrackId, StringComparison.Ordinal));
+            if (currentTrackIndex >= 0)
+            {
+                return currentTrackIndex;
+            }
+        }
+
+        int cursorTrackIndex = tracks.ToList().FindIndex(t => string.Equals(t.Id, cursor.TrackId, StringComparison.Ordinal));
+        if (cursorTrackIndex >= 0)
+        {
+            return cursorTrackIndex;
+        }
+
+        return Math.Clamp(cursor.TrackIndex, 0, Math.Max(0, tracks.Count - 1));
+    }
+
+    private (string PlaylistName, IList<MediaFile>? Tracks, int CurrentIndex) ResolveActiveSourceTracks()
+    {
+        string? playlistName = GetActivePlaybackSourcePlaylistName();
+        if (string.IsNullOrWhiteSpace(playlistName))
+        {
+            return (string.Empty, null, -1);
+        }
+
+        int fallbackIndex = PlaybackCursor?.TrackIndex ?? 0;
+        (IList<MediaFile>? tracks, int currentIndex) = ResolvePlaylistTracks(playlistName, fallbackIndex);
+        if (tracks == null || tracks.Count == 0)
+        {
+            return (playlistName, null, currentIndex);
+        }
+
+        if (PlaybackCursor != null)
+        {
+            currentIndex = ResolveCurrentIndex(tracks, PlaybackCursor);
+        }
+
+        return (playlistName, tracks, currentIndex);
+    }
+
+    private MediaFile? GetTrackFromCursor(PlaybackCursor cursor)
+    {
+        (IList<MediaFile>? tracks, int _) = ResolvePlaylistTracks(cursor.PlaylistName, cursor.TrackIndex);
+        if (tracks == null || tracks.Count == 0)
+            return null;
+
+        return tracks.FirstOrDefault(t => string.Equals(t.Id, cursor.TrackId, StringComparison.Ordinal));
     }
 
     public void PlaySelected()
     {
         lock (_sync)
         {
-            if (_userSelectedTrack == null || string.IsNullOrWhiteSpace(_userSelectedPlaylistName))
+            if (PlaybackCursor == null)
             {
-                _logger.LogWarning("PlaySelected ignored: missing selection (PlaylistName={PlaylistName}, Track={Track})",
-                    _userSelectedPlaylistName ?? "null",
-                    _userSelectedTrack?.Id ?? "null");
+                _logger.LogWarning("PlaySelected ignored: no cursor/selection");
                 return;
             }
 
-            PlayTrack(_userSelectedPlaylistName, _userSelectedTrackIndex, _userSelectedTrack);
+            MediaFile? track = GetTrackFromCursor(PlaybackCursor); // helper you'll need
+            if (track == null)
+                return;
+
+            PlayTrack(PlaybackCursor.PlaylistName, PlaybackCursor.TrackIndex, track);
         }
     }
 
@@ -158,8 +250,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             throw new ArgumentNullException(nameof(track));
         }
 
-        _logger.LogInformation("PlayTrack (Playlist={Playlist}, Index={Index}, TrackId={TrackId})", playlistName, trackIndex, track.Id);
-        _logger.LogDebug("PlayTrack analysis (TrackId={TrackId}, LeadingMs={LeadingMs}, TrailingMs={TrailingMs})", track.Id, track.LeadingSilenceMs, track.TrailingSilenceMs);
+        _logger.LogInformation("PlayTrack START (Playlist={Playlist}, Index={Index}, TrackId={TrackId}, Title={Title})", playlistName, trackIndex, track.Id, track.Title);
 
         if (string.IsNullOrWhiteSpace(playlistName))
         {
@@ -168,16 +259,18 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
 
         lock (_sync)
         {
-            _stopRequested = false;
-            StartEofWatchdog("playtrack");
+            _activePlaybackSourcePlaylistName = playlistName;
 
-            StopTrailingSilenceTimer("playtrack", null);
+            PlaybackCursor = new PlaybackCursor { PlaylistName = playlistName, TrackIndex = trackIndex, TrackId = track.Id };
+            _logger.LogInformation("PlayTrack: PlaybackCursor set to {PlaylistName}:{TrackIndex}", playlistName, trackIndex);
 
             // StopCore + AudioEngine.Stop can result in multiple OnPlaybackStopped notifications.
             _suppressNextEngineStopped += 2;
             StopCore();
 
-            PlaybackCursor = new PlaybackCursor { PlaylistName = playlistName, TrackIndex = trackIndex, TrackId = track.Id };
+            StopEofWatchdog("playtrack-start");
+            StartEofWatchdog("playtrack");
+            StopTrailingSilenceTimer("playtrack", null);
 
             _sharedDataModel.UpdateActiveTrack(track);
             WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(track));
@@ -190,7 +283,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             {
                 double leadingSeconds = leadingSilenceMs.Value / 1000d;
                 startSeconds = Math.Max(startSeconds, leadingSeconds);
-                _logger.LogDebug("SkipSilence: applying leading silence seek (TrackId={TrackId}, LeadingMs={LeadingMs}, StartSeconds={StartSeconds})", track.Id, leadingSilenceMs.Value, startSeconds);
+                //_logger.LogDebug("SkipSilence: applying leading silence seek (TrackId={TrackId}, LeadingMs={LeadingMs}, StartSeconds={StartSeconds})", track.Id, leadingSilenceMs.Value, startSeconds);
             }
 
             _currentTrackId = track.Id;
@@ -199,8 +292,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             _ = Task.Run(() => _audioEngine.Play(track.Path, startSeconds));
             _ = Task.Run(() => StartTrailingSilenceAfterTrackLoadedAsync(track, startSeconds));
 
-            PlaybackState = PlaybackState.Playing;
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState));
+            SetPlaybackState(PlaybackState.Playing);
         }
 
         StartEofWatchdog("playtrack");
@@ -249,21 +341,21 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         int? trailingSilenceMs = track.TrailingSilenceMs;
         if (!trailingSilenceMs.HasValue || trailingSilenceMs.Value < SkipSilenceMinimumDurationMs)
         {
-            _logger.LogDebug("SkipSilence: not scheduling (Reason=NoOrShortTrailingSilence, TrackId={TrackId}, TrailingMs={TrailingMs})", track.Id, trailingSilenceMs?.ToString() ?? "null");
+            //_logger.LogDebug("SkipSilence: not scheduling (Reason=NoOrShortTrailingSilence, TrackId={TrackId}, TrailingMs={TrailingMs})", track.Id, trailingSilenceMs?.ToString() ?? "null");
             return;
         }
 
         // Do not schedule until the engine has loaded THIS track.
         if (!string.Equals(_audioEngine.LoadedTrackPath, track.Path, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogDebug("SkipSilence: not scheduling (Reason=LoadedPathMismatch, TrackId={TrackId}, ExpectedPath={ExpectedPath}, LoadedPath={LoadedPath})", track.Id, track.Path, _audioEngine.LoadedTrackPath);
+            //_logger.LogDebug("SkipSilence: not scheduling (Reason=LoadedPathMismatch, TrackId={TrackId}, ExpectedPath={ExpectedPath}, LoadedPath={LoadedPath})", track.Id, track.Path, _audioEngine.LoadedTrackPath);
             return;
         }
 
         double engineTrackLengthSeconds = _audioEngine.CurrentTrackLength;
         if (engineTrackLengthSeconds <= 0)
         {
-            _logger.LogDebug("SkipSilence: not scheduling (Reason=EngineLengthUnavailable, TrackId={TrackId}, EngineLen={EngineLen})", track.Id, engineTrackLengthSeconds);
+            //_logger.LogDebug("SkipSilence: not scheduling (Reason=EngineLengthUnavailable, TrackId={TrackId}, EngineLen={EngineLen})", track.Id, engineTrackLengthSeconds);
             return;
         }
 
@@ -289,19 +381,19 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
 
         double delaySeconds = Math.Max(0.01, triggerSecondsFromStart - enginePosSeconds);
 
-        _logger.LogDebug(
-            "SkipSilence: trigger computed (TrackId={TrackId}, TrackLen={TrackLen}, TrailingSec={TrailingSec}, FadeOutSec={FadeOutSec}, TriggerFromStart={TriggerFromStart}, EnginePos={EnginePos}, DelaySec={DelaySec})",
-            track.Id,
-            trackLengthSeconds,
-            trailingSeconds,
-            fadeOutSeconds,
-            triggerSecondsFromStart,
-            enginePosSeconds,
-            delaySeconds);
+        //_logger.LogDebug(
+        //    "SkipSilence: trigger computed (TrackId={TrackId}, TrackLen={TrackLen}, TrailingSec={TrailingSec}, FadeOutSec={FadeOutSec}, TriggerFromStart={TriggerFromStart}, EnginePos={EnginePos}, DelaySec={DelaySec})",
+        //    track.Id,
+        //    trackLengthSeconds,
+        //    trailingSeconds,
+        //    fadeOutSeconds,
+        //    triggerSecondsFromStart,
+        //    enginePosSeconds,
+        //    delaySeconds);
 
         if (PlaybackCursor == null)
         {
-            _logger.LogDebug("SkipSilence: not scheduling (Reason=CursorNull, TrackId={TrackId})", track.Id);
+            //_logger.LogDebug("SkipSilence: not scheduling (Reason=CursorNull, TrackId={TrackId})", track.Id);
             return;
         }
 
@@ -319,23 +411,25 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
 
         int dueMs = (int)Math.Clamp(delaySeconds * 1000d, 1d, (double)int.MaxValue);
 
+        string playlistName = GetActivePlaybackSourcePlaylistName() ?? PlaybackCursor.PlaylistName;
+
         TrailingSilenceTimerState state = new TrailingSilenceTimerState
         {
             TimerVersion = timerVersion,
             TrackId = trackId,
             TrackPath = track.Path,
-            PlaylistName = PlaybackCursor.PlaylistName,
+            PlaylistName = playlistName,
             TrackIndex = PlaybackCursor.TrackIndex,
             DueMs = dueMs
         };
 
         _trailingSilenceTimerState = state;
 
-        _logger.LogDebug(
-            "SkipSilence: schedule trailing silence advance (TimerV={TimerV}, TrackId={TrackId}, DueMs={DueMs})",
-            timerVersion,
-            trackId,
-            dueMs);
+        //_logger.LogDebug(
+        //    "SkipSilence: schedule trailing silence advance (TimerV={TimerV}, TrackId={TrackId}, DueMs={DueMs})",
+        //    timerVersion,
+        //    trackId,
+        //    dueMs);
 
         _trailingSilenceTimer = new System.Threading.Timer(OnTrailingSilenceTimerFired, state, dueMs, System.Threading.Timeout.Infinite);
     }
@@ -351,14 +445,14 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         {
             string cursorSnapshot = PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}";
 
-            _logger.LogDebug(
-                "SkipSilence: timer fired (TimerV={TimerV}, StateV={StateV}, ThreadId={ThreadId}, Cursor={Cursor}, PayloadCursor={PayloadCursor}, DueMs={DueMs})",
-                callbackTimerVersion,
-                Interlocked.Read(ref _trailingSilenceTimerVersion),
-                Environment.CurrentManagedThreadId,
-                cursorSnapshot,
-                timerState == null ? "null" : $"{timerState.PlaylistName}:{timerState.TrackIndex}:{timerState.TrackId}",
-                timerState?.DueMs);
+            //_logger.LogDebug(
+            //    "SkipSilence: timer fired (TimerV={TimerV}, StateV={StateV}, ThreadId={ThreadId}, Cursor={Cursor}, PayloadCursor={PayloadCursor}, DueMs={DueMs})",
+            //    callbackTimerVersion,
+            //    Interlocked.Read(ref _trailingSilenceTimerVersion),
+            //    Environment.CurrentManagedThreadId,
+            //    cursorSnapshot,
+            //    timerState == null ? "null" : $"{timerState.PlaylistName}:{timerState.TrackIndex}:{timerState.TrackId}",
+            //    timerState?.DueMs);
 
             if (timerState == null)
             {
@@ -380,21 +474,21 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
                 return;
             }
 
-            if (PlaybackCursor == null)
+            string? activePlaylistName = GetActivePlaybackSourcePlaylistName();
+            if (string.IsNullOrWhiteSpace(activePlaylistName))
             {
                 return;
             }
 
-            if (!string.Equals(PlaybackCursor.PlaylistName, timerState.PlaylistName, StringComparison.Ordinal)
-                || PlaybackCursor.TrackIndex != timerState.TrackIndex
-                || !string.Equals(PlaybackCursor.TrackId, timerState.TrackId, StringComparison.Ordinal))
+            if (!string.Equals(activePlaylistName, timerState.PlaylistName, StringComparison.Ordinal)
+                || !string.Equals(_currentTrackId, timerState.TrackId, StringComparison.Ordinal))
             {
                 return;
             }
 
             StopTrailingSilenceTimer("fired", callbackTimerVersion);
 
-            (IList<MediaFile>? tracks, int currentIndex) = ResolvePlaylistTracks(PlaybackCursor.PlaylistName, PlaybackCursor.TrackIndex);
+            (string playlistName, IList<MediaFile>? tracks, int currentIndex) = ResolveActiveSourceTracks();
             if (tracks == null || tracks.Count == 0)
             {
                 return;
@@ -410,12 +504,12 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             MediaFile nextTrack = tracks[nextIndex];
 
             // Prefer crossfade when enabled.
-            if (BeginCrossfadeTo(PlaybackCursor.PlaylistName, nextIndex, nextTrack))
+            if (BeginCrossfadeTo(playlistName, nextIndex, nextTrack))
             {
                 return;
             }
 
-            PlayTrack(PlaybackCursor.PlaylistName, nextIndex, nextTrack);
+            PlayTrack(playlistName, nextIndex, nextTrack);
         }
     }
 
@@ -429,11 +523,11 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         {
             try
             {
-                _logger.LogDebug(
-                    "SkipSilence: cancel trailing silence timer (Reason={Reason}, RelatedTimerV={RelatedTimerV}, Cursor={Cursor})",
-                    reason ?? "unknown",
-                    relatedTimerVersion?.ToString() ?? "null",
-                    PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
+                //_logger.LogDebug(
+                //    "SkipSilence: cancel trailing silence timer (Reason={Reason}, RelatedTimerV={RelatedTimerV}, Cursor={Cursor})",
+                //    reason ?? "unknown",
+                //    relatedTimerVersion?.ToString() ?? "null",
+                //    PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
             }
             catch (Exception ex)
             {
@@ -459,36 +553,25 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         lock (_sync)
         {
             StopEofWatchdog("engine-stopped");
-            _logger.LogDebug("OnEnginePlaybackStopped (Suppressed={Suppressed}, State={State}, Cursor={Cursor})",
-                _suppressNextEngineStopped,
-                PlaybackState,
-                PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
+            //_logger.LogDebug("OnEnginePlaybackStopped...");
 
             if (_suppressNextEngineStopped > 0)
             {
                 _suppressNextEngineStopped--;
-                _logger.LogDebug("OnEnginePlaybackStopped suppressed (Remaining={Remaining})", _suppressNextEngineStopped);
                 return;
             }
 
             if (_crossfadeInProgress)
-            {
-                _logger.LogDebug("OnEnginePlaybackStopped ignored: crossfade in progress");
                 return;
-            }
 
-            // Only now consider playback truly stopped; safe to clear the timer.
             StopTrailingSilenceTimer("engine-stopped", null);
 
             if (PlaybackState != PlaybackState.Stopped)
             {
-                PlaybackState = PlaybackState.Stopped;
-                PlaybackCursor = null;
-                _currentTrackId = null;
-                _currentTrackStartSeconds = 0;
+                SetPlaybackState(PlaybackState.Stopped);
+                // DO NOT set PlaybackCursor = null;
                 _sharedDataModel.UpdateActiveTrack(null);
                 WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(null));
-                WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState));
             }
         }
     }
@@ -499,7 +582,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         {
             if (_crossfadeInProgress)
             {
-                _logger.LogDebug("OnEngineTrackEnded ignored: crossfade in progress");
+                //_logger.LogDebug("OnEngineTrackEnded ignored: crossfade in progress");
                 return;
             }
 
@@ -507,20 +590,13 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
 
             if (PlaybackState != PlaybackState.Playing)
             {
-                _logger.LogDebug("OnEngineTrackEnded ignored: not playing (State={State})", PlaybackState);
+                //_logger.LogDebug("OnEngineTrackEnded ignored: not playing (State={State})", PlaybackState);
                 return;
             }
 
-            if (PlaybackCursor == null)
-            {
-                _logger.LogDebug("OnEngineTrackEnded ignored: cursor is null");
-                return;
-            }
-
-            (IList<MediaFile>? tracks, int currentIndex) = ResolvePlaylistTracks(PlaybackCursor.PlaylistName, PlaybackCursor.TrackIndex);
+            (string playlistName, IList<MediaFile>? tracks, int currentIndex) = ResolveActiveSourceTracks();
             if (tracks == null || tracks.Count == 0)
             {
-                _logger.LogDebug("OnEngineTrackEnded ignored: no tracks resolved (PlaylistName={PlaylistName})", PlaybackCursor.PlaylistName);
                 return;
             }
 
@@ -528,17 +604,16 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             int nextIndex = _trackNavigationService.GetNextTrackIndex(tracks, currentIndex, shuffleMode);
             if (nextIndex < 0 || nextIndex >= tracks.Count)
             {
-                _logger.LogDebug("OnEngineTrackEnded ignored: computed nextIndex {NextIndex} out of range 0..{MaxIndex} for playlist '{PlaylistName}'", nextIndex, tracks.Count - 1, PlaybackCursor.PlaylistName);
                 return;
             }
 
             MediaFile nextTrack = tracks[nextIndex];
-            if (BeginCrossfadeTo(PlaybackCursor.PlaylistName, nextIndex, nextTrack))
+            if (BeginCrossfadeTo(playlistName, nextIndex, nextTrack))
             {
                 return;
             }
 
-            PlayTrack(PlaybackCursor.PlaylistName, nextIndex, nextTrack);
+            PlayTrack(playlistName, nextIndex, nextTrack);
         }
     }
 
@@ -620,6 +695,8 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         _pendingCrossfadeTrackIndex = trackIndex;
         _pendingCrossfadeTrack = track;
 
+        _activePlaybackSourcePlaylistName = playlistName;
+
         // Switch UI "now playing" immediately when the next track becomes audible.
         PlaybackCursor = new PlaybackCursor
         {
@@ -659,8 +736,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         {
             StopEofWatchdog("pause");
             _audioEngine.Pause();
-            PlaybackState = PlaybackState.Paused;
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState));
+            SetPlaybackState(PlaybackState.Paused);
         }
     }
 
@@ -672,8 +748,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             StartEofWatchdog("resume");
 
             _audioEngine.ResumePlay();
-            PlaybackState = PlaybackState.Playing;
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState));
+            SetPlaybackState(PlaybackState.Playing);
         }
     }
 
@@ -683,7 +758,6 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         {
             _stopRequested = true;
             StopEofWatchdog("stop");
-
             CancelCrossfade("stop");
             StopTrailingSilenceTimer("stop", null);
 
@@ -692,17 +766,14 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
                 && SmoothStopFadeMs > 0
                 && _audioEngine.TryFadeOutAndStop(SmoothStopFadeMs, FadeCurveShape);
 
-            if (beganFadeOut)
+            if (!beganFadeOut)
             {
-                return;
+                StopCore();
+                // DO NOT set PlaybackCursor = null;
+                _sharedDataModel.UpdateActiveTrack(null);
+                WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(null));
+                WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
             }
-
-            StopCore();
-            PlaybackCursor = null;
-            _sharedDataModel.UpdateActiveTrack(null);
-            WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(null));
-
-            WeakReferenceMessenger.Default.Send(new PlaybackStateChangedMessage(PlaybackState.Stopped));
         }
     }
 
@@ -740,46 +811,38 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
     {
         lock (_sync)
         {
-            _logger.LogInformation("Next (Cursor={Cursor})", PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
-            if (PlaybackCursor == null)
-            {
-                _logger.LogDebug("Next ignored: PlaybackCursor is null");
-                return;
-            }
-
-            // User intent: Next should always win. If we're mid-crossfade, cancel it and start a new transition.
-            if (_crossfadeInProgress)
-            {
-                CancelCrossfade("next");
-            }
-
-            StopTrailingSilenceTimer("next", null);
-            StartEofWatchdog("next");
-
-            (IList<MediaFile>? tracks, int currentIndex) = ResolvePlaylistTracks(PlaybackCursor.PlaylistName, PlaybackCursor.TrackIndex);
+            (string playlistName, IList<MediaFile>? tracks, int currentIndex) = ResolveActiveSourceTracks();
             if (tracks == null || tracks.Count == 0)
             {
-                _logger.LogDebug("Next ignored: no tracks resolved for playlist '{PlaylistName}'", PlaybackCursor.PlaylistName);
+                _logger.LogDebug("Next ignored: no active source tracks");
                 return;
             }
+
+            if (_crossfadeInProgress)
+                CancelCrossfade("next");
+
+            StopTrailingSilenceTimer("next", null);
+            StopEofWatchdog("next");
 
             bool shuffleMode = _settingsManager.Settings.ShuffleMode;
-
             int nextIndex = _trackNavigationService.GetNextTrackIndex(tracks, currentIndex, shuffleMode);
             if (nextIndex < 0 || nextIndex >= tracks.Count)
-            {
-                _logger.LogDebug("Next ignored: computed nextIndex {NextIndex} out of range 0..{MaxIndex} for playlist '{PlaylistName}'", nextIndex, tracks.Count - 1, PlaybackCursor.PlaylistName);
                 return;
-            }
 
             MediaFile nextTrack = tracks[nextIndex];
 
-            if (BeginCrossfadeTo(PlaybackCursor.PlaylistName, nextIndex, nextTrack))
+            // Fast path when stopped or paused - no crossfade needed
+            if (PlaybackState != PlaybackState.Playing)
             {
+                PlayTrack(playlistName, nextIndex, nextTrack);
                 return;
             }
 
-            PlayTrack(PlaybackCursor.PlaylistName, nextIndex, nextTrack);
+            // Normal playing state - try crossfade
+            if (BeginCrossfadeTo(playlistName, nextIndex, nextTrack))
+                return;
+
+            PlayTrack(playlistName, nextIndex, nextTrack);
         }
     }
 
@@ -787,52 +850,47 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
     {
         lock (_sync)
         {
-            _logger.LogInformation("Prev (Cursor={Cursor})", PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
-            if (PlaybackCursor == null)
-            {
-                _logger.LogDebug("Prev ignored: PlaybackCursor is null");
-                return;
-            }
-
-            // User intent: Prev should always win. If we're mid-crossfade, cancel it and start a new transition.
-            if (_crossfadeInProgress)
-            {
-                CancelCrossfade("prev");
-            }
-
-            StopTrailingSilenceTimer("prev", null);
-            StartEofWatchdog("prev");
-
-            (IList<MediaFile>? tracks, int currentIndex) = ResolvePlaylistTracks(PlaybackCursor.PlaylistName, PlaybackCursor.TrackIndex);
+            (string playlistName, IList<MediaFile>? tracks, int currentIndex) = ResolveActiveSourceTracks();
             if (tracks == null || tracks.Count == 0)
             {
-                _logger.LogDebug("Prev ignored: no tracks resolved for playlist '{PlaylistName}'", PlaybackCursor.PlaylistName);
+                _logger.LogDebug("Prev ignored: no active source tracks");
                 return;
             }
+
+            if (_crossfadeInProgress)
+                CancelCrossfade("prev");
+
+            StopTrailingSilenceTimer("prev", null);
+            StopEofWatchdog("prev");
 
             bool shuffleMode = _settingsManager.Settings.ShuffleMode;
+            int prevIndex = _trackNavigationService.GetPreviousTrackIndex(tracks, currentIndex, shuffleMode);
+            if (prevIndex < 0 || prevIndex >= tracks.Count)
+                return;
 
-            int previousIndex = _trackNavigationService.GetPreviousTrackIndex(tracks, currentIndex, shuffleMode);
-            if (previousIndex < 0 || previousIndex >= tracks.Count)
+            MediaFile prevTrack = tracks[prevIndex];
+
+            // Fast path when stopped or paused - no crossfade needed
+            if (PlaybackState != PlaybackState.Playing)
             {
-                _logger.LogDebug("Prev ignored: computed previousIndex {PreviousIndex} out of range 0..{MaxIndex} for playlist '{PlaylistName}'", previousIndex, tracks.Count - 1, PlaybackCursor.PlaylistName);
+                PlayTrack(playlistName, prevIndex, prevTrack);
                 return;
             }
 
-            MediaFile previousTrack = tracks[previousIndex];
-
-            if (BeginCrossfadeTo(PlaybackCursor.PlaylistName, previousIndex, previousTrack))
-            {
+            // Normal playing state - try crossfade
+            if (BeginCrossfadeTo(playlistName, prevIndex, prevTrack))
                 return;
-            }
 
-            PlayTrack(PlaybackCursor.PlaylistName, previousIndex, previousTrack);
+            PlayTrack(playlistName, prevIndex, prevTrack);
         }
     }
 
     private (IList<MediaFile>? Tracks, int CurrentIndex) ResolvePlaylistTracks(string playlistName, int fallbackIndex)
     {
-        List<MediaFile> tracks = _musicLibrary.GetTracksFromPlaylist(playlistName);
+        List<MediaFile> tracks = playlistName == "Music Library"
+            ? _musicLibrary.MainLibrary.ToList()
+            : _musicLibrary.GetTracksFromPlaylist(playlistName);
+
         if (tracks.Count == 0)
         {
             return (null, fallbackIndex);
@@ -853,9 +911,9 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
     {
         StopEofWatchdog($"restart:{reason}");
 
-        _logger.LogDebug("EOFWatchdog: start (Reason={Reason}, Cursor={Cursor})",
-            reason,
-            PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
+        //_logger.LogDebug("EOFWatchdog: start (Reason={Reason}, Cursor={Cursor})",
+        //    reason,
+        //    PlaybackCursor == null ? "null" : $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
 
         long version = Interlocked.Increment(ref _eofWatchdogVersion);
 
@@ -891,7 +949,8 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
                         return;
                     }
 
-                    if (PlaybackCursor == null)
+                    (string playlistName, IList<MediaFile>? tracks, int currentIndex) = ResolveActiveSourceTracks();
+                    if (tracks == null || tracks.Count == 0)
                     {
                         return;
                     }
@@ -912,39 +971,39 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
                         return;
                     }
 
-                    _logger.LogDebug("EOFWatchdog: near EOF (Len={Len}, Pos={Pos}, Remaining={Remaining}, Threshold={Threshold}, FadeOutSec={FadeOutSec}, Cursor={Cursor})",
-                        len,
-                        pos,
-                        remainingSeconds,
-                        thresholdSeconds,
-                        fadeOutSeconds,
-                        $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
+                    //_logger.LogDebug("EOFWatchdog: near EOF (Len={Len}, Pos={Pos}, Remaining={Remaining}, Threshold={Threshold}, FadeOutSec={FadeOutSec}, Cursor={Cursor})",
+                    //    len,
+                    //    pos,
+                    //    remainingSeconds,
+                    //    thresholdSeconds,
+                    //    fadeOutSeconds,
+                    //    $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
 
                     // Reuse the standard advance logic.
-                    (IList<MediaFile>? tracks, int currentIndex) = ResolvePlaylistTracks(PlaybackCursor.PlaylistName, PlaybackCursor.TrackIndex);
-                    if (tracks == null || tracks.Count == 0)
-                    {
-                        return;
-                    }
+                    _logger.LogInformation("EOFWatchdog: Resolving next track from {PlaylistName} (currentIndex={CurrentIndex}, trackCount={TrackCount})", 
+                        playlistName, currentIndex, tracks.Count);
 
                     bool shuffleMode = _settingsManager.Settings.ShuffleMode;
                     int nextIndex = _trackNavigationService.GetNextTrackIndex(tracks, currentIndex, shuffleMode);
                     if (nextIndex < 0 || nextIndex >= tracks.Count)
                     {
+                        _logger.LogInformation("EOFWatchdog: No next track available (nextIndex={NextIndex})", nextIndex);
                         return;
                     }
 
                     MediaFile nextTrack = tracks[nextIndex];
+                    _logger.LogInformation("EOFWatchdog: Next track is {TrackTitle} ({TrackId}) at index {NextIndex}", nextTrack.Title, nextTrack.Id, nextIndex);
 
                     // Prevent repeated triggers for the same EOF window.
                     StopEofWatchdog("triggered");
 
-                    if (BeginCrossfadeTo(PlaybackCursor.PlaylistName, nextIndex, nextTrack))
+                    if (BeginCrossfadeTo(playlistName, nextIndex, nextTrack))
                     {
                         return;
                     }
 
-                    PlayTrack(PlaybackCursor.PlaylistName, nextIndex, nextTrack);
+                    _logger.LogInformation("EOFWatchdog: Calling PlayTrack with PlaylistName={PlaylistName}", playlistName);
+                    PlayTrack(playlistName, nextIndex, nextTrack);
                 }
             }
             catch
@@ -960,13 +1019,13 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
         System.Threading.Timer? timerToDispose = _eofWatchdogTimer;
         if (timerToDispose != null)
         {
-            try
-            {
-                _logger.LogDebug("EOFWatchdog: stop (Reason={Reason})", reason);
-            }
-            catch
-            {
-            }
+            //try
+            //{
+            //    _logger.LogDebug("EOFWatchdog: stop (Reason={Reason})", reason);
+            //}
+            //catch
+            //{
+            //}
 
             try
             {
@@ -987,14 +1046,14 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
 
             if (!enabled)
             {
-                _logger.LogDebug("ShuffleMode: disabled -> clearing shuffle list");
+                //_logger.LogDebug("ShuffleMode: disabled -> clearing shuffle list");
                 _trackNavigationService.ClearShuffle();
                 return;
             }
 
             if (PlaybackCursor == null)
             {
-                _logger.LogDebug("ShuffleMode: enabled but no PlaybackCursor; shuffle will initialize on first Next/Prev");
+                //_logger.LogDebug("ShuffleMode: enabled but no PlaybackCursor; shuffle will initialize on first Next/Prev");
                 _trackNavigationService.ClearShuffle();
                 return;
             }
@@ -1002,15 +1061,15 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             List<MediaFile> tracks = _musicLibrary.GetTracksFromPlaylist(PlaybackCursor.PlaylistName);
             if (tracks.Count == 0)
             {
-                _logger.LogDebug("ShuffleMode: enabled but playlist '{PlaylistName}' is empty", PlaybackCursor.PlaylistName);
+                //_logger.LogDebug("ShuffleMode: enabled but playlist '{PlaylistName}' is empty", PlaybackCursor.PlaylistName);
                 _trackNavigationService.ClearShuffle();
                 return;
             }
 
-            _logger.LogDebug("ShuffleMode: enabled -> initializing shuffle list (PlaylistName={PlaylistName}, TrackCount={TrackCount}, CurrentTrackId={TrackId})",
-                PlaybackCursor.PlaylistName,
-                tracks.Count,
-                PlaybackCursor.TrackId);
+            //_logger.LogDebug("ShuffleMode: enabled -> initializing shuffle list (PlaylistName={PlaylistName}, TrackCount={TrackCount}, CurrentTrackId={TrackId})",
+            //    PlaybackCursor.PlaylistName,
+            //    tracks.Count,
+            //    PlaybackCursor.TrackId);
 
             _trackNavigationService.InitializeShuffle(tracks, PlaybackCursor.TrackId);
         }

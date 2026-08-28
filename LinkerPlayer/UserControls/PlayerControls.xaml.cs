@@ -204,10 +204,12 @@ public partial class PlayerControls
                 }
 
                 break;
+
             case PlaybackState.Paused:
                 _seekBarTimer.Stop();
                 _isStopped = false;
                 break;
+
             case PlaybackState.Stopped:
                 _seekBarTimer.Stop();
                 SeekBar.Value = 0;

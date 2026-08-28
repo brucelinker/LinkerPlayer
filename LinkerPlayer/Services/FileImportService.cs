@@ -112,6 +112,8 @@ public class FileImportService : IFileImportService
 
         foreach (string filePath in files)
         {
+            _logger.LogDebug("Attempting to import: {FilePath}", filePath);
+
             if (cancellationToken.IsCancellationRequested)
                 break;
 
@@ -349,27 +351,13 @@ public class FileImportService : IFileImportService
 
         _logger.LogInformation("Importing {TotalFiles} audio files from folder: {FolderPath}", totalFiles, folderPath);
 
-        // Build a HashSet of existing paths for O(1) duplicate checking
-        HashSet<string> existingPaths = new HashSet<string>(
-            _musicLibrary.MainLibrary.Select(t => t.Path),
-            StringComparer.OrdinalIgnoreCase);
-
         int processedCount = 0;
-        const int progressInterval = 50;
         const int degreeOfParallelism = 8;
-        const int dbBatchSize = 200;
 
         object importLock = new object();
         List<MediaFile> pendingDbSaves = new List<MediaFile>();
 
-        progress?.Report(new ProgressData
-        {
-            IsProcessing = true,
-            TotalTracks = totalFiles,
-            ProcessedTracks = 0,
-            Status = $"Scanning: {Path.GetFileName(folderPath)}",
-            Phase = "Importing"
-        });
+        progress?.Report(new ProgressData { IsProcessing = true, TotalTracks = totalFiles, ProcessedTracks = 0, Status = $"Scanning: {Path.GetFileName(folderPath)}", Phase = "Importing" });
 
         SemaphoreSlim sem = new SemaphoreSlim(degreeOfParallelism);
         List<Task> tasks = new List<Task>();
@@ -377,23 +365,10 @@ public class FileImportService : IFileImportService
         foreach (string filePath in audioFiles)
         {
             if (cancellationToken.IsCancellationRequested)
-            {
-                _logger.LogInformation("Import cancelled after {Processed}/{Total} files", processedCount, totalFiles);
                 break;
-            }
 
             if (!await _importCancellationService.WaitIfPausedAsync(cancellationToken).ConfigureAwait(false))
-            {
-                _logger.LogInformation("Import cancelled while paused after {Processed}/{Total} files", processedCount, totalFiles);
                 break;
-            }
-
-            // Skip duplicates immediately (O(1) check)
-            if (existingPaths.Contains(filePath))
-            {
-                System.Threading.Interlocked.Increment(ref processedCount);
-                continue;
-            }
 
             try
             {
@@ -411,54 +386,31 @@ public class FileImportService : IFileImportService
                     MediaFile? importedFile = await ImportFileAsync(filePath).ConfigureAwait(false);
                     if (importedFile != null)
                     {
-                        lock (importLock)
+                        // Minimal duplicate check - only skip if already in library
+                        MediaFile? existing = _musicLibrary.IsTrackInLibrary(importedFile);
+                        if (existing == null)
                         {
-                            importedFiles.Add(importedFile);
-                            pendingDbSaves.Add(importedFile);
-                            existingPaths.Add(filePath);
+                            lock (importLock)
+                            {
+                                importedFiles.Add(importedFile);
+                                pendingDbSaves.Add(importedFile);
+                            }
+                            //_logger.LogInformation("Queued for library: {FilePath}", filePath);
                         }
-                    }
-
-                    int current = System.Threading.Interlocked.Increment(ref processedCount);
-                    if (current % progressInterval == 0)
-                    {
-                        progress?.Report(new ProgressData
+                        else
                         {
-                            IsProcessing = true,
-                            TotalTracks = totalFiles,
-                            ProcessedTracks = current,
-                            Status = $"Scanning {current:N0} / {totalFiles:N0}  —  {Path.GetFileName(folderPath)}",
-                            Phase = "Importing"
-                        });
-                    }
-
-                    // Flush to DB only — no UI touches during the scan
-                    List<MediaFile>? toSave = null;
-                    lock (importLock)
-                    {
-                        if (pendingDbSaves.Count >= dbBatchSize)
-                        {
-                            toSave = pendingDbSaves.ToList();
-                            pendingDbSaves.Clear();
-                        }
-                    }
-
-                    if (toSave != null && toSave.Count > 0)
-                    {
-                        try
-                        {
-                            await _musicLibrary.SaveTracksBatchAsync(toSave).ConfigureAwait(false);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to save DB batch");
+                            _logger.LogDebug("Skipped duplicate (already in library): {FilePath}", filePath);
+                            // Still add to playlist later if this is "add to playlist" flow
+                            lock (importLock)
+                            {
+                                importedFiles.Add(importedFile);  // Keep for playlist
+                            }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to import file: {FilePath}", filePath);
-                    System.Threading.Interlocked.Increment(ref processedCount);
+                    _logger.LogError(ex, "Failed in worker for {FilePath}", filePath);
                 }
                 finally
                 {
@@ -471,65 +423,36 @@ public class FileImportService : IFileImportService
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
 
-        // Final DB flush for any remaining tracks
+        // Final DB flush
         List<MediaFile> finalDbBatch;
         lock (importLock)
         {
             finalDbBatch = pendingDbSaves.ToList();
             pendingDbSaves.Clear();
         }
-
         if (finalDbBatch.Count > 0)
         {
-            try
-            {
-                await _musicLibrary.SaveTracksBatchAsync(finalDbBatch).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to save final DB batch");
-            }
+            await _musicLibrary.SaveTracksBatchAsync(finalDbBatch).ConfigureAwait(false);
         }
 
-        // All scanning and DB writes are done — now push to the UI collection in one shot.
-        // A single AddRange fires one Reset notification and one filter rebuild.
+        // Final UI batch add
         if (importedFiles.Count > 0)
         {
-            progress?.Report(new ProgressData
-            {
-                IsProcessing = true,
-                TotalTracks = totalFiles,
-                ProcessedTracks = totalFiles,
-                Status = $"Adding {importedFiles.Count:N0} tracks to library…",
-                Phase = "Importing"
-            });
-
+            progress?.Report(new ProgressData { IsProcessing = true, TotalTracks = totalFiles, ProcessedTracks = totalFiles, Status = $"Adding {importedFiles.Count:N0} tracks to library…", Phase = "Importing" });
             await _musicLibrary.AddTracksToLibraryBatchAsync(importedFiles).ConfigureAwait(false);
         }
 
-        // Enqueue background metadata refresh
+        // Background metadata
         if (importedFiles.Count > 0)
         {
             try
-            {
-                LinkerPlayer.Services.Metadata.BackgroundMetadataRefresher.Enqueue(importedFiles);
-            }
+            { LinkerPlayer.Services.Metadata.BackgroundMetadataRefresher.Enqueue(importedFiles); }
             catch { }
         }
 
-        progress?.Report(new ProgressData
-        {
-            IsProcessing = false,
-            TotalTracks = totalFiles,
-            ProcessedTracks = processedCount,
-            Status = importedFiles.Count > 0
-                ? $"Done — {importedFiles.Count:N0} new track{(importedFiles.Count == 1 ? "" : "s")} added."
-                : $"Library up to date — {totalFiles:N0} track{(totalFiles == 1 ? "" : "s")} already imported.",
-            Phase = string.Empty
-        });
+        progress?.Report(new ProgressData { IsProcessing = false, TotalTracks = totalFiles, ProcessedTracks = processedCount, Status = $"Done — {importedFiles.Count:N0} new track{(importedFiles.Count == 1 ? "" : "s")} added.", Phase = "" });
 
-        _logger.LogInformation("Folder import completed. {ImportedCount}/{TotalFiles} files imported successfully",
-            importedFiles.Count, totalFiles);
+        _logger.LogInformation("Folder import completed. {ImportedCount}/{TotalFiles} files imported successfully", importedFiles.Count, totalFiles);
 
         return importedFiles;
     }
@@ -538,45 +461,43 @@ public class FileImportService : IFileImportService
     {
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
-            _logger.LogWarning("ImportFileAsync called with invalid file path: {FilePath}", filePath);
+            _logger.LogWarning("ImportFileAsync: Invalid or missing file: {FilePath}", filePath);
             return null;
         }
 
         if (!IsAudioFile(filePath))
         {
-            _logger.LogDebug("File is not a supported audio format: {FilePath}", filePath);
+            _logger.LogWarning("ImportFileAsync: Not supported audio: {FilePath}", filePath);
             return null;
         }
 
+        _logger.LogDebug("ImportFileAsync starting: {FilePath}", filePath);
+
         try
         {
-            // Construct MediaFile with full metadata extraction
             MediaFile mediaFile = new MediaFile { Path = filePath };
             mediaFile.FileName = Path.GetFileName(filePath);
 
-            // Extract metadata synchronously for immediate display
             try
             {
                 mediaFile.UpdateFromFileMetadata(raisePropertyChanged: true);
                 mediaFile.NeedsMetadataRefresh = false;
+                _logger.LogDebug("Metadata extracted successfully for {FilePath}", filePath);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to extract metadata for {FilePath}, will retry in background", filePath);
+                _logger.LogWarning(ex, "Metadata extraction failed (will background refresh): {FilePath}", filePath);
                 mediaFile.NeedsMetadataRefresh = true;
             }
 
-            // NOTE: ImportFolderAsync will batch-add these to MainLibrary.
-            // For single-file imports via drag-drop, the caller should use AddTrackToLibraryAsync separately.
             return mediaFile;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to import file: {FilePath}", filePath);
+            _logger.LogError(ex, "ImportFileAsync failed: {FilePath}", filePath);
             _importErrorLogger.Log(filePath, ex);
+            return null;
         }
-
-        return null;
     }
 
     public bool IsAudioFile(string path)
@@ -613,9 +534,12 @@ public class FileImportService : IFileImportService
     {
         try
         {
-            return Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories)
-                           .Where(IsAudioFile)
-                           .ToList();
+            List<string> files = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories)
+                               .Where(IsAudioFile)
+                               .ToList();
+
+            _logger.LogInformation("GetAudioFilesFromFolder: Found {Count} audio files in {Path}", files.Count, folderPath);
+            return files;
         }
         catch (Exception ex)
         {

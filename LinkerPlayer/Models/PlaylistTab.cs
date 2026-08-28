@@ -11,6 +11,7 @@ public interface ITabData
     string Name { get; }
     ObservableCollection<MediaFile> Tracks { get; }
     MediaFile? SelectedTrack { get; set; }
+    MediaFile? SelectedMediaFile { get; set; }
     int? SelectedIndex { get; set; }
 }
 
@@ -21,6 +22,17 @@ public partial class PlaylistTab : ObservableObject, ITabData
     public ObservableCollection<MediaFile> Tracks => _tracks;
     [ObservableProperty] private MediaFile? _selectedTrack;
     [ObservableProperty] private int? _selectedIndex;
+
+    public MediaFile? SelectedMediaFile
+    {
+        get => SelectedTrack;
+        set => SelectedTrack = value;
+    }
+
+    partial void OnSelectedTrackChanged(MediaFile? value)
+    {
+        OnPropertyChanged(nameof(SelectedMediaFile));
+    }
 
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private int _loadingProgress;

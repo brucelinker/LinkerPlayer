@@ -55,6 +55,7 @@ public partial class ColumnSelectorViewModel : ObservableObject
         Columns.Add(new ColumnSelectorItem("File Name", "FileName", false));
         Columns.Add(new ColumnSelectorItem("Path", "Path", false));
         Columns.Add(new ColumnSelectorItem("Rating", "Rating", true));
+        Columns.Add(new ColumnSelectorItem("ReplayGain", "ReplayGain", true));
     }
 
     [RelayCommand]

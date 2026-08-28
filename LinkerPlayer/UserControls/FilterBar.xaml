@@ -161,6 +161,7 @@
           <!--  Query syntax help popup  -->
           <Popup
             x:Name="QueryHelpPopup"
+            Width="420"
             AllowsTransparency="True"
             HorizontalOffset="-320"
             IsOpen="False"
@@ -168,8 +169,7 @@
             PlacementTarget="{Binding ElementName=QueryHelpButton}"
             PopupAnimation="Fade"
             StaysOpen="False"
-            VerticalOffset="4"
-            Width="420">
+            VerticalOffset="4">
             <Border
               Padding="14,12"
               Background="{DynamicResource PlaylistTabBackgroundBrush}"
@@ -177,7 +177,11 @@
               BorderThickness="1"
               CornerRadius="4">
               <Border.Effect>
-                <DropShadowEffect BlurRadius="12" Direction="270" Opacity="0.4" ShadowDepth="4" />
+                <DropShadowEffect
+                  BlurRadius="12"
+                  Direction="270"
+                  Opacity="0.4"
+                  ShadowDepth="4" />
               </Border.Effect>
               <StackPanel>
 
@@ -195,11 +199,12 @@
                   FontWeight="SemiBold"
                   Foreground="{DynamicResource TrackListItemForegroundBrush}"
                   Text="FIELDS" />
-                <local:QueryHelpRow Label="title, artist, album, genre" Description="Text fields" />
-                <local:QueryHelpRow Label="year  ·  date" Description="Release year (numeric)" />
-                <local:QueryHelpRow Label="bitrate  ·  kbps" Description="Bitrate in kbps (numeric)" />
-                <local:QueryHelpRow Label="codec  ·  format  ·  ext" Description="File extension / codec" />
-                <local:QueryHelpRow Label="performer, composer" Description="Additional text fields" />
+                <local:QueryHelpRow Description="Text fields" Label="title, artist, album, genre" />
+                <local:QueryHelpRow Description="Release year (numeric)" Label="year  ·  date" />
+                <local:QueryHelpRow Description="Bitrate in kbps (numeric)" Label="bitrate  ·  kbps" />
+                <local:QueryHelpRow Description="File extension / codec" Label="codec  ·  format  ·  ext" />
+                <local:QueryHelpRow Description="Additional text fields" Label="performer, composer" />
+                <local:QueryHelpRow Description="Blank, Track, or Album" Label="replaygain  ·  rg" />
 
                 <!--  Operators  -->
                 <TextBlock
@@ -208,11 +213,11 @@
                   FontWeight="SemiBold"
                   Foreground="{DynamicResource TrackListItemForegroundBrush}"
                   Text="OPERATORS" />
-                <local:QueryHelpRow Label="=  or  ==" Description="Exact match" />
-                <local:QueryHelpRow Label="!=" Description="Not equal" />
-                <local:QueryHelpRow Label="contains  or  ~" Description="Text contains" />
-                <local:QueryHelpRow Label="&gt;  &gt;=  &lt;  &lt;=" Description="Numeric comparison" />
-                <local:QueryHelpRow Label="OR  ·  ||  ·  |" Description="Either condition" />
+                <local:QueryHelpRow Description="Exact match" Label="=  or  ==" />
+                <local:QueryHelpRow Description="Not equal" Label="!=" />
+                <local:QueryHelpRow Description="Text contains" Label="contains  or  ~" />
+                <local:QueryHelpRow Description="Numeric comparison" Label="&gt;  &gt;=  &lt;  &lt;=" />
+                <local:QueryHelpRow Description="Either condition" Label="OR  ·  ||  ·  |" />
 
                 <!--  Examples  -->
                 <TextBlock
@@ -221,12 +226,12 @@
                   FontWeight="SemiBold"
                   Foreground="{DynamicResource TrackListItemForegroundBrush}"
                   Text="EXAMPLES" />
-                <local:QueryHelpRow Label="bitrate &gt; 320" Description="High-quality tracks" />
-                <local:QueryHelpRow Label="year &gt; 1960 &lt; 1990" Description="Tracks from the 60s–80s" />
-                <local:QueryHelpRow Label="genre = jazz OR genre = blues" Description="Jazz or blues" />
-                <local:QueryHelpRow Label="artist contains miles" Description="Artist name contains 'miles'" />
-                <local:QueryHelpRow Label="bitrate &gt;= 192 genre = jazz" Description="Both must match (AND)" />
-                <local:QueryHelpRow Label="metallica" Description="Plain text search (no operator)" />
+                <local:QueryHelpRow Description="High-quality tracks" Label="bitrate &gt; 320" />
+                <local:QueryHelpRow Description="Tracks from the 60s–80s" Label="year &gt; 1960 &lt; 1990" />
+                <local:QueryHelpRow Description="Jazz or blues" Label="genre = jazz OR genre = blues" />
+                <local:QueryHelpRow Description="Artist name contains 'miles'" Label="artist contains miles" />
+                <local:QueryHelpRow Description="Both must match (AND)" Label="bitrate &gt;= 192 genre = jazz" />
+                <local:QueryHelpRow Description="Plain text search (no operator)" Label="metallica" />
 
               </StackPanel>
             </Border>

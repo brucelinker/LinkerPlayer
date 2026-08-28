@@ -205,4 +205,143 @@ public class PlaybackCoordinatorTests
         lastActiveTrack.ShouldNotBeNull();
         lastActiveTrack!.Id.ShouldBe("t2");
     }
+
+    [StaFact]
+    public void SetSelection_WhilePlaying_DoesNotOverrideActivePlaybackCursor()
+    {
+        FakeAudioEngine audioEngine = new FakeAudioEngine
+        {
+            CurrentTrackLength = 120
+        };
+
+        Mock<ITrackNavigationService> nav = new Mock<ITrackNavigationService>();
+        FakeMusicLibrary musicLibrary = new FakeMusicLibrary();
+        FakeSettingsManager settingsManager = new FakeSettingsManager
+        {
+            Settings = new AppSettings { CrossfadeEnabled = false }
+        };
+
+        SharedDataModel shared = new SharedDataModel();
+        ILogger<PlaybackCoordinator> logger = Mock.Of<ILogger<PlaybackCoordinator>>();
+
+        PlaybackCoordinator coordinator = new PlaybackCoordinator(
+            audioEngine,
+            nav.Object,
+            musicLibrary,
+            settingsManager,
+            shared,
+            logger);
+
+        MediaFile firstTrack = new MediaFile { Id = "p1-t1", Path = "c:/music/p1-t1.mp3", Duration = 120 };
+        MediaFile otherTabSelection = new MediaFile { Id = "p2-t9", Path = "c:/music/p2-t9.mp3", Duration = 200 };
+
+        coordinator.PlayTrack("Playlist1", 0, firstTrack, 0);
+        coordinator.SetSelection("Playlist2", 4, otherTabSelection);
+
+        coordinator.PlaybackCursor.ShouldNotBeNull();
+        coordinator.PlaybackCursor!.PlaylistName.ShouldBe("Playlist1");
+        coordinator.PlaybackCursor.TrackIndex.ShouldBe(0);
+        coordinator.PlaybackCursor.TrackId.ShouldBe("p1-t1");
+        shared.ActiveTrack.ShouldNotBeNull();
+        shared.ActiveTrack!.Id.ShouldBe("p1-t1");
+    }
+
+    [StaFact]
+    public void SetSelection_WhenStateDriftsStoppedButEngineStillPlaying_DoesNotOverrideActivePlaybackCursor()
+    {
+        FakeAudioEngine audioEngine = new FakeAudioEngine
+        {
+            CurrentTrackLength = 120
+        };
+
+        Mock<ITrackNavigationService> nav = new Mock<ITrackNavigationService>();
+        FakeMusicLibrary musicLibrary = new FakeMusicLibrary();
+        FakeSettingsManager settingsManager = new FakeSettingsManager
+        {
+            Settings = new AppSettings { CrossfadeEnabled = false }
+        };
+
+        SharedDataModel shared = new SharedDataModel();
+        ILogger<PlaybackCoordinator> logger = Mock.Of<ILogger<PlaybackCoordinator>>();
+
+        PlaybackCoordinator coordinator = new PlaybackCoordinator(
+            audioEngine,
+            nav.Object,
+            musicLibrary,
+            settingsManager,
+            shared,
+            logger);
+
+        MediaFile firstTrack = new MediaFile { Id = "p1-t1", Path = "c:/music/p1-t1.mp3", Duration = 120 };
+        MediaFile otherTabSelection = new MediaFile { Id = "p2-t9", Path = "c:/music/p2-t9.mp3", Duration = 200 };
+
+        coordinator.PlayTrack("Playlist1", 0, firstTrack, 0);
+
+        audioEngine.RaisePlaybackStopped();
+        audioEngine.RaisePlaybackStopped();
+        audioEngine.RaisePlaybackStopped();
+        coordinator.PlaybackState.ShouldBe(PlaybackState.Stopped);
+        audioEngine.IsPlaying.ShouldBeTrue();
+
+        coordinator.SetSelection("Playlist2", 4, otherTabSelection);
+
+        coordinator.PlaybackCursor.ShouldNotBeNull();
+        coordinator.PlaybackCursor!.PlaylistName.ShouldBe("Playlist1");
+        coordinator.PlaybackCursor.TrackIndex.ShouldBe(0);
+        coordinator.PlaybackCursor.TrackId.ShouldBe("p1-t1");
+    }
+
+    [StaFact]
+    public void TrackEnded_AfterSelectionInDifferentPlaylist_AdvancesWithinOriginalPlaybackSource()
+    {
+        FakeAudioEngine audioEngine = new FakeAudioEngine
+        {
+            CurrentTrackLength = 120
+        };
+
+        TrackNavigationService navService = new TrackNavigationService(Mock.Of<ILogger<TrackNavigationService>>());
+        FakeMusicLibrary musicLibrary = new FakeMusicLibrary();
+        List<MediaFile> playlist1Tracks =
+        [
+            new MediaFile { Id = "p1-t1", Path = "c:/music/p1-t1.mp3", Duration = 120 },
+            new MediaFile { Id = "p1-t2", Path = "c:/music/p1-t2.mp3", Duration = 130 }
+        ];
+        List<MediaFile> playlist2Tracks =
+        [
+            new MediaFile { Id = "p2-t1", Path = "c:/music/p2-t1.mp3", Duration = 200 },
+            new MediaFile { Id = "p2-t2", Path = "c:/music/p2-t2.mp3", Duration = 210 }
+        ];
+        musicLibrary.GetTracksFromPlaylistFunc = playlistName =>
+            string.Equals(playlistName, "Playlist1", StringComparison.Ordinal)
+                ? playlist1Tracks
+                : string.Equals(playlistName, "Playlist2", StringComparison.Ordinal)
+                    ? playlist2Tracks
+                    : new List<MediaFile>();
+
+        FakeSettingsManager settingsManager = new FakeSettingsManager
+        {
+            Settings = new AppSettings { CrossfadeEnabled = false }
+        };
+
+        SharedDataModel shared = new SharedDataModel();
+        ILogger<PlaybackCoordinator> logger = Mock.Of<ILogger<PlaybackCoordinator>>();
+
+        PlaybackCoordinator coordinator = new PlaybackCoordinator(
+            audioEngine,
+            navService,
+            musicLibrary,
+            settingsManager,
+            shared,
+            logger);
+
+        coordinator.PlayTrack("Playlist1", 0, playlist1Tracks[0], 0);
+        coordinator.SetSelection("Playlist2", 0, playlist2Tracks[0]);
+
+        audioEngine.RaiseTrackEnded();
+
+        coordinator.PlaybackCursor.ShouldNotBeNull();
+        coordinator.PlaybackCursor!.PlaylistName.ShouldBe("Playlist1");
+        coordinator.PlaybackCursor.TrackId.ShouldBe("p1-t2");
+        audioEngine.LastPlayPath.ShouldBe("c:/music/p1-t2.mp3");
+    }
 }

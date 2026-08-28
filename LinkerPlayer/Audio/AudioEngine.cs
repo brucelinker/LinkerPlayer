@@ -381,6 +381,16 @@ public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevel
                 ChannelCount = decodeChans;
                 _logger.LogDebug("AudioEngine: Set ChannelCount to {ChannelCount} (was {OldCount})", decodeChans, oldChannelCount);
 
+                if (mixerFreq <= 0)
+                {
+                    mixerFreq = decodeInfo.Frequency > 0 ? decodeInfo.Frequency : 44100;
+                }
+
+                if (mixerChans <= 0)
+                {
+                    mixerChans = decodeChans > 0 ? decodeChans : 2;
+                }
+
                 BassFlags mixerFlags;
                 if (_currentMode == OutputMode.DirectSound)
                 {
@@ -412,10 +422,25 @@ public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevel
                     mixerIsFloat = false;
                     if (_mixerStream == 0)
                     {
-                        _logger.LogError($"Failed to create mixer: {Bass.LastError}");
-                        Bass.StreamFree(_decodeStream);
-                        _decodeStream = 0;
-                        return;
+                        _logger.LogWarning("Mixer fallback failed for {Freq}Hz/{Chans}ch: {Error}. Retrying safe stereo format.",
+                            mixerFreq,
+                            mixerChans,
+                            Bass.LastError);
+
+                        int safeFreq = decodeInfo.Frequency > 0 ? decodeInfo.Frequency : 44100;
+                        int safeChans = 2;
+                        _mixerStream = ManagedBass.Mix.BassMix.CreateMixerStream(safeFreq, safeChans, mixerFlags);
+                        mixerIsFloat = false;
+                        mixerFreq = safeFreq;
+                        mixerChans = safeChans;
+
+                        if (_mixerStream == 0)
+                        {
+                            _logger.LogError($"Failed to create mixer: {Bass.LastError}");
+                            Bass.StreamFree(_decodeStream);
+                            _decodeStream = 0;
+                            return;
+                        }
                     }
                 }
 
@@ -542,11 +567,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevel
         {
             _logger.LogDebug("Play() called with path: {Path}, position: {Position}", pathToMusic, position);
             _logger.LogInformation("Play requested (Mode={Mode}, SelectedDeviceType={DeviceType}, SelectedDeviceIndex={DeviceIndex}, SelectedDeviceName={DeviceName}, BassCurrentDevice={BassDevice})",
-                _currentMode,
-                _currentDevice.Type,
-                _currentDevice.Index,
-                _currentDevice.Name,
-                Bass.CurrentDevice);
+                _currentMode, _currentDevice.Type, _currentDevice.Index, _currentDevice.Name, Bass.CurrentDevice);
 
             if (string.IsNullOrEmpty(pathToMusic))
             {
@@ -554,51 +575,44 @@ public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevel
                 return;
             }
 
-            // Reset UI-facing state early, so seekbar doesn't show previous track while we load.
             CurrentTrackPosition = 0;
             CurrentTrackLength = 0;
 
-            // Reset audio device lost flag when user manually tries to play
             if (_audioDeviceLost)
             {
-                _logger.LogDebug("Resetting audio device lost flag - user is attempting to play again");
+                _logger.LogDebug("Resetting audio device lost flag");
                 _audioDeviceLost = false;
                 _consecutiveAudioErrors = 0;
                 _lastAudioError = Errors.OK;
             }
 
-            // Initialize BASS on first play if not already initialized
             if (!IsBassInitialized)
             {
-                _logger.LogDebug("First play - initializing audio device (Bass.Init or BassWasapi.Init)");
+                _logger.LogDebug("First play - initializing audio device");
                 InitializeAudioDevice();
-
-                // If initialization failed, don't continue
                 if (!IsBassInitialized)
-                {
-                    _logger.LogError("Failed to initialize audio device - cannot play");
                     return;
-                }
             }
 
-            PlaybackState playbackState = Bass.ChannelIsActive(CurrentStream);
-
-            if (!string.IsNullOrEmpty(pathToMusic) && playbackState == PlaybackState.Paused)
+            // Fast resume if same track and paused
+            PlaybackState currentState = Bass.ChannelIsActive(CurrentStream);
+            if (string.Equals(LoadedTrackPath, pathToMusic, StringComparison.OrdinalIgnoreCase) &&
+                currentState == PlaybackState.Paused)
             {
-                _logger.LogDebug("Resuming paused track");
+                _logger.LogDebug("Fast resume of paused track");
                 ResumePlay();
                 return;
             }
 
             _logger.LogDebug("Stopping current playback before loading new track");
-            Stop();
+            Stop();                    // This is now lighter
 
             _logger.LogDebug("Loading audio file: {FileName}", Path.GetFileName(pathToMusic));
             LoadAudioFile(pathToMusic);
 
             if (CurrentStream != 0)
             {
-                _logger.LogDebug("CurrentStream is valid ({StreamHandle}), starting playback", CurrentStream);
+                _logger.LogDebug("CurrentStream is valid, starting playback");
 
                 // Set end-of-track sync
                 int syncTargetStream = CurrentStream;
@@ -636,7 +650,7 @@ public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevel
                 {
                 }
 
-                PlaybackState currentState = PlaybackState.Stopped;
+                currentState = PlaybackState.Stopped;
                 try
                 {
                     currentState = Bass.ChannelIsActive(CurrentStream);
@@ -690,45 +704,23 @@ public partial class AudioEngine : ObservableObject, IAudioEngine, IChannelLevel
                 // Set position if specified
                 if (position > 0)
                 {
-                    int positionTargetStream = CurrentStream;
-                    if (_decodeStream != 0)
-                    {
-                        positionTargetStream = _decodeStream;
-                    }
-
-                    long bytePosition = Bass.ChannelSeconds2Bytes(positionTargetStream, position);
-                    if (!Bass.ChannelSetPosition(positionTargetStream, bytePosition))
-                    {
-                        _logger.LogWarning("Failed to set initial position (TargetStream={TargetStream}, Position={Position}): {Error}", positionTargetStream, position, Bass.LastError);
-                    }
+                    int positionTarget = _decodeStream != 0 ? _decodeStream : CurrentStream;
+                    long bytePos = Bass.ChannelSeconds2Bytes(positionTarget, position);
+                    Bass.ChannelSetPosition(positionTarget, bytePos);
                 }
 
-                // Set volume
                 Bass.ChannelSetAttribute(CurrentStream, ChannelAttribute.Volume, MusicVolume);
 
-                bool playbackStarted = _currentMode == OutputMode.DirectSound
-                ? StartDirectSoundPlayback()
-                : StartWasapiPlayback();
+                bool started = _currentMode == OutputMode.DirectSound
+                    ? StartDirectSoundPlayback()
+                    : StartWasapiPlayback();
 
-                if (playbackStarted)
+                if (started)
                 {
                     IsPlaying = true;
                     PathToMusic = pathToMusic;
-                    try
-                    {
-                        _positionTimer.Start();
-                    }
-                    catch { }
-                    _logger.LogDebug("Playback started successfully. IsPlaying = {IsPlaying}", IsPlaying);
+                    _positionTimer.Start();
                 }
-                else
-                {
-                    _logger.LogWarning("Playback did not start - IsPlaying remains false");
-                }
-            }
-            else
-            {
-                _logger.LogError($"Failed to create stream, cannot play {Path.GetFileName(pathToMusic)}");
             }
         }
     }

@@ -93,21 +93,16 @@ public class PlaylistManagerService : IPlaylistManagerService
         try
         {
             Playlist playlist = await _musicLibrary.AddNewPlaylistAsync(uniqueName);
-            IEnumerable<MediaFile> tracks = LoadPlaylistTracks(uniqueName);
+            PlaylistTab tab = new PlaylistTab { Name = uniqueName };
 
-            PlaylistTab tab = new PlaylistTab
+            // Load tracks properly
+            List<MediaFile> tracks = LoadPlaylistTracks(uniqueName).ToList();
+            foreach (MediaFile? track in tracks)
             {
-                Name = uniqueName
-            };
-            foreach (MediaFile track in tracks)
-            {
-                if (!tab.Tracks.Any(t => t.Id == track.Id))
-                {
-                    tab.Tracks.Add(track);
-                }
-            } // replaced AddTracks
+                tab.Tracks.Add(track);
+            }
 
-            _logger.LogInformation("Created new playlist tab: {PlaylistName}", uniqueName);
+            _logger.LogInformation("Created new playlist tab: {PlaylistName} with {Count} tracks", uniqueName, tab.Tracks.Count);
             return tab;
         }
         catch (Exception ex)
@@ -317,6 +312,8 @@ public class PlaylistManagerService : IPlaylistManagerService
 
     public IEnumerable<MediaFile> LoadPlaylistTracks(string playlistName)
     {
+        _logger.LogInformation("LoadPlaylistTracks called for playlist '{Name}'", playlistName);
+
         if (string.IsNullOrWhiteSpace(playlistName))
         {
             _logger.LogWarning("LoadPlaylistTracks called with invalid playlist name");
@@ -333,6 +330,8 @@ public class PlaylistManagerService : IPlaylistManagerService
 
             // For now, just return tracks with cached metadata.
             // Lazy loading will happen when DataGrid needs to display them.
+
+            _logger.LogInformation("LoadPlaylistTracks for '{Name}' returned {Count} tracks", playlistName, tracks.Count());
 
             return tracks;
         }

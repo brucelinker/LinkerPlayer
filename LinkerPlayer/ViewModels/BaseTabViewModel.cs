@@ -65,13 +65,13 @@ public abstract partial class BaseTabViewModel : ObservableObject
         WeakReferenceMessenger.Default.Register<PlaybackStateChangedMessage>(this, (_, m) =>
         {
             State = m.Value;
-            _logger.LogDebug("BaseTabViewModel: PlaybackState changed to {State}", m.Value);
+            //_logger.LogDebug("BaseTabViewModel: PlaybackState changed to {State}", m.Value);
         });
 
         WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) =>
         {
             ActiveTrack = m.Value;
-            _logger.LogDebug("BaseTabViewModel: ActiveTrack changed to {Track}", m.Value?.Title ?? "null");
+            //_logger.LogDebug("BaseTabViewModel: ActiveTrack changed to {Track}", m.Value?.Title ?? "null");
             OnActiveTrackChangedInternal(m.Value);
         });
     }

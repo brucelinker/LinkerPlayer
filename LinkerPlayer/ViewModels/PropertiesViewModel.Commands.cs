@@ -171,6 +171,26 @@ public partial class PropertiesViewModel
              "ReplayGain Calculation", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
+        catch (DllNotFoundException ex)
+        {
+            _logger.LogError(ex, "ReplayGain calculation failed due to missing native audio library");
+            ReplayGainCalculationStatus = "Required audio library missing";
+            MessageBox.Show(
+                "ReplayGain analysis requires native BASS libraries that could not be loaded.\n\nPlease restart LinkerPlayer and try again. If the problem continues, reinstall or repair the application.",
+                "ReplayGain Calculation",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
+        catch (BadImageFormatException ex)
+        {
+            _logger.LogError(ex, "ReplayGain calculation failed due to native library architecture mismatch");
+            ReplayGainCalculationStatus = "Audio library architecture mismatch";
+            MessageBox.Show(
+                "ReplayGain analysis failed because a native audio library has an architecture mismatch.\n\nPlease ensure you are running the correct x64 build and that bundled native libraries are intact.",
+                "ReplayGain Calculation",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during ReplayGain calculation");

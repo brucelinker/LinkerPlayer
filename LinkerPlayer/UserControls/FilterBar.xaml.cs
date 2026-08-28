@@ -60,6 +60,9 @@ public partial class FilterBar : UserControl
             return;
         }
 
+        // Wire once for this control instance to avoid duplicate subscriptions/refresh cascades.
+        this.Loaded -= FilterBar_Loaded;
+
         // Apply initial selections from viewmodel to the ListBoxes after bindings are settled
         Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
         {
@@ -70,15 +73,15 @@ public partial class FilterBar : UserControl
             catch { }
         }), DispatcherPriority.Background);
 
-        // After every facet rebuild the VM fires FacetsRebuilt.  We reapply all four
-        // listbox selections in one suppressed batch — this prevents the re-entrancy
-        // loop where list.Clear() inside the VM triggers SelectionChanged, which then
-        // clears SelectedXxx before the restore can run.
+        // After every facet rebuild, re-apply ListBox selections from VM state.
+        // This is required because WPF ListBox.SelectedItems is not bindable.
         libraryTab.FacetsRebuilt += (_, __) =>
         {
-            Application.Current?.Dispatcher.BeginInvoke(
-                new Action(() => ApplyAllSelections(libraryTab)),
-                DispatcherPriority.Background);
+            try
+            {
+                ApplyAllSelections(libraryTab);
+            }
+            catch { }
         };
 
         // Persist keyword/query search changes
@@ -168,8 +171,15 @@ public partial class FilterBar : UserControl
 
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
-        Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyCodecsChanged()), DispatcherPriority.Background);
+        _suppressSelectionChanged = true;
+        try
+        {
+            libraryTab.NotifyCodecsChanged();
+        }
+        finally
+        {
+            _suppressSelectionChanged = false;
+        }
     }
 
     private void GenresList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -193,8 +203,15 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
-        Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyGenresChanged()), DispatcherPriority.Background);
+        _suppressSelectionChanged = true;
+        try
+        {
+            libraryTab.NotifyGenresChanged();
+        }
+        finally
+        {
+            _suppressSelectionChanged = false;
+        }
     }
 
     private void ArtistsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -218,8 +235,15 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
-        Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyArtistsChanged()), DispatcherPriority.Background);
+        _suppressSelectionChanged = true;
+        try
+        {
+            libraryTab.NotifyArtistsChanged();
+        }
+        finally
+        {
+            _suppressSelectionChanged = false;
+        }
     }
 
     private void AlbumsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -243,8 +267,15 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true; // hold until FacetsRebuilt → ApplyAllSelections resets it
-        Application.Current?.Dispatcher.BeginInvoke(new Action(() => libraryTab.NotifyAlbumsChanged()), DispatcherPriority.Background);
+        _suppressSelectionChanged = true;
+        try
+        {
+            libraryTab.NotifyAlbumsChanged();
+        }
+        finally
+        {
+            _suppressSelectionChanged = false;
+        }
     }
 
     private void SaveFilterSelections(LibraryTab libraryTab)

@@ -77,6 +77,9 @@ public interface IReplayGainCalculator
 
 public class ReplayGainCalculator : IReplayGainCalculator
 {
+    private static readonly object NativeLoadLock = new();
+    private static bool _nativeLibrariesLoaded;
+
     private readonly ILogger<ReplayGainCalculator> _logger;
 
     public ReplayGainCalculator(ILogger<ReplayGainCalculator> logger)
@@ -103,6 +106,8 @@ public class ReplayGainCalculator : IReplayGainCalculator
 
                 _logger.LogInformation("Starting ReplayGain calculation for: {FilePath}", filePath);
                 progress?.Report(0.05);
+
+                EnsureNativeLibrariesLoaded();
 
                 // Create a decode stream (no playback, just for analysis)
                 int stream = Bass.CreateStream(filePath, 0, 0, BassFlags.Decode | BassFlags.Float);
@@ -228,5 +233,32 @@ public class ReplayGainCalculator : IReplayGainCalculator
                 return result;
             }
         }, cancellationToken); // End of Task.Run
+    }
+
+    private void EnsureNativeLibrariesLoaded()
+    {
+        if (_nativeLibrariesLoaded)
+        {
+            return;
+        }
+
+        lock (NativeLoadLock)
+        {
+            if (_nativeLibrariesLoaded)
+            {
+                return;
+            }
+
+            BassNativeLibraryManager.Initialize(_logger);
+
+            string bassDllPath = BassNativeLibraryManager.GetDllPath("bass.dll");
+            string bassLoudDllPath = BassNativeLibraryManager.GetDllPath("bassloud.dll");
+
+            _ = System.Runtime.InteropServices.NativeLibrary.Load(bassDllPath);
+            _ = System.Runtime.InteropServices.NativeLibrary.Load(bassLoudDllPath);
+
+            _nativeLibrariesLoaded = true;
+            _logger.LogInformation("ReplayGain native libraries loaded successfully");
+        }
     }
 }

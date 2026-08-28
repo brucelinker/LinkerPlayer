@@ -311,6 +311,7 @@ public static class QueryParser
                 or "filetype" or "ext"      => FilterType.FileType,
             "performer" or "performers"     => FilterType.Performer,
             "composer" or "composers"       => FilterType.Composer,
+            "replaygain" or "rg"             => FilterType.ReplayGain,
             _                               => null
         };
     }

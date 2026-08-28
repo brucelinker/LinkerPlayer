@@ -265,17 +265,19 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
         List<MediaFile> modified = existing
             .Where(t =>
             {
-                // Skip tracks that have never had their write-time recorded —
-                // FileLastWriteTimeUtc will be populated the next time the file is imported/updated.
+                // Always refresh tracks missing ReplayGain status so the library can backfill
+                // from on-disk metadata even when write-time baselines were never captured.
+                if (string.IsNullOrWhiteSpace(t.ReplayGain))
+                    return true;
+
+                // For already-classified tracks, use write-time drift as the modification signal.
                 if (!t.FileLastWriteTimeUtc.HasValue)
                     return false;
 
                 try
                 {
                     DateTime diskTime = System.IO.File.GetLastWriteTimeUtc(t.Path);
-                    long diskSize = new FileInfo(t.Path).Length;
-                    return Math.Abs((diskTime - t.FileLastWriteTimeUtc.Value).TotalSeconds) > 10 ||
-                           t.FileSize != diskSize;
+                    return Math.Abs((diskTime - t.FileLastWriteTimeUtc.Value).TotalSeconds) > 10;
                 }
                 catch { return false; }
             })

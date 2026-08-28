@@ -10,7 +10,7 @@ namespace LinkerPlayer.ViewModels;
 /// ViewModel for a single Playlist tab. Symmetric to LibraryTabViewModel.
 /// Owns its tracks, selection, and dirty state.
 /// </summary>
-public partial class PlaylistTabViewModel : BaseTabViewModel
+public partial class PlaylistTabsViewModel : BaseTabViewModel
 {
     private readonly IPlaylistManagerService _playlistManagerService;
     private readonly ISelectionService _selectionService;
@@ -27,11 +27,11 @@ public partial class PlaylistTabViewModel : BaseTabViewModel
     [ObservableProperty]
     private bool _isDirty;
 
-    public PlaylistTabViewModel(
+    public PlaylistTabsViewModel(
         IPlaylistManagerService playlistManagerService,
         ISelectionService selectionService,
         IPlaybackCoordinator playbackCoordinator,
-        ILogger<PlaylistTabViewModel> logger)
+        ILogger<PlaylistTabsViewModel> logger)
         : base(playbackCoordinator, logger)
     {
         _playlistManagerService = playlistManagerService ?? throw new ArgumentNullException(nameof(playlistManagerService));

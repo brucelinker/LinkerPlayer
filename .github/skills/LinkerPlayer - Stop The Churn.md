@@ -44,7 +44,7 @@ Why churn: heavy imperative selection/tab/scroll coordination, temporarily unsub
 Risk: high because it affects playback UX.
 Recommendation: leave for dedicated refactor with tests.
 
-1. RegenerateColumns mega-method
+7. RegenerateColumns mega-method
 File: MediaTabPanel.xaml.cs (earlier section, large method)
 Why churn: full column rebuild can reset DataGrid state and trigger restore chains.
 Risk: high; behavior-sensitive.

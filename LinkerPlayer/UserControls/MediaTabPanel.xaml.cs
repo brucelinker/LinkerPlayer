@@ -5,11 +5,10 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
-using ManagedBass;  // for PlaybackState
+using ManagedBass;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
-//using System.Drawing;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -35,6 +34,7 @@ public partial class PlaylistTabs
     private bool _suppressNextContextMenu; // prevents row context menu after header right-click
     private bool _openPopupOnRightButtonUp; // after opening on Down, switch StaysOpen off on Up
     private bool _allowSelectionSyncFromUserInput;
+    private bool _tabSwitchInProgress; // true when a tab is being clicked, suppresses mouse-state check in selection
 
     public PlaylistTabs()
     {
@@ -61,6 +61,7 @@ public partial class PlaylistTabs
 
         Loaded += PlaylistTabs_Loaded;
 
+        WeakReferenceMessenger.Default.Register<ActiveTrackChangedMessage>(this, (_, m) => OnActiveTrackChanged(m.Value));
         WeakReferenceMessenger.Default.Register<GoToActiveTrackMessage>(this, (_, m) => OnGoToActiveTrack(m.Value));
         WeakReferenceMessenger.Default.Register<UpdateColumnsMessage>(this, (_, m) => OnUpdateColumns(m));
     }
@@ -203,6 +204,7 @@ public partial class PlaylistTabs
             ("SampleRate",  "Sample Rate",   90),
             ("Channels",    "Channels",      80),
             ("Codec",       "Codec",        100),
+            ("ReplayGain",  "ReplayGain",    90),
             ("FileName",    "File Name",    200),
             ("Path",        "Path",         350)
         };
@@ -210,7 +212,7 @@ public partial class PlaylistTabs
         // Read-only properties that cannot be edited inline
         HashSet<string> readOnlyProps = new()
         {
-            "Duration", "Bitrate", "SampleRate", "Channels", "Codec", "FileName", "Path"
+            "Duration", "Bitrate", "SampleRate", "Channels", "Codec", "ReplayGain", "FileName", "Path"
         };
 
         // Columns where 0 means "not set" and should display as blank
@@ -349,10 +351,10 @@ public partial class PlaylistTabs
     // ==================================================================
     private static readonly SolidColorBrush DirtyCellBrush = new(Color.FromArgb(60, 0, 180, 0));
 
-    static PlaylistTabs()
-    {
-        DirtyCellBrush.Freeze();
-    }
+    //static PlaylistTabs()
+    //{
+    //    DirtyCellBrush.Freeze();
+    //}
 
     private static Style CreateDirtyCellStyle(string propertyName)
     {
@@ -585,14 +587,6 @@ public partial class PlaylistTabs
             }
         }
 
-        //ColumnSelectorPopup popupContent = new ColumnSelectorPopup(selectorVm)
-        //{
-        //    Width = 210,
-        //    Height = 340
-        //};
-
-        //Brush background = (Brush?)Application.Current?.TryFindResource("PanelBackgroundBrush") ?? Brushes.WhiteSmoke;
-
         _columnSelectorPopup = new Popup
         {
             Placement = PlacementMode.Absolute,
@@ -600,12 +594,6 @@ public partial class PlaylistTabs
             AllowsTransparency = true,
             Child = new Border
             {
-                //Background = background,
-                //BorderBrush = Brushes.Gray,
-                //BorderThickness = new Thickness(1),
-                //CornerRadius = new CornerRadius(8),
-                //Padding = new Thickness(8),
-                //Effect = new DropShadowEffect { BlurRadius = 20, Opacity = 0.5, ShadowDepth = 5 },
                 Child = new ColumnSelectorPopup(selectorVm)
             }
         };
@@ -712,37 +700,7 @@ public partial class PlaylistTabs
     {
         if (DataContext is MediaTabViewModel viewModel)
         {
-            _logger.LogDebug("PlaylistTabs_Loaded: PHASE 1 - Loading playlist tabs (empty)");
-            viewModel.LoadPlaylistTabs();
-
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (Tabs123.Items.Count > 0)
-                {
-                    Tabs123.SelectedIndex = viewModel.SelectedTabIndex;
-                }
-
-                // Removed tab row suppression handlers; suppression is scoped to column headers only
-            }), DispatcherPriority.Loaded);
-
-            Dispatcher.BeginInvoke(async () =>
-            {
-                _logger.LogDebug("PlaylistTabs_Loaded: PHASE 2 - Loading selected playlist tracks lazily");
-                if (viewModel.TabList.Any())
-                {
-                    await viewModel.LoadSelectedPlaylistTracksAsync();
-                }
-                else
-                {
-                    _logger.LogWarning("PlaylistTabs: No playlists loaded");
-                }
-            }, DispatcherPriority.Background);
-
-            Dispatcher.BeginInvoke(async () =>
-            {
-                _logger.LogDebug("PlaylistTabs_Loaded: PHASE 3 - Loading other playlists in background");
-                await viewModel.LoadOtherPlaylistTracksAsync();
-            }, DispatcherPriority.Background);
+            // LoadPlaylistTabs is now called from LibraryLoaded event when data is ready
         }
         else
         {
@@ -755,109 +713,96 @@ public partial class PlaylistTabs
         if (sender is not DataGrid dg)
             return;
 
-        // Use Loaded priority to apply setup before the DataGrid finishes rendering,
-        // but without blocking the UI thread like Invoke would
-        Dispatcher.BeginInvoke(() =>
+        if (DataContext is not MediaTabViewModel vm)
+            return;
+
+        // RegenerateColumns needs the template to be applied, which is already done by Loaded event
+        RegenerateColumns(dg);
+        vm.OnDataGridLoaded(sender, e);
+
+        // Restore + wire sort for playlist DataGrids.
+        if (dg.DataContext is PlaylistTab playlistTab)
         {
-            if (DataContext is MediaTabViewModel vm)
+            // Attach sorting event to save state when user clicks a column header
+            dg.Sorting += PlaylistDataGrid_Sorting;
+
+            // Restore previously saved sort for this playlist
+            ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
+            if (sm != null &&
+                sm.Settings.PlaylistSortStates.TryGetValue(playlistTab.Name, out AppSettings.PlaylistSortState? sortState) &&
+                !string.IsNullOrWhiteSpace(sortState.SortColumn) &&
+                !string.IsNullOrWhiteSpace(sortState.SortDirection))
             {
-                RegenerateColumns(dg);
-                vm.OnDataGridLoaded(sender, e);
+                DataGridColumn? col = dg.Columns.FirstOrDefault(c =>
+                    string.Equals(c.SortMemberPath, sortState.SortColumn, StringComparison.Ordinal));
 
-                // Restore library column sort if this is the Library DataGrid.
-                if (dg.DataContext is LibraryTab)
+                if (col != null &&
+                    Enum.TryParse(sortState.SortDirection, out ListSortDirection dir))
                 {
-                    ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
-                    if (sm != null &&
-                        !string.IsNullOrWhiteSpace(sm.Settings.LibrarySortColumn) &&
-                        !string.IsNullOrWhiteSpace(sm.Settings.LibrarySortDirection))
+                    ICollectionView? view = CollectionViewSource.GetDefaultView(dg.ItemsSource);
+                    if (view != null)
                     {
-                        DataGridColumn? col = dg.Columns.FirstOrDefault(c =>
-                            string.Equals(c.SortMemberPath, sm.Settings.LibrarySortColumn, StringComparison.Ordinal));
-
-                        if (col != null &&
-                            Enum.TryParse(sm.Settings.LibrarySortDirection, out ListSortDirection dir))
+                        view.SortDescriptions.Clear();
+                        view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
+                        col.SortDirection = dir;
+                        foreach (DataGridColumn other in dg.Columns)
                         {
-                            ICollectionView? view = CollectionViewSource.GetDefaultView(dg.ItemsSource);
-                            if (view != null)
-                            {
-                                view.SortDescriptions.Clear();
-                                view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
-                                col.SortDirection = dir;
-                                // Clear sort glyph from all other columns
-                                foreach (DataGridColumn other in dg.Columns)
-                                {
-                                    if (!ReferenceEquals(other, col))
-                                        other.SortDirection = null;
-                                }
-                            }
+                            if (!ReferenceEquals(other, col))
+                                other.SortDirection = null;
                         }
                     }
                 }
-
-                // Restore + wire sort for playlist DataGrids.
-                if (dg.DataContext is PlaylistTab playlistTab)
-                {
-                    // Attach sorting event to save state when user clicks a column header
-                    dg.Sorting += PlaylistDataGrid_Sorting;
-
-                    // Restore previously saved sort for this playlist
-                    ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
-                    if (sm != null &&
-                        sm.Settings.PlaylistSortStates.TryGetValue(playlistTab.Name, out AppSettings.PlaylistSortState? sortState) &&
-                        !string.IsNullOrWhiteSpace(sortState.SortColumn) &&
-                        !string.IsNullOrWhiteSpace(sortState.SortDirection))
-                    {
-                        DataGridColumn? col = dg.Columns.FirstOrDefault(c =>
-                            string.Equals(c.SortMemberPath, sortState.SortColumn, StringComparison.Ordinal));
-
-                        if (col != null &&
-                            Enum.TryParse(sortState.SortDirection, out ListSortDirection dir))
-                        {
-                            ICollectionView? view = CollectionViewSource.GetDefaultView(dg.ItemsSource);
-                            if (view != null)
-                            {
-                                view.SortDescriptions.Clear();
-                                view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
-                                col.SortDirection = dir;
-                                foreach (DataGridColumn other in dg.Columns)
-                                {
-                                    if (!ReferenceEquals(other, col))
-                                        other.SortDirection = null;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Run after all pending layout/render passes from RegenerateColumns have settled.
-                Dispatcher.BeginInvoke(() => FixHeaderScrollShimmy(dg), DispatcherPriority.Background);
-
-                // Attach PreviewMouseRightButtonUp and ContextMenuOpening to swallow context menu after header right-click
-                dg.AddHandler(UIElement.PreviewMouseRightButtonUpEvent,
-                    new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonUp),
-                    handledEventsToo: true);
-
-                dg.AddHandler(ContextMenuService.ContextMenuOpeningEvent,
-                    new ContextMenuEventHandler(DataGrid_ContextMenuOpening),
-                    handledEventsToo: true);
-
-                // Ensure right-click anywhere on the column header row opens the column selector
-                dg.AddHandler(UIElement.PreviewMouseRightButtonDownEvent,
-                    new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonDown),
-                    handledEventsToo: true);
-
-                dg.AddHandler(UIElement.PreviewMouseLeftButtonDownEvent,
-                    new MouseButtonEventHandler(DataGrid_PreviewMouseLeftButtonDown),
-                    handledEventsToo: true);
-
-                // Keep keyboard focus inside the DataGrid when the selection is at the
-                // first/last row so it cannot escape to the ScrollBar.
-                dg.AddHandler(UIElement.PreviewKeyDownEvent,
-                    new KeyEventHandler(DataGrid_PreviewKeyDown),
-                    handledEventsToo: false);
             }
-        }, DispatcherPriority.Loaded);
+        }
+
+        // Scroll the selected track into view when the DataGrid first loads
+        if (dg.SelectedItem != null && dg.DataContext is ITabData tabData && tabData.SelectedTrack != null)
+        {
+            _logger.LogDebug(
+                "DataGrid_Loaded: calling CenterItemInDataGrid for {SelectedTrackId}, DataGrid has {ItemCount} items, TabData={TabName}",
+                tabData.SelectedTrack?.Id ?? "null",
+                dg.Items.Count,
+                tabData is LibraryTab ? "LibraryTab" : (tabData is PlaylistTab pt ? $"PlaylistTab:{pt.Name}" : "Unknown"));
+
+            _isExplicitCentering = true;
+            try
+            {
+                CenterItemInDataGrid(dg, dg.SelectedItem);
+            }
+            finally
+            {
+                _isExplicitCentering = false;
+            }
+
+            _logger.LogDebug("DataGrid_Loaded: CenterItemInDataGrid complete");
+        }
+
+        // Fix header scroll binding issue - deferred to Background priority to let layout settle
+        Dispatcher.BeginInvoke(() => FixHeaderScrollShimmy(dg), DispatcherPriority.Background);
+
+        // Attach event handlers for column header and keyboard interactions
+        dg.AddHandler(UIElement.PreviewMouseRightButtonUpEvent,
+            new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonUp),
+            handledEventsToo: true);
+
+        dg.AddHandler(ContextMenuService.ContextMenuOpeningEvent,
+            new ContextMenuEventHandler(DataGrid_ContextMenuOpening),
+            handledEventsToo: true);
+
+        // Ensure right-click anywhere on the column header row opens the column selector
+        dg.AddHandler(UIElement.PreviewMouseRightButtonDownEvent,
+            new MouseButtonEventHandler(DataGrid_PreviewMouseRightButtonDown),
+            handledEventsToo: true);
+
+        dg.AddHandler(UIElement.PreviewMouseLeftButtonDownEvent,
+            new MouseButtonEventHandler(DataGrid_PreviewMouseLeftButtonDown),
+            handledEventsToo: true);
+
+        // Keep keyboard focus inside the DataGrid when the selection is at the
+        // first/last row so it cannot escape to the ScrollBar.
+        dg.AddHandler(UIElement.PreviewKeyDownEvent,
+            new KeyEventHandler(DataGrid_PreviewKeyDown),
+            handledEventsToo: false);
     }
 
     private void PlaylistDataGrid_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
@@ -966,15 +911,20 @@ public partial class PlaylistTabs
             return;
         }
 
-        bool userInitiated = _allowSelectionSyncFromUserInput || Mouse.LeftButton == MouseButtonState.Pressed;
+        _logger.LogDebug("TracksTable_OnSelectionChanged: EVENT FIRED - AddedCount={Added}, RemovedCount={Removed}", e.AddedItems.Count, e.RemovedItems.Count);
+
+        bool userInitiated = (_allowSelectionSyncFromUserInput || Mouse.LeftButton == MouseButtonState.Pressed) && !_tabSwitchInProgress;
         if (!userInitiated)
         {
             // Keep model-owned selection stable when the grid emits passive deselection during refresh/layout.
-            if (dataGrid.SelectedItem == null && dataGrid.DataContext is ITabData tabData && tabData.SelectedTrack != null)
+            if (dataGrid.DataContext is ITabData tabData && tabData.SelectedTrack != null)
             {
                 MediaFile selected = tabData.SelectedTrack;
+
+                // Check if the selected track is in the current items collection
                 if (dataGrid.Items.IndexOf(selected) < 0)
                 {
+                    // Try to find a matching track by ID (remapping for filtered/updated collections)
                     MediaFile? remapped = dataGrid.Items.Cast<object>()
                         .OfType<MediaFile>()
                         .FirstOrDefault(t => string.Equals(t.Id, selected.Id, StringComparison.Ordinal));
@@ -986,20 +936,31 @@ public partial class PlaylistTabs
                     }
                 }
 
+                // If the selected track is in the collection and differs from grid's current selection, sync and scroll
                 if (dataGrid.Items.IndexOf(selected) >= 0)
                 {
-                    dataGrid.SelectedItem = selected;
+                    if (dataGrid.SelectedItem != selected)
+                    {
+                        dataGrid.SelectedItem = selected;
+                    }
                 }
             }
+
+            // Prevent tab-switch/passive events from leaving stale gating flags set,
+            // which can cause the next real click selection to be ignored.
+            _allowSelectionSyncFromUserInput = false;
+            _tabSwitchInProgress = false;
             return;
         }
 
+        _logger.LogDebug("TracksTable_OnSelectionChanged: USER-INITIATED path");
         if (DataContext is MediaTabViewModel viewModel)
         {
             viewModel.OnTrackSelectionChanged(dataGrid, e);
         }
 
         _allowSelectionSyncFromUserInput = false;
+        _tabSwitchInProgress = false;
     }
 
     // Set by PreviewMouseLeftButtonDown when a double-click is detected, cleared after BeginningEdit consumes it.
@@ -1091,70 +1052,6 @@ public partial class PlaylistTabs
         }, DispatcherPriority.Background);
     }
 
-    private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (e.AddedItems.Count == 0)
-        {
-            return;
-        }
-
-        Dispatcher.BeginInvoke(new Action(() =>
-        {
-            DataGrid? dg = GetActiveDataGrid();
-            if (dg?.DataContext is not ITabData tabData)
-            {
-                return;
-            }
-
-            MediaFile? selected = tabData.SelectedTrack;
-
-            if (selected == null && DataContext is MediaTabViewModel vm)
-            {
-                if (tabData is PlaylistTab playlistTab)
-                {
-                    Playlist? playlist = vm.SelectedPlaylist;
-                    if (!string.IsNullOrWhiteSpace(playlist?.SelectedTrackId))
-                    {
-                        selected = playlistTab.Tracks.FirstOrDefault(t =>
-                            string.Equals(t.Id, playlist.SelectedTrackId, StringComparison.Ordinal));
-                    }
-                }
-                else if (tabData is LibraryTab)
-                {
-                    selected = vm.SelectedTrack;
-                }
-
-                if (selected != null)
-                {
-                    tabData.SelectedTrack = selected;
-                    tabData.SelectedIndex = dg.Items.IndexOf(selected);
-                }
-            }
-
-            if (selected == null)
-            {
-                return;
-            }
-
-            if (dg.Items.IndexOf(selected) < 0)
-            {
-                MediaFile? remapped = dg.Items.Cast<object>()
-                    .OfType<MediaFile>()
-                    .FirstOrDefault(t => string.Equals(t.Id, selected.Id, StringComparison.Ordinal));
-                if (remapped == null)
-                {
-                    return;
-                }
-
-                selected = remapped;
-                tabData.SelectedTrack = remapped;
-                tabData.SelectedIndex = dg.Items.IndexOf(remapped);
-            }
-
-            dg.SelectedItem = selected;
-        }), DispatcherPriority.Loaded);
-    }
-
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         // Ignore non-left button and header/column header double-clicks
@@ -1214,26 +1111,6 @@ public partial class PlaylistTabs
         WeakReferenceMessenger.Default.Send(new DataGridPlayMessage(PlaybackState.Playing));
         e.Handled = true;
     }
-
-    // TracksTable sorting is handled by the WPF DataGrid (CollectionView).
-    // private void TracksTable_OnSorting(object sender, DataGridSortingEventArgs e)
-    // {
-    //     if (e.Column is DataGridColumn column)
-    //     {
-    //         ListSortDirection direction = (column.SortDirection != ListSortDirection.Ascending)
-    //         ? ListSortDirection.Ascending
-    //         : ListSortDirection.Descending;
-    //         string propertyName = (column.SortMemberPath ?? column.Header.ToString())!;
-    //
-    //         Dispatcher.BeginInvoke((Action)delegate
-    //         {
-    //             if (DataContext is PlaylistTabsViewModel viewModel)
-    //             {
-    //                 viewModel.OnDataGridSorted(propertyName, direction);
-    //             }
-    //         }, null);
-    //     }
-    // }
 
     private void PlaylistDataGrid_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
@@ -1316,6 +1193,7 @@ public partial class PlaylistTabs
                     _isExplicitCentering = true;
                     try
                     {
+                        _logger.LogDebug("OnGoToActiveTrack: calling CenterItemInDataGrid");
                         CenterItemInDataGrid(dataGrid, activeInTab);
                     }
                     finally
@@ -1353,22 +1231,48 @@ public partial class PlaylistTabs
             return;
         }
 
-        // Auto-follow now-playing: select + reveal the playing track (selection should follow now-playing).
+        // The active track changed (playback started/changed).
+        // Reveal it in the UI without forcing selection to follow.
+        // (Selection represents user intent; active track represents playback state.)
         if (DataContext is not MediaTabViewModel viewModel)
         {
             return;
         }
 
         MediaFile? activeInTab = null;
-        int tabIndex = viewModel.SelectedTabIndex;
+        int tabIndex = -1;
         int trackIndex = -1;
 
-        if (tabIndex >= 0 && tabIndex < viewModel.TabList.Count)
+        string? preferredTabName = viewModel.ActiveTabName;
+        if (!string.IsNullOrWhiteSpace(preferredTabName))
         {
-            activeInTab = viewModel.TabList[tabIndex].Tracks.FirstOrDefault(t => t.Id == track.Id);
-            if (activeInTab != null)
+            for (int i = 0; i < viewModel.TabList.Count; i++)
             {
-                trackIndex = viewModel.TabList[tabIndex].Tracks.IndexOf(activeInTab);
+                if (!string.Equals(viewModel.TabList[i].Name, preferredTabName, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                tabIndex = i;
+                activeInTab = viewModel.TabList[i].Tracks.FirstOrDefault(t => t.Id == track.Id);
+                if (activeInTab != null)
+                {
+                    trackIndex = viewModel.TabList[i].Tracks.IndexOf(activeInTab);
+                }
+
+                break;
+            }
+        }
+
+        if (trackIndex < 0)
+        {
+            if (tabIndex >= 0 && tabIndex < viewModel.TabList.Count)
+            {
+                activeInTab = viewModel.TabList[tabIndex].Tracks.FirstOrDefault(t => t.Id == track.Id);
+                if (activeInTab != null)
+                {
+                    trackIndex = viewModel.TabList[tabIndex].Tracks.IndexOf(activeInTab);
+                }
             }
         }
 
@@ -1392,7 +1296,34 @@ public partial class PlaylistTabs
             return;
         }
 
-        viewModel.SelectedTabIndex = tabIndex;
+        // Switch to the active playback tab if needed
+        if (tabIndex != viewModel.SelectedTabIndex)
+        {
+            viewModel.SelectedTabIndex = tabIndex;
+            // Defer scrolling to after tab switch and layout
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // Just scroll to reveal the active track; do NOT change selection.
+                RevealActiveTrack(activeInTab, trackIndex);
+            }), DispatcherPriority.Render);
+        }
+        else
+        {
+            // Already on the right tab, reveal immediately
+            RevealActiveTrack(activeInTab, trackIndex);
+        }
+    }
+
+    /// <summary>
+    /// Reveals (scrolls into view) the active track without changing selection.
+    /// Selection represents user intent; this just makes the active track visible.
+    /// </summary>
+    private void RevealActiveTrack(MediaFile track, int trackIndex)
+    {
+        if (DataContext is not MediaTabViewModel viewModel)
+        {
+            return;
+        }
 
         DataGrid? dataGrid = GetActiveDataGrid();
         if (dataGrid == null)
@@ -1402,112 +1333,12 @@ public partial class PlaylistTabs
 
         try
         {
-            dataGrid.SelectionChanged -= TracksTable_OnSelectionChanged;
-            try
-            {
-                dataGrid.SelectedItem = activeInTab;
-                dataGrid.SelectedIndex = trackIndex;
-                dataGrid.ScrollIntoView(activeInTab);
-
-                _isExplicitCentering = true;
-                try
-                {
-                    CenterItemInDataGrid(dataGrid, activeInTab);
-                }
-                finally
-                {
-                    _isExplicitCentering = false;
-                }
-            }
-            finally
-            {
-                dataGrid.SelectionChanged += TracksTable_OnSelectionChanged;
-            }
-
-            // Ensure the view model selection matches what the grid now shows.
-            viewModel.SelectedTrackIndex = trackIndex;
-            viewModel.SelectedTrack = activeInTab;
+            dataGrid.ScrollIntoView(track);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "RevealActiveTrack: Exception during ScrollIntoView");
         }
-    }
-
-    private void EnsureSelectedTrackVisible()
-    {
-        if (DataContext is not MediaTabViewModel vm)
-        {
-            return;
-        }
-        DataGrid? dg = GetActiveDataGrid();
-        if (dg == null || vm.SelectedTrack == null)
-        {
-            return;
-        }
-        if (dg.Items.Count == 0)
-        {
-            return;
-        }
-
-        void CenterIfReady()
-        {
-            if (vm.SelectedTrack == null)
-            {
-                return;
-            }
-            if (!IsItemFullyVisible(dg, vm.SelectedTrack))
-            {
-                _isExplicitCentering = true;
-                try
-                {
-                    CenterItemInDataGrid(dg, vm.SelectedTrack);
-                }
-                finally
-                {
-                    _isExplicitCentering = false;
-                }
-            }
-        }
-
-        if (dg.ItemContainerGenerator.ContainerFromItem(vm.SelectedTrack) == null)
-        {
-            EventHandler? handler = null;
-            handler = (object? s, EventArgs e) =>
-            {
-                if (dg.ItemContainerGenerator.Status == System.Windows.Controls.Primitives.GeneratorStatus.ContainersGenerated)
-                {
-                    dg.ItemContainerGenerator.StatusChanged -= handler;
-                    dg.Dispatcher.BeginInvoke(new Action(CenterIfReady), System.Windows.Threading.DispatcherPriority.Render);
-                }
-            };
-            dg.ItemContainerGenerator.StatusChanged += handler;
-        }
-        else
-        {
-            dg.Dispatcher.BeginInvoke(new Action(CenterIfReady), System.Windows.Threading.DispatcherPriority.Render);
-        }
-    }
-
-    private static bool IsItemFullyVisible(DataGrid dataGrid, object item)
-    {
-        ScrollViewer? sv = FindDescendant<ScrollViewer>(dataGrid);
-        if (sv == null)
-        {
-            return false;
-        }
-
-        DataGridRow? row = dataGrid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow;
-        if (row == null || row.ActualHeight <= 0)
-        {
-            return false;
-        }
-
-        GeneralTransform transform = row.TransformToAncestor(sv);
-        Point rowPos = transform.Transform(new Point(0, 0));
-        double top = rowPos.Y;
-        double bottom = top + row.ActualHeight;
-
-        return top >= 0 && bottom <= sv.ViewportHeight;
     }
 
     private static void CenterItemInDataGrid(DataGrid dataGrid, object item)
@@ -1570,30 +1401,30 @@ public partial class PlaylistTabs
         dataGrid.ScrollIntoView(item);
         dataGrid.UpdateLayout();
 
-        if (FindDescendant<ScrollViewer>(dataGrid) is not ScrollViewer sv)
-            return;
+        //if (FindDescendant<ScrollViewer>(dataGrid) is not ScrollViewer sv)
+        //    return;
 
-        if (dataGrid.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row)
-            return;
+        //if (dataGrid.ItemContainerGenerator.ContainerFromItem(item) is not DataGridRow row)
+        //    return;
 
-        bool logicalScroll = ScrollViewer.GetCanContentScroll(dataGrid);
+        //bool logicalScroll = ScrollViewer.GetCanContentScroll(dataGrid);
 
-        if (logicalScroll)
-        {
-            int index = dataGrid.Items.IndexOf(item);
-            int itemsInViewport = (int)Math.Round(sv.ViewportHeight);
-            int targetTopIndex = Math.Max(0, index - (itemsInViewport / 2));
-            sv.ScrollToVerticalOffset(targetTopIndex);
-        }
-        else
-        {
-            GeneralTransform transform = row.TransformToAncestor(sv);
-            Point rowPos = transform.Transform(new Point(0, 0));
-            double rowCenter = rowPos.Y + (row.ActualHeight / 2.0);
-            double targetCenter = sv.ViewportHeight / 2.0;
-            double delta = rowCenter - targetCenter;
-            sv.ScrollToVerticalOffset(sv.VerticalOffset + delta);
-        }
+        //if (logicalScroll)
+        //{
+        //    int index = dataGrid.Items.IndexOf(item);
+        //    int itemsInViewport = (int)Math.Round(sv.ViewportHeight);
+        //    int targetTopIndex = Math.Max(0, index - (itemsInViewport / 2));
+        //    sv.ScrollToVerticalOffset(targetTopIndex);
+        //}
+        //else
+        //{
+        //    GeneralTransform transform = row.TransformToAncestor(sv);
+        //    Point rowPos = transform.Transform(new Point(0, 0));
+        //    double rowCenter = rowPos.Y + (row.ActualHeight / 2.0);
+        //    double targetCenter = sv.ViewportHeight / 2.0;
+        //    double delta = rowCenter - targetCenter;
+        //    sv.ScrollToVerticalOffset(sv.VerticalOffset + delta);
+        //}
     }
 
     internal DataGrid? GetActiveDataGrid()
@@ -1712,6 +1543,10 @@ public partial class PlaylistTabs
     // --- Tab drag & drop reordering ---
     private void TabItem_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Set flag to suppress mouse-state check during tab switch.
+        // This will be cleared at the end of TracksTable_OnSelectionChanged.
+        _tabSwitchInProgress = true;
+
         DependencyObject source = (DependencyObject)sender;
         TabItem? tabItem = source as TabItem ?? FindAncestor<TabItem>(source);
         if (tabItem == null)
@@ -1725,10 +1560,23 @@ public partial class PlaylistTabs
             e.Handled = true;
             if (DataContext is MediaTabViewModel vm && vm.SelectedTrack != null)
             {
-                DataGrid? dg = GetActiveDataGrid();
-                if (dg != null)
+                // Get the DataGrid from the selected tab's content, not from visual tree search
+                if (Tabs123?.SelectedContent != null)
                 {
-                    dg.ScrollIntoView(vm.SelectedTrack);
+                    DataGrid? dg = FindDescendant<DataGrid>(Tabs123.SelectedContent as DependencyObject ?? Tabs123);
+                    if (dg != null)
+                    {
+                        _logger.LogDebug("TabItem_PreviewMouseLeftButtonDown: centering {TrackId}", vm.SelectedTrack.Id ?? "null");
+                        _isExplicitCentering = true;
+                        try
+                        {
+                            CenterItemInDataGrid(dg, vm.SelectedTrack);
+                        }
+                        finally
+                        {
+                            _isExplicitCentering = false;
+                        }
+                    }
                 }
             }
             return; // do not initiate drag

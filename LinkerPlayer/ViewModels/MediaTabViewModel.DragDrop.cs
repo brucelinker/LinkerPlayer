@@ -188,6 +188,8 @@ public partial class MediaTabViewModel
 
             if (SelectedTabIndex >= 0 && SelectedTabIndex < TabList.Count && TabList[SelectedTabIndex] is PlaylistTab tab)
             {
+                string? preservedSelectionId = tab.SelectedMediaFile?.Id;
+
                 bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, importedTracks);
                 if (success)
                 {
@@ -201,11 +203,23 @@ public partial class MediaTabViewModel
                             }
                         }
 
-                        // Ensure a selection exists
-                        if (_dataGrid != null && _dataGrid.SelectedItem == null && tab.Tracks.Any())
+                        if (!string.IsNullOrWhiteSpace(preservedSelectionId))
                         {
-                            _dataGrid.SelectedIndex = 0;
-                            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+                            MediaFile? restored = tab.Tracks.FirstOrDefault(t =>
+                                string.Equals(t.Id, preservedSelectionId, StringComparison.Ordinal));
+                            if (restored != null)
+                            {
+                                int restoredIndex = tab.Tracks.IndexOf(restored);
+                                tab.SelectedMediaFile = restored;
+                                tab.SelectedIndex = restoredIndex;
+
+                                if (_dataGrid != null && ReferenceEquals(_dataGrid.DataContext, tab))
+                                {
+                                    _dataGrid.SelectedItem = restored;
+                                    _dataGrid.SelectedIndex = restoredIndex;
+                                    _dataGrid.ScrollIntoView(restored);
+                                }
+                            }
                         }
                     });
                 }
@@ -262,6 +276,8 @@ public partial class MediaTabViewModel
                     // Can't import folder into Music Library
                     return;
                 }
+
+                string? preservedSelectionId = tab.SelectedMediaFile?.Id;
                 bool success = await _playlistManagerService.AddTracksToPlaylistAsync(tab.Name, importedTracks);
 
                 if (success)
@@ -276,11 +292,23 @@ public partial class MediaTabViewModel
                             }
                         }
 
-                        // Set selected track if needed
-                        if (_dataGrid.SelectedItem == null && tab.Tracks.Any())
+                        if (!string.IsNullOrWhiteSpace(preservedSelectionId))
                         {
-                            _dataGrid.SelectedIndex = 0;
-                            _dataGrid.ScrollIntoView(_dataGrid.SelectedItem!);
+                            MediaFile? restored = tab.Tracks.FirstOrDefault(t =>
+                                string.Equals(t.Id, preservedSelectionId, StringComparison.Ordinal));
+                            if (restored != null)
+                            {
+                                int restoredIndex = tab.Tracks.IndexOf(restored);
+                                tab.SelectedMediaFile = restored;
+                                tab.SelectedIndex = restoredIndex;
+
+                                if (_dataGrid != null && ReferenceEquals(_dataGrid.DataContext, tab))
+                                {
+                                    _dataGrid.SelectedItem = restored;
+                                    _dataGrid.SelectedIndex = restoredIndex;
+                                    _dataGrid.ScrollIntoView(restored);
+                                }
+                            }
                         }
                     });
                 }

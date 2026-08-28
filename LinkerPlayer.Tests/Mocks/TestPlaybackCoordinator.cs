@@ -10,7 +10,7 @@ public sealed class TestPlaybackCoordinator : IPlaybackCoordinator
 
     public PlaybackCursor? PlaybackCursor { get; private set; }
 
-    public void SetUserSelection(string playlistName, int trackIndex, MediaFile track)
+    public void SetSelection(string playlistName, int trackIndex, MediaFile track)
     {
     }
 

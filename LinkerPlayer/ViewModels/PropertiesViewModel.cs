@@ -795,18 +795,42 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
 
     private void UpdateTrackMetadata()
     {
-        if (IsMultipleSelection)
+        bool TryRefreshTrackMetadata(MediaFile track)
         {
-            foreach (MediaFile track in _sharedDataModel.SelectedTracks)
+            try
             {
                 track.UpdateFromFileMetadata();
+                return true;
+            }
+            catch (IOException ex)
+            {
+                _logger.LogWarning(ex, "Skipping metadata refresh because file is currently in use: {Path}", track.Path);
+                track.NeedsMetadataRefresh = true;
+                return false;
+            }
+        }
+
+        if (IsMultipleSelection)
+        {
+            List<MediaFile> refreshedTracks = new();
+            foreach (MediaFile track in _sharedDataModel.SelectedTracks)
+            {
+                if (TryRefreshTrackMetadata(track))
+                {
+                    refreshedTracks.Add(track);
+                }
+            }
+
+            if (refreshedTracks.Count == 0)
+            {
+                return;
             }
 
             try
             {
                 IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
                 _ = Task.Run(async () =>
-                    await musicLibrary.UpdateTracksAsync(_sharedDataModel.SelectedTracks,
+                    await musicLibrary.UpdateTracksAsync(refreshedTracks,
                         updateMetadata: true, updateAnalysis: false));
             }
             catch { }
@@ -816,23 +840,26 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             if (_sharedDataModel.SelectedTrack == null)
                 return;
 
-            _sharedDataModel.SelectedTrack.UpdateFromFileMetadata();
-
-            if (_sharedDataModel.ActiveTrack == _sharedDataModel.SelectedTrack)
+            List<MediaFile> updated = new();
+            if (TryRefreshTrackMetadata(_sharedDataModel.SelectedTrack))
             {
-                _sharedDataModel.ActiveTrack.UpdateFromFileMetadata();
+                updated.Add(_sharedDataModel.SelectedTrack);
+            }
+
+            if (_sharedDataModel.ActiveTrack != null &&
+                !_sharedDataModel.ActiveTrack.Id.Equals(_sharedDataModel.SelectedTrack.Id, StringComparison.Ordinal))
+            {
+                updated.Add(_sharedDataModel.ActiveTrack);
+            }
+
+            if (updated.Count == 0)
+            {
+                return;
             }
 
             try
             {
                 IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
-                List<MediaFile> updated = new List<MediaFile> { _sharedDataModel.SelectedTrack };
-
-                if (_sharedDataModel.ActiveTrack != null &&
-                    !_sharedDataModel.ActiveTrack.Id.Equals(_sharedDataModel.SelectedTrack.Id, StringComparison.Ordinal))
-                {
-                    updated.Add(_sharedDataModel.ActiveTrack);
-                }
 
                 _ = Task.Run(async () =>
                     await musicLibrary.UpdateTracksAsync(updated,

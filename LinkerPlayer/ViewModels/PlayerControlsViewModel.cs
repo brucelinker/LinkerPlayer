@@ -122,28 +122,24 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
     [RelayCommand(CanExecute = nameof(CanPlayPause))]
     private void PlayPause()
     {
-        _logger.LogDebug("PlayPauseCommand executed");
         PlayPauseTrack();
     }
 
     [RelayCommand]
     private void Stop()
     {
-        _logger.LogInformation("StopCommand executed");
         StopTrack();
     }
 
     [RelayCommand]
     private void Next()
     {
-        _logger.LogInformation("NextCommand executed");
         NextTrack();
     }
 
     [RelayCommand]
     private void Prev()
     {
-        _logger.LogInformation("PrevCommand executed");
         PreviousTrack();
     }
 
@@ -208,6 +204,9 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
 
     private void OnPlaybackStateChanged(PlaybackState playbackState)
     {
+        if (State == playbackState)
+            return;                    // ← prevent duplicate work / logs
+
         _logger.LogDebug("PlaybackStateChangedMessage received: {State}", playbackState);
         State = playbackState;
     }
@@ -265,7 +264,7 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
             {
                 if (SelectedTrack != null && !string.IsNullOrWhiteSpace(playlistName))
                 {
-                    _playbackCoordinator.SetUserSelection(playlistName, trackIndex, SelectedTrack);
+                    _playbackCoordinator.SetSelection(playlistName, trackIndex, SelectedTrack);
                     _playbackCoordinator.PlayTrack(playlistName, trackIndex, SelectedTrack);
 
                     MediaFile? active = _sharedDataModel.ActiveTrack;
@@ -295,14 +294,21 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
         {
             if (SelectedTrack != null)
             {
-                _logger.LogInformation("Playing SelectedTrack: {Path}", SelectedTrack.Path);
+                _logger.LogInformation("PlayTrack: Starting playback of SelectedTrack: {Path}", SelectedTrack.Path);
 
-                string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? "";
-                int trackIndex = _playlistTabsViewModel.SelectedTrackIndex;
+                // Use the existing playback cursor whenever possible. The cursor represents the source tab/playlist
+                // and must not be replaced by the currently selected tab after the user switches views.
+                string playlistName = _playbackCoordinator.PlaybackCursor?.PlaylistName ?? _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
+                int trackIndex = _playbackCoordinator.PlaybackCursor?.TrackIndex ?? _playlistTabsViewModel.SelectedTrackIndex;
 
-                if (!string.IsNullOrWhiteSpace(playlistName))
+                if (_playbackCoordinator.PlaybackCursor != null)
                 {
-                    _playbackCoordinator.SetUserSelection(playlistName, trackIndex, SelectedTrack);
+                    _logger.LogInformation("PlayTrack: Using existing PlaybackCursor {PlaylistName}:{TrackIndex}",
+                        playlistName, trackIndex);
+                }
+                else
+                {
+                    _logger.LogWarning("PlayTrack: PlaybackCursor not set, falling back to current tab {PlaylistName}", playlistName);
                 }
 
                 _playbackCoordinator.PlayTrack(playlistName, trackIndex, SelectedTrack);
@@ -349,17 +355,20 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
         _isNavigatingTrack = true;
         try
         {
-            _logger.LogInformation("PreviousTrack invoked (State={State}, ActiveTrack={ActiveTrack}, SelectedPlaylist={SelectedPlaylist})",
-                State,
-                ActiveTrack?.Id ?? "null",
-                _playlistTabsViewModel.SelectedTab?.Name ?? "null");
+            //_logger.LogInformation("PreviousTrack invoked (State={State}, ActiveTrack={ActiveTrack}, SelectedPlaylist={SelectedPlaylist})",
+            //    State,
+            //    ActiveTrack?.Id ?? "null",
+            //    _playlistTabsViewModel.SelectedTab?.Name ?? "null");
 
-            string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
-            MediaFile? seedTrack = _playlistTabsViewModel.SelectedTrack;
-            if (!string.IsNullOrWhiteSpace(playlistName) && seedTrack != null)
+            if (_playbackCoordinator.PlaybackCursor == null)
             {
-                int seedIndex = _playlistTabsViewModel.SelectedTrackIndex;
-                _playbackCoordinator.SetUserSelection(playlistName, seedIndex, seedTrack);
+                string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
+                MediaFile? seedTrack = _playlistTabsViewModel.SelectedTrack;
+                if (!string.IsNullOrWhiteSpace(playlistName) && seedTrack != null)
+                {
+                    int seedIndex = _playlistTabsViewModel.SelectedTrackIndex;
+                    _playbackCoordinator.SetSelection(playlistName, seedIndex, seedTrack);
+                }
             }
 
             _playbackCoordinator.Prev();
@@ -381,17 +390,20 @@ public partial class PlayerControlsViewModel : ObservableObject, IPlayerControls
         _isNavigatingTrack = true;
         try
         {
-            _logger.LogInformation("NextTrack invoked (State={State}, ActiveTrack={ActiveTrack}, SelectedPlaylist={SelectedPlaylist})",
-                State,
-                ActiveTrack?.Id ?? "null",
-                _playlistTabsViewModel.SelectedTab?.Name ?? "null");
+            //_logger.LogInformation("NextTrack invoked (State={State}, ActiveTrack={ActiveTrack}, SelectedPlaylist={SelectedPlaylist})",
+            //    State,
+            //    ActiveTrack?.Id ?? "null",
+            //    _playlistTabsViewModel.SelectedTab?.Name ?? "null");
 
-            string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
-            MediaFile? seedTrack = _playlistTabsViewModel.SelectedTrack;
-            if (!string.IsNullOrWhiteSpace(playlistName) && seedTrack != null)
+            if (_playbackCoordinator.PlaybackCursor == null)
             {
-                int seedIndex = _playlistTabsViewModel.SelectedTrackIndex;
-                _playbackCoordinator.SetUserSelection(playlistName, seedIndex, seedTrack);
+                string playlistName = _playlistTabsViewModel.SelectedTab?.Name ?? string.Empty;
+                MediaFile? seedTrack = _playlistTabsViewModel.SelectedTrack;
+                if (!string.IsNullOrWhiteSpace(playlistName) && seedTrack != null)
+                {
+                    int seedIndex = _playlistTabsViewModel.SelectedTrackIndex;
+                    _playbackCoordinator.SetSelection(playlistName, seedIndex, seedTrack);
+                }
             }
 
             _playbackCoordinator.Next();

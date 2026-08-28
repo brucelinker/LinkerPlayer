@@ -94,6 +94,9 @@ public class MusicLibraryDbContext : DbContext
             .Property(m => m.Channels);
         modelBuilder.Entity<MediaFile>()
             .Property(m => m.Rating);
+        modelBuilder.Entity<MediaFile>()
+            .Property(m => m.ReplayGain)
+            .HasMaxLength(16);
 
         // Runtime-only properties - ignored for database
         modelBuilder.Entity<MediaFile>().Ignore(m => m.AlbumCover);

@@ -4,8 +4,8 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
   xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   xmlns:persist="clr-namespace:LinkerPlayer"
+  xmlns:userControls="clr-namespace:LinkerPlayer.UserControls"
   Title="LinkerPlayer"
   Width="800"
   Height="600"
@@ -83,8 +83,8 @@
         Grid.Row="0"
         Grid.Column="1"
         HorizontalAlignment="Stretch"
-        Background="Transparent"
-        persist:GridSplitterPersistence.PersistKey="MainWindow.Columns" />
+        persist:GridSplitterPersistence.PersistKey="MainWindow.Columns"
+        Background="Transparent" />
 
       <userControls:PlaylistTabs
         x:Name="PlaylistTabs"

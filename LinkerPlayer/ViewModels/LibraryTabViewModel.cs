@@ -27,6 +27,9 @@ public partial class LibraryTabViewModel : BaseTabViewModel
     [ObservableProperty]
     private int _selectedTrackIndex = -1;
 
+    [ObservableProperty]
+    private bool _isLoadingLibrary = true; // Start as loading
+
     private MediaFile? _lastSessionSelectedTrack; // in-memory for tab switches during this run
 
     public LibraryTabViewModel(
@@ -41,8 +44,17 @@ public partial class LibraryTabViewModel : BaseTabViewModel
         _settingsManager = settingsManager ?? throw new ArgumentNullException(nameof(settingsManager));
         _selectionService = selectionService ?? throw new ArgumentNullException(nameof(selectionService));
 
+        _musicLibrary.LibraryLoaded += OnLibraryLoaded;
+
         RegisterMessages();   // safe to call here now
         _logger.LogInformation("LibraryTabViewModel initialized");
+    }
+
+    private void OnLibraryLoaded(object? sender, EventArgs e)
+    {
+        _logger.LogInformation("LibraryLoaded event received, restoring selection");
+        IsLoadingLibrary = false; // Library loaded, hide progress indicator
+        _ = RestoreSelectionAsync();
     }
 
     public MediaFile? LastSessionSelectedTrack
@@ -100,10 +112,17 @@ public partial class LibraryTabViewModel : BaseTabViewModel
     /// </summary>
     public override Task RestoreSelectionAsync()
     {
-        // Prefer in-memory session selection first (for tab switches)
-        MediaFile? toRestore = _lastSessionSelectedTrack ??
-            _musicLibrary.MainLibrary.FirstOrDefault(t =>
-                string.Equals(t.Id, _settingsManager.Settings.LastLibrarySelectedTrackId, StringComparison.Ordinal));
+        // Resolve by ID against the current MainLibrary snapshot.
+        // In-memory references can become stale when the library collection is repopulated.
+        string? desiredId = _lastSessionSelectedTrack?.Id;
+        if (string.IsNullOrWhiteSpace(desiredId))
+        {
+            desiredId = _settingsManager.Settings.LastLibrarySelectedTrackId;
+        }
+
+        MediaFile? toRestore = !string.IsNullOrWhiteSpace(desiredId)
+            ? _musicLibrary.MainLibrary.FirstOrDefault(t => string.Equals(t.Id, desiredId, StringComparison.Ordinal))
+            : null;
 
         if (toRestore == null)
         {
@@ -113,7 +132,7 @@ public partial class LibraryTabViewModel : BaseTabViewModel
 
         SelectedTrack = toRestore;
         SelectedTrackIndex = _musicLibrary.MainLibrary.IndexOf(toRestore);
-        _lastSessionSelectedTrack = toRestore; // keep for next tab switch
+        _lastSessionSelectedTrack = toRestore;
 
         if (LibraryTab != null)
         {
@@ -123,8 +142,8 @@ public partial class LibraryTabViewModel : BaseTabViewModel
 
         _selectionService.SetTrack(toRestore, SelectedTrackIndex);
 
-        _logger.LogInformation("Library selection restored to '{Title}' (ID: {Id}) [session: {Session}]",
-            toRestore.Title, toRestore.Id, _lastSessionSelectedTrack != null);
+        _logger.LogInformation("Library selection restored to '{Title}'", toRestore.Title);
+
         return Task.CompletedTask;
     }
 

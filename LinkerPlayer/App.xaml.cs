@@ -5,7 +5,6 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
-using LinkerPlayer.Services.Metadata;
 using LinkerPlayer.Services.Playback;
 using LinkerPlayer.ViewModels;
 using LinkerPlayer.ViewModels.Properties.Loaders;
@@ -14,7 +13,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RestoreWindowPlace;
-using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -37,7 +35,7 @@ public partial class App
             .ConfigureLogging(logging =>
             {
                 logging.ClearProviders();
-                logging.SetMinimumLevel(LogLevel.Debug);
+                logging.SetMinimumLevel(LogLevel.Information);
                 //Trace = 0, Debug = 1, Information = 2, Warning = 3, Error = 4, Critical = 5, and None = 6
                 logging.AddSimpleConsole(options =>
                 {
@@ -122,6 +120,8 @@ public partial class App
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        base.OnStartup(e);
+
         using Mutex mutex = new Mutex(true, "LinkerPlayer", out bool createdNew);
         if (!createdNew)
         {
@@ -132,128 +132,58 @@ public partial class App
 
         try
         {
-            _logger.LogInformation("Starting AppHost (no splash timing test)");
+            _logger.LogInformation("Starting AppHost");
             Task.Run(async () => await InitializeApplicationAsync());
-            base.OnStartup(e);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogError(ex, "IO Exception during startup: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unexpected error during startup: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
-            throw;
+            _logger.LogError(ex, "Error during startup");
         }
     }
 
     private async Task InitializeApplicationAsync()
     {
-        // ATL defaults to a 512-byte I/O buffer — fine for local disks but causes
-        // tens-of-thousands of tiny SMB round-trips on NAS shares, making every read
-        // and write take 30-60 seconds. Set a large buffer so each file is read in
-        // a small number of network round-trips, matching what tools like Mp3tag do.
-        ATL.Settings.FileBufferSize = 512 * 1024; // 512 KB
-
         try
         {
-            _logger.LogInformation("Background init started");
             await AppHost.StartAsync();
-            _logger.LogInformation("Host started");
+            _logger.LogInformation("AppHost started");
 
-            // Show MainWindow immediately after host start
-            await Dispatcher.BeginInvoke(new Action(() =>
+            // Show MainWindow immediately
+            await Dispatcher.InvokeAsync(() =>
             {
                 MainWindow mainWindow = AppHost.Services.GetRequiredService<MainWindow>();
                 MainWindow = mainWindow;
                 ShutdownMode = ShutdownMode.OnMainWindowClose;
                 mainWindow.Show();
-                _logger.LogInformation("MainWindow shown early (splash disabled)");
-            }));
+                _logger.LogInformation("MainWindow shown");
+            });
 
-            // Fire off background tasks (do not await before showing UI)
-            BassAudioEngine bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
-            IMusicLibrary library = AppHost.Services.GetRequiredService<IMusicLibrary>();
-
-            Task bassInit = Task.Run(() =>
+            // All heavy work in background
+            _ = Task.Run(async () =>
             {
                 try
                 {
+                    BassAudioEngine bassEngine = AppHost.Services.GetRequiredService<BassAudioEngine>();
                     bassEngine.Initialize(new BassInitializationOptions());
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "BASS init failed");
-                }
-            });
-            Task libLoad = Task.Run(async () =>
-            {
-                try
-                {
-                    _logger.LogInformation("Starting library load from database");
+
+                    IMusicLibrary library = AppHost.Services.GetRequiredService<IMusicLibrary>();
                     await library.LoadFromDatabaseAsync();
-                    _logger.LogInformation("Library load completed successfully");
-
-                    // Schedule background metadata refresh for tracks flagged during startup
-                    // (e.g. the one-time artist-parser fix migration).
-                    List<MediaFile> needsRefresh = library.MainLibrary
-                        .Where(t => t.NeedsMetadataRefresh)
-                        .ToList();
-                    if (needsRefresh.Count > 0)
-                    {
-                        _logger.LogInformation("Scheduling background metadata refresh for {Count} tracks", needsRefresh.Count);
-                        BackgroundMetadataRefresher.Enqueue(needsRefresh);
-                    }
-
-                    // One-time backfill: set HasEmbeddedCover for tracks loaded before
-                    // the column existed (all default to false in the DB).
-                    await library.BackfillEmbeddedCoverAsync().ConfigureAwait(false);
-
-                    // One-time backfill: refine plain "MP3" codec to "MP3 VBR" / "MP3 CBR".
-                    await library.BackfillMp3VbrAsync().ConfigureAwait(false);
-
-                    // Phase 1: full diff-scan watched folders after library is loaded
-                    // (finds adds, removes missing tracks, refreshes modified metadata)
-                    // Only runs if user has enabled automatic scanning in settings
-                    try
-                    {
-                        ISettingsManager settingsManager = AppHost.Services.GetRequiredService<ISettingsManager>();
-                        if (settingsManager.Settings.AutomaticallyRescanWatchedFolders)
-                        {
-                            IWatchedFolderService watchedFolderService = AppHost.Services.GetRequiredService<IWatchedFolderService>();
-                            IImportCancellationService importCancellation = AppHost.Services.GetRequiredService<IImportCancellationService>();
-                            IProgress<ProgressData> startupProgress = new Progress<ProgressData>(data =>
-                                WeakReferenceMessenger.Default.Send(new ProgressValueMessage(data)));
-                            await Task.Run(async () => await watchedFolderService.FullScanAllAsync(startupProgress, importCancellation.Token));
-                        }
-                        else
-                        {
-                            _logger.LogInformation("Automatic rescan disabled by user; skipping startup scan");
-                        }
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        // App is shutting down; service provider already disposed
-                        _logger.LogDebug("Startup scan cancelled due to app shutdown");
-                    }
+                    await library.LoadFullLibraryAsync();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Library load failed: {Message}", ex.Message);
-                    throw; // Re-throw to fail the Task.WhenAll
+                    _logger.LogError(ex, "Background initialization failed");
                 }
             });
-            await Task.WhenAll(bassInit, libLoad);
-            _logger.LogInformation("Background init complete");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Initialization error");
-            await Dispatcher.BeginInvoke(new Action(() =>
+            _logger.LogError(ex, "Startup failed");
+            await Dispatcher.InvokeAsync(() =>
             {
                 MessageBox.Show($"Failed to initialize: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 Shutdown();
-            }));
+            });
         }
     }
 
@@ -312,6 +242,6 @@ public partial class App
         }
 
         base.OnExit(e);
-        this.WindowPlace.Save();
+        WindowPlace.Save();
     }
 }

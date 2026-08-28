@@ -27,7 +27,7 @@
       <converters:IndexConverter x:Key="IndexConverter" />
       <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
       <converters:ZeroToEmptyConverter x:Key="ZeroToEmptyConverter" />
-
+      <converters:StringEqualityToVisibilityConverter x:Key="StringEqualityToVisibilityConverter" />
       <!--  Album-cover indicator column cell template (Library only)  -->
       <DataTemplate x:Key="AlbumCoverCellTemplate">
         <iconPacks:PackIconMaterial
@@ -256,6 +256,30 @@
                 </Style>
               </iconPacks:PackIconMaterial.Style>
             </iconPacks:PackIconMaterial>
+            <!-- Speaker icon for Library tab when it's the active playback source -->
+            <iconPacks:PackIconMaterial
+              Margin="6,0,0,0"
+              VerticalAlignment="Center"
+              FontSize="14"
+              Foreground="{DynamicResource PlaylistTabForegroundBrush}"
+              Kind="Speaker"
+              Opacity="0.8">
+              <iconPacks:PackIconMaterial.Visibility>
+                <MultiBinding Converter="{StaticResource StringEqualityToVisibilityConverter}">
+                  <Binding Path="DataContext.ActiveTabName" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                  <Binding Source="Music Library" />
+                </MultiBinding>
+              </iconPacks:PackIconMaterial.Visibility>
+              <iconPacks:PackIconMaterial.Style>
+                <Style TargetType="iconPacks:PackIconMaterial">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </iconPacks:PackIconMaterial.Style>
+            </iconPacks:PackIconMaterial>
             <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource FontSizeNormal}">
               <Run Text="{Binding Name, Mode=OneWay}" />
               <Run Text=" (" />
@@ -314,6 +338,30 @@
               <Binding Mode="TwoWay" Path="Name" />
             </userControls:EditableTabHeaderControl.Content>
           </userControls:EditableTabHeaderControl>
+          <!-- Speaker icon shows this tab is the active playback source -->
+          <iconPacks:PackIconMaterial
+            Margin="6,0,0,0"
+            VerticalAlignment="Center"
+            FontSize="14"
+            Foreground="{DynamicResource PlaylistTabForegroundBrush}"
+            Kind="Speaker"
+            Opacity="0.8">
+            <iconPacks:PackIconMaterial.Visibility>
+              <MultiBinding Converter="{StaticResource StringEqualityToVisibilityConverter}">
+                <Binding Path="DataContext.ActiveTabName" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                <Binding Path="Name" />
+              </MultiBinding>
+            </iconPacks:PackIconMaterial.Visibility>
+            <iconPacks:PackIconMaterial.Style>
+              <Style TargetType="iconPacks:PackIconMaterial">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </iconPacks:PackIconMaterial.Style>
+          </iconPacks:PackIconMaterial>
           <TextBlock
             Margin="4,0,0,0"
             VerticalAlignment="Center"
@@ -382,24 +430,97 @@
         <Setter Property="BorderBrush" Value="{DynamicResource MenuBackgroundBrush}" />
         <Setter Property="Background" Value="{DynamicResource MenuBackgroundBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource MenuForegroundBrush}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Padding" Value="4" />
+
+        <!--  Default = simple look for normal items  -->
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="MenuItem">
               <Border
+                Padding="{TemplateBinding Padding}"
                 Background="{TemplateBinding Background}"
                 BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="1">
                 <ContentPresenter
-                  Margin="4"
-                  HorizontalAlignment="Left"
-                  VerticalAlignment="Center"
-                  Content="{TemplateBinding Header}"
-                  TextBlock.Foreground="{TemplateBinding Foreground}" />
+                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                  ContentSource="Header"
+                  RecognizesAccessKey="True" />
               </Border>
             </ControlTemplate>
           </Setter.Value>
         </Setter>
+
         <Style.Triggers>
+          <!--  When this item has a submenu, switch to a real submenu-capable template  -->
+          <Trigger Property="Role" Value="SubmenuHeader">
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                  <Border
+                    x:Name="templateRoot"
+                    Padding="{TemplateBinding Padding}"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="1"
+                    SnapsToDevicePixels="True">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                      </Grid.ColumnDefinitions>
+
+                      <ContentPresenter
+                        Grid.Column="0"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Center"
+                        ContentSource="Header"
+                        RecognizesAccessKey="True" />
+
+                      <!--  Little arrow  -->
+                      <Path
+                        Grid.Column="1"
+                        Margin="6,0,0,0"
+                        VerticalAlignment="Center"
+                        Data="M 0,0 L 4,3.5 L 0,7 Z"
+                        Fill="{TemplateBinding Foreground}" />
+
+                      <!--  The actual submenu popup  -->
+                      <Popup
+                        x:Name="PART_Popup"
+                        AllowsTransparency="True"
+                        Focusable="False"
+                        IsOpen="{Binding IsSubmenuOpen, RelativeSource={RelativeSource TemplatedParent}}"
+                        Placement="Right"
+                        PopupAnimation="{DynamicResource {x:Static SystemParameters.MenuPopupAnimationKey}}">
+                        <Border
+                          Padding="1"
+                          Background="{DynamicResource MenuBackgroundBrush}"
+                          BorderBrush="{DynamicResource MenuBackgroundBrush}"
+                          BorderThickness="1">
+                          <!--  No ScrollViewer = no gray scrollbar track  -->
+                          <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                      </Popup>
+                    </Grid>
+                  </Border>
+
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsHighlighted" Value="True">
+                      <Setter TargetName="templateRoot" Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                      <Setter Property="Foreground" Value="{DynamicResource MenuDisabledBrush}" />
+                    </Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Trigger>
+
+          <!--  Your original hover / disabled triggers  -->
           <Trigger Property="IsHighlighted" Value="True">
             <Setter Property="Background" Value="{DynamicResource MenuMouseOverBackgroundBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource MenuMouseOverForegroundBrush}" />
@@ -467,14 +588,13 @@
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             PreviewMouseLeftButtonDown="MusicLibraryDataGrid_PreviewMouseLeftButtonDown"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
-            RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"
             RowHeaderWidth="0"
             RowHeight="20"
             RowStyle="{StaticResource PlaylistDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
-            SelectedItem="{Binding SelectedTrack, Mode=OneWay}"
+            SelectedItem="{Binding SelectedMediaFile, Mode=TwoWay}"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
@@ -511,6 +631,13 @@
                 <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze Silence" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.CancelAnalyzeSilenceCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Cancel Analyze" />
                 <MenuItem Command="{Binding PlacementTarget.Tag.ClearSilenceAnalysisCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Clear Silence Analysis" />
+                <Separator />
+                <MenuItem Header="ReplayGain">
+                  <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeReplayGainTrackCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze by Track" />
+                  <MenuItem Command="{Binding PlacementTarget.Tag.AnalyzeReplayGainAlbumCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Analyze by Album" />
+                  <Separator />
+                  <MenuItem Command="{Binding PlacementTarget.Tag.RemoveReplayGainAnalysisCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Remove ReplayGain analysis" />
+                </MenuItem>
                 <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.GetRatingsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Get MusicBrainz Ratings" />
                 <Separator />
@@ -592,14 +719,14 @@
             Loaded="DataGrid_Loaded"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
-            RequestBringIntoView="PlaylistDataGrid_RequestBringIntoView"
             RowHeaderWidth="0"
             RowHeight="20"
             RowStyle="{StaticResource PlaylistDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
             ScrollViewer.IsDeferredScrollingEnabled="False"
             ScrollViewer.ScrollChanged="PlaylistDataGrid_ScrollChanged"
-            SelectedItem="{Binding SelectedTrack, Mode=OneWay}"
+            SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}"
+            SelectedItem="{Binding SelectedMediaFile, Mode=TwoWay}"
             SelectionChanged="TracksTable_OnSelectionChanged"
             SelectionMode="Extended"
             SelectionUnit="FullRow"
@@ -814,8 +941,7 @@
       BorderThickness="0"
       ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       ItemsSource="{Binding TabList}"
-      SelectedIndex="{Binding SelectedTabIndex}"
-      SelectionChanged="TabControl_SelectionChanged">
+      SelectedIndex="{Binding SelectedTabIndex}">
       <TabControl.ContentTemplateSelector>
         <StaticResource ResourceKey="TabContentTemplateSelector" />
       </TabControl.ContentTemplateSelector>
