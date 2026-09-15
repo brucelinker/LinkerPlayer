@@ -25,6 +25,8 @@ public interface IPropertiesViewModel
     TagItem CommentItem { get; }
     TagItem LyricsItem { get; }
     BitmapImage? AlbumCoverSource { get; }
+    string AlbumCoverText { get; }
+    bool HasAlbumCover { get; }
     bool HasUnsavedChanges { get; }
     bool IsMultipleSelection { get; }
     int SelectedFilesCount { get; }
@@ -63,6 +65,7 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
     // Debouncing for multi-selection
     private DispatcherTimer? _selectionDebounceTimer;
     private const int SelectionDebounceMs = 300; // Wait 300ms after last selection change
+    private bool _isSelectionTrackingActive;
     private bool _disposed;
 
     // Observable properties
@@ -117,20 +120,43 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         };
         _selectionDebounceTimer.Tick += SelectionDebounceTimer_Tick;
 
-        _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
-        _sharedDataModel.SelectedTracksChanged += SelectedTracks_CollectionChanged!;
-
-        // Subscribe to SelectedTracks collection changes
-        //_sharedDataModel.SelectedTracks.CollectionChanged += SelectedTracks_CollectionChanged!;
-
         _logger.LogDebug("PropertiesViewModel constructor: SelectedTracks.Count = {Count}, SelectedTrack = {Track}",
             _sharedDataModel.SelectedTracks.Count,
          _sharedDataModel.SelectedTrack?.Title ?? "null");
+    }
 
-        // Check for multi-selection on initialization
+    public void AttachSelectionTracking()
+    {
+        if (_isSelectionTrackingActive)
+        {
+            return;
+        }
+
+        _sharedDataModel.PropertyChanged += SharedDataModel_PropertyChanged!;
+        _sharedDataModel.SelectedTracksChanged += SelectedTracks_CollectionChanged!;
+        _isSelectionTrackingActive = true;
+        SyncSelectionState();
+    }
+
+    public void DetachSelectionTracking()
+    {
+        if (!_isSelectionTrackingActive)
+        {
+            return;
+        }
+
+        _selectionDebounceTimer?.Stop();
+        _sharedDataModel.PropertyChanged -= SharedDataModel_PropertyChanged!;
+        _sharedDataModel.SelectedTracksChanged -= SelectedTracks_CollectionChanged!;
+        _isSelectionTrackingActive = false;
+    }
+
+    private void SyncSelectionState()
+    {
         if (_sharedDataModel.SelectedTracks.Count > 1)
         {
             LoadMultipleTracksData(_sharedDataModel.SelectedTracks);
+            SortMetadataItems();
         }
         else if (_sharedDataModel.SelectedTrack != null)
         {
@@ -442,31 +468,11 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             _logger.LogError(ex, "Error loading lyrics from ATL track");
         }
 
-        OnPropertyChanged(nameof(AlbumCoverSource));
+        RefreshAlbumCoverBindings();
 
-        // Rating (special handling because ATL uses Popularity 0-255)
-        double currentRating = _atlTrack?.Popularity != null
-            ? Math.Round(_atlTrack.Popularity.Value * 5.0 / 255.0, 1)
-            : 0.0;
+        // NOTE: the "Rating" row is added by CoreMetadataLoader (single source). Do not add a
+        // duplicate here — the loader's UpdateAction writes the file tag and persists the rating.
 
-        TagItem ratingItem = new TagItem
-        {
-            Name = "Rating",
-            Value = currentRating.ToString("0.0"),
-            OriginalValue = currentRating.ToString("0.0"),
-            IsEditable = true,
-            UpdateAction = newValue =>
-            {
-                if (double.TryParse(newValue, out double r))
-                {
-                    double clamped = Math.Round(Math.Clamp(r, 0.0, 5.0), 1);
-                    _atlTrack!.Popularity = (float)(clamped * 255.0 / 5.0);
-                }
-            }
-        };
-
-        MetadataItems.Add(ratingItem);
-        ratingItem.PropertyChanged += TagItem_PropertyChanged!;
         IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
         musicLibrary.MarkLibraryDirty();
     }
@@ -547,66 +553,31 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         }
         catch (Exception ex) { _logger.LogError(ex, "Error loading lyrics (multiple ATL)"); }
 
-        OnPropertyChanged(nameof(AlbumCoverSource));
+        RefreshAlbumCoverBindings();
 
-        // Rating (special handling because ATL uses Popularity 0-255)
-        double currentRating = _atlTrack?.Popularity != null
-            ? Math.Round(_atlTrack.Popularity.Value * 5.0 / 255.0, 1)
-            : 0.0;
+        // NOTE: the "Rating" row is added by CoreMetadataLoader (single source). Do not add a
+        // duplicate here — the loader's UpdateAction writes the file tag and persists the rating.
 
-        TagItem ratingItem = new TagItem
-        {
-            Name = "Rating",
-            Value = currentRating.ToString("0.0"),
-            OriginalValue = currentRating.ToString("0.0"),
-            IsEditable = true,
-            UpdateAction = newValue =>
-            {
-                if (double.TryParse(newValue, out double r))
-                {
-                    double clamped = Math.Round(Math.Clamp(r, 0.0, 5.0), 1);
-                    _atlTrack!.Popularity = (float)(clamped * 255.0 / 5.0);
-                }
-            }
-        };
-
-        MetadataItems.Add(ratingItem);
-        ratingItem.PropertyChanged += TagItem_PropertyChanged!;
         IMusicLibrary musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
         musicLibrary.MarkLibraryDirty();
     }
 
-    public System.Windows.Media.Imaging.BitmapImage? AlbumCoverSource
-    {
-        get
-        {
-            if (_coversAreDifferent || (_cachedAlbumCover == null && IsMultipleSelection))
-            {
-                // Different covers or no cover in multi-selection - show reel.png
-                return LoadReelPlaceholder();
-            }
+    public BitmapImage? AlbumCoverSource => _cachedAlbumCover;
 
-            // Return cached cover (could be null for single file with no cover)
-            return _cachedAlbumCover ?? LoadReelPlaceholder();
-        }
-    }
+    public string AlbumCoverText =>
+        _coversAreDifferent
+            ? "[Various Covers]"
+            : _cachedAlbumCover == null
+                ? (IsMultipleSelection ? "[No Cover]" : "[No Image]")
+                : string.Empty;
 
-    private static BitmapImage? LoadReelPlaceholder()
+    public bool HasAlbumCover => _cachedAlbumCover != null;
+
+    private void RefreshAlbumCoverBindings()
     {
-        try
-        {
-            BitmapImage reelImage = new BitmapImage();
-            reelImage.BeginInit();
-            reelImage.UriSource = new Uri("pack://application:,,,/LinkerPlayer;component/Images/reel.png", UriKind.Absolute);
-            reelImage.CacheOption = BitmapCacheOption.OnLoad;
-            reelImage.EndInit();
-            reelImage.Freeze();
-            return reelImage;
-        }
-        catch (Exception)
-        {
-            return null;
-        }
+        OnPropertyChanged(nameof(AlbumCoverSource));
+        OnPropertyChanged(nameof(AlbumCoverText));
+        OnPropertyChanged(nameof(HasAlbumCover));
     }
 
     private static BitmapImage? LoadAlbumCoverFromPictureInfo(ATL.PictureInfo picture)
@@ -878,6 +849,8 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
 
         _disposed = true;
 
+        DetachSelectionTracking();
+
         // Stop and dispose debounce timer
         if (_selectionDebounceTimer != null)
         {
@@ -886,17 +859,11 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
             _selectionDebounceTimer = null;
         }
 
-        // Unsubscribe from events to prevent memory leaks
-        _sharedDataModel.PropertyChanged -= SharedDataModel_PropertyChanged!;
-        _sharedDataModel.SelectedTracksChanged -= SelectedTracks_CollectionChanged!;
-
         // Cancel any ongoing operations
         _bpmDetectionCts?.Cancel();
         _bpmDetectionCts?.Dispose();
         _replayGainCalculationCts?.Cancel();
         _replayGainCalculationCts?.Dispose();
-
-
 
         _logger.LogDebug("PropertiesViewModel disposed");
     }

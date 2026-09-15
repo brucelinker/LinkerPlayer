@@ -29,6 +29,36 @@ public partial class TrackInfo : INotifyPropertyChanged
     private readonly SharedDataModel _sharedDataModel;
     private const string NoAlbumCover = @"pack://application:,,,/LinkerPlayer;component/Images/reel.png";
 
+    private BitmapImage? _albumCoverSource;
+    public BitmapImage? AlbumCoverSource
+    {
+        get => _albumCoverSource;
+        private set
+        {
+            if (ReferenceEquals(_albumCoverSource, value))
+                return;
+
+            _albumCoverSource = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AlbumCoverSource)));
+        }
+    }
+
+    private string _albumCoverText = "[ No Selection ]";
+    public string AlbumCoverText
+    {
+        get => _albumCoverText;
+        private set
+        {
+            if (_albumCoverText == value)
+                return;
+
+            _albumCoverText = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AlbumCoverText)));
+        }
+    }
+
+    private MediaFile? _selectedMediaFile;
+
     // ── SelectedMediaFile ────────────────────────────────────────────────────
 
     public MediaFile? SelectedMediaFile
@@ -36,11 +66,15 @@ public partial class TrackInfo : INotifyPropertyChanged
         get => (MediaFile?)GetValue(SelectedMediaFileProperty);
         set
         {
-            MediaFile? old = SelectedMediaFile;
-            if (old != null) old.PropertyChanged -= OnSelectedMediaFilePropertyChanged;
+            MediaFile? old = _selectedMediaFile;
+            if (old != null)
+                old.PropertyChanged -= OnSelectedMediaFilePropertyChanged;
+
+            _selectedMediaFile = value;
             SetValue(SelectedMediaFileProperty, value);
-            if (value != null) value.PropertyChanged += OnSelectedMediaFilePropertyChanged;
-            RaiseHasAlbumCoverChanged();
+
+            if (value != null)
+                value.PropertyChanged += OnSelectedMediaFilePropertyChanged;
         }
     }
 
@@ -49,8 +83,17 @@ public partial class TrackInfo : INotifyPropertyChanged
 
     private void OnSelectedMediaFilePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(MediaFile.AlbumCover))
+        if (e.PropertyName != nameof(MediaFile.AlbumCover) || sender is not MediaFile mediaFile)
+            return;
+
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (!ReferenceEquals(mediaFile, _selectedMediaFile))
+                return;
+
+            UpdateAlbumCoverDisplay(mediaFile);
             RaiseHasAlbumCoverChanged();
+        });
     }
 
     // ── IsLibraryMode ────────────────────────────────────────────────────────
@@ -67,7 +110,7 @@ public partial class TrackInfo : INotifyPropertyChanged
     // ── HasAlbumCover — drives context menu IsEnabled ────────────────────────
 
     /// <summary>True when the currently displayed track has a real (non-default) album cover.</summary>
-    public bool HasAlbumCover => SelectedMediaFile?.AlbumCover != null && !ReferenceEquals(SelectedMediaFile.AlbumCover, _defaultImage);
+    public bool HasAlbumCover => _selectedMediaFile?.AlbumCover != null && !ReferenceEquals(_selectedMediaFile.AlbumCover, _defaultImage);
 
     private void RaiseHasAlbumCoverChanged() =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasAlbumCover)));
@@ -91,6 +134,28 @@ public partial class TrackInfo : INotifyPropertyChanged
             App.AppHost.Services.GetRequiredService<ILogger<TrackInfo>>().LogError(ex, "Failed to load default album image");
             return new BitmapImage();
         }
+    }
+
+    private void UpdateAlbumCoverDisplay(MediaFile? mediaFile)
+    {
+        if (mediaFile == null)
+        {
+            AlbumCoverSource = GetDefaultAlbumImage();
+            AlbumCoverText = "[ No Selection ]";
+            return;
+        }
+
+        if (mediaFile.AlbumCover != null)
+        {
+            AlbumCoverSource = mediaFile.AlbumCover;
+            AlbumCoverText = string.Empty;
+            return;
+        }
+
+        AlbumCoverSource = GetDefaultAlbumImage();
+        AlbumCoverText = mediaFile.UnsupportedCoverFormat != null
+            ? $"[{mediaFile.UnsupportedCoverFormat} — Not Supported]"
+            : "[No Image]";
     }
 
     private MediaFile? _lastDisplayedTrack;
@@ -207,48 +272,17 @@ public partial class TrackInfo : INotifyPropertyChanged
                 });
             }
 
-            bool isInvalidImage = mediaFile.AlbumCover == null;
-            if (mediaFile.AlbumCover is BitmapImage bitmap && !bitmap.IsDownloading)
+            if (ReferenceEquals(SelectedMediaFile, mediaFile))
             {
-                try
-                { _ = bitmap.PixelWidth; isInvalidImage = bitmap.PixelWidth == 0 || bitmap.PixelHeight == 0; }
-                catch (System.Exception ex) { _logger.LogWarning(ex, "Invalid BitmapImage detected for {MediaFileTitle}", mediaFile.Title); isInvalidImage = true; }
+                UpdateAlbumCoverDisplay(mediaFile);
+                RaiseHasAlbumCoverChanged();
             }
-
-            if (isInvalidImage)
-            {
-                // Do NOT write the default image back into AlbumCover — keep it null so HasAlbumCover stays false.
-                if (FindName("TrackImageText") is TextBlock trackImageText)
-                {
-                    trackImageText.Text = mediaFile.UnsupportedCoverFormat != null
-                        ? $"[{mediaFile.UnsupportedCoverFormat} — Not Supported]"
-                        : "[No Image]";
-                }
-            }
-            else if (FindName("TrackImageText") is TextBlock okText)
-            {
-                okText.Text = string.Empty;
-            }
-
-            if (FindName("TrackImage") is Image trackImage)
-            {
-                trackImage.Source = mediaFile.AlbumCover ?? GetDefaultAlbumImage();
-            }
-
-            RaiseHasAlbumCoverChanged();
         }
         else
         {
             SelectedMediaFile = null;
-            if (FindName("TrackImage") is Image trackImage)
-            {
-                trackImage.Source = GetDefaultAlbumImage();
-            }
-
-            if (FindName("TrackImageText") is TextBlock trackImageText)
-            {
-                trackImageText.Text = "[ No Selection ]";
-            }
+            UpdateAlbumCoverDisplay(null);
+            RaiseHasAlbumCoverChanged();
         }
     }
 
@@ -427,12 +461,7 @@ public partial class TrackInfo : INotifyPropertyChanged
         // Refresh the display for the currently shown track immediately.
         if (SelectedMediaFile != null && selection.Contains(SelectedMediaFile))
         {
-            if (FindName("TrackImage") is Image trackImage)
-                trackImage.Source = bitmap ?? GetDefaultAlbumImage();
-
-            if (FindName("TrackImageText") is TextBlock trackImageText)
-                trackImageText.Text = bitmap == null ? "[No Image]" : string.Empty;
-
+            UpdateAlbumCoverDisplay(SelectedMediaFile);
             RaiseHasAlbumCoverChanged();
         }
 

@@ -24,22 +24,42 @@
       <converters:DurationConverter x:Key="DurationConverter" />
       <converters:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
       <converters:ActiveTrackStateToVisibilityConverter x:Key="ActiveTrackStateToVisibilityConverter" />
-      <converters:IndexConverter x:Key="IndexConverter" />
       <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
       <converters:ZeroToEmptyConverter x:Key="ZeroToEmptyConverter" />
       <converters:StringEqualityToVisibilityConverter x:Key="StringEqualityToVisibilityConverter" />
       <!--  Album-cover indicator column cell template (Library only)  -->
+      <!--  Lightweight: a ToolTip replaces the per-row Popup so no popup visual tree is  -->
+      <!--  realized per row during scroll; the cover still loads lazily on hover.  -->
       <DataTemplate x:Key="AlbumCoverCellTemplate">
-        <iconPacks:PackIconMaterial
-          Width="12"
-          Height="12"
+        <Border
+          x:Name="AlbumCoverBorder"
+          Width="24"
+          Height="24"
           HorizontalAlignment="Center"
           VerticalAlignment="Center"
-          Foreground="{StaticResource TrackListItemForegroundBrush}"
-          Kind="ImageOutline"
-          Opacity="0.75"
-          ToolTip="Has album cover"
-          Visibility="{Binding HasEmbeddedCover, Converter={StaticResource BooleanToVisibilityConverter}}" />
+          Background="Transparent"
+          MouseEnter="AlbumCoverHover_MouseEnter">
+          <Border.ToolTip>
+            <ToolTip x:Name="AlbumCoverToolTip">
+              <Border
+                Width="240"
+                Height="240"
+                Background="White"
+                BorderBrush="Gray"
+                BorderThickness="1">
+                <Image Source="{Binding AlbumCover}" Stretch="Uniform" />
+              </Border>
+            </ToolTip>
+          </Border.ToolTip>
+          <iconPacks:PackIconMaterial
+            Width="12"
+            Height="12"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Foreground="{StaticResource TrackListItemForegroundBrush}"
+            Kind="ImageOutline"
+            Visibility="{Binding HasEmbeddedCover, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        </Border>
       </DataTemplate>
 
       <DataTemplate x:Key="PlayPauseCellTemplate">
@@ -66,7 +86,7 @@
             <iconPacks:PackIconFontAwesome.Visibility>
               <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Playing}">
                 <Binding Path="Id" />
-                <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                <Binding Path="DataContext.ActiveTrackId" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                 <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
               </MultiBinding>
             </iconPacks:PackIconFontAwesome.Visibility>
@@ -120,7 +140,7 @@
             <iconPacks:PackIconMaterial.Visibility>
               <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Paused}">
                 <Binding Path="Id" />
-                <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                <Binding Path="DataContext.ActiveTrackId" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                 <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
               </MultiBinding>
             </iconPacks:PackIconMaterial.Visibility>
@@ -133,6 +153,45 @@
         <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
         <Setter Property="BorderThickness" Value="2" />
         <Setter Property="Margin" Value="0" />
+      </Style>
+
+      <Style TargetType="{x:Type userControls:CachingTabControl}">
+        <Setter Property="Background" Value="{DynamicResource PlaylistTabBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="{x:Type userControls:CachingTabControl}">
+              <Grid
+                Background="{TemplateBinding Background}"
+                ClipToBounds="True"
+                KeyboardNavigation.TabNavigation="Local"
+                SnapsToDevicePixels="True">
+                <Grid.RowDefinitions>
+                  <RowDefinition Height="Auto" />
+                  <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TabPanel
+                  x:Name="HeaderPanel"
+                  Grid.Row="0"
+                  Margin="0,0,4,-1"
+                  Panel.ZIndex="1"
+                  IsItemsHost="True"
+                  KeyboardNavigation.TabIndex="1" />
+                <Border
+                  Grid.Row="1"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  KeyboardNavigation.DirectionalNavigation="Contained"
+                  KeyboardNavigation.TabIndex="2"
+                  KeyboardNavigation.TabNavigation="Local">
+                  <Grid x:Name="PART_SelectedContentHost" />
+                </Border>
+              </Grid>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
       </Style>
 
       <Style TargetType="TabItem">
@@ -256,30 +315,6 @@
                 </Style>
               </iconPacks:PackIconMaterial.Style>
             </iconPacks:PackIconMaterial>
-            <!-- Speaker icon for Library tab when it's the active playback source -->
-            <iconPacks:PackIconMaterial
-              Margin="6,0,0,0"
-              VerticalAlignment="Center"
-              FontSize="14"
-              Foreground="{DynamicResource PlaylistTabForegroundBrush}"
-              Kind="Speaker"
-              Opacity="0.8">
-              <iconPacks:PackIconMaterial.Visibility>
-                <MultiBinding Converter="{StaticResource StringEqualityToVisibilityConverter}">
-                  <Binding Path="DataContext.ActiveTabName" RelativeSource="{RelativeSource AncestorType=UserControl}" />
-                  <Binding Source="Music Library" />
-                </MultiBinding>
-              </iconPacks:PackIconMaterial.Visibility>
-              <iconPacks:PackIconMaterial.Style>
-                <Style TargetType="iconPacks:PackIconMaterial">
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
-                      <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </iconPacks:PackIconMaterial.Style>
-            </iconPacks:PackIconMaterial>
             <TextBlock VerticalAlignment="Center" FontSize="{DynamicResource FontSizeNormal}">
               <Run Text="{Binding Name, Mode=OneWay}" />
               <Run Text=" (" />
@@ -296,6 +331,30 @@
                 </Style>
               </TextBlock.Style>
             </TextBlock>
+
+            <!--  Speaker icon for Library tab when it's the active playback source  -->
+            <iconPacks:PackIconMaterial
+              Margin="0,0,0,0"
+              VerticalAlignment="Center"
+              FontSize="14"
+              Foreground="{DynamicResource PlaylistTabForegroundBrush}"
+              Kind="VolumeHigh">
+              <iconPacks:PackIconMaterial.Visibility>
+                <MultiBinding Converter="{StaticResource StringEqualityToVisibilityConverter}">
+                  <Binding Path="DataContext.ActiveTabName" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                  <Binding Source="Music Library" />
+                </MultiBinding>
+              </iconPacks:PackIconMaterial.Visibility>
+              <iconPacks:PackIconMaterial.Style>
+                <Style TargetType="iconPacks:PackIconMaterial">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                      <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </iconPacks:PackIconMaterial.Style>
+            </iconPacks:PackIconMaterial>
           </StackPanel>
         </Grid>
       </DataTemplate>
@@ -338,32 +397,8 @@
               <Binding Mode="TwoWay" Path="Name" />
             </userControls:EditableTabHeaderControl.Content>
           </userControls:EditableTabHeaderControl>
-          <!-- Speaker icon shows this tab is the active playback source -->
-          <iconPacks:PackIconMaterial
-            Margin="6,0,0,0"
-            VerticalAlignment="Center"
-            FontSize="14"
-            Foreground="{DynamicResource PlaylistTabForegroundBrush}"
-            Kind="Speaker"
-            Opacity="0.8">
-            <iconPacks:PackIconMaterial.Visibility>
-              <MultiBinding Converter="{StaticResource StringEqualityToVisibilityConverter}">
-                <Binding Path="DataContext.ActiveTabName" RelativeSource="{RelativeSource AncestorType=UserControl}" />
-                <Binding Path="Name" />
-              </MultiBinding>
-            </iconPacks:PackIconMaterial.Visibility>
-            <iconPacks:PackIconMaterial.Style>
-              <Style TargetType="iconPacks:PackIconMaterial">
-                <Style.Triggers>
-                  <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
-                  </DataTrigger>
-                </Style.Triggers>
-              </Style>
-            </iconPacks:PackIconMaterial.Style>
-          </iconPacks:PackIconMaterial>
           <TextBlock
-            Margin="4,0,0,0"
+            Margin="0,0,0,0"
             VerticalAlignment="Center"
             FontSize="{DynamicResource FontSizeNormal}">
             <Run Text=" (" />
@@ -380,6 +415,30 @@
               </Style>
             </TextBlock.Style>
           </TextBlock>
+          <!--  Speaker icon shows this tab is the active playback source  -->
+          <iconPacks:PackIconMaterial
+            Margin="6,0,0,0"
+            VerticalAlignment="Center"
+            FontSize="14"
+            Foreground="{DynamicResource PlaylistTabForegroundBrush}"
+            Kind="VolumeHigh">
+            <iconPacks:PackIconMaterial.Visibility>
+              <MultiBinding Converter="{StaticResource StringEqualityToVisibilityConverter}">
+                <Binding Path="DataContext.ActiveTabName" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                <Binding Path="Name" />
+              </MultiBinding>
+            </iconPacks:PackIconMaterial.Visibility>
+            <iconPacks:PackIconMaterial.Style>
+              <Style TargetType="iconPacks:PackIconMaterial">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=TabItem}, Path=IsSelected}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource PlaylistTabSelectedForegroundBrush}" />
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </iconPacks:PackIconMaterial.Style>
+          </iconPacks:PackIconMaterial>
+
         </StackPanel>
       </DataTemplate>
 
@@ -585,10 +644,11 @@
             IsSynchronizedWithCurrentItem="False"
             ItemsSource="{Binding TracksView.View}"
             Loaded="DataGrid_Loaded"
+            LoadingRow="DataGrid_LoadingRow"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             PreviewMouseLeftButtonDown="MusicLibraryDataGrid_PreviewMouseLeftButtonDown"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
-            RowHeaderWidth="0"
+            RowHeaderWidth="34"
             RowHeight="20"
             RowStyle="{StaticResource PlaylistDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
@@ -600,7 +660,7 @@
             SelectionUnit="FullRow"
             Sorting="MusicLibraryDataGrid_Sorting"
             Style="{StaticResource SharedDataGridStyle}"
-            ToolTipService.IsEnabled="False"
+            ToolTipService.IsEnabled="True"
             VerticalScrollBarVisibility="Visible"
             VirtualizingPanel.CacheLength="1"
             VirtualizingPanel.CacheLengthUnit="Page"
@@ -717,9 +777,10 @@
             IsSynchronizedWithCurrentItem="False"
             ItemsSource="{Binding Tracks}"
             Loaded="DataGrid_Loaded"
+            LoadingRow="DataGrid_LoadingRow"
             MouseDoubleClick="PlaylistRow_MouseDoubleClick"
             PreviewMouseRightButtonDown="DataGrid_PreviewMouseRightButtonDown"
-            RowHeaderWidth="0"
+            RowHeaderWidth="34"
             RowHeight="20"
             RowStyle="{StaticResource PlaylistDataGridRowStyle}"
             ScrollViewer.CanContentScroll="True"
@@ -731,7 +792,7 @@
             SelectionMode="Extended"
             SelectionUnit="FullRow"
             Style="{StaticResource SharedDataGridStyle}"
-            ToolTipService.IsEnabled="False"
+            ToolTipService.IsEnabled="True"
             VerticalScrollBarVisibility="Visible"
             VirtualizingPanel.CacheLength="1"
             VirtualizingPanel.CacheLengthUnit="Page"
@@ -757,23 +818,6 @@
             </b:Interaction.Triggers>
 
             <DataGrid.Columns>
-              <DataGridTextColumn
-                Width="40"
-                Header="#"
-                IsReadOnly="True">
-                <DataGridTextColumn.Binding>
-                  <MultiBinding Converter="{StaticResource IndexConverter}">
-                    <Binding RelativeSource="{RelativeSource Mode=FindAncestor, AncestorType=DataGrid}" />
-                    <Binding />
-                  </MultiBinding>
-                </DataGridTextColumn.Binding>
-                <DataGridTextColumn.ElementStyle>
-                  <Style TargetType="TextBlock">
-                    <Setter Property="TextAlignment" Value="Right" />
-                  </Style>
-                </DataGridTextColumn.ElementStyle>
-              </DataGridTextColumn>
-
               <DataGridTemplateColumn
                 Width="40"
                 MinWidth="{DynamicResource TrackTableImageSize}"
@@ -793,7 +837,7 @@
                         <iconPacks:PackIconFontAwesome.Visibility>
                           <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Playing}">
                             <Binding Path="Id" />
-                            <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                            <Binding Path="DataContext.ActiveTrackId" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                             <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                           </MultiBinding>
                         </iconPacks:PackIconFontAwesome.Visibility>
@@ -810,7 +854,7 @@
                         <iconPacks:PackIconMaterial.Visibility>
                           <MultiBinding Converter="{StaticResource ActiveTrackStateToVisibilityConverter}" ConverterParameter="{x:Static managedBass:PlaybackState.Paused}">
                             <Binding Path="Id" />
-                            <Binding Path="DataContext.ActiveTrack.Id" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                            <Binding Path="DataContext.ActiveTrackId" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                             <Binding Path="DataContext.State" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                           </MultiBinding>
                         </iconPacks:PackIconMaterial.Visibility>
@@ -846,7 +890,7 @@
                       Margin="5,0,5,0"
                       d:DataContext="{d:DesignData IMediaFile}"
                       Text="{Binding Title, Mode=OneWay}"
-                      ToolTip="{Binding Title}" />
+                      ToolTip="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
@@ -930,8 +974,8 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <TabControl
-      Name="Tabs123"
+    <userControls:CachingTabControl
+      x:Name="Tabs123"
       Grid.Row="0"
       Margin="0"
       Padding="0"
@@ -942,20 +986,20 @@
       ItemContainerStyle="{StaticResource TabItemContainerStyle}"
       ItemsSource="{Binding TabList}"
       SelectedIndex="{Binding SelectedTabIndex}">
-      <TabControl.ContentTemplateSelector>
+      <userControls:CachingTabControl.ContentTemplateSelector>
         <StaticResource ResourceKey="TabContentTemplateSelector" />
-      </TabControl.ContentTemplateSelector>
-      <TabControl.Tag>
+      </userControls:CachingTabControl.ContentTemplateSelector>
+      <userControls:CachingTabControl.Tag>
         <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=UserControl}" />
-      </TabControl.Tag>
-      <TabControl.ContextMenu>
+      </userControls:CachingTabControl.Tag>
+      <userControls:CachingTabControl.ContextMenu>
         <ContextMenu>
           <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist" />
           <MenuItem Command="{Binding PlacementTarget.Tag.NewPlaylistFromFolderCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="New Playlist From Folder" />
           <MenuItem Command="{Binding PlacementTarget.Tag.LoadPlaylistCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Load Playlist" />
         </ContextMenu>
-      </TabControl.ContextMenu>
-    </TabControl>
+      </userControls:CachingTabControl.ContextMenu>
+    </userControls:CachingTabControl>
   </Grid>
 
 </UserControl>

@@ -1,3 +1,4 @@
+using LinkerPlayer.Interop;
 using LinkerPlayer.Models;
 using LinkerPlayer.ViewModels;
 using System.Windows;
@@ -16,8 +17,27 @@ public partial class PropertiesWindow
     {
         InitializeComponent();
 
-        ((App)Application.Current).WindowPlace.Register(this, "PropertiesWindow");
+        OwnedWindowHelper.RegisterPlacement(this, "PropertiesWindow");
+
         this.Loaded += PropertiesWindow_Loaded;
+        this.IsVisibleChanged += PropertiesWindow_IsVisibleChanged;
+    }
+
+    private void PropertiesWindow_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (DataContext is not PropertiesViewModel vm)
+        {
+            return;
+        }
+
+        if (IsVisible)
+        {
+            vm.AttachSelectionTracking();
+        }
+        else
+        {
+            vm.DetachSelectionTracking();
+        }
     }
 
     private void PropertiesWindow_Loaded(object sender, RoutedEventArgs e)
@@ -25,6 +45,7 @@ public partial class PropertiesWindow
         if (DataContext is PropertiesViewModel vm)
         {
             vm.CloseRequested += PropertiesViewModel_CloseRequested;
+            vm.AttachSelectionTracking();
         }
     }
 
@@ -34,6 +55,7 @@ public partial class PropertiesWindow
         if (DataContext is PropertiesViewModel vm)
         {
             vm.CloseRequested -= PropertiesViewModel_CloseRequested;
+            vm.DetachSelectionTracking();
             // Do not call vm.Dispose() for singleton VM; host will dispose at shutdown
         }
 
@@ -73,8 +95,19 @@ public partial class PropertiesWindow
 
     private void MetadataDataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
     {
+        if (e.Row.Item is not TagItem tagItem)
+            return;
+
         // Cancel edit if the row is not editable (e.g., custom tags with angle brackets)
-        if (e.Row.Item is TagItem tagItem && !tagItem.IsEditable)
+        if (!tagItem.IsEditable)
+        {
+            e.Cancel = true;
+            return;
+        }
+
+        // The Rating row uses the in-cell editable StarRatingControl as its editor, so
+        // suppress the DataGrid's own TextBox editing template for that row.
+        if (tagItem.Name == "Rating")
         {
             e.Cancel = true;
         }

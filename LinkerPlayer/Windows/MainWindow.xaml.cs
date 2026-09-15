@@ -47,7 +47,8 @@ public partial class MainWindow : Window
             _importCancellationService = serviceProvider.GetRequiredService<IImportCancellationService>();
             DataContext = _mainViewModel;
 
-            ((App)Application.Current).WindowPlace.Register(this, "MainWindow");
+            OwnedWindowHelper.RegisterPlacement(this, "MainWindow");
+
             SourceInitialized += MainWindow_SourceInitialized;
 
             // Track monitor changes to persist which display MainWindow is on

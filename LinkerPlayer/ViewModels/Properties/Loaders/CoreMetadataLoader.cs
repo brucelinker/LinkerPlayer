@@ -1,5 +1,6 @@
 using ATL;
 using LinkerPlayer.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
 
@@ -30,7 +31,7 @@ public class CoreMetadataLoader : IAtlMetadataLoader
             return;
         }
 
-        _logger.LogInformation("CoreMetadataLoader.Load: Starting with {Count} items in collection", targetCollection.Count);
+        //_logger.LogInformation("CoreMetadataLoader.Load: Starting with {Count} items in collection", targetCollection.Count);
 
         // Title
         AddMetadataItem(targetCollection, "Title", track.Title ?? "", true, v =>
@@ -155,20 +156,73 @@ public class CoreMetadataLoader : IAtlMetadataLoader
             });
         }
 
-        // Rating (0–5 stars, mapped from ATL Popularity 0–255)
-        double rawPop = (double)(track.Popularity ?? 0f);
-        double ratingStars = rawPop > 0 ? Math.Round(rawPop * 5.0 / 255.0, 1) : 0.0;
+        // Rating (0–5 stars). Popularity↔stars scaling is format-dependent (Vorbis 0–1,
+        // ID3v2 0–255); use the shared helper so it round-trips with the library's read path.
+        // For Vorbis the fractional rating lives in the RATING additional field (Popularity
+        // is rounded by ATL), so mirror the read preference from MediaFile.UpdateFromFileMetadata.
+        double scale = Models.MediaFileHelper.RatingScaleForPath(track.Path);
+        double ratingStars = 0.0;
+        if (scale <= 1.0 && track.AdditionalFields != null
+            && track.AdditionalFields.TryGetValue("RATING", out string? ratingStr)
+            && double.TryParse(ratingStr, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double ratingRaw) && ratingRaw > 0)
+        {
+            double normalized = ratingRaw <= 1.0 ? ratingRaw : ratingRaw / 100.0;
+            ratingStars = Math.Round(Math.Clamp(normalized * 5.0, 0.0, 5.0), 1);
+        }
+        else
+        {
+            double rawPop = (double)(track.Popularity ?? 0f);
+            ratingStars = rawPop > 0 ? Models.MediaFileHelper.PopularityToStars((float)rawPop, track.Path) : 0.0;
+        }
         AddMetadataItem(targetCollection, "Rating", ratingStars > 0 ? ratingStars.ToString("0.0") : "", true, v =>
         {
+            double stars = 0.0;
             if (double.TryParse(v, System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture, out double stars))
+                System.Globalization.CultureInfo.InvariantCulture, out double parsed))
             {
-                stars = Math.Clamp(Math.Round(stars, 1), 0.0, 5.0);
-                track.Popularity = (float)Math.Round(stars * 255.0 / 5.0, 1);
+                stars = Math.Clamp(Math.Round(parsed, 1), 0.0, 5.0);
             }
-            else
+
+            // Use Popularity field for all writes (ATL's AdditionalFields don't persist for Vorbis).
+            // MediaFileHelper.StarsToPopularity handles format-specific scaling.
+            track.Popularity = Models.MediaFileHelper.StarsToPopularity(stars, track.Path);
+
+            PersistRatingToLibrary(track.Path, stars);
+        });
+    }
+
+    /// <summary>
+    /// Persists a rating to the in-memory <see cref="MediaFile"/> (which the Library DataGrid
+    /// binds to) and the database, raising PropertyChanged so the grid reflects it immediately.
+    /// The file tag itself is written by the caller's ATL save path. Resolved by file path so it
+    /// works for both single- and multi-selection without changing loader signatures.
+    /// </summary>
+    private static void PersistRatingToLibrary(string? path, double rating)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        Core.IMusicLibrary? library = App.AppHost?.Services?.GetService<Core.IMusicLibrary>();
+        if (library == null)
+            return;
+
+        MediaFile? mediaFile = library.MainLibrary.FirstOrDefault(t =>
+            string.Equals(t.Path, path, StringComparison.OrdinalIgnoreCase));
+        if (mediaFile == null)
+            return;
+
+        string trackId = mediaFile.Id;
+        _ = Task.Run(async () =>
+        {
+            try
             {
-                track.Popularity = 0f;
+                await library.UpdateRatingAsync(trackId, rating).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                App.AppHost?.Services?.GetService<ILogger<CoreMetadataLoader>>()
+                    ?.LogError(ex, "Failed to persist rating {Rating} for {Path}", rating, path);
             }
         });
     }
@@ -305,16 +359,15 @@ public class CoreMetadataLoader : IAtlMetadataLoader
                     track.Publisher = string.IsNullOrEmpty(value) ? null : value;
                     break;
                 case "Rating":
+                    double ratingStars = 0.0;
                     if (double.TryParse(value, System.Globalization.NumberStyles.Any,
-                        System.Globalization.CultureInfo.InvariantCulture, out double stars))
+                        System.Globalization.CultureInfo.InvariantCulture, out double parsed))
                     {
-                        stars = Math.Clamp(Math.Round(stars, 1), 0.0, 5.0);
-                        track.Popularity = (float)Math.Round(stars * 255.0 / 5.0, 1);
+                        ratingStars = Math.Clamp(Math.Round(parsed, 1), 0.0, 5.0);
                     }
-                    else
-                    {
-                        track.Popularity = 0f;
-                    }
+                    // Use the helper to get correct format-specific scaling (0-1 for Vorbis, 0-255 for ID3v2)
+                    track.Popularity = Models.MediaFileHelper.StarsToPopularity(ratingStars, track.Path);
+                    PersistRatingToLibrary(track.Path, ratingStars);
                     break;
             }
         }

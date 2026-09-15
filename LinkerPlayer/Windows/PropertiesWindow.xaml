@@ -238,7 +238,16 @@
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <Grid>
+                        <!--  Plain value text - hidden on the Rating row (star control shows there)  -->
                         <TextBlock Text="{Binding Value}" Visibility="{Binding Name, Converter={StaticResource BpmRowVisibilityConverter}}" />
+
+                        <!--  Rating star control (editable) - only on the "Rating" row. Two-way binding  -->
+                        <!--  writes back to TagItem.Value; ApplyChanges persists via the loader.  -->
+                        <userControls:StarRatingControl
+                          VerticalAlignment="Center"
+                          IsReadOnly="False"
+                          Rating="{Binding Value, Converter={StaticResource RatingStringToDoubleConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                          Visibility="{Binding Name, Converter={StaticResource InverseRatingRowVisibilityConverter}}" />
 
                         <!--  BPM Detection UI - only visible for "Beats Per Minute" row  -->
                         <Grid Visibility="{Binding Name, Converter={StaticResource InverseBpmRowVisibilityConverter}}">
@@ -318,13 +327,6 @@
                             FontSize="10"
                             Visibility="{Binding DataContext.IsBpmDetecting, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </Grid>
-
-                        <!--  Rating star control - only visible for "Rating" row  -->
-                        <userControls:StarRatingControl
-                          VerticalAlignment="Center"
-                          IsReadOnly="True"
-                          Rating="{Binding Value, Converter={StaticResource RatingStringToDoubleConverter}}"
-                          Visibility="{Binding Name, Converter={StaticResource InverseRatingRowVisibilityConverter}}" />
                       </Grid>
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
@@ -678,14 +680,29 @@
               <!--  Album cover image  -->
               <Border
                 Grid.Column="1"
+                Width="180"
+                Height="180"
                 Margin="0,0,0,0"
                 HorizontalAlignment="Center"
-                VerticalAlignment="Top">
-                <Image
-                  Width="180"
-                  Height="180"
-                  Source="{Binding AlbumCoverSource}"
-                  Stretch="Uniform" />
+                VerticalAlignment="Top"
+                Background="{DynamicResource TrackListItemBackgroundAlt1Brush}"
+                BorderBrush="{DynamicResource TrackListItemBackgroundAlt1Brush}"
+                BorderThickness="1">
+                <Grid>
+                  <Image
+                    Source="{Binding AlbumCoverSource}"
+                    Stretch="Uniform"
+                    Visibility="{Binding HasAlbumCover, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                  <TextBlock
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontSize="16"
+                    Foreground="{DynamicResource TitleBarForegroundBrush}"
+                    Text="{Binding AlbumCoverText}"
+                    TextAlignment="Center"
+                    TextWrapping="Wrap"
+                    Visibility="{Binding HasAlbumCover, Converter={StaticResource InvertedBooleanToVisibilityConverter}}" />
+                </Grid>
               </Border>
             </Grid>
 

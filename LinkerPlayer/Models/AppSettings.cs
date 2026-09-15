@@ -58,8 +58,9 @@ public class AppSettings
     public List<string> LastLibrarySelectedCodecs { get; set; } = new();
 
     // Library column sort state
-    public string LibrarySortColumn { get; set; } = string.Empty;      // SortMemberPath of the sorted column
-    public string LibrarySortDirection { get; set; } = string.Empty;   // "Ascending" | "Descending"
+    public string LibrarySortColumn { get; set; } = string.Empty;      // Backward-compat primary SortMemberPath
+    public string LibrarySortDirection { get; set; } = string.Empty;   // Backward-compat primary direction: "Ascending" | "Descending"
+    public List<SortDescriptionState> LibrarySortDescriptions { get; set; } = new();
 
     // Library query/filter state
     public string LastLibraryKeywordSearch { get; set; } = string.Empty;
@@ -121,10 +122,17 @@ public class AppSettings
         public bool IsEnabled { get; set; } = true;
     }
 
-    /// <summary>Serializable sort state for a single playlist's DataGrid.</summary>
-    public class PlaylistSortState
+    public class SortDescriptionState
     {
         public string SortColumn { get; set; } = string.Empty;    // SortMemberPath
         public string SortDirection { get; set; } = string.Empty; // "Ascending" | "Descending"
+    }
+
+    /// <summary>Serializable sort state for a single playlist's DataGrid.</summary>
+    public class PlaylistSortState
+    {
+        public string SortColumn { get; set; } = string.Empty;    // Backward-compat primary SortMemberPath
+        public string SortDirection { get; set; } = string.Empty; // Backward-compat primary direction: "Ascending" | "Descending"
+        public List<SortDescriptionState> SortDescriptions { get; set; } = new();
     }
 }

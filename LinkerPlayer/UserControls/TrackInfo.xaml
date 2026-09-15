@@ -15,7 +15,6 @@
 
   <UserControl.Resources>
     <BitmapImage x:Key="DefaultAlbumImage" UriSource="pack://application:,,,/LinkerPlayer;component/Images/reel.png" />
-    <converters:NullToTextConverter x:Key="NullToTextConverter" />
   </UserControl.Resources>
   <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
     <Grid.RowDefinitions>
@@ -77,7 +76,7 @@
           AllowDrop="True"
           DragOver="CoverGrid_DragOver"
           Drop="CoverGrid_Drop"
-          Source="{Binding SelectedMediaFile.AlbumCover, FallbackValue={StaticResource DefaultAlbumImage}}">
+          Source="{Binding AlbumCoverSource}">
           <Image.Style>
             <Style TargetType="Image">
               <Setter Property="Opacity" Value="1" />
@@ -92,7 +91,7 @@
           Panel.ZIndex="1"
           FontSize="20"
           Foreground="White"
-          Text="{Binding SelectedMediaFile.AlbumCover, Converter={StaticResource NullToTextConverter}, ConverterParameter='[No Image]'}" />
+          Text="{Binding AlbumCoverText}" />
       </Grid>
     </Grid>
 

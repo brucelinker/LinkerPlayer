@@ -18,7 +18,7 @@
       Padding="4,2"
       FontFamily="Consolas, Courier New"
       FontSize="11"
-      Foreground="{DynamicResource TrackListSelectedItemBackgroundBrush}"
+      Foreground="{DynamicResource TrackListSelectedItemForegroundBrush}"
       Text="{Binding Label, RelativeSource={RelativeSource AncestorType=UserControl}}"
       TextWrapping="NoWrap" />
 

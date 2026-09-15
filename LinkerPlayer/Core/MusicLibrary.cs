@@ -70,6 +70,11 @@ public class MusicLibrary : IMusicLibrary
     private readonly object _playlistsLock = new();
     private readonly object _batchAddLock = new();  // Serialize batch UI adds to prevent overlapping CollectionChanged events
 
+    // Serializes SaveToDatabaseAsync. Rating edits (OnRatingChanged) and other writes run
+    // concurrently on thread-pool tasks; without this gate two saves interleave the
+    // PlaylistTracks delete/re-add and hit UNIQUE(PlaylistId, TrackId).
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
+
     private readonly DispatcherTimer _autoSaveTimer = new()
     {
         Interval = TimeSpan.FromSeconds(8)
@@ -569,7 +574,9 @@ public class MusicLibrary : IMusicLibrary
                 List<(string Id, string ReplayGain)> batch = updateList.GetRange(i, Math.Min(dbBatchSize, updateList.Count - i));
                 foreach ((string id, string replayGain) in batch)
                     context.Database.ExecuteSqlRaw(
-                        "UPDATE Tracks SET ReplayGain = @replayGain WHERE Id = @id", replayGain, id);
+                        "UPDATE Tracks SET ReplayGain = @replayGain WHERE Id = @id",
+                        new Microsoft.Data.Sqlite.SqliteParameter("@replayGain", replayGain),
+                        new Microsoft.Data.Sqlite.SqliteParameter("@id", id));
             }
         }
         catch (Exception ex)
@@ -628,6 +635,19 @@ public class MusicLibrary : IMusicLibrary
     }
 
     public async Task SaveToDatabaseAsync()
+    {
+        await _saveGate.WaitAsync();
+        try
+        {
+            await SaveToDatabaseCoreAsync();
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
+    }
+
+    private async Task SaveToDatabaseCoreAsync()
     {
         await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
         try
@@ -1226,6 +1246,11 @@ public class MusicLibrary : IMusicLibrary
                     existing.Codec = incoming.Codec;
                     existing.ReplayGain = incoming.ReplayGain;
 
+                    // Rating is file-authoritative metadata like the rest. A re-read/copy that
+                    // resolved the tag (including an external change, or a cleared rating) is
+                    // synced to the DB verbatim. Explicit user clears go through UpdateRatingAsync.
+                    existing.Rating = incoming.Rating;
+
                     existing.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                     existing.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;
                     existing.HasEmbeddedCover = incoming.HasEmbeddedCover;
@@ -1278,6 +1303,7 @@ public class MusicLibrary : IMusicLibrary
                         inMemory.Channels = incoming.Channels;
                         inMemory.Codec = incoming.Codec;
                         inMemory.ReplayGain = incoming.ReplayGain;
+                        inMemory.Rating = incoming.Rating;
 
                         inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
                         inMemory.LastMetadataRefreshUtc = incoming.LastMetadataRefreshUtc;

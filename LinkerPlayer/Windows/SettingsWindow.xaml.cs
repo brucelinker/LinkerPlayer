@@ -78,7 +78,7 @@ public partial class SettingsWindow
             try
             {
                 InitializeComponent();
-                ((App)Application.Current).WindowPlace.Register(this, "SettingsWindow");
+                OwnedWindowHelper.RegisterPlacement(this, "SettingsWindow");
             }
             catch (Exception ex)
             {

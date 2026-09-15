@@ -644,6 +644,22 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
             }
 
             MediaFile committedTrack = _pendingCrossfadeTrack;
+            string committedPlaylistName = _pendingCrossfadePlaylistName ?? PlaybackCursor?.PlaylistName ?? string.Empty;
+            int committedTrackIndex = _pendingCrossfadeTrackIndex;
+
+            PlaybackCursor = new PlaybackCursor
+            {
+                PlaylistName = committedPlaylistName,
+                TrackIndex = committedTrackIndex,
+                TrackId = committedTrack.Id
+            };
+
+            _activePlaybackSourcePlaylistName = committedPlaylistName;
+            _sharedDataModel.UpdateActiveTrack(committedTrack);
+            WeakReferenceMessenger.Default.Send(new ActiveTrackChangedMessage(committedTrack));
+
+            _currentTrackId = committedTrack.Id;
+            _currentTrackStartSeconds = 0;
 
             _crossfadeInProgress = false;
             _pendingCrossfadeTrack = null;

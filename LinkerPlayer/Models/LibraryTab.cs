@@ -37,9 +37,16 @@ public partial class LibraryTab : ObservableObject, ITabData
     // into a single RebuildMetadataLists + RefreshView call.
     private readonly DispatcherTimer _rebuildDebounceTimer;
 
+    // Debounce timer for keyword text changes so rapid typing does not refresh the view on every keystroke.
+    private readonly DispatcherTimer _keywordRefreshDebounceTimer;
+
     // Filtered/sorted view of the library
     [ObservableProperty]
     private CollectionViewSource? _tracksView;
+
+    // Active multi-column sort applied as a pre-sorted snapshot (not via view.SortDescriptions,
+    // which would force the view to re-sort/re-filter on every item PropertyChanged during scroll).
+    private List<SortDescription>? _activeSorts;
 
     // Current selection
     [ObservableProperty]
@@ -65,6 +72,22 @@ public partial class LibraryTab : ObservableObject, ITabData
 
     [ObservableProperty]
     private string _keywordSearch = string.Empty;
+
+    private bool _hasKeywordFilter;
+    private bool _keywordIsStructuredQuery;
+    private string _plainKeywordSearch = string.Empty;
+    private List<List<FilterCriteria>>? _keywordOrGroups;
+
+    private bool _hasGenreSelectionFilter;
+    private bool _hasArtistSelectionFilter;
+    private bool _hasAlbumSelectionFilter;
+    private bool _hasCodecSelectionFilter;
+    private HashSet<string>? _selectedGenreSet;
+    private HashSet<string>? _selectedArtistSet;
+    private HashSet<string>? _selectedAlbumSet;
+    private HashSet<string>? _selectedCodecSet;
+
+    private FilterCriteria[] _enabledFilters = [];
 
     // Library-specific column configuration
     [ObservableProperty]
@@ -114,6 +137,16 @@ public partial class LibraryTab : ObservableObject, ITabData
             NotifyFilteredTrackCountChanged();
         };
 
+        _keywordRefreshDebounceTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(200)
+        };
+        _keywordRefreshDebounceTimer.Tick += (_, __) =>
+        {
+            _keywordRefreshDebounceTimer.Stop();
+            RefreshView();
+        };
+
         // Selection changes are driven by the UI and handled explicitly to avoid re-entrancy
 
         // Subscribe to source collection changes — debounce so import batches don't thrash the UI
@@ -121,6 +154,12 @@ public partial class LibraryTab : ObservableObject, ITabData
         {
             ScheduleRebuild();
             NotifyFilteredTrackCountChanged();
+
+            // If a sorted snapshot is active, re-sort to pick up newly imported tracks.
+            if (_activeSorts is { Count: > 0 })
+            {
+                ApplySortedSnapshot();
+            }
         };
 
         // Build metadata lists (genres, artists, albums) for the filter bar
@@ -147,6 +186,8 @@ public partial class LibraryTab : ObservableObject, ITabData
             SelectedCodecs.Add("(All)");
         }
 
+        RebuildFacetSelectionCaches();
+        RebuildEnabledFiltersCache();
     }
 
     /// <summary>
@@ -242,11 +283,112 @@ public partial class LibraryTab : ObservableObject, ITabData
     }
 
     /// <summary>
+    /// Applies a multi-column sort by reordering a detached snapshot and using it as the
+    /// view's source with SortDescriptions cleared. This avoids the ListCollectionView's
+    /// live re-sort/re-filter on every MediaFile PropertyChanged, which was the source of
+    /// scroll jank on large libraries. Pass an empty/null list to restore the live source.
+    /// </summary>
+    public void SetSortOrder(IReadOnlyList<SortDescription>? sorts)
+    {
+        _activeSorts = sorts is { Count: > 0 } ? new List<SortDescription>(sorts) : null;
+
+        if (TracksView?.View == null)
+            return;
+
+        // The view must not also carry SortDescriptions, or it re-sorts live during scroll.
+        if (TracksView.View.SortDescriptions.Count > 0)
+        {
+            TracksView.View.SortDescriptions.Clear();
+        }
+
+        if (_activeSorts == null)
+        {
+            // Restore the live source when sorting is cleared.
+            if (!ReferenceEquals(TracksView.Source, _sourceLibrary))
+            {
+                TracksView.Source = _sourceLibrary;
+            }
+        }
+        else
+        {
+            ApplySortedSnapshot();
+        }
+
+        RefreshView();
+    }
+
+    /// <summary>
+    /// The currently applied multi-column sort, in priority order. Empty when unsorted.
+    /// </summary>
+    public IReadOnlyList<SortDescription> ActiveSorts =>
+        _activeSorts is { Count: > 0 } ? _activeSorts : (IReadOnlyList<SortDescription>)Array.Empty<SortDescription>();
+
+    private void ApplySortedSnapshot()
+    {
+        if (TracksView == null || _activeSorts == null || _activeSorts.Count == 0)
+            return;
+
+        IOrderedEnumerable<MediaFile> ordered = BuildOrderedQuery(_sourceLibrary);
+        TracksView.Source = ordered.ToList();
+    }
+
+    private IOrderedEnumerable<MediaFile> BuildOrderedQuery(IEnumerable<MediaFile> source)
+    {
+        IOrderedEnumerable<MediaFile>? ordered = null;
+        foreach (SortDescription sort in _activeSorts!)
+        {
+            Func<MediaFile, object?> key = KeySelectorFor(sort.PropertyName);
+            bool desc = sort.Direction == ListSortDirection.Descending;
+
+            ordered = ordered == null
+                ? (desc ? source.OrderByDescending(key) : source.OrderBy(key))
+                : (desc ? ordered.ThenByDescending(key) : ordered.ThenBy(key));
+        }
+        return ordered!;
+    }
+
+    // Strongly-typed key selectors avoid reflection on every comparison during the sort.
+    private static Func<MediaFile, object?> KeySelectorFor(string propertyName) => propertyName switch
+    {
+        nameof(MediaFile.Title) => t => t.Title,
+        nameof(MediaFile.Artist) => t => t.Artist,
+        nameof(MediaFile.Album) => t => t.Album,
+        nameof(MediaFile.AlbumArtist) => t => t.AlbumArtist,
+        nameof(MediaFile.Genres) => t => t.Genres,
+        nameof(MediaFile.Codec) => t => t.Codec,
+        nameof(MediaFile.Track) => t => t.Track,
+        nameof(MediaFile.TrackCount) => t => t.TrackCount,
+        nameof(MediaFile.Disc) => t => t.Disc,
+        nameof(MediaFile.DiscCount) => t => t.DiscCount,
+        nameof(MediaFile.Year) => t => t.Year,
+        nameof(MediaFile.Duration) => t => t.Duration,
+        nameof(MediaFile.Bitrate) => t => t.Bitrate,
+        nameof(MediaFile.SampleRate) => t => t.SampleRate,
+        nameof(MediaFile.Channels) => t => t.Channels,
+        nameof(MediaFile.Rating) => t => t.Rating,
+        nameof(MediaFile.FileName) => t => t.FileName,
+        nameof(MediaFile.Path) => t => t.Path,
+        nameof(MediaFile.Composers) => t => t.Composers,
+        nameof(MediaFile.Comment) => t => t.Comment,
+        nameof(MediaFile.Copyright) => t => t.Copyright,
+        nameof(MediaFile.ReplayGain) => t => t.ReplayGain,
+        // Fallback for any unmapped property: reflect once per item rather than per comparison.
+        _ => CreateReflectionSelector(propertyName)
+    };
+
+    private static Func<MediaFile, object?> CreateReflectionSelector(string propertyName)
+    {
+        System.Reflection.PropertyInfo? prop = typeof(MediaFile).GetProperty(propertyName);
+        return prop == null ? (Func<MediaFile, object?>)(_ => null) : (t => prop.GetValue(t));
+    }
+
+    /// <summary>
     /// Public entry point for UI to notify that multi-select selections changed.
     /// Call this after updating SelectedGenres/SelectedArtists/SelectedAlbums to refresh dependent lists and view.
     /// </summary>
     public void NotifySelectionsChanged()
     {
+        RebuildFacetSelectionCaches();
         UpdateAllFacetLists();
         RefreshView();
     }
@@ -362,11 +504,14 @@ public partial class LibraryTab : ObservableObject, ITabData
                     Value = dto.Value,
                     ValueSecondary = dto.ValueSecondary,
                     IsEnabled = dto.IsEnabled,
-                    OnFilterChanged = RefreshView
+                    OnFilterChanged = OnActiveFilterChanged
                 };
                 ActiveFilters.Add(fc);
             }
         }
+
+        RebuildFacetSelectionCaches();
+        RebuildEnabledFiltersCache();
     }
 
     /// <summary>
@@ -701,56 +846,40 @@ public partial class LibraryTab : ObservableObject, ITabData
 
     private IEnumerable<MediaFile> ApplyGenreFilter(IEnumerable<MediaFile> source)
     {
-        if (SelectedGenres == null || SelectedGenres.Count == 0 || SelectedGenres.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (!_hasGenreSelectionFilter || _selectedGenreSet == null)
             return source;
 
-        HashSet<string> sel = new(SelectedGenres, StringComparer.OrdinalIgnoreCase);
-
-        return source.Where(t =>
-        {
-            if (string.IsNullOrWhiteSpace(t.Genres))
-                return false;
-
-            string[] tokens = t.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
-
-            return tokens.Select(x => x.Trim()).Any(tok => sel.Contains(tok));
-        });
+        return source.Where(t => HasAnyMatchingGenre(t.Genres, _selectedGenreSet));
     }
 
     private IEnumerable<MediaFile> ApplyArtistFilter(IEnumerable<MediaFile> source)
     {
-        if (SelectedArtists == null || SelectedArtists.Count == 0 || SelectedArtists.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (!_hasArtistSelectionFilter || _selectedArtistSet == null)
             return source;
 
-        HashSet<string> sel = new(SelectedArtists, StringComparer.OrdinalIgnoreCase);
-
-        return source.Where(t => !string.IsNullOrWhiteSpace(t.Artist) && sel.Contains(t.Artist));
+        return source.Where(t => !string.IsNullOrWhiteSpace(t.Artist) && _selectedArtistSet.Contains(t.Artist));
     }
 
     private IEnumerable<MediaFile> ApplyAlbumFilter(IEnumerable<MediaFile> source)
     {
-        if (SelectedAlbums == null || SelectedAlbums.Count == 0 || SelectedAlbums.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (!_hasAlbumSelectionFilter || _selectedAlbumSet == null)
             return source;
 
-        HashSet<string> sel = new(SelectedAlbums, StringComparer.OrdinalIgnoreCase);
-
-        return source.Where(t => !string.IsNullOrWhiteSpace(t.Album) && sel.Contains(t.Album));
+        return source.Where(t => !string.IsNullOrWhiteSpace(t.Album) && _selectedAlbumSet.Contains(t.Album));
     }
 
     private IEnumerable<MediaFile> ApplyCodecFilter(IEnumerable<MediaFile> source)
     {
-        if (SelectedCodecs == null || SelectedCodecs.Count == 0 || SelectedCodecs.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (!_hasCodecSelectionFilter || _selectedCodecSet == null)
             return source;
 
-        HashSet<string> sel = new(SelectedCodecs, StringComparer.OrdinalIgnoreCase);
-
-        return source.Where(t => !string.IsNullOrWhiteSpace(t.Codec) && sel.Contains(t.Codec));
+        return source.Where(t => !string.IsNullOrWhiteSpace(t.Codec) && _selectedCodecSet.Contains(t.Codec));
     }
 
-    public void NotifyGenresChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
-    public void NotifyArtistsChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
-    public void NotifyAlbumsChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
-    public void NotifyCodecsChanged() { if (!_isUpdatingFacets) { UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyGenresChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyArtistsChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyAlbumsChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyCodecsChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
 
     /// <summary>
     /// Applies all active filters to a track
@@ -762,16 +891,30 @@ public partial class LibraryTab : ObservableObject, ITabData
             return false;
         }
 
-        // Apply keyword search first — try structured query, fall back to plain text
-        if (!string.IsNullOrWhiteSpace(KeywordSearch))
+        // Apply keyword search first — use cached parse state to avoid per-item query parsing.
+        if (_hasKeywordFilter)
         {
-            if (QueryParser.TryParse(KeywordSearch, out List<List<FilterCriteria>> orGroups))
+            if (_keywordIsStructuredQuery)
             {
-                // Structured query: track must satisfy at least one AND-group (OR logic between groups)
+                List<List<FilterCriteria>>? orGroups = _keywordOrGroups;
+                if (orGroups == null || orGroups.Count == 0)
+                {
+                    return false;
+                }
+
                 bool matchesQuery = false;
                 foreach (List<FilterCriteria> andGroup in orGroups)
                 {
-                    bool groupMatches = andGroup.All(qc => qc.Matches(track));
+                    bool groupMatches = true;
+                    foreach (FilterCriteria criterion in andGroup)
+                    {
+                        if (!criterion.Matches(track))
+                        {
+                            groupMatches = false;
+                            break;
+                        }
+                    }
+
                     if (groupMatches)
                     {
                         matchesQuery = true;
@@ -784,19 +927,14 @@ public partial class LibraryTab : ObservableObject, ITabData
                     return false;
                 }
             }
-            else
+            else if (!MatchesAnyMetadataField(track, _plainKeywordSearch))
             {
-                // Plain-text fallback: search across all metadata fields
-                string keyword = KeywordSearch.Trim();
-                if (!MatchesAnyMetadataField(track, keyword))
-                {
-                    return false;
-                }
+                return false;
             }
         }
 
         // Apply each active filter (all must match - AND logic)
-        foreach (FilterCriteria filter in ActiveFilters.Where(f => f.IsEnabled))
+        foreach (FilterCriteria filter in _enabledFilters)
         {
             if (!filter.Matches(track))
             {
@@ -805,48 +943,46 @@ public partial class LibraryTab : ObservableObject, ITabData
         }
 
         // Apply multi-select metadata filters
-        // Genres
-        if (SelectedGenres != null && SelectedGenres.Count > 0 && !SelectedGenres.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (_hasGenreSelectionFilter && (_selectedGenreSet == null || !HasAnyMatchingGenre(track.Genres, _selectedGenreSet)))
         {
-            if (string.IsNullOrWhiteSpace(track.Genres))
-                return false;
-            string[] tokens = track.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries);
-            HashSet<string> sel = new(SelectedGenres, StringComparer.OrdinalIgnoreCase);
-            if (!tokens.Select(t => t.Trim()).Any(tok => sel.Contains(tok)))
-                return false;
+            return false;
         }
 
-        // Artists
-        if (SelectedArtists != null && SelectedArtists.Count > 0 && !SelectedArtists.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (_hasArtistSelectionFilter && (_selectedArtistSet == null || string.IsNullOrWhiteSpace(track.Artist) || !_selectedArtistSet.Contains(track.Artist)))
         {
-            if (string.IsNullOrWhiteSpace(track.Artist))
-                return false;
-            HashSet<string> sel = new(SelectedArtists, StringComparer.OrdinalIgnoreCase);
-            if (!sel.Contains(track.Artist))
-                return false;
+            return false;
         }
 
-        // Albums
-        if (SelectedAlbums != null && SelectedAlbums.Count > 0 && !SelectedAlbums.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (_hasAlbumSelectionFilter && (_selectedAlbumSet == null || string.IsNullOrWhiteSpace(track.Album) || !_selectedAlbumSet.Contains(track.Album)))
         {
-            if (string.IsNullOrWhiteSpace(track.Album))
-                return false;
-            HashSet<string> sel = new(SelectedAlbums, StringComparer.OrdinalIgnoreCase);
-            if (!sel.Contains(track.Album))
-                return false;
+            return false;
         }
 
-        // Codecs
-        if (SelectedCodecs != null && SelectedCodecs.Count > 0 && !SelectedCodecs.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        if (_hasCodecSelectionFilter && (_selectedCodecSet == null || string.IsNullOrWhiteSpace(track.Codec) || !_selectedCodecSet.Contains(track.Codec)))
         {
-            if (string.IsNullOrWhiteSpace(track.Codec))
-                return false;
-            HashSet<string> sel = new(SelectedCodecs, StringComparer.OrdinalIgnoreCase);
-            if (!sel.Contains(track.Codec))
-                return false;
+            return false;
         }
 
         return true;
+    }
+
+    private static bool HasAnyMatchingGenre(string? genres, HashSet<string> selectedGenres)
+    {
+        if (string.IsNullOrWhiteSpace(genres))
+        {
+            return false;
+        }
+
+        string[] tokens = genres.Split(['/', ';', ','], StringSplitOptions.RemoveEmptyEntries);
+        foreach (string token in tokens)
+        {
+            if (selectedGenres.Contains(token.Trim()))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool MatchesAnyMetadataField(MediaFile track, string keyword)
@@ -887,6 +1023,78 @@ public partial class LibraryTab : ObservableObject, ITabData
                && value.Contains(keyword, StringComparison.OrdinalIgnoreCase);
     }
 
+    private void RebuildFacetSelectionCaches()
+    {
+        (_hasGenreSelectionFilter, _selectedGenreSet) = BuildSelectionSet(SelectedGenres);
+        (_hasArtistSelectionFilter, _selectedArtistSet) = BuildSelectionSet(SelectedArtists);
+        (_hasAlbumSelectionFilter, _selectedAlbumSet) = BuildSelectionSet(SelectedAlbums);
+        (_hasCodecSelectionFilter, _selectedCodecSet) = BuildSelectionSet(SelectedCodecs);
+    }
+
+    private static (bool HasFilter, HashSet<string>? Set) BuildSelectionSet(ObservableCollection<string> selected)
+    {
+        if (selected.Count == 0 || selected.Contains("(All)", StringComparer.OrdinalIgnoreCase))
+        {
+            return (false, null);
+        }
+
+        return (true, new HashSet<string>(selected, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private void RebuildEnabledFiltersCache()
+    {
+        _enabledFilters = ActiveFilters.Where(f => f.IsEnabled).ToArray();
+    }
+
+    private void OnActiveFilterChanged()
+    {
+        RebuildEnabledFiltersCache();
+        RefreshView();
+    }
+
+    private void RebuildKeywordFilterCache(string? keywordSearch)
+    {
+        string keyword = keywordSearch?.Trim() ?? string.Empty;
+        _hasKeywordFilter = keyword.Length > 0;
+
+        if (!_hasKeywordFilter)
+        {
+            _keywordIsStructuredQuery = false;
+            _plainKeywordSearch = string.Empty;
+            _keywordOrGroups = null;
+            return;
+        }
+
+        if (QueryParser.TryParse(keyword, out List<List<FilterCriteria>> orGroups))
+        {
+            _keywordIsStructuredQuery = true;
+            _keywordOrGroups = orGroups;
+            _plainKeywordSearch = string.Empty;
+            return;
+        }
+
+        _keywordIsStructuredQuery = false;
+        _keywordOrGroups = null;
+        _plainKeywordSearch = keyword;
+    }
+
+    private void ScheduleKeywordRefresh()
+    {
+        if (Application.Current == null)
+        {
+            return;
+        }
+
+        if (!Application.Current.Dispatcher.CheckAccess())
+        {
+            Application.Current.Dispatcher.BeginInvoke(ScheduleKeywordRefresh, DispatcherPriority.Background);
+            return;
+        }
+
+        _keywordRefreshDebounceTimer.Stop();
+        _keywordRefreshDebounceTimer.Start();
+    }
+
     /// <summary>
     /// Adds a new filter and refreshes the view
     /// </summary>
@@ -897,10 +1105,11 @@ public partial class LibraryTab : ObservableObject, ITabData
             throw new ArgumentNullException(nameof(filter));
         }
 
-        // Set callback so filter changes trigger view refresh
-        filter.OnFilterChanged = RefreshView;
+        // Set callback so filter changes trigger cache rebuild and view refresh
+        filter.OnFilterChanged = OnActiveFilterChanged;
 
         ActiveFilters.Add(filter);
+        RebuildEnabledFiltersCache();
         RefreshView();
     }
 
@@ -911,6 +1120,7 @@ public partial class LibraryTab : ObservableObject, ITabData
     {
         if (filter != null && ActiveFilters.Remove(filter))
         {
+            RebuildEnabledFiltersCache();
             RefreshView();
         }
     }
@@ -921,14 +1131,22 @@ public partial class LibraryTab : ObservableObject, ITabData
     public void ClearAllFilters()
     {
         ActiveFilters.Clear();
+        RebuildEnabledFiltersCache();
+
+        if (string.IsNullOrWhiteSpace(KeywordSearch))
+        {
+            RebuildKeywordFilterCache(string.Empty);
+            RefreshView();
+            return;
+        }
+
         KeywordSearch = string.Empty;
-        RefreshView();
     }
 
     partial void OnKeywordSearchChanged(string value)
     {
-        // Refresh view when keyword search changes
-        RefreshView();
+        RebuildKeywordFilterCache(value);
+        ScheduleKeywordRefresh();
     }
 }
 

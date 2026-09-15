@@ -299,27 +299,16 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
             foreach (MediaFile track in modified)
             {
                 if (cancellationToken.IsCancellationRequested) break;
-                try
+                if (!File.Exists(track.Path))
                 {
-                    // Guard against files that vanished between enumeration and the read —
-                    // common on UNC/NAS shares. UpdateFromFileMetadata handles this too,
-                    // but avoiding the throw entirely is cleaner and quieter in the debugger.
-                    if (!File.Exists(track.Path))
-                    {
-                        track.HealthStatus = TrackHealthStatus.Missing;
-                        _logger.LogWarning("File no longer exists during scan, marking missing: {Path}", track.Path);
-                        _rescanLogger.LogWarning($"File missing during scan: {track.Path}");
-                        continue;
-                    }
+                    track.HealthStatus = TrackHealthStatus.Missing;
+                    _logger.LogWarning("File no longer exists during scan, marking missing: {Path}", track.Path);
+                    _rescanLogger.LogWarning($"File missing during scan: {track.Path}");
+                    continue;
+                }
 
-                    track.UpdateFromFileMetadata(raisePropertyChanged: true);
-                    _rescanLogger.LogUpdated(track.Path);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to refresh metadata for {Path}", track.Path);
-                    _rescanLogger.LogWarning($"Metadata refresh failed: {track.Path} — {ex.Message}");
-                }
+                track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                _rescanLogger.LogUpdated(track.Path);
                 updated++;
                 progress?.Report(new ProgressData
                 {
@@ -493,24 +482,16 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
                         return;
                     }
 
-                    // An external process (tag editor, Windows Search, etc.) may briefly hold
-                    // the file after writing it. Retry with the same pattern as TrackMetadataRefresher.
-                    const int maxRetries = 5;
-                    for (int attempt = 1; attempt <= maxRetries; attempt++)
+                    try
                     {
-                        try
-                        {
-                            track.UpdateFromFileMetadata(raisePropertyChanged: true);
-                            await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
-                            _logger.LogInformation("Auto-updated metadata for modified file: {Path}", path);
-                            break;
-                        }
-                        catch (IOException) when (attempt < maxRetries)
-                        {
-                            _logger.LogWarning("Metadata read attempt {Attempt}/{Max} failed for {Path} — retrying in 500ms",
-                                attempt, maxRetries, path);
-                            await Task.Delay(500).ConfigureAwait(false);
-                        }
+                        track.UpdateFromFileMetadata(raisePropertyChanged: true);
+                        await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                        _logger.LogInformation("Auto-updated metadata for modified file: {Path}", path);
+                    }
+                    catch (IOException ex)
+                    {
+                        // Keep the track for later retry rather than throwing while a file is locked.
+                        _logger.LogWarning(ex, "Metadata refresh skipped for locked file; will retry later: {Path}", path);
                     }
                 }
             }
@@ -632,32 +613,30 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
                     // The process that triggered the rename (e.g. a tag editor or the OS on a
                     // UNC/NAS share) may still hold the file handle briefly. Retry with a short
                     // delay, matching the same pattern used by TrackMetadataRefresher.
-                    const int maxRetries = 5;
-                    bool refreshed = false;
-                    for (int attempt = 1; attempt <= maxRetries; attempt++)
+                    bool metadataUpdated = false;
+                    const int maxRetries = 3;
+                    const int delayMs = 200;
+
+                    for (int retryCount = 0; retryCount < maxRetries && !metadataUpdated; retryCount++)
                     {
                         try
                         {
                             track.UpdateFromFileMetadata(raisePropertyChanged: true);
-                            refreshed = true;
-                            break;
+                            await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
+                            _logger.LogInformation("Auto-updated metadata for renamed file: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
+                            metadataUpdated = true;
                         }
-                        catch (IOException) when (attempt < maxRetries)
+                        catch (IOException ex) when (retryCount < maxRetries - 1)
                         {
-                            _logger.LogWarning("Metadata read attempt {Attempt}/{Max} failed for renamed file {Path} — retrying in 500ms",
-                                attempt, maxRetries, e.FullPath);
-                            await Task.Delay(500).ConfigureAwait(false);
+                            // File still locked; wait and retry.
+                            _logger.LogDebug(ex, "Metadata refresh attempt {Attempt} failed for locked file; retrying in {DelayMs}ms: {Path}", retryCount + 1, delayMs, e.FullPath);
+                            await Task.Delay(delayMs).ConfigureAwait(false);
                         }
-                    }
-
-                    if (refreshed)
-                    {
-                        await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
-                        _logger.LogInformation("Auto-updated metadata for renamed file: {OldPath} -> {NewPath}", e.OldFullPath, e.FullPath);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Giving up metadata refresh for renamed file after {Max} attempts: {Path}", maxRetries, e.FullPath);
+                        catch (IOException ex)
+                        {
+                            // Final retry failed; keep the renamed track and try again on the next watcher pass.
+                            _logger.LogWarning(ex, "Metadata refresh skipped for renamed locked file after {Retries} attempts; will retry later: {Path}", maxRetries, e.FullPath);
+                        }
                     }
                 }
             }

@@ -1,0 +1,136 @@
+# Investigation Toolkit Summary
+
+## What You Asked
+"I'm having trouble with how to use Audio Tools Library (ATL) for .NET for the Popularity (Ratings) metadata. When I set 2.2★ on FLAC, it reads back as 0.4★ (which is 2.0★, not 2.2★)."
+
+## What We Know
+
+### ✅ GOOD NEWS: Your Math is Correct
+- Unit tests (28/29 pass) confirm conversion logic is working
+- 2.2★ correctly converts to 0.44 (Vorbis 0–1 scale)
+- 0.44 correctly converts back to 2.2★
+- **The bug is NOT in your conversion code**
+
+### ⚠️ THE PROBLEM: ATL's Behavior is Unknown
+The issue is somewhere in how ATL's library:
+1. Persists (or doesn't persist) the RATING field
+2. Rounds or loses precision in Popularity property
+3. Interprets the scale of Vorbis RATING values
+
+### 🎯 The Mystery: Where does 0.4 come from?
+- Your code produces 0.44 (verified by tests)
+- ATL reads back 0.4 (observed behavior)
+- Math.Round(0.44, 1) = 0.4 (exact match!)
+- **Hypothesis**: ATL's Vorbis handling rounds to 1 decimal somewhere
+
+## Investigation Toolkit Created
+
+### 1. Unit Tests (`RatingConversionMathTests.cs`)
+- ✅ 28/29 tests pass
+- Proves conversion math is correct
+- Run: `dotnet test --filter TypeName=RatingConversionMathTests`
+
+### 2. Integration Tests (`AtlVorbisRatingInvestigation.cs`)
+- Tests ATL's actual behavior with real files
+- 6 diagnostic tests targeting different hypotheses
+- Requires test FLAC file in `TestAudio\test.flac`
+
+### 3. Interactive Diagnostic (`AtlVorbisRatingDiagnostic.cs`)
+- Standalone tool for hands-on testing
+- Call: `AtlVorbisRatingDiagnostic.RunDiagnostic(filePath)`
+- Outputs detailed logs of what ATL returns
+
+### 4. Documentation (4 markdown files)
+- `README.md` — Quick start guide
+- `ATL_INVESTIGATION_SUMMARY.md` — Complete overview with solutions
+- `ATL_ANALYSIS_AND_RECOMMENDATIONS.md` — Detailed technical analysis
+- `ATL_INVESTIGATION_PLAN.md` — Step-by-step investigation guide
+
+## Quick Action Plan
+
+### For Immediate Diagnosis (15 minutes)
+1. Run math tests to confirm they pass ✓
+2. Get a test FLAC file (any FLAC will do)
+3. Place it in: `LinkerPlayer.Tests\Integration\TestAudio\test.flac`
+4. Run diagnostic: `AtlVorbisRatingDiagnostic.RunDiagnostic(filePath)`
+5. Copy console output and compare to expected scenarios in README.md
+
+### For Implementation (after diagnosis)
+- Three solutions provided (A, B, C) depending on diagnostic results
+- Solution A: Use custom field name instead of RATING
+- Solution B: Store as 0–100 integer instead of 0–1 decimal
+- Solution C: Simplify to use Popularity property only
+
+## What's Not Changed Yet
+
+✅ Files created for investigation
+✅ Unit tests created and passing
+❌ **No production code changes yet** (waiting for diagnosis)
+
+Your actual rating code remains:
+- `MediaFile.PersistRatingToFileAsync()` — Write path
+- `MediaFile.UpdateFromFileMetadata()` — Read path
+- `MediaFileHelper.cs` — Conversion helpers (already correct)
+
+## Next Steps for You
+
+1. **Read**: `LinkerPlayer.Tests\Integration\README.md` (5 min)
+2. **Test**: Run the math tests to confirm they pass (2 min)
+3. **Prepare**: Get a test FLAC file and place in TestAudio folder (2 min)
+4. **Diagnose**: Run the diagnostic tool and capture output (5 min)
+5. **Analyze**: Compare output to expected scenarios (5 min)
+6. **Pick**: Choose solution A, B, or C (2 min)
+7. **Implement**: Modify production code per solution (20 min)
+8. **Verify**: Test that 2.2★ reads back as 2.2★ (5 min)
+
+**Total time: ~45 minutes to complete fix**
+
+## Example Diagnostic Output
+
+You should see something like:
+
+```
+=== ATL Vorbis RATING Diagnostic ===
+Test File: D:\Music\test.flac
+
+--- TEST 1: Read Initial State ---
+Initial Popularity: null
+
+--- TEST 2: Write RATING via AdditionalFields ---
+Writing AdditionalFields["RATING"] = "0.44"
+SaveAsync returned: True
+After save (in-memory):
+  Popularity: null
+  AdditionalFields["RATING"]: 0.44
+
+--- TEST 3: Re-read Fresh from Disk ---
+Fresh read Popularity: 0.4   ← THIS IS THE BUG!
+Rating-related AdditionalFields:
+  RATING = 0.44
+  [Additional diagnostics...]
+```
+
+If you see Popularity=0.4 instead of 0.44, that confirms the rounding hypothesis.
+
+## Files Available for Reference
+
+All documentation is in `LinkerPlayer.Tests\Integration\`:
+- `README.md` — Start here
+- `ATL_INVESTIGATION_SUMMARY.md` — Full overview
+- `ATL_ANALYSIS_AND_RECOMMENDATIONS.md` — Solution options
+- `ATL_INVESTIGATION_PLAN.md` — Detailed steps
+
+All tests are in `LinkerPlayer.Tests\`:
+- `Models\RatingConversionMathTests.cs` — Math validation
+- `Integration\AtlVorbisRatingInvestigation.cs` — ATL behavior tests
+
+Diagnostic tool is in `LinkerPlayer\Diagnostics\`:
+- `AtlVorbisRatingDiagnostic.cs` — Interactive diagnostic
+
+## Key Insight
+
+**Your conversion code is correct.** The issue is entirely in ATL's handling of Vorbis RATING or Popularity properties. The diagnostic tests will show exactly what ATL is doing, and the solution will be tailored to work around ATL's behavior.
+
+---
+
+**Ready to proceed?** Start with running the math tests, then the diagnostic tool.

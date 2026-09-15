@@ -339,6 +339,10 @@ public class PlaybackCoordinatorTests
 
         audioEngine.RaiseTrackEnded();
 
+        // PlayTrack uses Task.Run to call audioEngine.Play() asynchronously.
+        // Wait for the background task to complete before asserting on LastPlayPath.
+        Thread.Sleep(50);
+
         coordinator.PlaybackCursor.ShouldNotBeNull();
         coordinator.PlaybackCursor!.PlaylistName.ShouldBe("Playlist1");
         coordinator.PlaybackCursor.TrackId.ShouldBe("p1-t2");

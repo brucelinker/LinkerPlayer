@@ -65,7 +65,14 @@ public partial class StarRatingControl : UserControl
             UpdateClip(Rating);
             UpdateTooltip(Rating);
         };
+
+        // If the hosting window closes (or this control leaves the visual tree) while the
+        // editor popup is open, close it so it can't linger on screen. StaysOpen=True means
+        // the popup is otherwise only dismissed by an outside click.
+        Unloaded += (_, _) => ClosePopup();
     }
+
+    private Window? OwningWindow => Window.GetWindow(this);
 
     // -----------------------------------------------------------------------
     //  Property callbacks
@@ -138,12 +145,17 @@ public partial class StarRatingControl : UserControl
 
     private void EditorPopup_Opened(object sender, EventArgs e)
     {
-        if (Application.Current?.MainWindow is Window w)
+        // Hook the window that actually hosts this control (e.g. the Properties window),
+        // not always the main window, so an outside click / Escape on that window closes the popup.
+        if (OwningWindow is Window w)
         {
             w.PreviewMouseDown += OnMainWindowPreviewMouseDown;
             w.PreviewKeyDown += OnMainWindowPreviewKeyDown;
+            w.Closed += OnOwningWindowClosed;
         }
     }
+
+    private void OnOwningWindowClosed(object? sender, EventArgs e) => ClosePopup();
 
     private void OnMainWindowPreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -185,10 +197,11 @@ public partial class StarRatingControl : UserControl
 
     private void EditorPopup_Closed(object sender, EventArgs e)
     {
-        if (Application.Current?.MainWindow is Window w)
+        if (OwningWindow is Window w)
         {
             w.PreviewMouseDown -= OnMainWindowPreviewMouseDown;
             w.PreviewKeyDown -= OnMainWindowPreviewKeyDown;
+            w.Closed -= OnOwningWindowClosed;
         }
     }
 
@@ -338,8 +351,9 @@ public partial class StarRatingControl : UserControl
                 {
                     mediaFile.MarkPropertyDirty(nameof(MediaFile.Rating));
 
+                    // UpdateRatingAsync persists the rating row itself; the extra full-library
+                    // SaveToDatabaseAsync raced concurrent rating edits (PlaylistTracks UNIQUE).
                     await library.UpdateRatingAsync(trackId, rating).ConfigureAwait(false);
-                    await library.SaveToDatabaseAsync().ConfigureAwait(false);
 
                     mediaFile.ClearDirty();   // Prevent close prompt
 

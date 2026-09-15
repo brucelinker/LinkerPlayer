@@ -1,150 +1,161 @@
-//using LinkerPlayer.Core;
-//using LinkerPlayer.Messages;
-//using LinkerPlayer.Models;
-//using LinkerPlayer.Services;
-//using LinkerPlayer.Tests.Fakes;
-//using LinkerPlayer.UserControls;
-//using LinkerPlayer.ViewModels;
-//using Microsoft.Extensions.DependencyInjection;
-//using Microsoft.Extensions.Hosting;
-//using Microsoft.Extensions.Logging;
-//using Moq;
-//using Shouldly;
-//using System.Reflection;
-//using System.Windows.Controls;
+using LinkerPlayer.Core;
+using LinkerPlayer.Messages;
+using LinkerPlayer.Models;
+using LinkerPlayer.Services;
+using LinkerPlayer.Tests.Fakes;
+using LinkerPlayer.Tests.Mocks;
+using LinkerPlayer.UserControls;
+using LinkerPlayer.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Shouldly;
+using System.Collections.ObjectModel;
+using System.Reflection;
+using System.Windows.Controls;
+using System.Windows.Data;
 
-//namespace LinkerPlayer.Tests.ViewModels;
+namespace LinkerPlayer.Tests.ViewModels;
 
-//public class MusicLibraryColumnPersistenceTests
-//{
-//    [StaFact]
-//    public void OnUpdateColumns_PersistsLibraryVisibleColumns()
-//    {
-//        // Arrange
-//        FakeSettingsManager settings = new FakeSettingsManager();
+public sealed class MusicLibraryColumnPersistenceTests : IDisposable
+{
+    private readonly IHost? _originalAppHost = App.AppHost;
 
-//        // Create a minimal PlaylistTabsViewModel with default dependencies where possible
-//        // We'll only need the Settings via App.AppHost in PlaylistTabs code; instead we can
-//        // directly create PlaylistTabs and call private methods via reflection.
+    public void Dispose()
+    {
+        App.AppHost = _originalAppHost!;
+    }
 
-//        PlaylistTabs playlistTabs = new PlaylistTabs();
+    [StaFact]
+    public void OnUpdateColumns_PersistsLibraryVisibleColumns()
+    {
+        FakeSettingsManager settings = new();
+        App.AppHost = null!;
 
-//        // Create a LibraryTab and attach it to a DataGrid
-//        LibraryTab libTab = new LibraryTab(new System.Collections.ObjectModel.ObservableCollection<MediaFile>());
-//        DataGrid dg = new DataGrid { DataContext = libTab };
+        PlaylistTabs control = new PlaylistTabs();
+        App.AppHost = CreateHost(settings);
+        MediaTabViewModel vm = CreateViewModel(settings, out _);
+        control.DataContext = vm;
 
-//        // Inject a TabControl containing our DataGrid into the PlaylistTabs private field Tabs123
-//        TabControl tabControl = new TabControl();
-//        TabItem tabItem = new TabItem { Content = dg };
-//        tabControl.Items.Add(tabItem);
+        PlaylistTab playlistTab = new() { Name = "P1" };
+        DataGrid dataGrid = new() { DataContext = playlistTab };
+        SetActiveTab(control, dataGrid);
 
-//        // Set the private Tabs123 field
-//        FieldInfo? tabsField = typeof(PlaylistTabs).GetField("Tabs123", BindingFlags.NonPublic | BindingFlags.Instance);
-//        tabsField!.SetValue(playlistTabs, tabControl);
+        InvokePrivate(control, "OnUpdateColumns", new UpdateColumnsMessage(new List<string> { "Title", "Artist" }));
 
-//        // Ensure settings manager is reachable via App.AppHost.Services if used; use reflection to set App.AppHost.Services if necessary
-//        // Simpler approach: call OnUpdateColumns via reflection which uses GetActiveDataGrid and saves via App.AppHost?.Services
-//        // To make settings discoverable, set App.AppHost to a minimal host containing ISettingsManager service.
+        settings.Settings.VisibleColumns.ShouldBe(new List<string> { "Title", "Artist" });
+        dataGrid.Columns.Count.ShouldBeGreaterThanOrEqualTo(3);
+        dataGrid.Columns[1].Header.ShouldBe("Title");
+        dataGrid.Columns[2].Header.ShouldBe("Artist");
+    }
 
-//        // Create a Host with ISettingsManager registered so PlaylistTabs code can locate it via App.AppHost
-//        IHost host = Host.CreateDefaultBuilder()
-//            .ConfigureServices(sc => sc.AddSingleton<Core.ISettingsManager>(settings))
-//            .Build();
-//        typeof(App).GetProperty("AppHost")!.SetValue(null, host);
+    [StaFact]
+    public void ColumnLayoutSaveTimer_PersistsLibraryColumnSettings()
+    {
+        FakeSettingsManager settings = new();
+        App.AppHost = null!;
 
-//        // Act - call private OnUpdateColumns(UpdateColumnsMessage)
-//        UpdateColumnsMessage msg = new LinkerPlayer.Messages.UpdateColumnsMessage(new List<string> { "Title", "Artist" });
-//        MethodInfo? onUpdate = typeof(PlaylistTabs).GetMethod("OnUpdateColumns", BindingFlags.NonPublic | BindingFlags.Instance);
-//        onUpdate!.Invoke(playlistTabs, new object[] { msg });
+        PlaylistTabs control = new();
+        App.AppHost = CreateHost(settings);
+        MediaTabViewModel vm = CreateViewModel(settings, out _);
+        control.DataContext = vm;
 
-//        // Assert
-//        settings.Settings.LibraryVisibleColumns.Count.ShouldBe(2);
-//        settings.Settings.LibraryVisibleColumns.ShouldBe(new List<string> { "Title", "Artist" });
-//        libTab.VisibleColumns.ShouldBe(new List<string> { "Title", "Artist" });
-//    }
+        LibraryTab libraryTab = new(new ObservableCollection<MediaFile>());
+        vm.SelectedTab = libraryTab;
 
-//    [StaFact]
-//    public void ColumnLayoutSaveTimer_PersistsLibraryColumnSettings()
-//    {
-//        // Arrange
-//        FakeSettingsManager settings = new FakeSettingsManager();
-//        IHost host2 = Host.CreateDefaultBuilder()
-//            .ConfigureServices(sc => sc.AddSingleton<Core.ISettingsManager>(settings))
-//            .Build();
-//        typeof(App).GetProperty("AppHost")!.SetValue(null, host2);
+        DataGrid dataGrid = new() { DataContext = libraryTab };
+        dataGrid.Columns.Add(new DataGridTemplateColumn());
+        dataGrid.Columns.Add(new DataGridTextColumn { Binding = new Binding("Title") });
+        dataGrid.Columns.Add(new DataGridTextColumn { Binding = new Binding("Artist") });
+        SetActiveTab(control, dataGrid);
 
-//        PlaylistTabs playlistTabs = new PlaylistTabs();
+        InvokePrivate(control, "ColumnLayoutSaveTimer_Tick", null, EventArgs.Empty);
 
-//        LibraryTab libTab = new LibraryTab(new System.Collections.ObjectModel.ObservableCollection<MediaFile>());
-//        DataGrid dg = new DataGrid { DataContext = libTab };
+        settings.Settings.LibraryVisibleColumns.ShouldBe(new List<string> { "Title", "Artist" });
+        settings.Settings.LibraryColumnSettings.ShouldContainKey("Title");
+        settings.Settings.LibraryColumnSettings.ShouldContainKey("Artist");
+        libraryTab.VisibleColumns.ShouldBe(new List<string> { "Title", "Artist" });
+    }
 
-//        // Create columns: first a template column (icon) then two text columns with bindings
-//        DataGridTemplateColumn icon = new DataGridTemplateColumn();
-//        dg.Columns.Add(icon);
+    private static MediaTabViewModel CreateViewModel(FakeSettingsManager settings, out Mock<IPlaylistManagerService> playlistManager)
+    {
+        FakeMusicLibrary musicLibrary = new();
+        SharedDataModel sharedDataModel = new();
+        SelectionService selectionService = new(sharedDataModel, Mock.Of<ILogger<SelectionService>>());
+        TestPlaybackCoordinator playbackCoordinator = new();
 
-//        DataGridTextColumn titleCol = new DataGridTextColumn();
-//        titleCol.Binding = new System.Windows.Data.Binding("Title");
-//        titleCol.DisplayIndex = 1;
-//        dg.Columns.Add(titleCol);
+        Mock<IUiDispatcher> uiDispatcher = new();
+        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Action>()))
+            .Returns<Action>(action => { action(); return Task.CompletedTask; });
+        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task>>()))
+            .Returns<Func<Task>>(async asyncAction => await asyncAction());
+        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<object>>()))
+            .Returns<Func<object>>(func => Task.FromResult(func()));
+        uiDispatcher.Setup(d => d.InvokeAsync(It.IsAny<Func<Task<object>>>()))
+            .Returns<Func<Task<object>>>(async asyncFunc => await asyncFunc());
+        uiDispatcher.Setup(d => d.CheckAccess()).Returns(true);
 
-//        DataGridTextColumn artistCol = new DataGridTextColumn();
-//        artistCol.Binding = new System.Windows.Data.Binding("Artist");
-//        artistCol.DisplayIndex = 2;
-//        dg.Columns.Add(artistCol);
+        playlistManager = new Mock<IPlaylistManagerService>();
+        LibraryTabViewModel libraryTabViewModel = new(
+            musicLibrary,
+            settings,
+            selectionService,
+            playbackCoordinator,
+            Mock.Of<ILogger<LibraryTabViewModel>>());
 
-//        // Inject tab control
-//        TabControl tabControl = new TabControl();
-//        TabItem tabItem = new TabItem { Content = dg };
-//        tabControl.Items.Add(tabItem);
-//        FieldInfo? tabsField = typeof(PlaylistTabs).GetField("Tabs123", BindingFlags.NonPublic | BindingFlags.Instance);
-//        tabsField!.SetValue(playlistTabs, tabControl);
+        MediaTabViewModel viewModel = new(
+            musicLibrary,
+            sharedDataModel,
+            settings,
+            Mock.Of<IFileImportService>(),
+            playlistManager.Object,
+            Mock.Of<ITrackNavigationService>(),
+            uiDispatcher.Object,
+            Mock.Of<IDatabaseSaveService>(),
+            selectionService,
+            playbackCoordinator,
+            Mock.Of<IPlaylistFileService>(),
+            Mock.Of<IImportCancellationService>(),
+            Mock.Of<IMusicBrainzRatingService>(),
+            libraryTabViewModel,
+            Mock.Of<ILogger<MediaTabViewModel>>());
 
-//        // Also set DataContext to PlaylistTabsViewModel with SelectedTab being libTab so save logic recognizes it
-//        // Create a minimal PlaylistTabsViewModel with mocks similar to other tests
-//        Mock<IMusicLibrary> mockLibrary = new Mock<LinkerPlayer.Core.IMusicLibrary>();
-//        mockLibrary.SetupGet(m => m.MainLibrary).Returns(new RangeObservableCollection<MediaFile>());
-//        Mock<ISharedDataModel> mockShared = new Mock<LinkerPlayer.ViewModels.ISharedDataModel>();
-//        Mock<IFileImportService> mockFileImport = new Mock<LinkerPlayer.Services.IFileImportService>();
-//        Mock<IPlaylistManagerService> mockPlaylist = new Mock<LinkerPlayer.Services.IPlaylistManagerService>();
-//        Mock<ITrackNavigationService> mockNav = new Mock<LinkerPlayer.Services.ITrackNavigationService>();
-//        Mock<IUiDispatcher> mockUi = new Mock<LinkerPlayer.Services.IUiDispatcher>();
-//        Mock<IDatabaseSaveService> mockSave = new Mock<LinkerPlayer.Services.IDatabaseSaveService>();
-//        Mock<ISelectionService> mockSelection = new Mock<LinkerPlayer.Services.ISelectionService>();
-//        Mock<IMusicBrainzRatingService> mockMbService = new Mock<LinkerPlayer.Services.IMusicBrainzRatingService>();
-//        Mock<ILogger<PlaylistTabsViewModel>> mockLogger = new Mock<Microsoft.Extensions.Logging.ILogger<PlaylistTabsViewModel>>();
+        return viewModel;
+    }
 
-//        PlaylistTabsViewModel vm = new PlaylistTabsViewModel(
-//            mockLibrary.Object,
-//            mockShared.Object,
-//            settings,
-//            mockFileImport.Object,
-//            mockPlaylist.Object,
-//            mockNav.Object,
-//            mockUi.Object,
-//            mockSave.Object,
-//            mockSelection.Object,
-//            new LinkerPlayer.Tests.Mocks.TestPlaybackCoordinator(),
-//            Mock.Of<IImportCancellationService>(),
-//            mockMbService.Object,
-//            mockLogger.Object);
+    private static IHost CreateHost(ISettingsManager settings)
+    {
+        ServiceProvider provider = new ServiceCollection()
+            .AddSingleton(settings)
+            .BuildServiceProvider();
 
-//        // use reflection to set DataContext
-//        PropertyInfo? dcProp = typeof(PlaylistTabs).GetProperty("DataContext");
-//        dcProp!.SetValue(playlistTabs, vm);
+        Mock<IHost> host = new();
+        host.SetupGet(h => h.Services).Returns(provider);
+        return host.Object;
+    }
 
-//        // Ensure vm.TabList contains libTab and vm.SelectedTab references it
-//        vm.TabList.Clear();
-//        vm.TabList.Add(libTab);
-//        vm.SelectedTabIndex = 0;
-//        vm.SelectedTab = libTab;
+    private static void SetActiveTab(PlaylistTabs control, DataGrid dataGrid)
+    {
+        CachingTabControl tabs = new();
+        TabItem item = new() { Content = dataGrid };
+        tabs.Items.Add(item);
+        tabs.SelectedItem = item;
 
-//        // Act - call private ColumnLayoutSaveTimer_Tick
-//        MethodInfo? tick = typeof(PlaylistTabs).GetMethod("ColumnLayoutSaveTimer_Tick", BindingFlags.NonPublic | BindingFlags.Instance);
-//        tick!.Invoke(playlistTabs, [null, System.EventArgs.Empty]);
+        SetPrivateField(control, "Tabs123", tabs);
+    }
 
-//        // Assert - settings should have library column info
-//        settings.Settings.LibraryColumnSettings.ShouldContainKey("Title");
-//        settings.Settings.LibraryColumnSettings.ShouldContainKey("Artist");
-//        settings.Settings.LibraryVisibleColumns.SequenceEqual(new[] { "Title", "Artist" }).ShouldBeTrue();
-//    }
-//}
+    private static void InvokePrivate(object target, string methodName, params object?[] args)
+    {
+        MethodInfo? method = target.GetType().GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance);
+        method.ShouldNotBeNull(methodName);
+        method!.Invoke(target, args);
+    }
+
+    private static void SetPrivateField(object target, string fieldName, object? value)
+    {
+        FieldInfo? field = target.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+        field.ShouldNotBeNull(fieldName);
+        field!.SetValue(target, value);
+    }
+}

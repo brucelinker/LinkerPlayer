@@ -19,10 +19,12 @@ public class MusicBrainzRatingService : IMusicBrainzRatingService
 {
     private readonly HttpClient _client;
     private readonly ILogger<MusicBrainzRatingService> _logger;
+    private readonly IMusicLibrary _musicLibrary;
 
-    public MusicBrainzRatingService(ISettingsManager settingsManager, ILogger<MusicBrainzRatingService> logger)
+    public MusicBrainzRatingService(ISettingsManager settingsManager, ILogger<MusicBrainzRatingService> logger, IMusicLibrary musicLibrary)
     {
         AppSettings settings = settingsManager.Settings;
+        _musicLibrary = musicLibrary;
 
         HttpClientHandler handler = new HttpClientHandler
         {
@@ -117,24 +119,10 @@ public class MusicBrainzRatingService : IMusicBrainzRatingService
 
             if (mbRating.HasValue && mbRating.Value > 0.0 && track.Rating == 0.0)
             {
-                track.Rating = mbRating.Value;           // This already triggers OnRatingChanged if you added it
+                track.Rating = mbRating.Value;
                 updated++;
-
-                // NEW: Force save immediately
-                IMusicLibrary? library = App.AppHost?.Services?.GetService<IMusicLibrary>();
-                if (library != null)
-                {
-                    try
-                    {
-                        await library.UpdateRatingAsync(track.Id, mbRating.Value);
-                        await library.SaveToDatabaseAsync();
-                        _logger.LogInformation("MusicBrainz rating {Rating:0.0} saved for {Path}", mbRating.Value, track.Path);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to save MusicBrainz rating for {Path}", track.Path);
-                    }
-                }
+                _logger.LogInformation("MusicBrainz rating {Rating:0.0} enriched for {Path} (Id={Id}, dirtyTracking={Dirty})",
+                    mbRating.Value, track.Path, track.Id, track.IsDirtyTrackingEnabled ? "on" : "off");
             }
         }
     }

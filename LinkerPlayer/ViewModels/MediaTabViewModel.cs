@@ -68,6 +68,7 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
     [ObservableProperty] private string? _activeTabName; // The tab name from PlaybackCursor (playback source - either Library or Playlist)
     [ObservableProperty] private Playlist? _selectedPlaylist;
     [ObservableProperty] private PlaybackState _state;
+    [ObservableProperty] private string? _activeTrackId; // Cached ID of the currently playing track (avoids expensive property access in bindings)
     [ObservableProperty] private bool _allowDrop;
     private int _saveProgressCount;
     [ObservableProperty]
@@ -136,6 +137,7 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
             if (!ReferenceEquals(_sharedDataModel.ActiveTrack, value))
             {
                 _sharedDataModel.UpdateActiveTrack(value);
+                ActiveTrackId = value?.Id; // Update the cached ID
                 OnPropertyChanged(nameof(ActiveTrack));
             }
         }
@@ -276,6 +278,9 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
             }
             OnPropertyChanged(nameof(ActiveTrack));
             OnPropertyChanged(nameof(State));
+
+            // Update cached ActiveTrackId to avoid expensive property access in bindings during scroll
+            ActiveTrackId = m.Value?.Id;
 
             // Update the active tab name to reflect the playback source
             if (_playbackCoordinator?.PlaybackCursor != null)
@@ -2290,8 +2295,27 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
                                 atlTrack.Copyright = mediaFile.Copyright;
                                 break;
                             case nameof(MediaFile.Rating):
-                                atlTrack.Popularity = (float)Math.Round(mediaFile.Rating * 255.0 / 5.0, 1);
-                                break;
+                                {
+                                    // Vorbis-family: write raw RATING field (Popularity rounds to whole numbers in ATL).
+                                    double ratingScale = Models.MediaFileHelper.RatingScaleForPath(mediaFile.Path);
+                                    if (ratingScale <= 1.0)
+                                    {
+                                        if (mediaFile.Rating > 0.0)
+                                        {
+                                            double val = Math.Round(mediaFile.Rating * ratingScale / 5.0, 2);
+                                            atlTrack.AdditionalFields["RATING"] = val.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+                                        }
+                                        else
+                                        {
+                                            atlTrack.AdditionalFields.Remove("RATING");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        atlTrack.Popularity = Models.MediaFileHelper.StarsToPopularity(mediaFile.Rating, mediaFile.Path);
+                                    }
+                                    break;
+                                }
                             case nameof(MediaFile.AlbumCover):
                                 atlTrack.EmbeddedPictures.Clear();
                                 if (coverBytes != null)

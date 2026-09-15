@@ -40,7 +40,7 @@ public partial class EqualizerWindow
         {
             _logger.LogInformation("Initializing EqualizerWindow");
             InitializeComponent();
-            ((App)Application.Current).WindowPlace.Register(this, "EqualizerWindow");
+            OwnedWindowHelper.RegisterPlacement(this, "EqualizerWindow");
             DataContext = _equalizerViewModel;
 
             DataContext = viewModel;

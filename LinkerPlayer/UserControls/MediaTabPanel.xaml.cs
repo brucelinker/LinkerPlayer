@@ -35,6 +35,8 @@ public partial class PlaylistTabs
     private bool _openPopupOnRightButtonUp; // after opening on Down, switch StaysOpen off on Up
     private bool _allowSelectionSyncFromUserInput;
     private bool _tabSwitchInProgress; // true when a tab is being clicked, suppresses mouse-state check in selection
+    private readonly Dictionary<DataGridColumn, object?> _baseHeaderByColumn = new();
+    private readonly HashSet<DataGrid> _initializedGrids = new(); // tracks grids that have already been initialized (for cached tab content)
 
     public PlaylistTabs()
     {
@@ -109,7 +111,7 @@ public partial class PlaylistTabs
             visibleProps = vm.SelectedColumnNames.ToHashSet();
         }
 
-        // === 1. Determine how many static columns exist in XAML (play icon and/or # column) ===
+        // === 1. Determine how many static columns exist in XAML (play icon and/or cover indicator) ===
         int staticColumnsToPreserve = 0;
         if (dg.Columns.Count > 0 && dg.Columns[0] is DataGridTemplateColumn)
         {
@@ -117,13 +119,6 @@ public partial class PlaylistTabs
             // Library grids also get a cover-indicator column at index 1
             if (libTab != null && dg.Columns.Count > 1 && dg.Columns[1] is DataGridTemplateColumn)
                 staticColumnsToPreserve = 2;
-        }
-        else if (dg.Columns.Count > 1
-            && dg.Columns[0] is DataGridTextColumn txt
-            && txt.Header?.ToString() == "#"
-            && dg.Columns[1] is DataGridTemplateColumn)
-        {
-            staticColumnsToPreserve = 2;
         }
 
         // === 2. If no play/pause column exists, add it properly using dg's resource scope ===
@@ -286,6 +281,11 @@ public partial class PlaylistTabs
                 col.CellStyle = CreateDirtyCellStyle(prop);
             }
 
+            if (libTab != null && (prop == "Album" || prop == "AlbumArtist"))
+            {
+                ApplyPathToolTipStyles(col);
+            }
+
             double width = savedInfo.TryGetValue(prop, out AppSettings.ColumnInfo? ci) && ci.Width > 10 ? ci.Width : defWidth;
             col.Width = new DataGridLength(width, DataGridLengthUnitType.Pixel);
 
@@ -293,20 +293,35 @@ public partial class PlaylistTabs
             dg.Columns.Add(col);
         }
 
-        // === 4b. Rating column (DataGridTemplateColumn with StarRatingControl) ===
+        // === 4b. Rating column: lightweight read-only star text for display ===
+        // A full StarRatingControl UserControl per visible cell is too heavy for smooth
+        // scrolling on large libraries, so the grid renders plain star text. Interactive
+        // rating editing is still available in the track Properties window.
         if (visibleProps.Contains("Rating") &&
-            !dg.Columns.Any(c => c is DataGridTemplateColumn tc && tc.SortMemberPath == "Rating"))
+            !dg.Columns.Any(c => c is DataGridTextColumn bc && bc.Binding is Binding b && b.Path.Path == "Rating"))
         {
-            FrameworkElementFactory ratingFactory = new FrameworkElementFactory(typeof(StarRatingControl));
-            ratingFactory.SetBinding(
-                StarRatingControl.RatingProperty,
-                new Binding("Rating") { Mode = BindingMode.TwoWay });
+            // Unrated (0) shows five full stars rendered dim/disabled, matching the convention
+            // where empty outline stars mean "no rating yet"; fractional ratings show half stars.
+            Style ratingCellStyle = new Style(typeof(TextBlock));
+            DataTrigger unratedTrigger = new DataTrigger
+            {
+                Binding = new Binding("Rating"),
+                Value = 0.0
+            };
+            unratedTrigger.Setters.Add(new Setter(TextBlock.OpacityProperty, 0.3));
+            ratingCellStyle.Triggers.Add(unratedTrigger);
 
-            DataGridTemplateColumn ratingCol = new DataGridTemplateColumn
+            DataGridTextColumn ratingCol = new DataGridTextColumn
             {
                 Header = "Rating",
                 SortMemberPath = "Rating",
-                CellTemplate = new DataTemplate { VisualTree = ratingFactory },
+                IsReadOnly = true,
+                ElementStyle = ratingCellStyle,
+                Binding = new Binding("Rating")
+                {
+                    Mode = BindingMode.OneWay,
+                    Converter = new Converters.FractionalRatingToStarsConverter()
+                }
             };
 
             double ratingWidth = savedInfo.TryGetValue("Rating", out AppSettings.ColumnInfo? rci) && rci.Width > 10
@@ -360,24 +375,29 @@ public partial class PlaylistTabs
     {
         Style style = new Style(typeof(DataGridCell), (Style)Application.Current.FindResource("SharedDataGridCellStyle"));
 
-        // Use a DataTrigger with a MultiBinding to get both DirtyCount (for re-evaluation)
-        // and the MediaFile itself (to check per-property dirtiness).
-        MultiBinding multiBinding = new MultiBinding
-        {
-            Converter = new Converters.DirtyCellMultiConverter(propertyName)
-        };
-        multiBinding.Bindings.Add(new Binding("DirtyCount"));  // triggers re-eval when count changes
-        multiBinding.Bindings.Add(new Binding("."));           // provides the MediaFile
-
+        // MediaFile raises an "IsDirty_{PropertyName}" change notification whenever a
+        // property becomes dirty (and when ClearDirty runs), so bind the trigger directly
+        // to that boolean — no MultiBinding, converter, or lock in the per-cell hot path.
         DataTrigger dirtyTrigger = new DataTrigger
         {
-            Binding = multiBinding,
+            Binding = new Binding($"IsDirty_{propertyName}"),
             Value = true
         };
         dirtyTrigger.Setters.Add(new Setter(DataGridCell.BackgroundProperty, DirtyCellBrush));
         style.Triggers.Add(dirtyTrigger);
 
         return style;
+    }
+
+    private static void ApplyPathToolTipStyles(DataGridTextColumn column)
+    {
+        Style textBlockStyle = new Style(typeof(TextBlock));
+        textBlockStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding("Path")));
+        column.ElementStyle = textBlockStyle;
+
+        Style textBoxStyle = new Style(typeof(TextBox));
+        textBoxStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding("Path")));
+        column.EditingElementStyle = textBoxStyle;
     }
 
     // ==================================================================
@@ -656,6 +676,19 @@ public partial class PlaylistTabs
     private void DataGrid_LoadingRow(object? sender, DataGridRowEventArgs e)
         => e.Row.Header = (e.Row.GetIndex() + 1).ToString();
 
+    private void AlbumCoverHover_MouseEnter(object sender, MouseEventArgs e)
+    {
+        // Lazily load the cover so the hover ToolTip has an image to show.
+        // The ToolTip opens/closes on its own; no popup tree-walk needed.
+        if (sender is FrameworkElement { DataContext: MediaFile mediaFile } &&
+            mediaFile.AlbumCover == null &&
+            mediaFile.HasEmbeddedCover &&
+            mediaFile.UnsupportedCoverFormat == null)
+        {
+            mediaFile.LoadAlbumCover();
+        }
+    }
+
     private void RegenerateCurrentColumns()
     {
         if (GetActiveDataGrid() is DataGrid dg)
@@ -716,65 +749,64 @@ public partial class PlaylistTabs
         if (DataContext is not MediaTabViewModel vm)
             return;
 
+        // With the caching TabControl, the DataGrid stays alive across tab switches.
+        // Loaded fires on first creation AND on re-attachment — skip expensive work on re-attachment.
+        if (!_initializedGrids.Add(dg))
+        {
+            // Grid already initialized. Selection persists (we never cleared it), so
+            // no need to ScrollIntoView — the row is already where the user left it.
+            return;
+        }
+
         // RegenerateColumns needs the template to be applied, which is already done by Loaded event
         RegenerateColumns(dg);
         vm.OnDataGridLoaded(sender, e);
 
+        ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
+
         // Restore + wire sort for playlist DataGrids.
         if (dg.DataContext is PlaylistTab playlistTab)
         {
-            // Attach sorting event to save state when user clicks a column header
+            dg.Sorting -= PlaylistDataGrid_Sorting;
             dg.Sorting += PlaylistDataGrid_Sorting;
 
-            // Restore previously saved sort for this playlist
-            ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
-            if (sm != null &&
-                sm.Settings.PlaylistSortStates.TryGetValue(playlistTab.Name, out AppSettings.PlaylistSortState? sortState) &&
-                !string.IsNullOrWhiteSpace(sortState.SortColumn) &&
-                !string.IsNullOrWhiteSpace(sortState.SortDirection))
+            if (sm != null && sm.Settings.PlaylistSortStates.TryGetValue(playlistTab.Name, out AppSettings.PlaylistSortState? sortState))
             {
-                DataGridColumn? col = dg.Columns.FirstOrDefault(c =>
-                    string.Equals(c.SortMemberPath, sortState.SortColumn, StringComparison.Ordinal));
+                List<SortDescription> savedSorts = BuildSortDescriptions(
+                    sortState.SortDescriptions,
+                    sortState.SortColumn,
+                    sortState.SortDirection);
 
-                if (col != null &&
-                    Enum.TryParse(sortState.SortDirection, out ListSortDirection dir))
+                if (savedSorts.Count > 0)
                 {
-                    ICollectionView? view = CollectionViewSource.GetDefaultView(dg.ItemsSource);
-                    if (view != null)
-                    {
-                        view.SortDescriptions.Clear();
-                        view.SortDescriptions.Add(new SortDescription(col.SortMemberPath, dir));
-                        col.SortDirection = dir;
-                        foreach (DataGridColumn other in dg.Columns)
-                        {
-                            if (!ReferenceEquals(other, col))
-                                other.SortDirection = null;
-                        }
-                    }
+                    ApplySortDescriptionsToGrid(dg, savedSorts);
                 }
             }
         }
+        else if (dg.DataContext is LibraryTab libraryTab && sm != null)
+        {
+            List<SortDescription> savedSorts = BuildSortDescriptions(
+                sm.Settings.LibrarySortDescriptions,
+                sm.Settings.LibrarySortColumn,
+                sm.Settings.LibrarySortDirection);
 
-        // Scroll the selected track into view when the DataGrid first loads
+            if (savedSorts.Count > 0)
+            {
+                libraryTab.SetSortOrder(savedSorts);
+                UpdateColumnSortHeaders(dg, savedSorts);
+            }
+        }
+
+        // Keep the selected row visible on load without forcing a full centering layout pass.
         if (dg.SelectedItem != null && dg.DataContext is ITabData tabData && tabData.SelectedTrack != null)
         {
             _logger.LogDebug(
-                "DataGrid_Loaded: calling CenterItemInDataGrid for {SelectedTrackId}, DataGrid has {ItemCount} items, TabData={TabName}",
+                "DataGrid_Loaded: scrolling selected track {SelectedTrackId} into view, DataGrid has {ItemCount} items, TabData={TabName}",
                 tabData.SelectedTrack?.Id ?? "null",
                 dg.Items.Count,
                 tabData is LibraryTab ? "LibraryTab" : (tabData is PlaylistTab pt ? $"PlaylistTab:{pt.Name}" : "Unknown"));
 
-            _isExplicitCentering = true;
-            try
-            {
-                CenterItemInDataGrid(dg, dg.SelectedItem);
-            }
-            finally
-            {
-                _isExplicitCentering = false;
-            }
-
-            _logger.LogDebug("DataGrid_Loaded: CenterItemInDataGrid complete");
+            dg.ScrollIntoView(dg.SelectedItem);
         }
 
         // Fix header scroll binding issue - deferred to Background priority to let layout settle
@@ -971,12 +1003,6 @@ public partial class PlaylistTabs
     {
         if (e.ClickCount >= 2)
         {
-            // Don't interfere with the rating popup — rapid clicks on the spinner
-            // buttons must not be treated as a double-click on the row.
-            if (e.OriginalSource is DependencyObject src &&
-                FindAncestor<StarRatingControl>(src) != null)
-                return;
-
             _suppressNextEdit = true;
         }
     }
@@ -1004,52 +1030,239 @@ public partial class PlaylistTabs
         }
     }
 
-    private void MusicLibraryDataGrid_Sorting(object sender, DataGridSortingEventArgs e)
+    private static bool TryParseSortDirection(string? value, out ListSortDirection direction)
     {
-        // Let WPF apply the sort normally, then persist the sort state after the next render pass.
-        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
-        if (settingsManager == null)
+        return Enum.TryParse(value, out direction);
+    }
+
+    private static List<SortDescription> BuildSortDescriptions(
+        IEnumerable<AppSettings.SortDescriptionState>? sortDescriptions,
+        string? fallbackColumn,
+        string? fallbackDirection)
+    {
+        List<SortDescription> result = new();
+
+        if (sortDescriptions != null)
+        {
+            foreach (AppSettings.SortDescriptionState sortState in sortDescriptions)
+            {
+                if (string.IsNullOrWhiteSpace(sortState.SortColumn) || !TryParseSortDirection(sortState.SortDirection, out ListSortDirection direction))
+                    continue;
+
+                result.Add(new SortDescription(sortState.SortColumn, direction));
+            }
+        }
+
+        if (result.Count == 0 &&
+            !string.IsNullOrWhiteSpace(fallbackColumn) &&
+            TryParseSortDirection(fallbackDirection, out ListSortDirection fallbackDir))
+        {
+            result.Add(new SortDescription(fallbackColumn, fallbackDir));
+        }
+
+        return result;
+    }
+
+    private void ApplySortDescriptionsToGrid(DataGrid dataGrid, IEnumerable<SortDescription> sortDescriptions)
+    {
+        ICollectionView? view = CollectionViewSource.GetDefaultView(dataGrid.ItemsSource);
+        if (view == null)
             return;
 
-        // The new direction is the opposite of the current one (WPF toggles on click).
+        List<SortDescription> sorts = sortDescriptions.ToList();
+
+        view.SortDescriptions.Clear();
+        foreach (SortDescription sortDescription in sorts)
+        {
+            view.SortDescriptions.Add(sortDescription);
+        }
+
+        UpdateColumnSortHeaders(dataGrid, sorts);
+    }
+
+    /// <summary>
+    /// Updates each column's SortDirection glyph and "(n)" multi-sort order indicator
+    /// without touching the view's SortDescriptions.
+    /// </summary>
+    private void UpdateColumnSortHeaders(DataGrid dataGrid, IEnumerable<SortDescription> sortDescriptions)
+    {
+        List<SortDescription> sorts = sortDescriptions.ToList();
+
+        Dictionary<string, ListSortDirection> sortDirectionByPath = sorts
+            .GroupBy(s => s.PropertyName, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Last().Direction, StringComparer.Ordinal);
+
+        HashSet<DataGridColumn> currentColumns = dataGrid.Columns.ToHashSet();
+        foreach (DataGridColumn trackedColumn in _baseHeaderByColumn.Keys.Where(c => !currentColumns.Contains(c)).ToList())
+        {
+            _baseHeaderByColumn.Remove(trackedColumn);
+        }
+
+        foreach (DataGridColumn column in dataGrid.Columns)
+        {
+            if (!_baseHeaderByColumn.ContainsKey(column))
+            {
+                _baseHeaderByColumn[column] = column.Header;
+            }
+
+            if (!string.IsNullOrWhiteSpace(column.SortMemberPath) &&
+                sortDirectionByPath.TryGetValue(column.SortMemberPath, out ListSortDirection direction))
+            {
+                column.SortDirection = direction;
+            }
+            else
+            {
+                column.SortDirection = null;
+            }
+        }
+
+        Dictionary<string, int> sortOrderByPath = sorts
+            .Select((sort, index) => new { sort.PropertyName, Order = index + 1 })
+            .ToDictionary(x => x.PropertyName, x => x.Order, StringComparer.Ordinal);
+
+        foreach (DataGridColumn column in dataGrid.Columns)
+        {
+            object? baseHeader = _baseHeaderByColumn.TryGetValue(column, out object? value) ? value : column.Header;
+            string baseHeaderText = baseHeader?.ToString() ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(column.SortMemberPath) &&
+                sortOrderByPath.TryGetValue(column.SortMemberPath, out int order) &&
+                !string.IsNullOrWhiteSpace(baseHeaderText))
+            {
+                column.Header = $"{baseHeaderText} ({order})";
+            }
+            else
+            {
+                column.Header = baseHeader;
+            }
+        }
+    }
+
+    private static List<AppSettings.SortDescriptionState> SerializeSortDescriptions(IEnumerable<SortDescription> sortDescriptions)
+    {
+        return sortDescriptions
+            .Select(s => new AppSettings.SortDescriptionState
+            {
+                SortColumn = s.PropertyName,
+                SortDirection = s.Direction.ToString()
+            })
+            .ToList();
+    }
+
+    private void MusicLibraryDataGrid_Sorting(object sender, DataGridSortingEventArgs e)
+    {
+        if (sender is not DataGrid dataGrid || dataGrid.DataContext is not LibraryTab libraryTab)
+            return;
+
+        string sortPath = e.Column.SortMemberPath;
+        if (string.IsNullOrWhiteSpace(sortPath))
+            return;
+
+        e.Handled = true;
+
         ListSortDirection newDirection = e.Column.SortDirection == ListSortDirection.Ascending
             ? ListSortDirection.Descending
             : ListSortDirection.Ascending;
 
-        string sortPath = e.Column.SortMemberPath ?? e.Column.Header?.ToString() ?? string.Empty;
+        bool isAdditiveSort = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
 
-        Dispatcher.BeginInvoke(() =>
+        // Base additive sorts on the LibraryTab's active sort, not the view's SortDescriptions
+        // (which is intentionally empty — the sort is applied as a pre-sorted snapshot).
+        List<SortDescription> updatedSorts;
+        if (isAdditiveSort)
         {
-            settingsManager.Settings.LibrarySortColumn = sortPath;
-            settingsManager.Settings.LibrarySortDirection = newDirection.ToString();
-            settingsManager.SaveSettings(nameof(AppSettings.LibrarySortColumn));
-        }, DispatcherPriority.Background);
+            updatedSorts = libraryTab.ActiveSorts
+                .Where(s => !string.Equals(s.PropertyName, sortPath, StringComparison.Ordinal))
+                .ToList();
+            updatedSorts.Add(new SortDescription(sortPath, newDirection));
+        }
+        else
+        {
+            updatedSorts =
+            [
+                new SortDescription(sortPath, newDirection)
+            ];
+        }
+
+        libraryTab.SetSortOrder(updatedSorts);
+        UpdateColumnSortHeaders(dataGrid, updatedSorts);
+
+        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
+        if (settingsManager == null)
+            return;
+
+        settingsManager.Settings.LibrarySortDescriptions = SerializeSortDescriptions(updatedSorts);
+
+        if (updatedSorts.Count > 0)
+        {
+            settingsManager.Settings.LibrarySortColumn = updatedSorts[0].PropertyName;
+            settingsManager.Settings.LibrarySortDirection = updatedSorts[0].Direction.ToString();
+        }
+        else
+        {
+            settingsManager.Settings.LibrarySortColumn = string.Empty;
+            settingsManager.Settings.LibrarySortDirection = string.Empty;
+        }
+
+        settingsManager.SaveSettings(nameof(AppSettings.LibrarySortDescriptions));
     }
 
     private void PlaylistDataGrid_Sorting(object sender, DataGridSortingEventArgs e)
     {
-        if (sender is not DataGrid dg || dg.DataContext is not PlaylistTab playlistTab)
+        if (sender is not DataGrid dataGrid || dataGrid.DataContext is not PlaylistTab playlistTab)
             return;
 
-        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
-        if (settingsManager == null)
+        string sortPath = e.Column.SortMemberPath;
+        if (string.IsNullOrWhiteSpace(sortPath))
             return;
+
+        ICollectionView? view = CollectionViewSource.GetDefaultView(dataGrid.ItemsSource);
+        if (view == null)
+            return;
+
+        e.Handled = true;
 
         ListSortDirection newDirection = e.Column.SortDirection == ListSortDirection.Ascending
             ? ListSortDirection.Descending
             : ListSortDirection.Ascending;
 
-        string sortPath = e.Column.SortMemberPath ?? e.Column.Header?.ToString() ?? string.Empty;
+        bool isAdditiveSort = (Keyboard.Modifiers & ModifierKeys.Shift) == ModifierKeys.Shift;
 
-        Dispatcher.BeginInvoke(() =>
+        List<SortDescription> updatedSorts;
+        if (isAdditiveSort)
         {
-            settingsManager.Settings.PlaylistSortStates[playlistTab.Name] = new AppSettings.PlaylistSortState
-            {
-                SortColumn = sortPath,
-                SortDirection = newDirection.ToString()
-            };
-            settingsManager.SaveSettings(nameof(AppSettings.PlaylistSortStates));
-        }, DispatcherPriority.Background);
+            updatedSorts = view.SortDescriptions
+                .Where(s => !string.Equals(s.PropertyName, sortPath, StringComparison.Ordinal))
+                .ToList();
+            updatedSorts.Add(new SortDescription(sortPath, newDirection));
+        }
+        else
+        {
+            updatedSorts =
+            [
+                new SortDescription(sortPath, newDirection)
+            ];
+        }
+
+        ApplySortDescriptionsToGrid(dataGrid, updatedSorts);
+
+        ISettingsManager? settingsManager = App.AppHost?.Services?.GetService<ISettingsManager>();
+        if (settingsManager == null)
+            return;
+
+        AppSettings.PlaylistSortState playlistSortState = new()
+        {
+            SortDescriptions = SerializeSortDescriptions(updatedSorts)
+        };
+
+        if (updatedSorts.Count > 0)
+        {
+            playlistSortState.SortColumn = updatedSorts[0].PropertyName;
+            playlistSortState.SortDirection = updatedSorts[0].Direction.ToString();
+        }
+
+        settingsManager.Settings.PlaylistSortStates[playlistTab.Name] = playlistSortState;
+        settingsManager.SaveSettings(nameof(AppSettings.PlaylistSortStates));
     }
 
     private void PlaylistRow_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -1066,13 +1279,6 @@ public partial class PlaylistTabs
         }
 
         DependencyObject origin = (DependencyObject)e.OriginalSource;
-
-        // Rapid clicks on the rating popup's spinner buttons must never trigger play.
-        if (FindAncestor<StarRatingControl>(origin) != null)
-        {
-            e.Handled = true;
-            return;
-        }
 
         DataGridColumnHeader? header = FindAncestor<DataGridColumnHeader>(origin);
         if (header != null)

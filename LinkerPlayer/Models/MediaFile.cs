@@ -121,6 +121,22 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [NotMapped]
     public int DirtyCount { get { lock (_dirtyLock) { return _dirtyProperties.Count; } } }
 
+    // Per-property dirty accessors for zero-overhead DataGrid cell-style triggers.
+    // Each is notified via OnPropertyChanged("IsDirty_{Prop}") when the flag flips.
+    [NotMapped] public bool IsDirty_Title => IsPropertyDirty(nameof(Title));
+    [NotMapped] public bool IsDirty_Artist => IsPropertyDirty(nameof(Artist));
+    [NotMapped] public bool IsDirty_Album => IsPropertyDirty(nameof(Album));
+    [NotMapped] public bool IsDirty_AlbumArtist => IsPropertyDirty(nameof(AlbumArtist));
+    [NotMapped] public bool IsDirty_Genres => IsPropertyDirty(nameof(Genres));
+    [NotMapped] public bool IsDirty_Track => IsPropertyDirty(nameof(Track));
+    [NotMapped] public bool IsDirty_TrackCount => IsPropertyDirty(nameof(TrackCount));
+    [NotMapped] public bool IsDirty_Disc => IsPropertyDirty(nameof(Disc));
+    [NotMapped] public bool IsDirty_DiscCount => IsPropertyDirty(nameof(DiscCount));
+    [NotMapped] public bool IsDirty_Composers => IsPropertyDirty(nameof(Composers));
+    [NotMapped] public bool IsDirty_Comment => IsPropertyDirty(nameof(Comment));
+    [NotMapped] public bool IsDirty_Copyright => IsPropertyDirty(nameof(Copyright));
+    [NotMapped] public bool IsDirty_Year => IsPropertyDirty(nameof(Year));
+
     /// <summary>
     /// Set by the save pipeline immediately after ATL writes this file.
     /// The metadata refresher uses this to skip re-reading files that were just saved by
@@ -421,8 +437,11 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             {
                 try
                 {
+                    // UpdateRatingAsync writes the DB row itself. The previous extra
+                    // SaveToDatabaseAsync here raced concurrent rating edits and blew up the
+                    // PlaylistTracks rebuild (UNIQUE constraint), so this task died before the
+                    // file write — which is why ratings silently didn't persist.
                     await library.UpdateRatingAsync(Id, newValue);
-                    await library.SaveToDatabaseAsync();
                     await PersistRatingToFileAsync(newValue);
                 }
                 catch (Exception ex)
@@ -443,9 +462,14 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         {
             ATL.Track atlTrack = new(Path);
             double clamped = Math.Round(Math.Clamp(rating, 0.0, 5.0), 1);
-            atlTrack.Popularity = (float)Math.Round(clamped * 255.0 / 5.0, 1);
+
+            // ATL's AdditionalFields are read-only for Vorbis (Save/SaveAsync don't persist them).
+            // Use Popularity field instead, which works reliably for all formats (0-1 for Vorbis, 0-255 for ID3v2).
+            // MediaFileHelper.StarsToPopularity handles the format-specific scaling.
+            atlTrack.Popularity = MediaFileHelper.StarsToPopularity(clamped, Path);
 
             bool saved = await atlTrack.SaveAsync(writeProgress: null);
+            //Logger?.LogWarning("[RatingWrite] {File}: SaveAsync={Saved}", System.IO.Path.GetFileName(Path), saved);
             if (!saved)
                 Logger?.LogWarning("ATL failed to persist rating tag for {Path}", Path);
         }
@@ -519,9 +543,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch (IOException)
         {
-            // Let other IOExceptions bubble up to callers (e.g. TrackMetadataRefresher) that
-            // have retry logic for transient file-lock errors on UNC/NAS shares.
-            throw;
+            HealthStatus = TrackHealthStatus.Changed;
+            return;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -649,13 +672,66 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             // Optional: OnPropertyChanged for all if needed
         }
 
-        // Read star rating from ATL Popularity (0–255) and map to 0–5 scale.
-        // Only overwrite when the file actually carries a rating tag; if Popularity
-        // is null or 0 the DB-stored value (set by the user in the app) is preserved.
-        if (track.Popularity is float pop && pop > 0)
+        // Read star rating from the file. Like any other metadata, the file wins — an
+        // external change is adopted on re-read. The tag's value scale is format-dependent
+        // (Vorbis/FLAC RATING is 0–1; ID3v2 POPM is 0–255), handled by the helper.
+        double scale = MediaFileHelper.RatingScaleForPath(Path);
+        float? rawRating = null;
+
+        // For Vorbis-family files the fractional rating lives in the RATING additional
+        // field (Popularity is rounded by ATL); check it first so the precise value wins.
+        if (scale <= 1.0 && track.AdditionalFields != null)
         {
-            Rating = Math.Round(pop * 5.0 / 255.0, 1);
+            string? ratingField = null;
+            if (track.AdditionalFields.TryGetValue("RATING", out string? r1)) ratingField = r1;
+            else if (track.AdditionalFields.TryGetValue("FMPS_RATING", out string? r2)) ratingField = r2;
+
+            if (double.TryParse(ratingField, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out double raw) && raw > 0)
+            {
+                // RATING/FMPS may be 0–1 or 0–100 depending on the tagger; normalize to 0–1.
+                rawRating = (float)(raw <= 1.0 ? raw : raw / 100.0);
+            }
         }
+
+        rawRating ??= track.Popularity;
+
+        // Non-Vorbis fallback: some taggers write RATING as an additional field rather
+        // than one ATL maps to Popularity — pick it up so externally-set ratings still load.
+        if ((!rawRating.HasValue || rawRating.Value <= 0) && scale > 1.0 && track.AdditionalFields != null)
+        {
+            string? ratingField = null;
+            if (track.AdditionalFields.TryGetValue("RATING", out string? r1)) ratingField = r1;
+            else if (track.AdditionalFields.TryGetValue("FMPS_RATING", out string? r2)) ratingField = r2;
+
+            if (double.TryParse(ratingField, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out double raw) && raw > 0)
+            {
+                rawRating = (float)(raw <= 1.0 ? raw * scale : raw / 100.0 * scale);
+            }
+        }
+
+        Rating = rawRating is float pop && pop > 0
+            ? MediaFileHelper.PopularityToStars(pop, Path)
+            : 0;
+
+        // DIAGNOSTIC: log the raw rating values ATL returns so we can see the actual scale.
+        try
+        {
+            string? ratingAddl = null;
+            if (track.AdditionalFields != null)
+            {
+                foreach (var kv in track.AdditionalFields)
+                    if (kv.Key.Contains("RATING", StringComparison.OrdinalIgnoreCase))
+                        ratingAddl += $"[{kv.Key}={kv.Value}]";
+            }
+            //Logger?.LogWarning("[RatingRead] {File}: Popularity={Pop}, addlRating={Addl} -> Rating={Rating}",
+            //    System.IO.Path.GetFileName(Path),
+            //    track.Popularity?.ToString("0.###") ?? "null",
+            //    ratingAddl ?? "none",
+            //    Rating);
+        }
+        catch { }
 
         static string NormalizeReplayGainKey(string key) =>
             new string(key.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
@@ -701,37 +777,6 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
         catch { } // swallow transient I/O errors (e.g. UNC share briefly unreachable)
     }
-
-    /// <summary>
-    /// Reads a specific tag from the audio file on disk using ATL.
-    /// Use this for MusicBrainz IDs and other less-common tags.
-    /// </summary>
-    //public string? GetTag(string tagName)
-    //{
-    //    if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
-    //        return null;
-
-    //    try
-    //    {
-    //        Track track = new Track(Path);   // ATL Track
-
-    //        return tagName.ToUpperInvariant() switch
-    //        {
-    //            "MUSICBRAINZ_TRACKID" or "MUSICBRAINZ_TRACK_ID" => track.MusicBrainzTrackId,
-    //            "MUSICBRAINZ_RELEASETRACKID" => track.MusicBrainzReleaseTrackId,
-    //            "MUSICBRAINZ_ALBUMID" => track.MusicBrainzAlbumId,
-    //            "MUSICBRAINZ_ARTISTID" => track.MusicBrainzArtistId,
-    //            "MUSICBRAINZ_ALBUMARTISTID" => track.MusicBrainzAlbumArtistId,
-    //            "MUSICBRAINZ_RELEASEGROUPID" => track.MusicBrainzReleaseGroupId,
-    //            _ => track.AdditionalFields.TryGetValue(tagName, out string? value) ? value : null
-    //        };
-    //    }
-    //    catch (Exception ex)
-    //    {
-    //        Logger?.LogWarning(ex, "Failed to read tag '{TagName}' for {Path}", tagName, Path);
-    //        return null;
-    //    }
-    //}
 
     private void SetFallbackMetadata(bool raisePropertyChanged)
     {
@@ -940,17 +985,5 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             Logger?.LogWarning(ex, "Failed to read tag '{TagName}' for {Path}", tagName, Path);
             return null;
         }
-    }
-
-    private static string? GetAdditionalField(Track track, string key)
-    {
-        if (track.AdditionalFields.TryGetValue(key, out string? value))
-            return value;
-
-        // Try case-insensitive fallback
-        KeyValuePair<string, string> match = track.AdditionalFields.FirstOrDefault(kv =>
-            string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase));
-
-        return match.Value;
     }
 }

@@ -204,7 +204,7 @@
             <RepeatButton
               x:Name="LineDownButton"
               Grid.Row="2"
-              Height="17"
+              Height="27"
               Background="{DynamicResource ScrollBarArrowBackgroundBrush}"
               Command="ScrollBar.LineDownCommand"
               Opacity="0">
@@ -585,6 +585,19 @@
     ************************
   -->
 
+  <!--  Shared DataGridRowHeader Style — themes the row-number header column to match the  -->
+  <!--  current theme instead of the default (white) system colors.  -->
+  <Style x:Key="SharedDataGridRowHeaderStyle" TargetType="DataGridRowHeader">
+    <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Right" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+
   <!--  Shared DataGrid Visual Style  -->
   <Style x:Key="SharedDataGridStyle" TargetType="DataGrid">
     <Setter Property="Background" Value="Transparent" />
@@ -592,6 +605,7 @@
     <Setter Property="GridLinesVisibility" Value="None" />
     <Setter Property="RowHeaderWidth" Value="0" />
     <Setter Property="RowHeight" Value="20" />
+    <Setter Property="RowHeaderStyle" Value="{StaticResource SharedDataGridRowHeaderStyle}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Stretch" />
   </Style>

@@ -49,6 +49,18 @@ public static class OwnedWindowHelper
         settingsManager.SaveSettings(nameof(AppSettings.WindowBounds));
     }
 
+    public static void RegisterPlacement(Window window, string settingsKey, Action? onFailure = null)
+    {
+        try
+        {
+            ((App)Application.Current).WindowPlace.Register(window, settingsKey);
+        }
+        catch
+        {
+            onFailure?.Invoke();
+        }
+    }
+
     public static void Show(Window window, Window? owner)
     {
         if (owner != null && !ReferenceEquals(window, owner) && !ReferenceEquals(window.Owner, owner))
