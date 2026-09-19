@@ -61,7 +61,7 @@ public partial class App
                 services.AddSingleton<LibraryTabViewModel>();
                 services.AddSingleton<MediaTabViewModel>(sp => (MediaTabViewModel)sp.GetRequiredService<IMediaTabViewModel>());
                 services.AddSingleton<PlayerControlsViewModel>();
-                services.AddSingleton<IPlayerControlsViewModel, PlayerControlsViewModel>();
+                services.AddSingleton<IPlayerControlsViewModel>(sp => sp.GetRequiredService<PlayerControlsViewModel>());
                 services.AddSingleton<IPropertiesViewModel, PropertiesViewModel>();
                 services.AddSingleton<PropertiesWindow>();
 

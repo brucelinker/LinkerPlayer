@@ -749,18 +749,17 @@ public partial class PlaylistTabs
         if (DataContext is not MediaTabViewModel vm)
             return;
 
+        vm.OnDataGridLoaded(sender, e);
+
         // With the caching TabControl, the DataGrid stays alive across tab switches.
         // Loaded fires on first creation AND on re-attachment — skip expensive work on re-attachment.
         if (!_initializedGrids.Add(dg))
         {
-            // Grid already initialized. Selection persists (we never cleared it), so
-            // no need to ScrollIntoView — the row is already where the user left it.
             return;
         }
 
         // RegenerateColumns needs the template to be applied, which is already done by Loaded event
         RegenerateColumns(dg);
-        vm.OnDataGridLoaded(sender, e);
 
         ISettingsManager? sm = App.AppHost?.Services?.GetService<ISettingsManager>();
 
@@ -808,9 +807,6 @@ public partial class PlaylistTabs
 
             dg.ScrollIntoView(dg.SelectedItem);
         }
-
-        // Fix header scroll binding issue - deferred to Background priority to let layout settle
-        Dispatcher.BeginInvoke(() => FixHeaderScrollShimmy(dg), DispatcherPriority.Background);
 
         // Attach event handlers for column header and keyboard interactions
         dg.AddHandler(UIElement.PreviewMouseRightButtonUpEvent,
@@ -948,38 +944,8 @@ public partial class PlaylistTabs
         bool userInitiated = (_allowSelectionSyncFromUserInput || Mouse.LeftButton == MouseButtonState.Pressed) && !_tabSwitchInProgress;
         if (!userInitiated)
         {
-            // Keep model-owned selection stable when the grid emits passive deselection during refresh/layout.
-            if (dataGrid.DataContext is ITabData tabData && tabData.SelectedTrack != null)
-            {
-                MediaFile selected = tabData.SelectedTrack;
-
-                // Check if the selected track is in the current items collection
-                if (dataGrid.Items.IndexOf(selected) < 0)
-                {
-                    // Try to find a matching track by ID (remapping for filtered/updated collections)
-                    MediaFile? remapped = dataGrid.Items.Cast<object>()
-                        .OfType<MediaFile>()
-                        .FirstOrDefault(t => string.Equals(t.Id, selected.Id, StringComparison.Ordinal));
-                    if (remapped != null)
-                    {
-                        selected = remapped;
-                        tabData.SelectedTrack = remapped;
-                        tabData.SelectedIndex = dataGrid.Items.IndexOf(remapped);
-                    }
-                }
-
-                // If the selected track is in the collection and differs from grid's current selection, sync and scroll
-                if (dataGrid.Items.IndexOf(selected) >= 0)
-                {
-                    if (dataGrid.SelectedItem != selected)
-                    {
-                        dataGrid.SelectedItem = selected;
-                    }
-                }
-            }
-
-            // Prevent tab-switch/passive events from leaving stale gating flags set,
-            // which can cause the next real click selection to be ignored.
+            // Ignore passive selection churn from layout/refresh/tab switching.
+            // The view model owns persisted selection state.
             _allowSelectionSyncFromUserInput = false;
             _tabSwitchInProgress = false;
             return;
@@ -1437,87 +1403,33 @@ public partial class PlaylistTabs
             return;
         }
 
-        // The active track changed (playback started/changed).
-        // Reveal it in the UI without forcing selection to follow.
-        // (Selection represents user intent; active track represents playback state.)
+        // Active track changes must never force a tab switch.
+        // Keep user-selected tab stable; only reveal when the active track is in the current tab.
         if (DataContext is not MediaTabViewModel viewModel)
         {
             return;
         }
 
-        MediaFile? activeInTab = null;
-        int tabIndex = -1;
-        int trackIndex = -1;
-
-        string? preferredTabName = viewModel.ActiveTabName;
-        if (!string.IsNullOrWhiteSpace(preferredTabName))
-        {
-            for (int i = 0; i < viewModel.TabList.Count; i++)
-            {
-                if (!string.Equals(viewModel.TabList[i].Name, preferredTabName, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                tabIndex = i;
-                activeInTab = viewModel.TabList[i].Tracks.FirstOrDefault(t => t.Id == track.Id);
-                if (activeInTab != null)
-                {
-                    trackIndex = viewModel.TabList[i].Tracks.IndexOf(activeInTab);
-                }
-
-                break;
-            }
-        }
-
-        if (trackIndex < 0)
-        {
-            if (tabIndex >= 0 && tabIndex < viewModel.TabList.Count)
-            {
-                activeInTab = viewModel.TabList[tabIndex].Tracks.FirstOrDefault(t => t.Id == track.Id);
-                if (activeInTab != null)
-                {
-                    trackIndex = viewModel.TabList[tabIndex].Tracks.IndexOf(activeInTab);
-                }
-            }
-        }
-
-        if (trackIndex < 0)
-        {
-            for (int i = 0; i < viewModel.TabList.Count; i++)
-            {
-                MediaFile? match = viewModel.TabList[i].Tracks.FirstOrDefault(t => t.Id == track.Id);
-                if (match != null)
-                {
-                    tabIndex = i;
-                    activeInTab = match;
-                    trackIndex = viewModel.TabList[i].Tracks.IndexOf(match);
-                    break;
-                }
-            }
-        }
-
-        if (activeInTab == null || trackIndex < 0 || tabIndex < 0 || tabIndex >= viewModel.TabList.Count)
+        int tabIndex = viewModel.SelectedTabIndex;
+        if (tabIndex < 0 || tabIndex >= viewModel.TabList.Count)
         {
             return;
         }
 
-        // Switch to the active playback tab if needed
-        if (tabIndex != viewModel.SelectedTabIndex)
+        ITabData currentTab = viewModel.TabList[tabIndex];
+        MediaFile? activeInTab = currentTab.Tracks.FirstOrDefault(t => t.Id == track.Id);
+        if (activeInTab == null)
         {
-            viewModel.SelectedTabIndex = tabIndex;
-            // Defer scrolling to after tab switch and layout
-            Dispatcher.BeginInvoke(new Action(() =>
-            {
-                // Just scroll to reveal the active track; do NOT change selection.
-                RevealActiveTrack(activeInTab, trackIndex);
-            }), DispatcherPriority.Render);
+            return;
         }
-        else
+
+        int trackIndex = currentTab.Tracks.IndexOf(activeInTab);
+        if (trackIndex < 0)
         {
-            // Already on the right tab, reveal immediately
-            RevealActiveTrack(activeInTab, trackIndex);
+            return;
         }
+
+        RevealActiveTrack(activeInTab, trackIndex);
     }
 
     /// <summary>

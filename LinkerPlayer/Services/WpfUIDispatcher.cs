@@ -42,69 +42,73 @@ public class WpfUiDispatcher : IUiDispatcher
 {
     public async Task InvokeAsync(Action action)
     {
-        if (Application.Current?.Dispatcher == null)
+        System.Windows.Threading.Dispatcher? dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
             throw new InvalidOperationException("Application dispatcher is not available");
         }
 
-        if (Application.Current.Dispatcher.CheckAccess())
+        if (dispatcher.CheckAccess())
         {
             action();
         }
         else
         {
-            await Application.Current.Dispatcher.InvokeAsync(action);
+            await dispatcher.InvokeAsync(action);
         }
     }
 
     public async Task<T> InvokeAsync<T>(Func<T> func)
     {
-        if (Application.Current?.Dispatcher == null)
+        System.Windows.Threading.Dispatcher? dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
             throw new InvalidOperationException("Application dispatcher is not available");
         }
 
-        if (Application.Current.Dispatcher.CheckAccess())
+        if (dispatcher.CheckAccess())
         {
             return func();
         }
         else
         {
-            return await Application.Current.Dispatcher.InvokeAsync(func);
+            return await dispatcher.InvokeAsync(func);
         }
     }
 
     public async Task InvokeAsync(Func<Task> asyncAction)
     {
-        if (Application.Current?.Dispatcher == null)
+        System.Windows.Threading.Dispatcher? dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
             throw new InvalidOperationException("Application dispatcher is not available");
         }
 
-        if (Application.Current.Dispatcher.CheckAccess())
+        if (dispatcher.CheckAccess())
         {
             await asyncAction();
         }
         else
         {
-            await Application.Current.Dispatcher.InvokeAsync(asyncAction);
+            await dispatcher.InvokeAsync(asyncAction);
         }
     }
 
     public async Task<T> InvokeAsync<T>(Func<Task<T>> asyncFunc)
     {
-        if (Application.Current?.Dispatcher == null)
+        System.Windows.Threading.Dispatcher? dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher == null || dispatcher.HasShutdownStarted || dispatcher.HasShutdownFinished)
         {
             throw new InvalidOperationException("Application dispatcher is not available");
         }
 
-        if (Application.Current.Dispatcher.CheckAccess())
+        if (dispatcher.CheckAccess())
         {
             return await asyncFunc();
         }
         else
         {
-            Task<T>? result = await Application.Current.Dispatcher.InvokeAsync(asyncFunc);
+            Task<T>? result = await dispatcher.InvokeAsync(asyncFunc);
             return await result;
         }
     }

@@ -613,7 +613,7 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
         if (toCheck.Count == 0)
             return;
 
-        Task.Run(() =>
+        Task.Run(async () =>
         {
             foreach (MediaFile track in toCheck)
             {
@@ -640,7 +640,21 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
 
                 if (status != TrackHealthStatus.Unknown)
                 {
-                    _uiDispatcher.InvokeAsync(() => track.HealthStatus = status);
+                    try
+                    {
+                        await _uiDispatcher.InvokeAsync(() =>
+                        {
+                            track.HealthStatus = status;
+                        });
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        return;
+                    }
                 }
             }
         });
