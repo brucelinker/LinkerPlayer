@@ -12,6 +12,9 @@ WPF music player, **.NET 10 (net10.0-windows, x64)**. Three projects: `LinkerPla
 - [Common Pitfalls](#common-pitfalls--quick-reference) — avoid these mistakes
 - [Reference](#reference) — file locations, package pins
 
+## General Guidelines
+- Use a developer-technical tone in documentation rather than a marketing-style tone.
+
 ## Architecture constraints
 - **MVVM** via `CommunityToolkit.Mvvm`. All ViewModels use `[ObservableProperty]` / `[RelayCommand]` source generators on `partial` classes. Prefer MVVM-first architecture with minimal code-behind and simpler binding-first solutions over adding more event-driven logic. **Let WPF be WPF**; avoid architecture-fighting, churn-inducing code paths.
 - **DI** via `Microsoft.Extensions.Hosting` — register all services and ViewModels in `App.xaml.cs`; always inject via constructor against the interface, never the concrete type; no static mutable state.

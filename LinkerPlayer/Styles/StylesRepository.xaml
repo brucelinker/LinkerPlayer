@@ -499,7 +499,7 @@
     </Style.Triggers>
   </Style>
 
-  <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource CustomScrollBarStyle}" />
+  <Style BasedOn="{StaticResource CustomScrollBarStyle}" TargetType="{x:Type ScrollBar}" />
 
   <!--
     ************************
@@ -614,12 +614,14 @@
   </Style>
 
   <Style
-    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type DataGrid}, ResourceId=DataGridSelectAllButtonStyleKey}"
+    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type DataGrid},
+                                 ResourceId=DataGridSelectAllButtonStyleKey}"
     BasedOn="{StaticResource SharedDataGridSelectAllButtonStyle}"
     TargetType="Button" />
 
   <Style
-    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type DataGrid}, ResourceId=DataGridSelectAllButtonStyle}"
+    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type DataGrid},
+                                 ResourceId=DataGridSelectAllButtonStyle}"
     BasedOn="{StaticResource SharedDataGridSelectAllButtonStyle}"
     TargetType="Button" />
 
