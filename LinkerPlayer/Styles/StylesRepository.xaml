@@ -87,25 +87,25 @@
   <Style x:Key="CustomScrollBarStyle" TargetType="{x:Type ScrollBar}">
     <Setter Property="OverridesDefaultStyle" Value="True" />
     <Setter Property="Background" Value="{DynamicResource ScrollBarTrackBrush}" />
-    <Setter Property="Width" Value="17" />
-    <Setter Property="MinWidth" Value="17" />
+    <Setter Property="Width" Value="20" />
+    <Setter Property="MinWidth" Value="20" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="{x:Type ScrollBar}">
           <Grid
             x:Name="Bg"
-            Width="17"
-            MinWidth="17"
+            Width="20"
+            MinWidth="20"
             Background="{TemplateBinding Background}">
             <Grid.RowDefinitions>
-              <RowDefinition Height="17" />
+              <RowDefinition Height="20" />
               <RowDefinition Height="*" />
-              <RowDefinition Height="17" />
+              <RowDefinition Height="20" />
             </Grid.RowDefinitions>
             <RepeatButton
               x:Name="LineUpButton"
               Grid.Row="0"
-              Height="17"
+              Height="20"
               Background="{DynamicResource ScrollBarArrowBackgroundBrush}"
               Command="ScrollBar.LineUpCommand"
               Opacity="0">
@@ -135,8 +135,8 @@
             <Track
               x:Name="PART_Track"
               Grid.Row="1"
-              Width="17"
-              MinWidth="17"
+              Width="20"
+              MinWidth="20"
               IsDirectionReversed="True"
               Value="{TemplateBinding Value}">
               <Track.DecreaseRepeatButton>
@@ -161,7 +161,7 @@
                 <Thumb x:Name="ThumbElement" MinHeight="20">
                   <Thumb.Style>
                     <Style TargetType="Thumb">
-                      <Setter Property="Width" Value="2" />
+                      <Setter Property="Width" Value="4" />
                       <Setter Property="Template">
                         <Setter.Value>
                           <ControlTemplate TargetType="Thumb">
@@ -174,7 +174,7 @@
                       </Setter>
                       <Style.Triggers>
                         <Trigger Property="IsDragging" Value="True">
-                          <Setter Property="Width" Value="6" />
+                          <Setter Property="Width" Value="10" />
                           <!--  Foobar2000 dragging  -->
                         </Trigger>
                       </Style.Triggers>
@@ -204,7 +204,7 @@
             <RepeatButton
               x:Name="LineDownButton"
               Grid.Row="2"
-              Height="27"
+              Height="20"
               Background="{DynamicResource ScrollBarArrowBackgroundBrush}"
               Command="ScrollBar.LineDownCommand"
               Opacity="0">
@@ -250,7 +250,7 @@
                   <DoubleAnimation
                     Storyboard.TargetName="ThumbElement"
                     Storyboard.TargetProperty="Width"
-                    To="6"
+                    To="10"
                     Duration="0:0:0.2">
                     <DoubleAnimation.EasingFunction>
                       <QuadraticEase EasingMode="EaseInOut" />
@@ -276,7 +276,7 @@
                   <DoubleAnimation
                     Storyboard.TargetName="ThumbElement"
                     Storyboard.TargetProperty="Width"
-                    To="2"
+                    To="4"
                     Duration="0:0:0.2">
                     <DoubleAnimation.EasingFunction>
                       <QuadraticEase EasingMode="EaseInOut" />
@@ -293,25 +293,25 @@
       <Trigger Property="Orientation" Value="Horizontal">
         <Setter Property="Width" Value="Auto" />
         <Setter Property="MinWidth" Value="0" />
-        <Setter Property="Height" Value="17" />
-        <Setter Property="MinHeight" Value="17" />
+        <Setter Property="Height" Value="20" />
+        <Setter Property="MinHeight" Value="20" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="{x:Type ScrollBar}">
               <Grid
                 x:Name="Bg"
-                Height="17"
-                MinHeight="17"
+                Height="20"
+                MinHeight="20"
                 Background="{TemplateBinding Background}">
                 <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="17" />
+                  <ColumnDefinition Width="20" />
                   <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="17" />
+                  <ColumnDefinition Width="20" />
                 </Grid.ColumnDefinitions>
                 <RepeatButton
                   x:Name="LineLeftButton"
                   Grid.Column="0"
-                  Width="17"
+                  Width="20"
                   Background="{DynamicResource ScrollBarArrowBackgroundBrush}"
                   Command="ScrollBar.LineLeftCommand"
                   Opacity="0">
@@ -341,8 +341,8 @@
                 <Track
                   x:Name="PART_Track"
                   Grid.Column="1"
-                  Height="17"
-                  MinHeight="17"
+                  Height="20"
+                  MinHeight="20"
                   IsDirectionReversed="False"
                   Value="{TemplateBinding Value}">
                   <Track.DecreaseRepeatButton>
@@ -367,7 +367,7 @@
                     <Thumb x:Name="ThumbElement" MinWidth="20">
                       <Thumb.Style>
                         <Style TargetType="Thumb">
-                          <Setter Property="Height" Value="2" />
+                          <Setter Property="Height" Value="4" />
                           <Setter Property="Template">
                             <Setter.Value>
                               <ControlTemplate TargetType="Thumb">
@@ -380,7 +380,7 @@
                           </Setter>
                           <Style.Triggers>
                             <Trigger Property="IsDragging" Value="True">
-                              <Setter Property="Height" Value="6" />
+                              <Setter Property="Height" Value="10" />
                               <!--  Foobar2000 dragging  -->
                             </Trigger>
                           </Style.Triggers>
@@ -410,7 +410,7 @@
                 <RepeatButton
                   x:Name="LineRightButton"
                   Grid.Column="2"
-                  Width="17"
+                  Width="20"
                   Background="{DynamicResource ScrollBarArrowBackgroundBrush}"
                   Command="ScrollBar.LineRightCommand"
                   Opacity="0">
@@ -456,7 +456,7 @@
                       <DoubleAnimation
                         Storyboard.TargetName="ThumbElement"
                         Storyboard.TargetProperty="Height"
-                        To="6"
+                        To="10"
                         Duration="0:0:0.2">
                         <DoubleAnimation.EasingFunction>
                           <QuadraticEase EasingMode="EaseInOut" />
@@ -482,7 +482,7 @@
                       <DoubleAnimation
                         Storyboard.TargetName="ThumbElement"
                         Storyboard.TargetProperty="Height"
-                        To="2"
+                        To="4"
                         Duration="0:0:0.2">
                         <DoubleAnimation.EasingFunction>
                           <QuadraticEase EasingMode="EaseInOut" />
@@ -498,6 +498,8 @@
       </Trigger>
     </Style.Triggers>
   </Style>
+
+  <Style TargetType="{x:Type ScrollBar}" BasedOn="{StaticResource CustomScrollBarStyle}" />
 
   <!--
     ************************
@@ -587,23 +589,46 @@
 
   <!--  Shared DataGridRowHeader Style — themes the row-number header column to match the  -->
   <!--  current theme instead of the default (white) system colors.  -->
-  <Style x:Key="SharedDataGridRowHeaderStyle" TargetType="DataGridRowHeader">
+  <Style
+    x:Key="SharedDataGridRowHeaderStyle"
+    BasedOn="{StaticResource {x:Type DataGridRowHeader}}"
+    TargetType="DataGridRowHeader">
     <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource TrackListItemForegroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="BorderThickness" Value="0,0,1,1" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeNormal}" />
     <Setter Property="Padding" Value="4,0" />
     <Setter Property="HorizontalContentAlignment" Value="Right" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
 
+  <Style
+    x:Key="SharedDataGridSelectAllButtonStyle"
+    BasedOn="{StaticResource {x:Type Button}}"
+    TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource TrackListColumnHeaderBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TrackListColumnHeaderForegroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PlaylistTabBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,1" />
+  </Style>
+
+  <Style
+    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type DataGrid}, ResourceId=DataGridSelectAllButtonStyleKey}"
+    BasedOn="{StaticResource SharedDataGridSelectAllButtonStyle}"
+    TargetType="Button" />
+
+  <Style
+    x:Key="{ComponentResourceKey TypeInTargetAssembly={x:Type DataGrid}, ResourceId=DataGridSelectAllButtonStyle}"
+    BasedOn="{StaticResource SharedDataGridSelectAllButtonStyle}"
+    TargetType="Button" />
+
   <!--  Shared DataGrid Visual Style  -->
   <Style x:Key="SharedDataGridStyle" TargetType="DataGrid">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="GridLinesVisibility" Value="None" />
-    <Setter Property="RowHeaderWidth" Value="0" />
+    <Setter Property="RowHeaderWidth" Value="48" />
     <Setter Property="RowHeight" Value="20" />
     <Setter Property="RowHeaderStyle" Value="{StaticResource SharedDataGridRowHeaderStyle}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />

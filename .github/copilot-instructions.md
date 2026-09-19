@@ -116,4 +116,4 @@ WPF music player, **.NET 10 (net10.0-windows, x64)**. Three projects: `LinkerPla
 - **Null warnings?** Annotate correctly (nullable ref types on); avoid `!` suppressions.
 
 ## User Preferences
-- Minimize and simplify code; revert ineffective added code rather than keeping it.
+- Minimize and simplify code; revert ineffective added code rather than keeping it. User prefers simplification-first changes that remove root causes instead of adding workaround logic; dislikes naming and patterns like 'fix'/'patch'/'shimmy' that imply ongoing corrective churn.
