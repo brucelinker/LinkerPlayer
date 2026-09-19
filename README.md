@@ -4,18 +4,25 @@
 
 # LinkerPlayer
 
-LinkerPlayer is a modern, WPF, feature-rich audio player for Windows. It provides advanced playback with an intuitive tabbed interface, metadata editing, and visualization features for a wide range of audio formats.
+LinkerPlayer is a Windows desktop music player built with WPF and .NET 10, focused on a persistent music library, playlist-centric workflows, and low-friction playback/metadata operations.
 
-## Features
+## Technical Overview
 
-- **Audio Playback**: Supports popular formats including MP3, FLAC, APE, DSD, DSF, M4A, MP4, MPC, OGG, OPUS, WAV, WMA, WV.
-- Support for multichannel audio (5.1, 7.1) and DSD playback.
-- **Tabbed Interface**: Create tabs for each playlist with drag-and-drop support.
-- **Playlist Management**: Support for playlist formats: m3u, pls, wpl, zpl.
-- **Properties Window**: View and edit tags such as Title, Artist, Album, Album Artist, Track/Disc numbers, Year, Genre, Composer, Copyright, Lyrics, and more. Able to detect Beats Per Minute (BPM).
-- **Customizable UI**: Modern WPF interface with theming and custom controls.
-- **Visualization**: Spectrum analyzer and VU meter for real-time audio visualization.
-- **Logging**: Integrated logging for troubleshooting and diagnostics.
+- **UI architecture**: WPF + MVVM (`CommunityToolkit.Mvvm`) with DI via `Microsoft.Extensions.Hosting`.
+- **Library source of truth**: `IMusicLibrary` / `MusicLibrary` owns library and playlist data operations.
+- **Persistence**: EF Core + SQLite (`MusicLibraryDbContext`) with short-lived contexts.
+- **Playback stack**: `IPlaybackCoordinator`, navigation services, and ManagedBass integration (`LinkerPlayer.BassLibs`).
+- **Messaging**: `WeakReferenceMessenger` with strongly typed messages.
+- **Theming/styling**: shared styles in `Styles/` and theme dictionaries in `Themes/`.
+
+## Key Capabilities
+
+- Persistent **Music Library** with filtering, sorting, and context actions.
+- Playlist tabs with drag/drop, reorder, and import/export workflows.
+- File import pipeline + watched folders for continuous ingestion.
+- ReplayGain-aware metadata workflows and property editing.
+- Multi-mode output (DirectSound, WASAPI Shared, WASAPI Exclusive).
+- Spectrum/VU visualization, 10-band EQ, and integrated diagnostics logging.
 
 ## Screenshots
 
@@ -49,51 +56,52 @@ git clone https://github.com/brucelinker/LinkerPlayer.git
 
 - Run the `LinkerPlayer` project from Visual Studio or execute the built `.exe` from the output directory.
 
-## Usage
+## Runtime Flows
 
-- **Player Controls**:
-    - Full button layout - Previous, Play/Pause, Stop, Next
-    - Progress bar with timer
-    - Mute and Volume slider
-    - Shuffle and Equalizer
-- **Create Playlists**: 
-    - Add to an existing tab or right click to create a new tab.
-    - Click drag and drop files/folders to add them to the playlist.
-    - Ctrl+Click and drag a folder to create a new tab with its contents.
-    - Rename tabs by double-clicking the tab header.
-    - Right-click tab headers for additional options.
-- **Properties Window**: 
-    - Right-click a track in the list to get Properties
-    - View and edit tags and add lyrics - click OK or Apply to save changes
-    - View ReplayGain values and other custom properties
-    - The Properties window can stay open and dynamically change when selecting a track
-- **Settings Window**:
-    - Set Output Mode: DirectSound, Wasapi Shared, Wasapi Exclusive
-    - Set Output Device: Automatcally loads enabled devices
-    - Set Color Theme: Dark, Gray, Light, Midnight, Slate
-- **10-Band Equalizer**:
-    - Use preset EQ profiles
-    - Create custom EQ profiles
-- **Visualizations**: Spectrum Analysis and VU meter.
+- **Import flow**: `FileImportService` -> `IMusicLibrary.AddTracksToLibraryBatchAsync(...)` -> debounced DB save.
+- **Watched folder flow**: `WatchedFolderService` scans folders and feeds the same import pipeline.
+- **Playlist mutations**: centralized through `IPlaylistManagerService`.
+- **Playback flow**: UI commands -> `IPlaybackCoordinator` -> audio engine (`IAudioEngine`/ManagedBass).
+- **Selection state**: maintained in ViewModels per tab and synchronized via messenger events.
+
+## Developer Notes
+
+- Target framework: `net10.0-windows` (x64).
+- Nullable reference types + implicit usings are enabled.
+- Prefer async/await end-to-end (avoid blocking calls).
+- Run from Visual Studio or:
+
+```sh
+dotnet build LinkerPlayer.sln
+dotnet run --project LinkerPlayer/LinkerPlayer.csproj
+```
+
+- Tests:
+
+```sh
+dotnet test LinkerPlayer.Tests/LinkerPlayer.Tests.csproj
+```
 
 ## Project Structure
 
 - `LinkerPlayer/` - Main WPF application
-- `LinkerPlayer.BassLibs/` - Bass library Management
-- `LinkerPlayer.Tests/` - Unit tests (needs work)
-- `LinkerPlayer/Windows/` - WPF windows (e.g., PropertiesWindow)
+- `LinkerPlayer.BassLibs/` - Audio engine integration (ManagedBass wrappers)
+- `LinkerPlayer.Tests/` - xUnit tests
+- `LinkerPlayer/Core/` - Core services (library, playback coordination, import pipeline)
+- `LinkerPlayer/Services/` - Application services and orchestration
 - `LinkerPlayer/ViewModels/` - MVVM view models
-- `LinkerPlayer/Models/` - Data models (e.g., TagItem)
-- `LinkerPlayer/Styles/` - XAML styles and themes
+- `LinkerPlayer/Windows/` and `LinkerPlayer/UserControls/` - UI windows and reusable controls
+- `LinkerPlayer/Styles/` and `LinkerPlayer/Themes/` - Shared styles, brushes, and themes
 
 ## Technologies Used
 
-- .NET 9
+- .NET 10
 - WPF (Windows Presentation Foundation)
-- MVVM (CommunityToolkit.Mvvm) (working on it, more to do)
-- TagLib# (audio metadata library)
-- MahApps.Metro (UI icons)
-- Bass Audio Library (advanced playback)
+- CommunityToolkit.Mvvm (MVVM)
+- Entity Framework Core + SQLite
+- ManagedBass (audio engine)
+- TagLib# and ATL (metadata)
+- PlaylistsNET (playlist import/export)
 
 ## Contributing
 
@@ -111,8 +119,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Acknowledgements
 
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet)
+- [ManagedBass](https://github.com/ManagedBass/ManagedBass)
+- [BASS Audio Library](https://www.un4seen.com/)
 - [TagLib#](https://github.com/mono/taglib-sharp)
-- [MahApps.Metro](https://github.com/MahApps/MahApps.Metro)
-- [Bass Audio Library](https://www.un4seen.com/)
-- [PlaylistNET](https://github.com/tmk907/PlaylistsNET)
-- [EntityFramework/Sqlite](https://learn.microsoft.com/en-us/ef/core/)
+- [ATL](https://github.com/Zeugma440/atldotnet)
+- [PlaylistsNET](https://github.com/tmk907/PlaylistsNET)
+- [Entity Framework Core / SQLite](https://learn.microsoft.com/en-us/ef/core/)
