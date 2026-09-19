@@ -121,7 +121,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet)
 - [ManagedBass](https://github.com/ManagedBass/ManagedBass)
 - [BASS Audio Library](https://www.un4seen.com/)
-- [TagLib#](https://github.com/mono/taglib-sharp)
 - [ATL](https://github.com/Zeugma440/atldotnet)
 - [PlaylistsNET](https://github.com/tmk907/PlaylistsNET)
 - [Entity Framework Core / SQLite](https://learn.microsoft.com/en-us/ef/core/)

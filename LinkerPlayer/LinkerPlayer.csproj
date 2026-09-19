@@ -39,7 +39,7 @@
         <PackageReference Include="PlaylistsNET" Version="1.4.1" />
         <PackageReference Include="RestoreWindowPlace" Version="3.1.0" />
         <PackageReference Include="runtime.native.System.Net.Http" Version="4.3.1" />
-        <PackageReference Include="z440.atl.core" Version="7.16.0" />
+        <PackageReference Include="z440.atl.core" Version="7.17.0" />
     </ItemGroup>
 
     <ItemGroup>
