@@ -7,10 +7,12 @@ using ManagedBass;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32.SafeHandles;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Media.Imaging;
 
 namespace LinkerPlayer.Models;
@@ -409,6 +411,9 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private BitmapImage? _albumCover;
 
+    [NotMapped]
+    private DateTime _nextAlbumCoverLoadAttemptUtc;
+
     /// <summary>
     /// True when the track has a loaded album cover image in memory.
     /// For display-column use prefer <see cref="HasEmbeddedCover"/> which is set
@@ -520,10 +525,83 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         LastMetadataRefreshUtc = null;
     }
 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern SafeFileHandle CreateFileW(
+        string lpFileName,
+        uint dwDesiredAccess,
+        uint dwShareMode,
+        IntPtr lpSecurityAttributes,
+        uint dwCreationDisposition,
+        uint dwFlagsAndAttributes,
+        IntPtr hTemplateFile);
+
+    private static bool IsLockedForMetadataRead(string path)
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+
+        const uint genericRead = 0x80000000;
+        const uint genericWrite = 0x40000000;
+        const uint fileShareRead = 0x00000001;
+        const uint openExisting = 3;
+        const uint fileAttributeNormal = 0x00000080;
+        const int errorSharingViolation = 32;
+        const int errorLockViolation = 33;
+
+        static bool IsShareLockError(int errorCode) =>
+            errorCode == errorSharingViolation || errorCode == errorLockViolation;
+
+        // Probe with the same effective pressure ATL applies (read + write intent,
+        // conservative share mode). This catches cases where another process still
+        // holds a write handle after a rename/tag update.
+        using SafeFileHandle rwHandle = CreateFileW(
+            path,
+            genericRead | genericWrite,
+            fileShareRead,
+            IntPtr.Zero,
+            openExisting,
+            fileAttributeNormal,
+            IntPtr.Zero);
+
+        if (!rwHandle.IsInvalid)
+            return false;
+
+        int rwError = Marshal.GetLastWin32Error();
+        if (IsShareLockError(rwError))
+            return true;
+
+        // Fallback probe for read-only media or ACL-limited files where read+write
+        // can fail with access denied but the file is not actually lock-contended.
+        using SafeFileHandle roHandle = CreateFileW(
+            path,
+            genericRead,
+            fileShareRead,
+            IntPtr.Zero,
+            openExisting,
+            fileAttributeNormal,
+            IntPtr.Zero);
+
+        if (!roHandle.IsInvalid)
+            return false;
+
+        int roError = Marshal.GetLastWin32Error();
+        return IsShareLockError(roError);
+    }
+
     public void UpdateFromFileMetadata(bool raisePropertyChanged = true)
     {
         if (string.IsNullOrWhiteSpace(Path))
             return;
+
+        // Avoid invoking ATL while another process keeps an exclusive handle.
+        // This prevents noisy first-chance exceptions during rename/update races.
+        if (IsLockedForMetadataRead(Path))
+        {
+            HealthStatus = TrackHealthStatus.Changed;
+            NeedsMetadataRefresh = true;
+            Logger?.LogDebug("Skipping metadata refresh for locked file: {Path}", Path);
+            return;
+        }
 
         using IDisposable _ = SuspendDirtyTracking();
         Track? track = null;
@@ -541,9 +619,11 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             HealthStatus = TrackHealthStatus.Missing;
             return;
         }
-        catch (IOException)
+        catch (IOException ex)
         {
             HealthStatus = TrackHealthStatus.Changed;
+            NeedsMetadataRefresh = true;
+            Logger?.LogDebug(ex, "Metadata refresh skipped for locked file: {Path}", Path);
             return;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -776,6 +856,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             // at the top of this method, when ATL itself cannot open the file.
         }
         catch { } // swallow transient I/O errors (e.g. UNC share briefly unreachable)
+
+        HealthStatus = TrackHealthStatus.Ok;
+        NeedsMetadataRefresh = false;
+        LastMetadataRefreshUtc = DateTime.UtcNow;
     }
 
     private void SetFallbackMetadata(bool raisePropertyChanged)
@@ -806,6 +890,21 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         // Disable dirty tracking so setting AlbumCover here doesn't mark the track
         // as needing a save — this is a display-only load, not a user edit.
         using IDisposable _suspend = SuspendDirtyTracking();
+
+        if (string.IsNullOrWhiteSpace(Path))
+            return;
+
+        // Avoid repeated ATL open attempts while another process is actively writing.
+        if (DateTime.UtcNow < _nextAlbumCoverLoadAttemptUtc)
+            return;
+
+        if (IsLockedForMetadataRead(Path))
+        {
+            _nextAlbumCoverLoadAttemptUtc = DateTime.UtcNow.AddMilliseconds(750);
+            Logger?.LogDebug("Skipping album cover load for locked file: {Path}", Path);
+            return;
+        }
+
         try
         {
             Track track = new Track(Path);
@@ -821,6 +920,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             {
                 AlbumCover = null;
                 UnsupportedCoverFormat = null;
+                _nextAlbumCoverLoadAttemptUtc = DateTime.MinValue;
                 return;
             }
 
@@ -833,6 +933,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 Logger?.LogDebug("Skipping unsupported cover format '{MimeType}' for {Path}", pic.MimeType, Path);
                 AlbumCover = null;
                 UnsupportedCoverFormat = label;
+                _nextAlbumCoverLoadAttemptUtc = DateTime.MinValue;
                 return;
             }
 
@@ -845,24 +946,28 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             bitmap.Freeze();
             AlbumCover = bitmap;
             UnsupportedCoverFormat = null;
+            _nextAlbumCoverLoadAttemptUtc = DateTime.MinValue;
+        }
+        catch (IOException ex)
+        {
+            _nextAlbumCoverLoadAttemptUtc = DateTime.UtcNow.AddMilliseconds(750);
+            Logger?.LogDebug(ex, "Album cover load deferred for locked file: {Path}", Path);
+            AlbumCover = null;
+            UnsupportedCoverFormat = null;
         }
         catch (NotSupportedException)
         {
             Logger?.LogDebug("Cover image format not supported by WPF decoder for {Path}", Path);
             AlbumCover = null;
             UnsupportedCoverFormat = "Unknown Format";
+            _nextAlbumCoverLoadAttemptUtc = DateTime.MinValue;
         }
         catch (Exception ex)
         {
             Logger?.LogError(ex, "Failed to load album cover for {Path}", Path);
             AlbumCover = null;
             UnsupportedCoverFormat = null;
-        }
-        finally
-        {
-            // ATL.Track has no IDisposable — nudge the GC to collect it promptly
-            // so it releases the OS file handle on the UNC share.
-            GC.Collect(0, GCCollectionMode.Optimized, blocking: false);
+            _nextAlbumCoverLoadAttemptUtc = DateTime.MinValue;
         }
     }
 

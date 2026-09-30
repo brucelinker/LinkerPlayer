@@ -9,18 +9,17 @@
 
 ### Features
 
-- Library/Playlists - Grouping by artist/album (choice to turn off)
-- Library - Add ReplayGain context menu (allow selection of multiple tracks)
-  - Analyze by Track
-  - Analyze by Album
-  - Remove ReplayGain analysis
+- DONE! - ~~Library - Add ReplayGain context menu (allow selection of multiple tracks)~~
+  - ~~Analyze by Track~~
+  - ~~Analyze by Album~~
+  - ~~Remove ReplayGain analysis~~
 - DONE! - ~~Library - Add ReplayGain column to indicate if the track has been analyzed~~
-    - ~~Blank - not analyzed~~
-    - ~~Track - ReplayGain by track~~
-    - ~~Album - ReplayGain by album~~
-    - ~~Able to query ReplayGain in search~~
+  - ~~Blank - not analyzed~~
+  - ~~Track - ReplayGain by track~~
+  - ~~Album - ReplayGain by album~~
+  - ~~Able to query ReplayGain in search~~
 - Restore double click bottom-left corner "Playback stopped" to go to playing track.
   If no track is playing, go to selected track in current playlist.
-- Check DataGrid in XAML for default column sort - make a binding for variable sorts
-  - Save in Settings
+- DONE! - ~~Check DataGrid in XAML for default column sort - make a binding for variable sorts~~
+  - ~~Save in Settings~~
 - Settings-Musicbrainz should show Username and Password (dots) to show that is has been initialized.

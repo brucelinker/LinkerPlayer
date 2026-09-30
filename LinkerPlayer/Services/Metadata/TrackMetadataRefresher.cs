@@ -77,34 +77,32 @@ public sealed class TrackMetadataRefresher : ITrackMetadataRefresher
             for (int attempt = 1; attempt <= MaxRetries; attempt++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                try
+
+                track.UpdateFromFileMetadata();
+
+                if (track.HealthStatus == TrackHealthStatus.Missing)
                 {
-                    track.UpdateFromFileMetadata();
+                    _logger.LogWarning("Metadata refresh aborted (file deleted): {Path}", path);
+                    return new TrackMetadataRefreshResult { Track = track, WasRefreshed = false };
+                }
+
+                if (track.HealthStatus != TrackHealthStatus.Changed)
+                {
                     track.FileLastWriteTimeUtc = utcWriteTime;
                     track.LastMetadataRefreshUtc = DateTime.UtcNow;
                     _logger.LogDebug("Refreshed metadata for {Path} (attempt {Attempt})", path, attempt);
                     return new TrackMetadataRefreshResult { Track = track, WasRefreshed = true };
                 }
-                catch (FileNotFoundException)
+
+                if (attempt < MaxRetries)
                 {
-                    // File was deleted — no point retrying. Mark it missing and bail.
-                    _logger.LogWarning("Metadata refresh aborted (file deleted): {Path}", path);
-                    track.HealthStatus = TrackHealthStatus.Missing;
-                    return new TrackMetadataRefreshResult { Track = track, WasRefreshed = false };
+                    _logger.LogWarning("Metadata refresh attempt {Attempt}/{Max} deferred for locked file: {Path} — retrying in {Delay}ms",
+                        attempt, MaxRetries, path, RetryDelay.TotalMilliseconds);
+                    await Task.Delay(RetryDelay, cancellationToken);
                 }
-                catch (IOException ex)
+                else
                 {
-                    if (attempt < MaxRetries)
-                    {
-                        _logger.LogWarning("Metadata refresh attempt {Attempt}/{Max} failed for {Path}: {Message} — retrying in {Delay}ms",
-                            attempt, MaxRetries, path, ex.Message, RetryDelay.TotalMilliseconds);
-                        await Task.Delay(RetryDelay, cancellationToken);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Metadata refresh skipped after {Max} attempts (file locked): {Path} — {Message}",
-                            MaxRetries, path, ex.Message);
-                    }
+                    _logger.LogWarning("Metadata refresh skipped after {Max} attempts (file locked): {Path}", MaxRetries, path);
                 }
             }
 

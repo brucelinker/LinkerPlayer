@@ -907,6 +907,35 @@ public class MusicLibrary : IMusicLibrary
         return Task.CompletedTask;
     }
 
+    private Task RemoveTracksFromMainLibraryAsync(IEnumerable<MediaFile> tracks)
+    {
+        List<MediaFile> tracksToRemove = tracks.ToList();
+        if (tracksToRemove.Count == 0)
+            return Task.CompletedTask;
+
+        if (Application.Current?.Dispatcher is Dispatcher dispatcher)
+        {
+            if (dispatcher.CheckAccess())
+            {
+                foreach (MediaFile track in tracksToRemove)
+                    MainLibrary.Remove(track);
+
+                return Task.CompletedTask;
+            }
+
+            return dispatcher.InvokeAsync(() =>
+            {
+                foreach (MediaFile track in tracksToRemove)
+                    MainLibrary.Remove(track);
+            }).Task;
+        }
+
+        foreach (MediaFile track in tracksToRemove)
+            MainLibrary.Remove(track);
+
+        return Task.CompletedTask;
+    }
+
     public async Task RemoveTrackFromPlaylistAsync(string playlistName, string trackId)
     {
         Playlist? playlist = Playlists.FirstOrDefault(p => p.Name == playlistName);
@@ -926,7 +955,7 @@ public class MusicLibrary : IMusicLibrary
         MediaFile? track = MainLibrary.FirstOrDefault(t => t.Id == trackId);
         if (track != null)
         {
-            MainLibrary.Remove(track);
+            await RemoveTracksFromMainLibraryAsync([track]);
 
             // Remove from database manually to ensure the track entity is deleted
             await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
@@ -960,8 +989,7 @@ public class MusicLibrary : IMusicLibrary
             return;
 
         List<MediaFile> toRemove = MainLibrary.Where(t => removeIds.Contains(t.Id)).ToList();
-        foreach (MediaFile track in toRemove)
-            MainLibrary.Remove(track);
+        await RemoveTracksFromMainLibraryAsync(toRemove);
 
         foreach (Playlist playlist in Playlists)
         {
@@ -998,8 +1026,7 @@ public class MusicLibrary : IMusicLibrary
         HashSet<string> removeIds = toRemove.Select(t => t.Id).ToHashSet();
 
         // Remove from in-memory collection
-        foreach (MediaFile track in toRemove)
-            MainLibrary.Remove(track);
+        await RemoveTracksFromMainLibraryAsync(toRemove);
 
         // Remove from all playlists
         foreach (Playlist playlist in Playlists)
