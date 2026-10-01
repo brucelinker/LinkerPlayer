@@ -20,9 +20,8 @@ public partial class FilterBar : UserControl
         this.Loaded += FilterBar_Loaded;
     }
 
-    // When we programmatically set ListBox.SelectedItems we must suppress the SelectionChanged handlers
-    // to avoid clearing the ViewModel collections during initialization.
-    private bool _suppressSelectionChanged;
+    // Suppress changes while facet lists are being rebuilt (during both `ApplyAllSelections` and user-driven `Notify*Changed` calls)
+    private bool _suppressDuringFacetRebuild;
 
     private void EnsureAllSelectedFallback(ListBox listBox, System.Collections.ObjectModel.ObservableCollection<string> selected)
     {
@@ -56,9 +55,7 @@ public partial class FilterBar : UserControl
     private void FilterBar_Loaded(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not LibraryTab libraryTab)
-        {
             return;
-        }
 
         // Wire once for this control instance to avoid duplicate subscriptions/refresh cascades.
         this.Loaded -= FilterBar_Loaded;
@@ -102,7 +99,7 @@ public partial class FilterBar : UserControl
     /// </summary>
     private void ApplyAllSelections(LibraryTab libraryTab)
     {
-        _suppressSelectionChanged = true;
+        _suppressDuringFacetRebuild = true;
         try
         {
             ApplySelectionsToListBox(GenresListBox, libraryTab.SelectedGenres);
@@ -114,9 +111,10 @@ public partial class FilterBar : UserControl
             EnsureAllSelectedFallback(AlbumsListBox, libraryTab.SelectedAlbums);
             EnsureAllSelectedFallback(CodecsListBox, libraryTab.SelectedCodecs);
         }
+        catch { }
         finally
         {
-            _suppressSelectionChanged = false;
+            _suppressDuringFacetRebuild = false;
         }
     }
 
@@ -154,7 +152,7 @@ public partial class FilterBar : UserControl
 
     private void CodecsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressSelectionChanged)
+        if (_suppressDuringFacetRebuild)
             return;
 
         if (DataContext is not LibraryTab libraryTab)
@@ -171,52 +169,53 @@ public partial class FilterBar : UserControl
 
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true;
+        _suppressDuringFacetRebuild = true;
         try
         {
             libraryTab.NotifyCodecsChanged();
         }
         finally
         {
-            _suppressSelectionChanged = false;
+            _suppressDuringFacetRebuild = false;
         }
     }
 
     private void GenresList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressSelectionChanged)
+        // Suppress ONLY during facet list rebuilding, not during user interaction
+        if (_suppressDuringFacetRebuild)
             return;
 
         if (DataContext is not LibraryTab libraryTab)
             return;
         if (sender is not ListBox lb)
             return;
+
         libraryTab.SelectedGenres.Clear();
         foreach (object item in lb.SelectedItems)
         {
             if (item is string s)
-            {
                 libraryTab.SelectedGenres.Add(s);
-            }
         }
 
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true;
+        _suppressDuringFacetRebuild = true;
         try
         {
             libraryTab.NotifyGenresChanged();
         }
+        catch { }
         finally
         {
-            _suppressSelectionChanged = false;
+            _suppressDuringFacetRebuild = false;
         }
     }
 
     private void ArtistsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressSelectionChanged)
+        if (_suppressDuringFacetRebuild)
             return;
 
         if (DataContext is not LibraryTab libraryTab)
@@ -235,20 +234,20 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true;
+        _suppressDuringFacetRebuild = true;
         try
         {
             libraryTab.NotifyArtistsChanged();
         }
         finally
         {
-            _suppressSelectionChanged = false;
+            _suppressDuringFacetRebuild = false;
         }
     }
 
     private void AlbumsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_suppressSelectionChanged)
+        if (_suppressDuringFacetRebuild)
             return;
 
         if (DataContext is not LibraryTab libraryTab)
@@ -267,14 +266,14 @@ public partial class FilterBar : UserControl
         // Persist selection to settings
         SaveFilterSelections(libraryTab);
 
-        _suppressSelectionChanged = true;
+        _suppressDuringFacetRebuild = true;
         try
         {
             libraryTab.NotifyAlbumsChanged();
         }
         finally
         {
-            _suppressSelectionChanged = false;
+            _suppressDuringFacetRebuild = false;
         }
     }
 

@@ -8,6 +8,14 @@ using System.Windows.Threading;
 namespace LinkerPlayer.Models;
 
 /// <summary>
+/// Event args for OtherFacetsRebuilt event, carrying information about which facet was changed.
+/// </summary>
+public class FacetsRebuiltEventArgs : EventArgs
+{
+    public string? ChangedDimension { get; set; }
+}
+
+/// <summary>
 /// Represents the Music Library tab - a special permanent tab that displays all tracks in the library.
 /// Unlike PlaylistTab, this tab cannot be renamed, moved, or deleted.
 /// </summary>
@@ -23,6 +31,14 @@ public partial class LibraryTab : ObservableObject, ITabData
     /// CollectionChanged events fire mid-rebuild.
     /// </summary>
     public event EventHandler? FacetsRebuilt;
+
+    /// <summary>
+    /// Raised after only OTHER facets (not the specified dimension) have been rebuilt.
+    /// This is used when the user changes one dimension (e.g., selects a genre) to update
+    /// the other facets (artists, albums, codecs) without re-applying the selection to the
+    /// dimension that just changed.
+    /// </summary>
+    public event EventHandler<FacetsRebuiltEventArgs>? OtherFacetsRebuilt;
 
     /// <summary>
     /// Raised after the filtered CollectionView is refreshed (filter/sort change).
@@ -116,11 +132,8 @@ public partial class LibraryTab : ObservableObject, ITabData
             Source = _sourceLibrary
         };
 
-        // Set up live filtering
-        if (TracksView.View != null)
-        {
-            TracksView.View.Filter = ApplyFilters;
-        }
+        // Set up live filtering - force the view to be created first
+        AttachViewFilter();
 
         // ActiveFilters changes are applied through explicit filter commands/handlers.
         // Avoid extra CollectionChanged-driven refresh churn during startup restore.
@@ -211,8 +224,8 @@ public partial class LibraryTab : ObservableObject, ITabData
     [ObservableProperty]
     private ObservableCollection<string> _albums = new();
 
+    [ObservableProperty]
     private ObservableCollection<string> _codecs = new();
-    public ObservableCollection<string> Codecs => _codecs;
 
     // Multi-select selections (allow multiple genres/artists/albums)
     private readonly ObservableCollection<string> _selectedGenres = new();
@@ -252,6 +265,9 @@ public partial class LibraryTab : ObservableObject, ITabData
     /// </summary>
     public void RefreshView()
     {
+        if (TracksView?.View == null)
+            return;
+
         // Ensure CollectionViewSource.View.Refresh runs on the UI thread (Dispatcher-bound)
         if (Application.Current != null && !Application.Current.Dispatcher.CheckAccess())
         {
@@ -259,9 +275,7 @@ public partial class LibraryTab : ObservableObject, ITabData
             {
                 IEditableCollectionView? editableInner = TracksView?.View as IEditableCollectionView;
                 if (editableInner != null && (editableInner.IsAddingNew || editableInner.IsEditingItem))
-                {
                     return;
-                }
 
                 TracksView?.View?.Refresh();
                 OnPropertyChanged(nameof(FilteredTrackCount));
@@ -272,10 +286,7 @@ public partial class LibraryTab : ObservableObject, ITabData
 
         IEditableCollectionView? editable = TracksView?.View as IEditableCollectionView;
         if (editable != null && (editable.IsAddingNew || editable.IsEditingItem))
-        {
-            // Defer refresh until the edit transaction completes
             return;
-        }
 
         TracksView?.View?.Refresh();
         OnPropertyChanged(nameof(FilteredTrackCount));
@@ -304,9 +315,11 @@ public partial class LibraryTab : ObservableObject, ITabData
         if (_activeSorts == null)
         {
             // Restore the live source when sorting is cleared.
+            // Replacing Source creates a new view, so the filter must be reattached.
             if (!ReferenceEquals(TracksView.Source, _sourceLibrary))
             {
                 TracksView.Source = _sourceLibrary;
+                AttachViewFilter();
             }
         }
         else
@@ -329,7 +342,17 @@ public partial class LibraryTab : ObservableObject, ITabData
             return;
 
         IOrderedEnumerable<MediaFile> ordered = BuildOrderedQuery(_sourceLibrary);
+        // Replacing Source creates a new view and drops the filter set on the previous one.
         TracksView.Source = ordered.ToList();
+        AttachViewFilter();
+    }
+
+    private void AttachViewFilter()
+    {
+        if (TracksView?.View != null)
+        {
+            TracksView.View.Filter = ApplyFilters;
+        }
     }
 
     private IOrderedEnumerable<MediaFile> BuildOrderedQuery(IEnumerable<MediaFile> source)
@@ -512,6 +535,8 @@ public partial class LibraryTab : ObservableObject, ITabData
 
         RebuildFacetSelectionCaches();
         RebuildEnabledFiltersCache();
+        UpdateAllFacetLists();
+        RefreshView();
     }
 
     /// <summary>
@@ -617,10 +642,17 @@ public partial class LibraryTab : ObservableObject, ITabData
             }
         }
 
-        Codecs.Clear();
-        foreach (string c in codecsList)
+        if (Codecs == null)
         {
-            Codecs.Add(c);
+            Codecs = new ObservableCollection<string>(codecsList);
+        }
+        else
+        {
+            Codecs.Clear();
+            foreach (string c in codecsList)
+            {
+                Codecs.Add(c);
+            }
         }
 
         // Ensure selected entries remain present; remove any selections that are no longer valid
@@ -810,6 +842,71 @@ public partial class LibraryTab : ObservableObject, ITabData
         }
     }
 
+    /// <summary>
+    /// DEPRECATED: Updates only the facet lists OTHER than the specified dimension.
+    /// Use UpdateAllFacetLists() instead.
+    /// </summary>
+    private void UpdateOtherFacetLists(string changedDimension)
+    {
+        if (_isUpdatingFacets)
+            return;
+
+        _isUpdatingFacets = true;
+
+        try
+        {
+            List<MediaFile> all = _sourceLibrary.ToList();
+
+            List<MediaFile> ForArtists()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
+                return q.ToList();
+            }
+
+            List<MediaFile> ForAlbums()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyArtistFilter(ApplyCodecFilter(q)));
+                return q.ToList();
+            }
+
+            List<MediaFile> ForCodecs()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyArtistFilter(ApplyAlbumFilter(q)));
+                return q.ToList();
+            }
+
+            if (changedDimension != nameof(Artists))
+            {
+                RebuildFacet(Artists, SelectedArtists, ForArtists(), t =>
+                    string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist! });
+                OnPropertyChanged(nameof(ArtistCount));
+            }
+
+            if (changedDimension != nameof(Albums))
+            {
+                RebuildFacet(Albums, SelectedAlbums, ForAlbums(), t =>
+                    string.IsNullOrWhiteSpace(t.Album) ? Enumerable.Empty<string>() : new[] { t.Album! });
+                OnPropertyChanged(nameof(AlbumCount));
+            }
+
+            if (changedDimension != nameof(Codecs))
+            {
+                RebuildFacet(Codecs, SelectedCodecs, ForCodecs(), t =>
+                    string.IsNullOrWhiteSpace(t.Codec) ? Enumerable.Empty<string>() : new[] { t.Codec! });
+                OnPropertyChanged(nameof(CodecCount));
+            }
+
+            OtherFacetsRebuilt?.Invoke(this, new FacetsRebuiltEventArgs { ChangedDimension = changedDimension });
+        }
+        finally
+        {
+            _isUpdatingFacets = false;
+        }
+    }
+
     private static void RebuildFacet(
         ObservableCollection<string> list,
         ObservableCollection<string> selected,
@@ -876,10 +973,73 @@ public partial class LibraryTab : ObservableObject, ITabData
         return source.Where(t => !string.IsNullOrWhiteSpace(t.Codec) && _selectedCodecSet.Contains(t.Codec));
     }
 
-    public void NotifyGenresChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
-    public void NotifyArtistsChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
-    public void NotifyAlbumsChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
-    public void NotifyCodecsChanged() { if (!_isUpdatingFacets) { RebuildFacetSelectionCaches(); UpdateAllFacetLists(); RefreshView(); } }
+    public void NotifyGenresChanged()
+    {
+        try
+        {
+            if (_isUpdatingFacets)
+                return;
+
+            RebuildFacetSelectionCaches();
+            UpdateAllFacetLists();
+            RefreshView();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in NotifyGenresChanged: {ex}");
+        }
+    }
+
+    public void NotifyArtistsChanged()
+    {
+        try
+        {
+            if (_isUpdatingFacets)
+                return;
+
+            RebuildFacetSelectionCaches();
+            UpdateAllFacetLists();
+            RefreshView();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in NotifyArtistsChanged: {ex}");
+        }
+    }
+
+    public void NotifyAlbumsChanged()
+    {
+        try
+        {
+            if (_isUpdatingFacets)
+                return;
+
+            RebuildFacetSelectionCaches();
+            UpdateAllFacetLists();
+            RefreshView();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in NotifyAlbumsChanged: {ex}");
+        }
+    }
+
+    public void NotifyCodecsChanged()
+    {
+        try
+        {
+            if (_isUpdatingFacets)
+                return;
+
+            RebuildFacetSelectionCaches();
+            UpdateAllFacetLists();
+            RefreshView();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in NotifyCodecsChanged: {ex}");
+        }
+    }
 
     /// <summary>
     /// Applies all active filters to a track
