@@ -650,6 +650,25 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
         }
     }
 
+    private static void SaveTrackWithRetry(Track track)
+    {
+        const int maxAttempts = 5;
+        TimeSpan retryDelay = TimeSpan.FromMilliseconds(500);
+
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                track.Save();
+                return;
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                Thread.Sleep(retryDelay);
+            }
+        }
+    }
+
     private bool ApplyChanges()
     {
         try
@@ -709,10 +728,11 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
                     LyricsItem.UpdateAction?.Invoke(LyricsItem.Value);
                 }
 
-                // Save all ATL tracks
+                // Save all ATL tracks. UNC/NAS handles are often briefly exclusive
+                // after a previous write; wait that out instead of failing the batch.
                 foreach (Track track in _atlTracks)
                 {
-                    track.Save();
+                    SaveTrackWithRetry(track);
                 }
             }
             else
@@ -750,7 +770,7 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
                     LyricsItem.UpdateAction?.Invoke(LyricsItem.Value);
                 }
 
-                _atlTrack!.Save();
+                SaveTrackWithRetry(_atlTrack!);
             }
 
             HasUnsavedChanges = false;

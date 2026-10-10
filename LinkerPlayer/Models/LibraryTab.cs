@@ -95,10 +95,12 @@ public partial class LibraryTab : ObservableObject, ITabData
     private List<List<FilterCriteria>>? _keywordOrGroups;
 
     private bool _hasGenreSelectionFilter;
+    private bool _hasAlbumArtistSelectionFilter;
     private bool _hasArtistSelectionFilter;
     private bool _hasAlbumSelectionFilter;
     private bool _hasCodecSelectionFilter;
     private HashSet<string>? _selectedGenreSet;
+    private HashSet<string>? _selectedAlbumArtistSet;
     private HashSet<string>? _selectedArtistSet;
     private HashSet<string>? _selectedAlbumSet;
     private HashSet<string>? _selectedCodecSet;
@@ -121,6 +123,13 @@ public partial class LibraryTab : ObservableObject, ITabData
     };
 
     private bool _isUpdatingFacets;
+
+    /// <summary>
+    /// True while facet collections are being rebuilt. Selection handlers must ignore
+    /// ListBox changes during this window so they do not rebuild the collection that
+    /// is already being cleared.
+    /// </summary>
+    public bool IsUpdatingFacets => _isUpdatingFacets;
 
     public LibraryTab(ObservableCollection<MediaFile> sourceLibrary)
     {
@@ -175,13 +184,18 @@ public partial class LibraryTab : ObservableObject, ITabData
             }
         };
 
-        // Build metadata lists (genres, artists, albums) for the filter bar
+        // Build metadata lists (genres, album artists, artists, albums) for the filter bar
         RebuildMetadataLists();
 
         // Default initial selection: show All in each list so UI matches initial state
         if (SelectedGenres.Count == 0 && Genres.Contains("(All)"))
         {
             SelectedGenres.Add("(All)");
+        }
+
+        if (SelectedAlbumArtists.Count == 0 && AlbumArtists.Contains("(All)"))
+        {
+            SelectedAlbumArtists.Add("(All)");
         }
 
         if (SelectedArtists.Count == 0 && Artists.Contains("(All)"))
@@ -219,6 +233,9 @@ public partial class LibraryTab : ObservableObject, ITabData
     private ObservableCollection<string> _genres = new();
 
     [ObservableProperty]
+    private ObservableCollection<string> _albumArtists = new();
+
+    [ObservableProperty]
     private ObservableCollection<string> _artists = new();
 
     [ObservableProperty]
@@ -230,6 +247,9 @@ public partial class LibraryTab : ObservableObject, ITabData
     // Multi-select selections (allow multiple genres/artists/albums)
     private readonly ObservableCollection<string> _selectedGenres = new();
     public ObservableCollection<string> SelectedGenres => _selectedGenres;
+
+    private readonly ObservableCollection<string> _selectedAlbumArtists = new();
+    public ObservableCollection<string> SelectedAlbumArtists => _selectedAlbumArtists;
 
     private readonly ObservableCollection<string> _selectedArtists = new();
     public ObservableCollection<string> SelectedArtists => _selectedArtists;
@@ -244,6 +264,11 @@ public partial class LibraryTab : ObservableObject, ITabData
     /// Gets the count of genres (excluding the "(All)" item)
     /// </summary>
     public int GenreCount => Math.Max(0, Genres?.Count - 1 ?? 0);
+
+    /// <summary>
+    /// Gets the count of album artists (excluding the "(All)" item)
+    /// </summary>
+    public int AlbumArtistCount => Math.Max(0, AlbumArtists?.Count - 1 ?? 0);
 
     /// <summary>
     /// Gets the count of artists (excluding the "(All)" item)
@@ -429,6 +454,7 @@ public partial class LibraryTab : ObservableObject, ITabData
 
         // Clear current selections
         SelectedGenres.Clear();
+        SelectedAlbumArtists.Clear();
         SelectedArtists.Clear();
         SelectedAlbums.Clear();
         SelectedCodecs.Clear();
@@ -441,6 +467,17 @@ public partial class LibraryTab : ObservableObject, ITabData
                 if (Genres.Contains(genre, StringComparer.OrdinalIgnoreCase))
                 {
                     SelectedGenres.Add(genre);
+                }
+            }
+        }
+
+        if (settings.LastLibrarySelectedAlbumArtists != null && settings.LastLibrarySelectedAlbumArtists.Count > 0)
+        {
+            foreach (string albumArtist in settings.LastLibrarySelectedAlbumArtists)
+            {
+                if (AlbumArtists.Contains(albumArtist, StringComparer.OrdinalIgnoreCase))
+                {
+                    SelectedAlbumArtists.Add(albumArtist);
                 }
             }
         }
@@ -473,6 +510,11 @@ public partial class LibraryTab : ObservableObject, ITabData
         if (SelectedGenres.Count == 0 && Genres.Contains("(All)"))
         {
             SelectedGenres.Add("(All)");
+        }
+
+        if (SelectedAlbumArtists.Count == 0 && AlbumArtists.Contains("(All)"))
+        {
+            SelectedAlbumArtists.Add("(All)");
         }
 
         if (SelectedArtists.Count == 0 && Artists.Contains("(All)"))
@@ -552,6 +594,7 @@ public partial class LibraryTab : ObservableObject, ITabData
             return;
         }
         HashSet<string> genreSet = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> albumArtistSet = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> artistSet = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> albumSet = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> codecSet = new(StringComparer.OrdinalIgnoreCase);
@@ -575,9 +618,14 @@ public partial class LibraryTab : ObservableObject, ITabData
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(track.AlbumArtist))
+            {
+                albumArtistSet.Add(track.AlbumArtist);
+            }
+
             if (!string.IsNullOrWhiteSpace(track.Artist))
             {
-                artistSet.Add(track.Artist!);
+                artistSet.Add(track.Artist);
             }
 
             if (!string.IsNullOrWhiteSpace(track.Album))
@@ -592,103 +640,78 @@ public partial class LibraryTab : ObservableObject, ITabData
         }
 
         List<string> genresList = genreSet.OrderBy(s => s).ToList();
+        List<string> albumArtistsList = albumArtistSet.OrderBy(s => s).ToList();
         List<string> artistsList = artistSet.OrderBy(s => s).ToList();
         List<string> albumsList = albumSet.OrderBy(s => s).ToList();
         List<string> codecsList = codecSet.OrderBy(s => s).ToList();
 
         // Insert a top-level "(All)" option (do not auto-select)
         genresList.Insert(0, "(All)");
+        albumArtistsList.Insert(0, "(All)");
         artistsList.Insert(0, "(All)");
         albumsList.Insert(0, "(All)");
         codecsList.Insert(0, "(All)");
 
-        // Update existing collections in-place to preserve bindings
-        if (Genres == null)
+        // Block selection handlers while these collections are cleared and refilled.
+        // A handler that rebuilds the collection mid-Clear leaves the ListBox showing
+        // the old items plus the new ones. Codecs is last, so that is the list the user sees doubled.
+        _isUpdatingFacets = true;
+        try
         {
-            Genres = new ObservableCollection<string>(genresList);
-        }
-        else
-        {
-            Genres.Clear();
-            foreach (string g in genresList)
+            ReplaceFacetContents(Genres, genresList);
+            ReplaceFacetContents(AlbumArtists, albumArtistsList);
+            ReplaceFacetContents(Artists, artistsList);
+            ReplaceFacetContents(Albums, albumsList);
+            ReplaceFacetContents(Codecs, codecsList);
+
+            // Ensure selected entries remain present; remove any selections that are no longer valid
+            RemoveInvalidSelections(SelectedGenres, Genres);
+            RemoveInvalidSelections(SelectedAlbumArtists, AlbumArtists);
+            RemoveInvalidSelections(SelectedArtists, Artists);
+            RemoveInvalidSelections(SelectedAlbums, Albums);
+            RemoveInvalidSelections(SelectedCodecs, Codecs);
+
+            // Raise property changed for counts
+            OnPropertyChanged(nameof(GenreCount));
+            OnPropertyChanged(nameof(AlbumArtistCount));
+            OnPropertyChanged(nameof(ArtistCount));
+            OnPropertyChanged(nameof(AlbumCount));
+            OnPropertyChanged(nameof(CodecCount));
+
+            // Subscribe to property changes on items so metadata updates when a track's tags change
+            SubscribeToMediaFilePropertyChanges();
+
+            // Ensure default initial selection remains when metadata rebuilds later
+            if (SelectedGenres.Count == 0 && Genres.Contains("(All)"))
             {
-                Genres.Add(g);
+                SelectedGenres.Add("(All)");
             }
-        }
 
-        if (Artists == null)
-        {
-            Artists = new ObservableCollection<string>(artistsList);
-        }
-        else
-        {
-            Artists.Clear();
-            foreach (string a in artistsList)
+            if (SelectedAlbumArtists.Count == 0 && AlbumArtists.Contains("(All)"))
             {
-                Artists.Add(a);
+                SelectedAlbumArtists.Add("(All)");
             }
-        }
 
-        if (Albums == null)
-        {
-            Albums = new ObservableCollection<string>(albumsList);
-        }
-        else
-        {
-            Albums.Clear();
-            foreach (string al in albumsList)
+            if (SelectedArtists.Count == 0 && Artists.Contains("(All)"))
             {
-                Albums.Add(al);
+                SelectedArtists.Add("(All)");
             }
-        }
 
-        if (Codecs == null)
-        {
-            Codecs = new ObservableCollection<string>(codecsList);
-        }
-        else
-        {
-            Codecs.Clear();
-            foreach (string c in codecsList)
+            if (SelectedAlbums.Count == 0 && Albums.Contains("(All)"))
             {
-                Codecs.Add(c);
+                SelectedAlbums.Add("(All)");
             }
+
+            if (SelectedCodecs.Count == 0 && Codecs.Contains("(All)"))
+            {
+                SelectedCodecs.Add("(All)");
+            }
+
+            FacetsRebuilt?.Invoke(this, EventArgs.Empty);
         }
-
-        // Ensure selected entries remain present; remove any selections that are no longer valid
-        RemoveInvalidSelections(SelectedGenres, Genres);
-        RemoveInvalidSelections(SelectedArtists, Artists);
-        RemoveInvalidSelections(SelectedAlbums, Albums);
-        RemoveInvalidSelections(SelectedCodecs, Codecs);
-
-        // Raise property changed for counts
-        OnPropertyChanged(nameof(GenreCount));
-        OnPropertyChanged(nameof(ArtistCount));
-        OnPropertyChanged(nameof(AlbumCount));
-        OnPropertyChanged(nameof(CodecCount));
-
-        // Subscribe to property changes on items so metadata updates when a track's tags change
-        SubscribeToMediaFilePropertyChanges();
-
-        // Ensure default initial selection remains when metadata rebuilds later
-        if (SelectedGenres.Count == 0 && Genres.Contains("(All)"))
+        finally
         {
-            SelectedGenres.Add("(All)");
-        }
-
-        if (SelectedArtists.Count == 0 && Artists.Contains("(All)"))
-        {
-            SelectedArtists.Add("(All)");
-        }
-
-        if (SelectedAlbums.Count == 0 && Albums.Contains("(All)"))
-        {
-            SelectedAlbums.Add("(All)");
-        }
-
-        if (SelectedCodecs.Count == 0 && Codecs.Contains("(All)"))
-        {
-            SelectedCodecs.Add("(All)");
+            _isUpdatingFacets = false;
         }
     }
 
@@ -729,7 +752,7 @@ public partial class LibraryTab : ObservableObject, ITabData
     private void MediaFile_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         // If relevant tag fields changed, schedule a debounced rebuild
-        if (e.PropertyName == nameof(MediaFile.Genres) || e.PropertyName == nameof(MediaFile.Artist) || e.PropertyName == nameof(MediaFile.Album))
+        if (e.PropertyName == nameof(MediaFile.Genres) || e.PropertyName == nameof(MediaFile.AlbumArtist) || e.PropertyName == nameof(MediaFile.Artist) || e.PropertyName == nameof(MediaFile.Album))
         {
             ScheduleRebuild();
         }
@@ -770,8 +793,8 @@ public partial class LibraryTab : ObservableObject, ITabData
     }
 
     /// <summary>
-    /// Rebuilds all four facet listboxes symmetrically so each one shows only values
-    /// that appear in tracks matching all the *other* three active filters.
+    /// Rebuilds facet listboxes so each one shows only values that appear in tracks
+    /// matching all the other active filters.
     /// </summary>
     private void UpdateAllFacetLists()
     {
@@ -784,32 +807,38 @@ public partial class LibraryTab : ObservableObject, ITabData
         {
             List<MediaFile> all = _sourceLibrary.ToList();
 
-            // Build a filtered base for each dimension by applying the OTHER three filters
             List<MediaFile> ForGenres()
             {
                 IEnumerable<MediaFile> q = all;
-                q = ApplyArtistFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
+                q = ApplyAlbumArtistFilter(ApplyArtistFilter(ApplyAlbumFilter(ApplyCodecFilter(q))));
+                return q.ToList();
+            }
+
+            List<MediaFile> ForAlbumArtists()
+            {
+                IEnumerable<MediaFile> q = all;
+                q = ApplyGenreFilter(ApplyArtistFilter(ApplyAlbumFilter(ApplyCodecFilter(q))));
                 return q.ToList();
             }
 
             List<MediaFile> ForArtists()
             {
                 IEnumerable<MediaFile> q = all;
-                q = ApplyGenreFilter(ApplyAlbumFilter(ApplyCodecFilter(q)));
+                q = ApplyGenreFilter(ApplyAlbumArtistFilter(ApplyAlbumFilter(ApplyCodecFilter(q))));
                 return q.ToList();
             }
 
             List<MediaFile> ForAlbums()
             {
                 IEnumerable<MediaFile> q = all;
-                q = ApplyGenreFilter(ApplyArtistFilter(ApplyCodecFilter(q)));
+                q = ApplyGenreFilter(ApplyAlbumArtistFilter(ApplyArtistFilter(ApplyCodecFilter(q))));
                 return q.ToList();
             }
 
             List<MediaFile> ForCodecs()
             {
                 IEnumerable<MediaFile> q = all;
-                q = ApplyGenreFilter(ApplyArtistFilter(ApplyAlbumFilter(q)));
+                q = ApplyGenreFilter(ApplyAlbumArtistFilter(ApplyArtistFilter(ApplyAlbumFilter(q))));
                 return q.ToList();
             }
 
@@ -820,8 +849,11 @@ public partial class LibraryTab : ObservableObject, ITabData
                 return t.Genres!.Split(new[] { '/', ';', ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s));
             });
 
+            RebuildFacet(AlbumArtists, SelectedAlbumArtists, ForAlbumArtists(), t =>
+                string.IsNullOrWhiteSpace(t.AlbumArtist) ? Enumerable.Empty<string>() : new[] { t.AlbumArtist });
+
             RebuildFacet(Artists, SelectedArtists, ForArtists(), t =>
-                string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist! });
+                string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist });
 
             RebuildFacet(Albums, SelectedAlbums, ForAlbums(), t =>
                 string.IsNullOrWhiteSpace(t.Album) ? Enumerable.Empty<string>() : new[] { t.Album! });
@@ -830,6 +862,7 @@ public partial class LibraryTab : ObservableObject, ITabData
                 string.IsNullOrWhiteSpace(t.Codec) ? Enumerable.Empty<string>() : new[] { t.Codec! });
 
             OnPropertyChanged(nameof(GenreCount));
+            OnPropertyChanged(nameof(AlbumArtistCount));
             OnPropertyChanged(nameof(ArtistCount));
             OnPropertyChanged(nameof(AlbumCount));
             OnPropertyChanged(nameof(CodecCount));
@@ -881,7 +914,7 @@ public partial class LibraryTab : ObservableObject, ITabData
             if (changedDimension != nameof(Artists))
             {
                 RebuildFacet(Artists, SelectedArtists, ForArtists(), t =>
-                    string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist! });
+                    string.IsNullOrWhiteSpace(t.Artist) ? Enumerable.Empty<string>() : new[] { t.Artist });
                 OnPropertyChanged(nameof(ArtistCount));
             }
 
@@ -922,12 +955,13 @@ public partial class LibraryTab : ObservableObject, ITabData
             }
         }
 
-        list.Clear();
-        list.Add("(All)");
+        List<string> desired = new(values.Count + 1) { "(All)" };
         foreach (string v in values.OrderBy(s => s))
         {
-            list.Add(v);
+            desired.Add(v);
         }
+
+        ReplaceFacetContents(list, desired);
 
         // Drop any selected items that no longer exist in the refreshed list
         for (int i = selected.Count - 1; i >= 0; i--)
@@ -939,6 +973,37 @@ public partial class LibraryTab : ObservableObject, ITabData
         }
     }
 
+    /// <summary>
+    /// Replaces list contents only when they differ. Callers must set <see cref="IsUpdatingFacets"/>
+    /// first so a selection handler cannot rebuild the list during Clear().
+    /// </summary>
+    private static void ReplaceFacetContents(ObservableCollection<string> list, IReadOnlyList<string> desired)
+    {
+        if (list.Count == desired.Count)
+        {
+            bool same = true;
+            for (int i = 0; i < desired.Count; i++)
+            {
+                if (!string.Equals(list[i], desired[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    same = false;
+                    break;
+                }
+            }
+
+            if (same)
+            {
+                return;
+            }
+        }
+
+        list.Clear();
+        foreach (string value in desired)
+        {
+            list.Add(value);
+        }
+    }
+
     // --- Reusable filter predicates (each honours its own dimension's selection) ---
 
     private IEnumerable<MediaFile> ApplyGenreFilter(IEnumerable<MediaFile> source)
@@ -947,6 +1012,14 @@ public partial class LibraryTab : ObservableObject, ITabData
             return source;
 
         return source.Where(t => HasAnyMatchingGenre(t.Genres, _selectedGenreSet));
+    }
+
+    private IEnumerable<MediaFile> ApplyAlbumArtistFilter(IEnumerable<MediaFile> source)
+    {
+        if (!_hasAlbumArtistSelectionFilter || _selectedAlbumArtistSet == null)
+            return source;
+
+        return source.Where(t => !string.IsNullOrWhiteSpace(t.AlbumArtist) && _selectedAlbumArtistSet.Contains(t.AlbumArtist));
     }
 
     private IEnumerable<MediaFile> ApplyArtistFilter(IEnumerable<MediaFile> source)
@@ -987,6 +1060,23 @@ public partial class LibraryTab : ObservableObject, ITabData
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error in NotifyGenresChanged: {ex}");
+        }
+    }
+
+    public void NotifyAlbumArtistsChanged()
+    {
+        try
+        {
+            if (_isUpdatingFacets)
+                return;
+
+            RebuildFacetSelectionCaches();
+            UpdateAllFacetLists();
+            RefreshView();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error in NotifyAlbumArtistsChanged: {ex}");
         }
     }
 
@@ -1108,6 +1198,11 @@ public partial class LibraryTab : ObservableObject, ITabData
             return false;
         }
 
+        if (_hasAlbumArtistSelectionFilter && (_selectedAlbumArtistSet == null || string.IsNullOrWhiteSpace(track.AlbumArtist) || !_selectedAlbumArtistSet.Contains(track.AlbumArtist)))
+        {
+            return false;
+        }
+
         if (_hasArtistSelectionFilter && (_selectedArtistSet == null || string.IsNullOrWhiteSpace(track.Artist) || !_selectedArtistSet.Contains(track.Artist)))
         {
             return false;
@@ -1186,6 +1281,7 @@ public partial class LibraryTab : ObservableObject, ITabData
     private void RebuildFacetSelectionCaches()
     {
         (_hasGenreSelectionFilter, _selectedGenreSet) = BuildSelectionSet(SelectedGenres);
+        (_hasAlbumArtistSelectionFilter, _selectedAlbumArtistSet) = BuildSelectionSet(SelectedAlbumArtists);
         (_hasArtistSelectionFilter, _selectedArtistSet) = BuildSelectionSet(SelectedArtists);
         (_hasAlbumSelectionFilter, _selectedAlbumSet) = BuildSelectionSet(SelectedAlbums);
         (_hasCodecSelectionFilter, _selectedCodecSet) = BuildSelectionSet(SelectedCodecs);

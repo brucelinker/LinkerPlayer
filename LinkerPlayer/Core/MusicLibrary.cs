@@ -249,21 +249,18 @@ public class MusicLibrary : IMusicLibrary
                 .OrderBy(p => p.Order)
                 .ToListAsync();
 
-            Playlists.Clear();
-            MainLibrary.Clear();
-
-            // Add tracks
             foreach (MediaFile track in tracks)
             {
                 track.EnableDirtyTracking();
             }
-            MainLibrary.AddRange(tracks);
 
-            // Process playlists
+            // Resolve playlist membership from the loaded list, not MainLibrary.
+            // MainLibrary is still the previous UI-bound collection until the dispatcher swap below.
+            HashSet<string> loadedTrackIds = tracks.Select(t => t.Id).ToHashSet();
             foreach (Playlist playlist in playlists)
             {
                 List<string> validTrackIds = playlist.PlaylistTracks
-                    .Where(pt => pt.TrackId != null && MainLibrary.Any(t => t.Id == pt.TrackId))
+                    .Where(pt => pt.TrackId != null && loadedTrackIds.Contains(pt.TrackId))
                     .OrderBy(pt => pt.Position)
                     .Select(pt => pt.TrackId!)
                     .ToList();
@@ -279,25 +276,54 @@ public class MusicLibrary : IMusicLibrary
                 {
                     playlist.SelectedTrackId = playlist.TrackIds.First();
                 }
-
-                Playlists.Add(playlist);
             }
 
-            if (!Playlists.Any())
-            {
-                Playlist newPlaylist = new()
+            Playlist? defaultPlaylist = playlists.Count == 0
+                ? new Playlist
                 {
                     Name = "New Playlist",
                     TrackIds = new ObservableCollection<string>(),
                     SelectedTrackId = null,
                     Order = 0
-                };
-                Playlists.Add(newPlaylist);
+                }
+                : null;
+
+            // Bound collections must be mutated on the dispatcher. A background Clear/AddRange
+            // races ListCollectionView.RefreshOverride and throws ArgumentException from CopyTo
+            // when Count grows during the snapshot.
+            void ApplyToBoundCollections()
+            {
+                Playlists.Clear();
+                MainLibrary.Clear();
+                MainLibrary.AddRange(tracks);
+                foreach (Playlist playlist in playlists)
+                {
+                    Playlists.Add(playlist);
+                }
+
+                if (defaultPlaylist != null)
+                {
+                    Playlists.Add(defaultPlaylist);
+                }
+            }
+
+            Dispatcher? dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                await dispatcher.InvokeAsync(ApplyToBoundCollections);
+            }
+            else
+            {
+                ApplyToBoundCollections();
+            }
+
+            if (defaultPlaylist != null)
+            {
                 await SaveToDatabaseAsync();
             }
 
             // Notify UI
-            Application.Current?.Dispatcher.BeginInvoke(() => LibraryLoaded?.Invoke(this, EventArgs.Empty));
+            dispatcher?.BeginInvoke(() => LibraryLoaded?.Invoke(this, EventArgs.Empty));
         }
         catch (Exception ex)
         {

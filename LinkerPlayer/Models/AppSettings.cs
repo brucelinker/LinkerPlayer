@@ -53,6 +53,7 @@ public class AppSettings
     // Library tab state persistence
     public string LastLibrarySelectedTrackId { get; set; } = string.Empty;
     public List<string> LastLibrarySelectedGenres { get; set; } = new();
+    public List<string> LastLibrarySelectedAlbumArtists { get; set; } = new();
     public List<string> LastLibrarySelectedArtists { get; set; } = new();
     public List<string> LastLibrarySelectedAlbums { get; set; } = new();
     public List<string> LastLibrarySelectedCodecs { get; set; } = new();

@@ -18,6 +18,9 @@
         <ResourceDictionary Source="pack://application:,,,/LinkerPlayer;component/Styles/StylesRepository.xaml" />
       </ResourceDictionary.MergedDictionaries>
 
+      <!--  The corner between both scrollbars uses SystemColors.ControlBrushKey, not the scrollbar style  -->
+      <SolidColorBrush x:Key="{x:Static SystemColors.ControlBrushKey}" Color="{DynamicResource PlaylistTabBackgroundColor}" />
+
       <!--  ListBoxItem style to keep selected highlight visible when control is unfocused  -->
       <Style x:Key="FilterListBoxItemStyle" TargetType="ListBoxItem">
         <Setter Property="Padding" Value="2" />
@@ -294,9 +297,10 @@
         </Button>-->
       </Grid>
 
-      <!--  Simpler Filter UI: four cascading ListBoxes for Genre, Artist, Album, Codec  -->
+      <!--  Cascading ListBoxes for Genre, Album Artist, Artist, Album, Codec  -->
       <Grid Grid.Row="1" Margin="0,4,0,0">
         <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="0.6*" />
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="*" />
@@ -335,8 +339,40 @@
             SelectionMode="Extended" />
         </Grid>
 
-        <!--  Artists  -->
+        <!--  Album Artists  -->
         <Grid Grid.Column="1" Margin="0,0,8,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <TextBlock
+            Grid.Row="0"
+            Margin="0,0,0,4"
+            FontSize="12"
+            FontWeight="Normal"
+            Foreground="{DynamicResource TrackListItemForegroundBrush}">
+            <Run Text="Album Artists (" />
+            <Run Text="{Binding AlbumArtistCount, Mode=OneWay}" />
+            <Run Text=")" />
+          </TextBlock>
+          <ListBox
+            x:Name="AlbumArtistsListBox"
+            Grid.Row="1"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Background="{DynamicResource PlaylistTabBackgroundBrush}"
+            FontSize="12"
+            FontWeight="Normal"
+            Foreground="{DynamicResource TrackListItemForegroundBrush}"
+            ItemContainerStyle="{StaticResource FilterListBoxItemStyle}"
+            ItemsSource="{Binding AlbumArtists}"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            SelectionChanged="AlbumArtistsList_SelectionChanged"
+            SelectionMode="Extended" />
+        </Grid>
+
+        <!--  Artists  -->
+        <Grid Grid.Column="2" Margin="0,0,8,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -368,7 +404,7 @@
         </Grid>
 
         <!--  Albums  -->
-        <Grid Grid.Column="2" Margin="0,0,8,0">
+        <Grid Grid.Column="3" Margin="0,0,8,0">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -400,7 +436,7 @@
         </Grid>
 
         <!--  Codecs  -->
-        <Grid Grid.Column="3">
+        <Grid Grid.Column="4">
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

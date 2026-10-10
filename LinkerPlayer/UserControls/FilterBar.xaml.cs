@@ -103,10 +103,12 @@ public partial class FilterBar : UserControl
         try
         {
             ApplySelectionsToListBox(GenresListBox, libraryTab.SelectedGenres);
+            ApplySelectionsToListBox(AlbumArtistsListBox, libraryTab.SelectedAlbumArtists);
             ApplySelectionsToListBox(ArtistsListBox, libraryTab.SelectedArtists);
             ApplySelectionsToListBox(AlbumsListBox, libraryTab.SelectedAlbums);
             ApplySelectionsToListBox(CodecsListBox, libraryTab.SelectedCodecs);
             EnsureAllSelectedFallback(GenresListBox, libraryTab.SelectedGenres);
+            EnsureAllSelectedFallback(AlbumArtistsListBox, libraryTab.SelectedAlbumArtists);
             EnsureAllSelectedFallback(ArtistsListBox, libraryTab.SelectedArtists);
             EnsureAllSelectedFallback(AlbumsListBox, libraryTab.SelectedAlbums);
             EnsureAllSelectedFallback(CodecsListBox, libraryTab.SelectedCodecs);
@@ -155,7 +157,7 @@ public partial class FilterBar : UserControl
         if (_suppressDuringFacetRebuild)
             return;
 
-        if (DataContext is not LibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab || libraryTab.IsUpdatingFacets)
             return;
         if (sender is not ListBox lb)
             return;
@@ -186,7 +188,7 @@ public partial class FilterBar : UserControl
         if (_suppressDuringFacetRebuild)
             return;
 
-        if (DataContext is not LibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab || libraryTab.IsUpdatingFacets)
             return;
         if (sender is not ListBox lb)
             return;
@@ -213,12 +215,42 @@ public partial class FilterBar : UserControl
         }
     }
 
+    private void AlbumArtistsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressDuringFacetRebuild)
+            return;
+
+        if (DataContext is not LibraryTab libraryTab || libraryTab.IsUpdatingFacets)
+            return;
+        if (sender is not ListBox lb)
+            return;
+
+        libraryTab.SelectedAlbumArtists.Clear();
+        foreach (object item in lb.SelectedItems)
+        {
+            if (item is string s)
+                libraryTab.SelectedAlbumArtists.Add(s);
+        }
+
+        SaveFilterSelections(libraryTab);
+
+        _suppressDuringFacetRebuild = true;
+        try
+        {
+            libraryTab.NotifyAlbumArtistsChanged();
+        }
+        finally
+        {
+            _suppressDuringFacetRebuild = false;
+        }
+    }
+
     private void ArtistsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_suppressDuringFacetRebuild)
             return;
 
-        if (DataContext is not LibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab || libraryTab.IsUpdatingFacets)
             return;
         if (sender is not ListBox lb)
             return;
@@ -250,7 +282,7 @@ public partial class FilterBar : UserControl
         if (_suppressDuringFacetRebuild)
             return;
 
-        if (DataContext is not LibraryTab libraryTab)
+        if (DataContext is not LibraryTab libraryTab || libraryTab.IsUpdatingFacets)
             return;
         if (sender is not ListBox lb)
             return;
@@ -288,6 +320,7 @@ public partial class FilterBar : UserControl
             }
 
             settingsManager.Settings.LastLibrarySelectedGenres = new List<string>(libraryTab.SelectedGenres);
+            settingsManager.Settings.LastLibrarySelectedAlbumArtists = new List<string>(libraryTab.SelectedAlbumArtists);
             settingsManager.Settings.LastLibrarySelectedArtists = new List<string>(libraryTab.SelectedArtists);
             settingsManager.Settings.LastLibrarySelectedAlbums = new List<string>(libraryTab.SelectedAlbums);
             settingsManager.Settings.LastLibrarySelectedCodecs = new List<string>(libraryTab.SelectedCodecs);

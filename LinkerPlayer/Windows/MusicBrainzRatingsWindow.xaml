@@ -1,0 +1,64 @@
+<Window x:Class="LinkerPlayer.Windows.MusicBrainzRatingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MusicBrainz Ratings"
+        Width="440"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        Background="Black"
+        Foreground="White"
+        FontSize="14"
+        Closing="Window_Closing">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="{Binding Status}" FontSize="16" TextWrapping="Wrap" />
+        <TextBlock Grid.Row="1"
+                   Margin="0,6,0,10"
+                   Text="{Binding CurrentTrack}"
+                   Foreground="#C0C0C0"
+                   TextTrimming="CharacterEllipsis" />
+        <ProgressBar Grid.Row="2"
+                     Height="8"
+                     Minimum="0"
+                     Maximum="{Binding Total, Mode=OneWay}"
+                     Value="{Binding Processed, Mode=OneWay}"
+                     Background="#333333"
+                     Foreground="#673AB7" />
+
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="{Binding ProgressText, StringFormat=Checked: {0}}" />
+            <TextBlock Grid.Column="1" Text="{Binding Rated, StringFormat=Rated: {0}}" />
+            <TextBlock Grid.Row="1" Margin="0,4,0,0" Text="{Binding NoRating, StringFormat=No rating: {0}}" />
+            <TextBlock Grid.Column="1" Grid.Row="1" Margin="0,4,0,0" Text="{Binding Errors, StringFormat=Errors: {0}}" />
+            <TextBlock Grid.Row="2" Margin="0,4,0,0" Text="{Binding Skipped, StringFormat=Skipped: {0}}" />
+            <TextBlock Grid.Column="1" Grid.Row="2" Margin="0,4,0,0" Text="{Binding NoMusicBrainzId, StringFormat=No MusicBrainz ID: {0}}" />
+        </Grid>
+
+        <Button Grid.Row="4"
+                Width="110"
+                Height="28"
+                Margin="0,16,0,0"
+                HorizontalAlignment="Right"
+                Content="{Binding ActionText}"
+                Command="{Binding PrimaryActionCommand}" />
+    </Grid>
+</Window>

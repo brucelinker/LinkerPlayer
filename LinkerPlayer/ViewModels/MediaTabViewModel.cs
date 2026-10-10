@@ -108,6 +108,7 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
 
     private DataGrid? _dataGrid;     // holds current DataGrid reference
     private bool _shuffleMode;       // shuffle flag
+    private bool _ratingsFetchRunning;
     private LibraryTab? _musicLibraryTab; // The permanent Music Library tab (always first)
 
 
@@ -1790,18 +1791,35 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
             return;
         }
 
-        Progress<ProgressData> progress = new Progress<ProgressData>(data =>
+        if (_ratingsFetchRunning)
+            return;
+
+        _ratingsFetchRunning = true;
+        MusicBrainzRatingsWindowViewModel progress = new();
+        MusicBrainzRatingsWindow window = new()
         {
-            // Update status bar, progress dialog, etc.
-            // Or send a message via WeakReferenceMessenger
-        });
+            DataContext = progress
+        };
+        using CancellationTokenSource cancellation = new();
+        progress.BindCancellation(cancellation);
+        progress.CloseRequested += (_, _) => window.Close();
 
-        await _mbService.EnrichSelectedTracksAsync(selection, progress);
+        OwnedWindowHelper.Show(window, Application.Current?.MainWindow);
 
-        await _musicLibrary.UpdateTracksAsync(selection);
-
-        MessageBox.Show($"MusicBrainz ratings fetch complete!\n\nUpdated {selection.Count} track(s).",
-            "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        try
+        {
+            await _mbService.EnrichSelectedTracksAsync(selection, new Progress<MusicBrainzRatingProgressUpdate>(progress.Apply), cancellation.Token);
+            await _musicLibrary.UpdateTracksAsync(selection);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "MusicBrainz ratings fetch failed");
+            progress.Fail(ex.Message);
+        }
+        finally
+        {
+            _ratingsFetchRunning = false;
+        }
     }
 
     [RelayCommand]

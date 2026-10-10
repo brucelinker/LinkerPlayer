@@ -458,29 +458,56 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         }
     }
 
+    private const int FileOpenMaxAttempts = 5;
+    private static readonly TimeSpan FileOpenRetryDelay = TimeSpan.FromMilliseconds(500);
+
     private async Task PersistRatingToFileAsync(double rating)
     {
-        if (string.IsNullOrWhiteSpace(Path))
+        if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
             return;
 
-        try
+        // Same budget as TrackMetadataRefresher. Probe before ATL so a sharing
+        // violation does not surface as a first-chance exception on every attempt.
+        for (int attempt = 1; attempt <= FileOpenMaxAttempts; attempt++)
         {
-            ATL.Track atlTrack = new(Path);
-            double clamped = Math.Round(Math.Clamp(rating, 0.0, 5.0), 1);
+            if (IsLockedForMetadataRead(Path))
+            {
+                if (attempt == FileOpenMaxAttempts)
+                {
+                    Logger?.LogWarning("Rating persist skipped after {Max} attempts (file locked): {Path}", FileOpenMaxAttempts, Path);
+                    return;
+                }
 
-            // ATL's AdditionalFields are read-only for Vorbis (Save/SaveAsync don't persist them).
-            // Use Popularity field instead, which works reliably for all formats (0-1 for Vorbis, 0-255 for ID3v2).
-            // MediaFileHelper.StarsToPopularity handles the format-specific scaling.
-            atlTrack.Popularity = MediaFileHelper.StarsToPopularity(clamped, Path);
+                Logger?.LogDebug("Rating persist deferred for locked file (attempt {Attempt}/{Max}): {Path}", attempt, FileOpenMaxAttempts, Path);
+                await Task.Delay(FileOpenRetryDelay);
+                continue;
+            }
 
-            bool saved = await atlTrack.SaveAsync(writeProgress: null);
-            //Logger?.LogWarning("[RatingWrite] {File}: SaveAsync={Saved}", System.IO.Path.GetFileName(Path), saved);
-            if (!saved)
-                Logger?.LogWarning("ATL failed to persist rating tag for {Path}", Path);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogWarning(ex, "Failed to persist rating tag for {Path}", Path);
+            try
+            {
+                Track atlTrack = new(Path);
+                double clamped = Math.Round(Math.Clamp(rating, 0.0, 5.0), 1);
+
+                // ATL's AdditionalFields are read-only for Vorbis (Save/SaveAsync don't persist them).
+                // Use Popularity field instead, which works reliably for all formats (0-1 for Vorbis, 0-255 for ID3v2).
+                // MediaFileHelper.StarsToPopularity handles the format-specific scaling.
+                atlTrack.Popularity = MediaFileHelper.StarsToPopularity(clamped, Path);
+
+                bool saved = await atlTrack.SaveAsync(writeProgress: null);
+                if (!saved)
+                    Logger?.LogWarning("ATL failed to persist rating tag for {Path}", Path);
+                return;
+            }
+            catch (IOException ex) when (attempt < FileOpenMaxAttempts)
+            {
+                Logger?.LogDebug(ex, "Rating persist attempt {Attempt}/{Max} hit a sharing violation: {Path}", attempt, FileOpenMaxAttempts, Path);
+                await Task.Delay(FileOpenRetryDelay);
+            }
+            catch (Exception ex)
+            {
+                Logger?.LogWarning(ex, "Failed to persist rating tag for {Path}", Path);
+                return;
+            }
         }
     }
 
@@ -1066,29 +1093,111 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
     /// <summary>
     /// Reads any tag (especially MusicBrainz IDs) using ATL's AdditionalFields.
+    /// Transient sharing violations are retried; a lock is not reported as a missing tag
+    /// until the retry budget is exhausted.
     /// </summary>
     public string? GetTag(string tagName)
     {
-        if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
+        return GetFirstTag(tagName);
+    }
+
+    /// <summary>
+    /// Opens the file once and returns the first non-empty tag among <paramref name="tagNames"/>.
+    /// </summary>
+    public string? GetFirstTag(params string[] tagNames)
+    {
+        if (tagNames == null || tagNames.Length == 0)
+            return null;
+
+        Track? atlTrack = OpenAtlTrackWithRetry("Read tag");
+        if (atlTrack?.AdditionalFields == null)
             return null;
 
         try
         {
-            Track atlTrack = new Track(Path);
+            foreach (string tagName in tagNames)
+            {
+                if (string.IsNullOrWhiteSpace(tagName))
+                    continue;
 
-            if (atlTrack.AdditionalFields.TryGetValue(tagName, out string? value))
-                return value;
+                if (atlTrack.AdditionalFields.TryGetValue(tagName, out string? value) &&
+                    !string.IsNullOrWhiteSpace(value))
+                    return value;
 
-            // Case-insensitive fallback
-            KeyValuePair<string, string> match = atlTrack.AdditionalFields.FirstOrDefault(kv =>
-                string.Equals(kv.Key, tagName, StringComparison.OrdinalIgnoreCase));
+                KeyValuePair<string, string> match = atlTrack.AdditionalFields.FirstOrDefault(kv =>
+                    string.Equals(kv.Key, tagName, StringComparison.OrdinalIgnoreCase));
 
-            return match.Value;
+                if (!string.IsNullOrWhiteSpace(match.Value))
+                    return match.Value;
+            }
+
+            return null;
         }
         catch (Exception ex)
         {
-            Logger?.LogWarning(ex, "Failed to read tag '{TagName}' for {Path}", tagName, Path);
+            Logger?.LogWarning(ex, "Failed to read tags for {Path}", Path);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Opens the file with ATL, waiting out transient sharing violations.
+    /// Probes first so a lock does not surface as a first-chance IOException.
+    /// Matches TrackMetadataRefresher: 5 attempts, 500 ms apart.
+    /// </summary>
+    private Track? OpenAtlTrackWithRetry(string operation)
+    {
+        if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
+            return null;
+
+        for (int attempt = 1; attempt <= FileOpenMaxAttempts; attempt++)
+        {
+            if (IsLockedForMetadataRead(Path))
+            {
+                if (!WaitForFileOpenRetry(operation, attempt))
+                    return null;
+                continue;
+            }
+
+            try
+            {
+                return new Track(Path);
+            }
+            catch (FileNotFoundException)
+            {
+                return null;
+            }
+            catch (IOException ex)
+            {
+                Logger?.LogDebug(ex, "{Operation} attempt {Attempt}/{Max} hit a sharing violation: {Path}",
+                    operation, attempt, FileOpenMaxAttempts, Path);
+
+                if (attempt == FileOpenMaxAttempts)
+                {
+                    Logger?.LogWarning(ex, "{Operation} skipped after {Max} attempts (sharing violation): {Path}",
+                        operation, FileOpenMaxAttempts, Path);
+                    return null;
+                }
+
+                Thread.Sleep(FileOpenRetryDelay);
+            }
+        }
+
+        return null;
+    }
+
+    private bool WaitForFileOpenRetry(string operation, int attempt)
+    {
+        if (attempt >= FileOpenMaxAttempts)
+        {
+            Logger?.LogWarning("{Operation} skipped after {Max} attempts (file locked): {Path}",
+                operation, FileOpenMaxAttempts, Path);
+            return false;
+        }
+
+        Logger?.LogDebug("{Operation} deferred for locked file (attempt {Attempt}/{Max}): {Path}",
+            operation, attempt, FileOpenMaxAttempts, Path);
+        Thread.Sleep(FileOpenRetryDelay);
+        return true;
     }
 }
