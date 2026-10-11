@@ -298,30 +298,30 @@ public partial class PlaylistTabs
         // scrolling on large libraries, so the grid renders plain star text. Interactive
         // rating editing is still available in the track Properties window.
         if (visibleProps.Contains("Rating") &&
-            !dg.Columns.Any(c => c is DataGridTextColumn bc && bc.Binding is Binding b && b.Path.Path == "Rating"))
+            !dg.Columns.Any(c => c.SortMemberPath == "Rating"))
         {
-            // Unrated (0) shows five full stars rendered dim/disabled, matching the convention
-            // where empty outline stars mean "no rating yet"; fractional ratings show half stars.
-            Style ratingCellStyle = new Style(typeof(TextBlock));
-            DataTrigger unratedTrigger = new DataTrigger
-            {
-                Binding = new Binding("Rating"),
-                Value = 0.0
-            };
-            unratedTrigger.Setters.Add(new Setter(TextBlock.OpacityProperty, 0.3));
-            ratingCellStyle.Triggers.Add(unratedTrigger);
+            // Unrated (0) shows five full stars rendered dim so an empty rating stays visible.
+            // A rated track shows only the stars it earned; the remainder of the cell is blank.
+            // The fractional star is a clipped full star, so its unearned half is truly empty.
+            FrameworkElementFactory stars = new FrameworkElementFactory(typeof(FractionalRatingStars));
+            stars.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Stretch);
+            stars.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Stretch);
+            stars.SetBinding(FractionalRatingStars.RatingProperty, new Binding("Rating"));
 
-            DataGridTextColumn ratingCol = new DataGridTextColumn
+            Style ratingCellStyle = new Style(typeof(DataGridCell), (Style)Application.Current.FindResource("SharedDataGridCellStyle"));
+            ratingCellStyle.Setters.Add(new Setter(FrameworkElement.ToolTipProperty, new Binding("Rating")
+            {
+                Mode = BindingMode.OneWay,
+                Converter = new RatingTooltipConverter()
+            }));
+
+            DataGridTemplateColumn ratingCol = new DataGridTemplateColumn
             {
                 Header = "Rating",
                 SortMemberPath = "Rating",
                 IsReadOnly = true,
-                ElementStyle = ratingCellStyle,
-                Binding = new Binding("Rating")
-                {
-                    Mode = BindingMode.OneWay,
-                    Converter = new Converters.FractionalRatingToStarsConverter()
-                }
+                CellStyle = ratingCellStyle,
+                CellTemplate = new DataTemplate { VisualTree = stars }
             };
 
             double ratingWidth = savedInfo.TryGetValue("Rating", out AppSettings.ColumnInfo? rci) && rci.Width > 10

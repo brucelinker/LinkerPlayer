@@ -16,6 +16,8 @@ public sealed class MusicBrainzRatingsWindowViewModel : ObservableObject
     private int _noMusicBrainzId;
     private string _currentTrack = string.Empty;
     private string _status = "Starting…";
+    private string _processedLabel = "Checked";
+    private string _ratedLabel = "Rated";
     private bool _isRunning = true;
     private bool _cancelRequested;
 
@@ -86,6 +88,18 @@ public sealed class MusicBrainzRatingsWindowViewModel : ObservableObject
         private set => SetProperty(ref _status, value);
     }
 
+    public string ProcessedLabel
+    {
+        get => _processedLabel;
+        private set => SetProperty(ref _processedLabel, value);
+    }
+
+    public string RatedLabel
+    {
+        get => _ratedLabel;
+        private set => SetProperty(ref _ratedLabel, value);
+    }
+
     public bool IsRunning
     {
         get => _isRunning;
@@ -135,6 +149,10 @@ public sealed class MusicBrainzRatingsWindowViewModel : ObservableObject
         Skipped = update.Skipped;
         NoMusicBrainzId = update.NoMusicBrainzId;
         CurrentTrack = update.CurrentTrack;
+        if (!string.IsNullOrWhiteSpace(update.ProcessedLabel))
+            ProcessedLabel = update.ProcessedLabel;
+        if (!string.IsNullOrWhiteSpace(update.RatedLabel))
+            RatedLabel = update.RatedLabel;
         if (!string.IsNullOrWhiteSpace(update.Status))
             Status = update.Status;
         if (update.IsCancelled)

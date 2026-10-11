@@ -654,6 +654,7 @@ public partial class PropertiesViewModel : ObservableObject, IPropertiesViewMode
     {
         const int maxAttempts = 5;
         TimeSpan retryDelay = TimeSpan.FromMilliseconds(500);
+        using FileAccessGate.Lease access = FileAccessGate.Enter(track.Path);
 
         for (int attempt = 1; ; attempt++)
         {

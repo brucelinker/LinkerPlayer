@@ -47,6 +47,7 @@ public interface IMusicLibrary
     Task CleanOrphanedTracksAsync();
     Task UpdateTracksAsync(IEnumerable<MediaFile> tracks, bool updateMetadata = true, bool updateAnalysis = true);
     Task UpdateRatingAsync(string trackId, double rating);
+    Task ClearRatingsAsync(IEnumerable<string> trackIds);
     Task BackfillEmbeddedCoverAsync();
     Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default);
 }
@@ -1380,6 +1381,33 @@ public class MusicLibrary : IMusicLibrary
             _logger.LogError(ex, "Failed to update tracks in database");
             throw;
         }
+    }
+
+    public async Task ClearRatingsAsync(IEnumerable<string> trackIds)
+    {
+        HashSet<string> ids = trackIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (ids.Count == 0)
+            return;
+
+        foreach (MediaFile track in MainLibrary.Where(track => ids.Contains(track.Id)))
+        {
+            using IDisposable _ = track.SuspendDirtyTracking();
+            track.Rating = 0;
+        }
+
+        await using MusicLibraryDbContext context = await _dbContextFactory.CreateDbContextAsync();
+        List<MediaFile> stored = await context.Tracks
+            .Where(track => ids.Contains(track.Id))
+            .ToListAsync();
+
+        foreach (MediaFile track in stored)
+            track.Rating = 0;
+
+        await context.SaveChangesAsync();
+        MarkLibraryDirty();
     }
 
     public async Task UpdateRatingAsync(string trackId, double rating)

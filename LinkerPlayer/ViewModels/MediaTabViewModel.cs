@@ -1779,6 +1779,113 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
     }
 
     [RelayCommand]
+    private async Task ClearHalfStarRatings()
+    {
+        List<MediaFile> selected = _selectionService.MultiSelection
+            .Where(IsHalfOrWholeStarRating)
+            .ToList();
+
+        if (selected.Count == 0)
+        {
+            MessageBox.Show("None of the selected tracks have a .0 or .5 rating.", "No Ratings to Clear",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        MessageBoxResult confirm = MessageBox.Show(
+            $"Clear {selected.Count} rating{(selected.Count == 1 ? string.Empty : "s")} that land on .0 or .5? Other ratings will be kept.",
+            "Clear Snapped Ratings",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK)
+            return;
+
+        MusicBrainzRatingsWindowViewModel progress = new();
+        MusicBrainzRatingsWindow window = new()
+        {
+            Title = "Clear Ratings",
+            DataContext = progress
+        };
+        progress.CloseRequested += (_, _) => window.Close();
+        OwnedWindowHelper.Show(window, Application.Current?.MainWindow);
+
+        int cleared = 0;
+        int errors = 0;
+        try
+        {
+            for (int i = 0; i < selected.Count; i++)
+            {
+                MediaFile track = selected[i];
+                string name = string.IsNullOrWhiteSpace(track.Title) ? track.FileName : track.Title;
+                progress.Apply(new MusicBrainzRatingProgressUpdate
+                {
+                    Total = selected.Count,
+                    Processed = i,
+                    Rated = cleared,
+                    Errors = errors,
+                    CurrentTrack = name,
+                    Status = $"Clearing {i + 1} of {selected.Count}",
+                    ProcessedLabel = "Checked",
+                    RatedLabel = "Cleared",
+                    IsRunning = true
+                });
+
+                track.Rating = 0;
+                if (await ClearRatingTagAsync(track))
+                    cleared++;
+                else
+                    errors++;
+            }
+
+            await _musicLibrary.ClearRatingsAsync(selected.Select(track => track.Id));
+            progress.Apply(new MusicBrainzRatingProgressUpdate
+            {
+                Total = selected.Count,
+                Processed = selected.Count,
+                Rated = cleared,
+                Errors = errors,
+                Status = "Complete",
+                ProcessedLabel = "Checked",
+                RatedLabel = "Cleared",
+                IsRunning = false
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear snapped ratings");
+            progress.Fail(ex.Message);
+        }
+    }
+
+    private static bool IsHalfOrWholeStarRating(MediaFile track)
+    {
+        if (track.Rating <= 0)
+            return false;
+
+        double tenths = Math.Round(track.Rating * 10);
+        return tenths % 5 == 0;
+    }
+
+    private async Task<bool> ClearRatingTagAsync(MediaFile track)
+    {
+        if (string.IsNullOrWhiteSpace(track.Path) || !File.Exists(track.Path))
+            return false;
+
+        try
+        {
+            using FileAccessGate.Lease access = await FileAccessGate.EnterAsync(track.Path);
+            Track atlTrack = new(track.Path);
+            atlTrack.Popularity = 0;
+            return await atlTrack.SaveAsync(writeProgress: null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clear rating tag for {Path}", track.Path);
+            return false;
+        }
+    }
+
+    [RelayCommand]
     private async Task GetRatings()
     {
         IReadOnlyList<MediaFile> selection = _selectionService.MultiSelection;

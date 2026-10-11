@@ -14,6 +14,8 @@ public sealed record MusicBrainzRatingProgressUpdate
     public int NoMusicBrainzId { get; init; }
     public string CurrentTrack { get; init; } = string.Empty;
     public string Status { get; init; } = string.Empty;
+    public string ProcessedLabel { get; init; } = "Checked";
+    public string RatedLabel { get; init; } = "Rated";
     public bool IsRunning { get; init; }
     public bool IsCancelled { get; init; }
 }

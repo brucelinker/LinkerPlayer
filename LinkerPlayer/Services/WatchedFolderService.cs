@@ -426,11 +426,16 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
         if (_disposed || !IsAudioFile(e.FullPath))
             return;
 
+        ScheduleMetadataRefresh(e.FullPath);
+    }
+
+    private void ScheduleMetadataRefresh(string path)
+    {
         // Debounce: reset the timer each time an event fires for this path.
         // The callback runs only after DebounceDelay of silence on that file.
         _debounceTimers.AddOrUpdate(
-            e.FullPath,
-            _ => new System.Threading.Timer(OnDebounceElapsed, e.FullPath, DebounceDelay, System.Threading.Timeout.InfiniteTimeSpan),
+            path,
+            _ => new System.Threading.Timer(OnDebounceElapsed, path, DebounceDelay, System.Threading.Timeout.InfiniteTimeSpan),
             (_, existing) =>
             {
                 existing.Change(DebounceDelay, System.Threading.Timeout.InfiniteTimeSpan);
@@ -484,14 +489,14 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
 
                     try
                     {
+                        // UpdateFromFileMetadata waits if a rating write still holds this path.
                         track.UpdateFromFileMetadata(raisePropertyChanged: true);
                         await _musicLibrary.UpdateTracksAsync(new[] { track }).ConfigureAwait(false);
                         _logger.LogInformation("Auto-updated metadata for modified file: {Path}", path);
                     }
                     catch (IOException ex)
                     {
-                        // Keep the track for later retry rather than throwing while a file is locked.
-                        _logger.LogWarning(ex, "Metadata refresh skipped for locked file; will retry later: {Path}", path);
+                        _logger.LogWarning(ex, "Metadata refresh skipped for locked file: {Path}", path);
                     }
                 }
             }

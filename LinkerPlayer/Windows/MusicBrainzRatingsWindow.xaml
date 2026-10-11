@@ -45,8 +45,12 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <TextBlock Text="{Binding ProgressText, StringFormat=Checked: {0}}" />
-            <TextBlock Grid.Column="1" Text="{Binding Rated, StringFormat=Rated: {0}}" />
+            <TextBlock>
+                <Run Text="{Binding ProcessedLabel, Mode=OneWay}" /><Run Text=": " /><Run Text="{Binding ProgressText, Mode=OneWay}" />
+            </TextBlock>
+            <TextBlock Grid.Column="1">
+                <Run Text="{Binding RatedLabel, Mode=OneWay}" /><Run Text=": " /><Run Text="{Binding Rated, Mode=OneWay}" />
+            </TextBlock>
             <TextBlock Grid.Row="1" Margin="0,4,0,0" Text="{Binding NoRating, StringFormat=No rating: {0}}" />
             <TextBlock Grid.Column="1" Grid.Row="1" Margin="0,4,0,0" Text="{Binding Errors, StringFormat=Errors: {0}}" />
             <TextBlock Grid.Row="2" Margin="0,4,0,0" Text="{Binding Skipped, StringFormat=Skipped: {0}}" />

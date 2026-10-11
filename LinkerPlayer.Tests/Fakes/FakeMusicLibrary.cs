@@ -81,6 +81,8 @@ public sealed class FakeMusicLibrary : IMusicLibrary
 
     public Task UpdateRatingAsync(string trackId, double rating) => Task.CompletedTask;
 
+    public Task ClearRatingsAsync(IEnumerable<string> trackIds) => Task.CompletedTask;
+
     public Task BackfillEmbeddedCoverAsync() => Task.CompletedTask;
     public Task BackfillMp3VbrAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 

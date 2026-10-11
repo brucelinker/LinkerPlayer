@@ -700,6 +700,7 @@
                 </MenuItem>
                 <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.GetRatingsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Get MusicBrainz Ratings" />
+                <MenuItem Command="{Binding PlacementTarget.Tag.ClearHalfStarRatingsCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Clear .0 and .5 Ratings" />
                 <Separator />
                 <MenuItem Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" Header="Properties" />
               </ContextMenu>

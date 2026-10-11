@@ -140,8 +140,8 @@ public class MusicBrainzRatingService : IMusicBrainzRatingService
                     {
                         track.Rating = rating;
                         rated++;
-                        _logger.LogInformation("MusicBrainz rating {Rating:0.0} enriched for {Path} (Id={Id}, dirtyTracking={Dirty})",
-                            rating, track.Path, track.Id, track.IsDirtyTrackingEnabled ? "on" : "off");
+                        //_logger.LogInformation("MusicBrainz rating {Rating:0.0} enriched for {Path} (Id={Id}, dirtyTracking={Dirty})",
+                        //    rating, track.Path, track.Id, track.IsDirtyTrackingEnabled ? "on" : "off");
                     }
                     else if (result == RatingLookupResult.Failed)
                     {
@@ -196,7 +196,9 @@ public class MusicBrainzRatingService : IMusicBrainzRatingService
                 userEl.TryGetProperty("value", out JsonElement userValue) &&
                 userValue.ValueKind == JsonValueKind.Number)
             {
-                double rating = Math.Round(userValue.GetInt32() / 20.0, 1);
+                // Personal ratings are 0-100 and may be fractional. Reading the JSON
+                // number as an integer snaps 63 to 65, which then becomes 3.5 stars.
+                double rating = Math.Round(userValue.GetDouble() / 20.0, 1);
                 return rating > 0 ? (RatingLookupResult.Found, rating) : (RatingLookupResult.None, 0);
             }
 

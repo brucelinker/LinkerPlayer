@@ -466,6 +466,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
             return;
 
+        // Hold the file until the tag write finishes so a watcher refresh waits
+        // instead of opening the same path mid-save.
+        using FileAccessGate.Lease access = await FileAccessGate.EnterAsync(Path);
+
         // Same budget as TrackMetadataRefresher. Probe before ATL so a sharing
         // violation does not surface as a first-chance exception on every attempt.
         for (int attempt = 1; attempt <= FileOpenMaxAttempts; attempt++)
@@ -619,6 +623,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         if (string.IsNullOrWhiteSpace(Path))
             return;
+
+        using FileAccessGate.Lease access = FileAccessGate.Enter(Path);
 
         // Avoid invoking ATL while another process keeps an exclusive handle.
         // This prevents noisy first-chance exceptions during rename/update races.
@@ -828,7 +834,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
             string? ratingAddl = null;
             if (track.AdditionalFields != null)
             {
-                foreach (var kv in track.AdditionalFields)
+                foreach (KeyValuePair<string, string> kv in track.AdditionalFields)
                     if (kv.Key.Contains("RATING", StringComparison.OrdinalIgnoreCase))
                         ratingAddl += $"[{kv.Key}={kv.Value}]";
             }
@@ -863,10 +869,19 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
         ReplayGain = hasAlbumReplayGain ? "Album" : hasTrackReplayGain ? "Track" : string.Empty;
 
-        // Set the lightweight cover-present flag from the ATL picture list.
-        // This does NOT load image bytes — it is a cheap O(1) check that lets
-        // the Library DataGrid show the cover indicator for every track on startup.
-        HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
+        // EmbeddedPictures re-opens the file. A rating write or playback lock can
+        // appear after the Track was constructed; do not fail the refresh for that.
+        if (!IsLockedForMetadataRead(Path))
+        {
+            try
+            {
+                HasEmbeddedCover = track.EmbeddedPictures.Count > 0;
+            }
+            catch (IOException ex)
+            {
+                Logger?.LogDebug(ex, "Cover flag refresh skipped for locked file: {Path}", Path);
+            }
+        }
 
         try
         {
@@ -1149,6 +1164,8 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     {
         if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
             return null;
+
+        using FileAccessGate.Lease access = FileAccessGate.Enter(Path);
 
         for (int attempt = 1; attempt <= FileOpenMaxAttempts; attempt++)
         {
