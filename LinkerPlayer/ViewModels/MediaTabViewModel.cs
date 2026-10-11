@@ -1779,22 +1779,22 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
     }
 
     [RelayCommand]
-    private async Task ClearHalfStarRatings()
+    private async Task ClearRatings()
     {
         List<MediaFile> selected = _selectionService.MultiSelection
-            .Where(IsHalfOrWholeStarRating)
+            .Where(track => track.Rating > 0)
             .ToList();
 
         if (selected.Count == 0)
         {
-            MessageBox.Show("None of the selected tracks have a .0 or .5 rating.", "No Ratings to Clear",
+            MessageBox.Show("None of the selected tracks have a rating.", "No Ratings to Clear",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         MessageBoxResult confirm = MessageBox.Show(
-            $"Clear {selected.Count} rating{(selected.Count == 1 ? string.Empty : "s")} that land on .0 or .5? Other ratings will be kept.",
-            "Clear Snapped Ratings",
+            $"Clear {selected.Count} rating{(selected.Count == 1 ? string.Empty : "s")} so they can be fetched again?",
+            "Clear Ratings",
             MessageBoxButton.OKCancel,
             MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.OK)
@@ -1852,18 +1852,9 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to clear snapped ratings");
+            _logger.LogError(ex, "Failed to clear ratings");
             progress.Fail(ex.Message);
         }
-    }
-
-    private static bool IsHalfOrWholeStarRating(MediaFile track)
-    {
-        if (track.Rating <= 0)
-            return false;
-
-        double tenths = Math.Round(track.Rating * 10);
-        return tenths % 5 == 0;
     }
 
     private async Task<bool> ClearRatingTagAsync(MediaFile track)
