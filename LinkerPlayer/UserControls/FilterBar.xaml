@@ -204,6 +204,7 @@
                   Text="FIELDS" />
                 <local:QueryHelpRow Description="Text fields" Label="title, artist, album, genre" />
                 <local:QueryHelpRow Description="Release year (numeric)" Label="year  ·  date" />
+                <local:QueryHelpRow Description="Rating from 0 to 5 stars (numeric)" Label="rating  ·  stars" />
                 <local:QueryHelpRow Description="Bitrate in kbps (numeric)" Label="bitrate  ·  kbps" />
                 <local:QueryHelpRow Description="File extension / codec" Label="codec  ·  format  ·  ext" />
                 <local:QueryHelpRow Description="Additional text fields" Label="performer, composer" />
@@ -230,6 +231,7 @@
                   Foreground="{DynamicResource TrackListItemForegroundBrush}"
                   Text="EXAMPLES" />
                 <local:QueryHelpRow Description="High-quality tracks" Label="bitrate &gt; 320" />
+                <local:QueryHelpRow Description="Tracks rated at least 4.5 stars" Label="rating &gt;= 4.5" />
                 <local:QueryHelpRow Description="Tracks from the 60s–80s" Label="year &gt; 1960 &lt; 1990" />
                 <local:QueryHelpRow Description="Jazz or blues" Label="genre = jazz OR genre = blues" />
                 <local:QueryHelpRow Description="Artist name contains 'miles'" Label="artist contains miles" />

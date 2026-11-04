@@ -1,8 +1,8 @@
+using LinkerPlayer.Models;
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.Windows;
 
@@ -41,9 +41,12 @@ public partial class PlaylistImportLogWindow : Window
         int skipped = entries.Count(e => e.Action == PlaylistImportAction.Skipped);
 
         List<string> parts = new List<string> { $"{totalTracks} tracks loaded" };
-        if (recovered > 0) parts.Add($"{recovered} recovered by fuzzy match");
-        if (missing > 0)   parts.Add($"{missing} not found on disk");
-        if (skipped > 0)   parts.Add($"{skipped} skipped (no metadata)");
+        if (recovered > 0)
+            parts.Add($"{recovered} recovered by fuzzy match");
+        if (missing > 0)
+            parts.Add($"{missing} not found on disk");
+        if (skipped > 0)
+            parts.Add($"{skipped} skipped (no metadata)");
         parts.Add("The .m3u file may need to be updated.");
 
         return string.Join("  |  ", parts);
@@ -68,12 +71,14 @@ public partial class PlaylistImportLogWindow : Window
     {
         if (e.Key == Key.Home && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[0]);
+            if (LogList.Items.Count > 0)
+                LogList.ScrollIntoView(LogList.Items[0]);
             e.Handled = true;
         }
         else if (e.Key == Key.End && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[^1]);
+            if (LogList.Items.Count > 0)
+                LogList.ScrollIntoView(LogList.Items[^1]);
             e.Handled = true;
         }
         else if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
@@ -89,7 +94,8 @@ public partial class PlaylistImportLogWindow : Window
             StringBuilder sb = new StringBuilder();
             foreach (PlaylistImportLogEntry entry in items.OfType<PlaylistImportLogEntry>())
                 sb.AppendLine($"{entry.ActionLabel,-10}  {entry.Detail}");
-            if (sb.Length > 0) Clipboard.SetText(sb.ToString());
+            if (sb.Length > 0)
+                Clipboard.SetText(sb.ToString());
             e.Handled = true;
         }
     }

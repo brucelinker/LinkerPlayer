@@ -74,8 +74,8 @@ public partial class SyntaxSearchBox : UserControl
     {
         InitializeComponent();
         RichBox.TextChanged += RichBox_TextChanged;
-        RichBox.GotFocus    += (_, _) => UpdatePlaceholderVisibility();
-        RichBox.LostFocus   += (_, _) => UpdatePlaceholderVisibility();
+        RichBox.GotFocus += (_, _) => UpdatePlaceholderVisibility();
+        RichBox.LostFocus += (_, _) => UpdatePlaceholderVisibility();
         Loaded += SyntaxSearchBox_Loaded;
     }
 
@@ -203,12 +203,12 @@ public partial class SyntaxSearchBox : UserControl
     {
         string key = kind switch
         {
-            QueryTokenKind.Field        => "QueryFieldBrush",
-            QueryTokenKind.Operator     => "QueryOperatorBrush",
-            QueryTokenKind.Value        => "QueryValueBrush",
-            QueryTokenKind.OrKeyword    => "QueryOrBrush",
+            QueryTokenKind.Field => "QueryFieldBrush",
+            QueryTokenKind.Operator => "QueryOperatorBrush",
+            QueryTokenKind.Value => "QueryValueBrush",
+            QueryTokenKind.OrKeyword => "QueryOrBrush",
             QueryTokenKind.UnknownField => "QueryErrorBrush",
-            _                           => "TrackListItemForegroundBrush"
+            _ => "TrackListItemForegroundBrush"
         };
 
         return TryFindResource(key) as Brush ?? SystemColors.WindowTextBrush;
@@ -327,7 +327,7 @@ public partial class SyntaxSearchBox : UserControl
             return;
         }
 
-        bool isEmpty  = string.IsNullOrEmpty(GetPlainText());
+        bool isEmpty = string.IsNullOrEmpty(GetPlainText());
         bool hasFocus = RichBox.IsFocused;
         _placeholderAdorner.SetIsVisible(isEmpty && !hasFocus);
     }

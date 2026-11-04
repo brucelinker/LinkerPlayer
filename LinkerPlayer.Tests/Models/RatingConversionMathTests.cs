@@ -1,5 +1,4 @@
 using LinkerPlayer.Models;
-using Xunit;
 
 namespace LinkerPlayer.Tests.Models;
 
@@ -11,7 +10,7 @@ public class RatingConversionMathTests
 {
     [Theory]
     [InlineData(1.0, "test.flac")]      // Vorbis scale
-    [InlineData(255.0, "test.mp3")]     // ID3v2 scale
+    [InlineData(1.0, "test.mp3")]       // ATL normalized Popularity scale
     public void StarsToPopularity_VerifyScale(double expectedScale, string filePath)
     {
         double scale = MediaFileHelper.RatingScaleForPath(filePath);
@@ -25,9 +24,9 @@ public class RatingConversionMathTests
     [InlineData(2.2, 1.0, "test.flac", 0.44f)]     // 2.2★ → 0.44 (Vorbis, critical case)
     [InlineData(4.2, 1.0, "test.flac", 0.84f)]     // 4.2★ → 0.84 (Vorbis, critical case)
     [InlineData(3.0, 1.0, "test.flac", 0.6f)]      // 3★ → 0.6 (Vorbis)
-    [InlineData(5.0, 255.0, "test.mp3", 255.0f)]   // 5★ → 255 (ID3v2)
-    [InlineData(4.0, 255.0, "test.mp3", 204.0f)]   // 4★ → 204 (ID3v2)
-    [InlineData(2.2, 255.0, "test.mp3", 112.0f)]   // 2.2★ → 112 (ID3v2)
+    [InlineData(5.0, 1.0, "test.mp3", 1.0f)]    // 5★ → 1.0 (ATL normalized)
+    [InlineData(4.0, 1.0, "test.mp3", 0.8f)]    // 4★ → 0.8 (ATL normalized)
+    [InlineData(2.2, 1.0, "test.mp3", 0.44f)]   // 2.2★ → 0.44 (ATL normalized)
     public void StarsToPopularity_ConversionIsCorrect(double stars, double expectedScale, string filePath, float expectedPopularity)
     {
         float result = MediaFileHelper.StarsToPopularity(stars, filePath);
@@ -42,9 +41,9 @@ public class RatingConversionMathTests
     [InlineData(0.44f, 1.0, "test.flac", 2.2)]     // 0.44 → 2.2★ (Vorbis, critical case)
     [InlineData(0.84f, 1.0, "test.flac", 4.2)]     // 0.84 → 4.2★ (Vorbis, critical case)
     [InlineData(0.6f, 1.0, "test.flac", 3.0)]      // 0.6 → 3★ (Vorbis)
-    [InlineData(255.0f, 255.0, "test.mp3", 5.0)]   // 255 → 5★ (ID3v2)
-    [InlineData(204.0f, 255.0, "test.mp3", 4.0)]   // 204 → 4★ (ID3v2)
-    [InlineData(112.0f, 255.0, "test.mp3", 2.2)]   // 112 → 2.2★ (ID3v2)
+    [InlineData(1.0f, 1.0, "test.mp3", 5.0)]    // 1.0 → 5★ (ATL normalized)
+    [InlineData(0.8f, 1.0, "test.mp3", 4.0)]    // 0.8 → 4★ (ATL normalized)
+    [InlineData(0.44f, 1.0, "test.mp3", 2.2)]   // 0.44 → 2.2★ (ATL normalized)
     public void PopularityToStars_ConversionIsCorrect(float popularity, double expectedScale, string filePath, double expectedStars)
     {
         double result = MediaFileHelper.PopularityToStars(popularity, filePath);

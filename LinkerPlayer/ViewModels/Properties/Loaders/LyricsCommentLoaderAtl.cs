@@ -1,7 +1,6 @@
 using ATL;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
-using System.Collections.ObjectModel;
 
 namespace LinkerPlayer.ViewModels.Properties.Loaders;
 

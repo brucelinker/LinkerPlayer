@@ -1,12 +1,11 @@
-using System;
-using System.Collections.ObjectModel;
-using System.Windows;
-using System.Windows.Threading;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using LinkerPlayer.Interop;
 using LinkerPlayer.Models;
 using LinkerPlayer.Windows;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace LinkerPlayer.Services;
 

@@ -1,6 +1,6 @@
-using System.Windows;
-using Microsoft.Extensions.DependencyInjection;
 using LinkerPlayer.Services;
+using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 
 namespace LinkerPlayer.Windows;
 

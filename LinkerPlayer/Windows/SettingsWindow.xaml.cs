@@ -19,7 +19,7 @@ namespace LinkerPlayer.Windows;
 public partial class SettingsWindow
 {
     private const string WindowBoundsSettingsKey = "SettingsWindow";
-    private static readonly string[] SpinnerFrames = ["|" , "/", "—", "\\"];
+    private static readonly string[] SpinnerFrames = ["|", "/", "—", "\\"];
 
     private readonly ThemeManager _themeManager = new();
     private readonly IAudioEngine _audioEngine;
@@ -190,7 +190,7 @@ public partial class SettingsWindow
 
             // ItemTemplate is defined in XAML to avoid runtime Visual reuse issues.
 
-//            ShowPage(0);
+            //            ShowPage(0);
             NavigationListBox.SelectedIndex = 0;
 
             // Now it's safe to attach the event handler
@@ -567,7 +567,8 @@ public partial class SettingsWindow
         if (_rescanLogger.IsScanning)
         {
             LibraryScanSpinner.Visibility = Visibility.Visible;
-            if (!_scanSpinner.IsEnabled) _scanSpinner.Start();
+            if (!_scanSpinner.IsEnabled)
+                _scanSpinner.Start();
         }
         else
         {
@@ -890,7 +891,8 @@ public partial class SettingsWindow
     private void OnShowLogsClick(object sender, RoutedEventArgs e)
     {
         RescanLogWindow? wnd = App.AppHost?.Services?.GetService<RescanLogWindow>();
-        if (wnd == null) return;
+        if (wnd == null)
+            return;
 
         OwnedWindowHelper.Show(wnd, this);
     }

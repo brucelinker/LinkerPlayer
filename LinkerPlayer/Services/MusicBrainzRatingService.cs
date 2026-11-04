@@ -1,6 +1,5 @@
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Http;
@@ -123,10 +122,8 @@ public class MusicBrainzRatingService : IMusicBrainzRatingService
                     }
 
                     // Off the dispatcher: GetFirstTag waits out sharing violations (up to ~2.5 s).
-                    string? mbid = await Task.Run(
-                        () => track.GetFirstTag("MUSICBRAINZ_TRACKID", "MUSICBRAINZ_TRACK_ID"),
-                        ct);
-                    if (string.IsNullOrWhiteSpace(mbid))
+                    string? mbid = track.MusicBrainzId.Length > 0 ? track.MusicBrainzId : null;
+                    if (mbid == null)
                     {
                         noMusicBrainzId++;
                         processed++;

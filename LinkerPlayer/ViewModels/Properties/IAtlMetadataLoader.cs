@@ -1,7 +1,6 @@
-using System.Collections.ObjectModel;
-using System.Collections.Generic;
 using ATL;
 using LinkerPlayer.Models;
+using System.Collections.ObjectModel;
 
 namespace LinkerPlayer.ViewModels.Properties;
 

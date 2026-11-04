@@ -1,5 +1,4 @@
 using LinkerPlayer.Audio;
-using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Services;
 using LinkerPlayer.ViewModels;
@@ -10,18 +9,14 @@ using System.ComponentModel;
 using System.IO;
 using System.Net.Http;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Media.Imaging;
 using static LinkerPlayer.Audio.SpectrumAnalyzer;
-using static MaterialDesignThemes.Wpf.Theme;
 
 namespace LinkerPlayer.UserControls;
 
 public partial class TrackInfo : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
-
-    private readonly IMusicLibrary _musicLibrary = App.AppHost.Services.GetRequiredService<IMusicLibrary>();
 
     private readonly IAudioEngine _audioEngine;
     private readonly ILogger<TrackInfo> _logger;
@@ -560,8 +555,8 @@ public partial class TrackInfo : INotifyPropertyChanged
             BitmapEncoder encoder = Path.GetExtension(dlg.FileName).ToLowerInvariant() switch
             {
                 ".jpg" or ".jpeg" => new JpegBitmapEncoder(),
-                ".bmp"            => new BmpBitmapEncoder(),
-                _                 => new PngBitmapEncoder()
+                ".bmp" => new BmpBitmapEncoder(),
+                _ => new PngBitmapEncoder()
             };
             encoder.Frames.Add(BitmapFrame.Create(SelectedMediaFile.AlbumCover));
             using FileStream stream = File.Create(dlg.FileName);

@@ -1,9 +1,5 @@
-using ATL;
-using CommunityToolkit.Mvvm.Messaging;
 using LinkerPlayer.Database;
-using LinkerPlayer.Messages;
 using LinkerPlayer.Models;
-using LinkerPlayer.Windows;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -13,7 +9,6 @@ using System.IO;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Threading;
-using System.Collections.Generic;
 
 namespace LinkerPlayer.Core;
 
@@ -182,6 +177,14 @@ public class MusicLibrary : IMusicLibrary
                     {
                         context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"HasEmbeddedCover\" INTEGER NOT NULL DEFAULT 0;");
                         _logger.LogInformation("Added HasEmbeddedCover column to Tracks table");
+                    }
+
+                    List<int> musicBrainzIdResult = context.Database.SqlQueryRaw<int>(
+                        "SELECT COUNT(*) FROM pragma_table_info('Tracks') WHERE name='MusicBrainzId'").ToList();
+                    if (musicBrainzIdResult.FirstOrDefault() == 0)
+                    {
+                        context.Database.ExecuteSqlRaw("ALTER TABLE Tracks ADD COLUMN \"MusicBrainzId\" TEXT NOT NULL DEFAULT '';");
+                        _logger.LogInformation("Added MusicBrainzId column to Tracks table");
                     }
 
                     List<int> ratingResult = context.Database.SqlQueryRaw<int>(
@@ -1299,8 +1302,9 @@ public class MusicLibrary : IMusicLibrary
                     existing.Channels = incoming.Channels;
                     existing.Codec = incoming.Codec;
                     existing.ReplayGain = incoming.ReplayGain;
+                    existing.MusicBrainzId = incoming.MusicBrainzId;
 
-                    // Rating is file-authoritative metadata like the rest. A re-read/copy that
+                    // Rating is file-authoritative
                     // resolved the tag (including an external change, or a cleared rating) is
                     // synced to the DB verbatim. Explicit user clears go through UpdateRatingAsync.
                     existing.Rating = incoming.Rating;
@@ -1357,6 +1361,7 @@ public class MusicLibrary : IMusicLibrary
                         inMemory.Channels = incoming.Channels;
                         inMemory.Codec = incoming.Codec;
                         inMemory.ReplayGain = incoming.ReplayGain;
+                        inMemory.MusicBrainzId = incoming.MusicBrainzId;
                         inMemory.Rating = incoming.Rating;
 
                         inMemory.FileLastWriteTimeUtc = incoming.FileLastWriteTimeUtc;
@@ -1433,8 +1438,10 @@ public class MusicLibrary : IMusicLibrary
             if (track != null)
             {
                 track.Rating = clamped;
+                if (inMemory?.FileLastWriteTimeUtc != null)
+                    track.FileLastWriteTimeUtc = inMemory.FileLastWriteTimeUtc;
                 await context.SaveChangesAsync();
-                //_logger.LogDebug("Updated rating for track {TrackId} to {Rating}", trackId, clamped);
+                //_logger.LogDebug("Updated rating
             }
             else
             {

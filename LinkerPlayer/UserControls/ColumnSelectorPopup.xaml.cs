@@ -1,5 +1,4 @@
 using LinkerPlayer.ViewModels;
-using System.Windows;
 using System.Windows.Controls;
 namespace LinkerPlayer.UserControls;
 

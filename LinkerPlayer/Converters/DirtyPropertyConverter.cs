@@ -1,6 +1,6 @@
+using LinkerPlayer.Models;
 using System.Globalization;
 using System.Windows.Data;
-using LinkerPlayer.Models;
 
 namespace LinkerPlayer.Converters;
 

@@ -1,3 +1,5 @@
+using LinkerPlayer.Services;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Specialized;
 using System.Text;
 using System.Windows;
@@ -5,8 +7,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Microsoft.Extensions.DependencyInjection;
-using LinkerPlayer.Services;
 
 namespace LinkerPlayer.Windows;
 
@@ -91,9 +91,11 @@ public partial class RescanLogWindow : Window
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
         {
             DependencyObject child = VisualTreeHelper.GetChild(parent, i);
-            if (child is ScrollViewer sv) return sv;
+            if (child is ScrollViewer sv)
+                return sv;
             ScrollViewer? found = FindScrollViewer(child);
-            if (found != null) return found;
+            if (found != null)
+                return found;
         }
         return null;
     }
@@ -120,12 +122,14 @@ public partial class RescanLogWindow : Window
     {
         if (e.Key == Key.Home && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[0]);
+            if (LogList.Items.Count > 0)
+                LogList.ScrollIntoView(LogList.Items[0]);
             e.Handled = true;
         }
         else if (e.Key == Key.End && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[^1]);
+            if (LogList.Items.Count > 0)
+                LogList.ScrollIntoView(LogList.Items[^1]);
             e.Handled = true;
         }
         else if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
@@ -142,7 +146,8 @@ public partial class RescanLogWindow : Window
             StringBuilder sb = new StringBuilder();
             foreach (Models.RescanLogEntry entry in items.OfType<Models.RescanLogEntry>())
                 sb.AppendLine($"{entry.Time:HH:mm:ss}  {entry.ActionLabel,-8}  {entry.Detail}");
-            if (sb.Length > 0) Clipboard.SetText(sb.ToString());
+            if (sb.Length > 0)
+                Clipboard.SetText(sb.ToString());
             e.Handled = true;
         }
     }

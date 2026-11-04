@@ -3,8 +3,6 @@ using LinkerPlayer.Models;
 using ManagedBass;
 using ManagedBass.Fx;
 using Microsoft.Extensions.Logging;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace LinkerPlayer.Audio;
 

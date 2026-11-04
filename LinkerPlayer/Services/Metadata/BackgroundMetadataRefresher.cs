@@ -2,10 +2,6 @@ using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace LinkerPlayer.Services.Metadata;
 

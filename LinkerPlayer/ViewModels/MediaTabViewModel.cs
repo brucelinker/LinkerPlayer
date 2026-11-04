@@ -666,7 +666,7 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
         if (_dataGrid?.SelectedItem is not MediaFile selectedTrack)
             return;
 
-        _logger.LogInformation("OnDoubleClickDataGrid CALLED for track {TrackTitle} ({TrackId}) in tab {TabName}", 
+        _logger.LogInformation("OnDoubleClickDataGrid CALLED for track {TrackTitle} ({TrackId}) in tab {TabName}",
             selectedTrack.Title, selectedTrack.Id, SelectedTab?.Name ?? "Unknown");
 
         SelectedTrack = selectedTrack; // This already triggers everything
@@ -674,7 +674,7 @@ public partial class MediaTabViewModel : ObservableObject, IMediaTabViewModel
         if (_playbackCoordinator != null && selectedTrack != null && SelectedTab != null)
         {
             string tabName = SelectedTab.Name ?? "Music Library";
-            _logger.LogInformation("OnDoubleClickDataGrid: Calling SetSelection with Playlist={Playlist}, Index={Index}", 
+            _logger.LogInformation("OnDoubleClickDataGrid: Calling SetSelection with Playlist={Playlist}, Index={Index}",
                 tabName, _dataGrid?.SelectedIndex ?? 0);
             _playbackCoordinator.SetSelection(
                 tabName,

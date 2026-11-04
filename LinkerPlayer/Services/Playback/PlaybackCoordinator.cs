@@ -996,7 +996,7 @@ public sealed class PlaybackCoordinator : IPlaybackCoordinator, IRecipient<Shuff
                     //    $"{PlaybackCursor.PlaylistName}:{PlaybackCursor.TrackIndex}:{PlaybackCursor.TrackId}");
 
                     // Reuse the standard advance logic.
-                    _logger.LogInformation("EOFWatchdog: Resolving next track from {PlaylistName} (currentIndex={CurrentIndex}, trackCount={TrackCount})", 
+                    _logger.LogInformation("EOFWatchdog: Resolving next track from {PlaylistName} (currentIndex={CurrentIndex}, trackCount={TrackCount})",
                         playlistName, currentIndex, tracks.Count);
 
                     bool shuffleMode = _settingsManager.Settings.ShuffleMode;

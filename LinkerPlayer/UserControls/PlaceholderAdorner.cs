@@ -11,7 +11,7 @@ namespace LinkerPlayer.UserControls;
 internal sealed class PlaceholderAdorner : Adorner
 {
     private string _placeholderText;
-    private bool   _isVisible;
+    private bool _isVisible;
 
     public string PlaceholderText
     {

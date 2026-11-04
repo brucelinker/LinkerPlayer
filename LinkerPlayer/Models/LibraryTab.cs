@@ -1481,6 +1481,8 @@ public partial class FilterCriteria : ObservableObject
             FilterType.Performer => track.Performers,
             FilterType.Composer => track.Composers,
             FilterType.ReplayGain => track.ReplayGain,
+            FilterType.MusicBrainzId => track.MusicBrainzId,
+            FilterType.Rating => track.Rating.ToString(System.Globalization.CultureInfo.InvariantCulture),
             _ => null
         };
     }
@@ -1490,6 +1492,15 @@ public partial class FilterCriteria : ObservableObject
         if (trackValue == null)
         {
             return false;
+        }
+
+        if (Type == FilterType.Rating)
+        {
+            return double.TryParse(trackValue, System.Globalization.NumberStyles.Float,
+                       System.Globalization.CultureInfo.InvariantCulture, out double trackRating) &&
+                   double.TryParse(Value, System.Globalization.NumberStyles.Float,
+                       System.Globalization.CultureInfo.InvariantCulture, out double ratingValue) &&
+                   trackRating == ratingValue;
         }
 
         return trackValue.Equals(Value, StringComparison.OrdinalIgnoreCase);
@@ -1517,6 +1528,12 @@ public partial class FilterCriteria : ObservableObject
             return track.Bitrate > bitrateValue;
         }
 
+        if (Type == FilterType.Rating &&
+            double.TryParse(Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ratingValue))
+        {
+            return track.Rating > ratingValue;
+        }
+
         return false;
     }
 
@@ -1530,6 +1547,12 @@ public partial class FilterCriteria : ObservableObject
         if (Type == FilterType.Bitrate && int.TryParse(Value, out int bitrateValue))
         {
             return track.Bitrate < bitrateValue;
+        }
+
+        if (Type == FilterType.Rating &&
+            double.TryParse(Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ratingValue))
+        {
+            return track.Rating < ratingValue;
         }
 
         return false;
@@ -1547,6 +1570,12 @@ public partial class FilterCriteria : ObservableObject
             return track.Bitrate >= bitrateValue;
         }
 
+        if (Type == FilterType.Rating &&
+            double.TryParse(Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ratingValue))
+        {
+            return track.Rating >= ratingValue;
+        }
+
         return false;
     }
 
@@ -1560,6 +1589,12 @@ public partial class FilterCriteria : ObservableObject
         if (Type == FilterType.Bitrate && int.TryParse(Value, out int bitrateValue))
         {
             return track.Bitrate <= bitrateValue;
+        }
+
+        if (Type == FilterType.Rating &&
+            double.TryParse(Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ratingValue))
+        {
+            return track.Rating <= ratingValue;
         }
 
         return false;
@@ -1586,6 +1621,13 @@ public partial class FilterCriteria : ObservableObject
             return track.Bitrate >= bitrateMin && track.Bitrate <= bitrateMax;
         }
 
+        if (Type == FilterType.Rating &&
+            double.TryParse(Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ratingMin) &&
+            double.TryParse(ValueSecondary, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double ratingMax))
+        {
+            return track.Rating >= ratingMin && track.Rating <= ratingMax;
+        }
+
         return false;
     }
 }
@@ -1605,7 +1647,9 @@ public enum FilterType
     FileType,
     Performer,
     Composer,
-    ReplayGain
+    ReplayGain,
+    MusicBrainzId,
+    Rating
 }
 
 /// <summary>

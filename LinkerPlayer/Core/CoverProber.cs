@@ -87,7 +87,7 @@ internal static class CoverProber
         using FileStream? fs = OpenRead(path);
         if (fs is null)
             return false;
-        
+
         Span<byte> hdr = stackalloc byte[10];
         if (fs.Read(hdr) < 10)
             return false;
@@ -153,7 +153,7 @@ internal static class CoverProber
         using FileStream? fs = OpenRead(path);
         if (fs is null)
             return false;
-        
+
         Span<byte> sig = stackalloc byte[4];
         if (fs.Read(sig) < 4)
             return false;
@@ -183,7 +183,7 @@ internal static class CoverProber
         using FileStream? fs = OpenRead(path);
         if (fs is null)
             return false;
-        
+
         // Scan only the first 128 KB — comment packet is always near the start
         byte[] buf = new byte[Math.Min(128 * 1024, fs.Length > 0 ? (int)fs.Length : 128 * 1024)];
         int read = ReadFull(fs, buf);
@@ -203,7 +203,7 @@ internal static class CoverProber
         using FileStream? fs = OpenRead(path);
         if (fs is null)
             return false;
-        
+
         // Walk top-level boxes looking for moov; inside moov walk for udta/ilst/covr
         return WalkMp4Boxes(fs, fs.Length, 0);
     }
@@ -274,7 +274,7 @@ internal static class CoverProber
         using FileStream? fs = OpenRead(path);
         if (fs is null)
             return false;
-        
+
         Span<byte> guid = stackalloc byte[16];
         if (fs.Read(guid) < 16)
             return false;
@@ -322,7 +322,7 @@ internal static class CoverProber
         using FileStream? fs = OpenRead(path);
         if (fs is null)
             return false;
-        
+
         // APE tag is usually at the end. Preamble: "APETAGEX" at file end - 32 bytes
         if (fs.Length < 32)
             return false;

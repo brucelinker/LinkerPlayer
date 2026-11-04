@@ -1,9 +1,7 @@
-using LinkerPlayer.BassLibs;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using Microsoft.Extensions.Logging;
 using System.IO;
-using static ATL.ChannelsArrangements;
 
 namespace LinkerPlayer.Services;
 

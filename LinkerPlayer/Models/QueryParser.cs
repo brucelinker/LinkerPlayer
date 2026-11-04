@@ -42,6 +42,7 @@ public sealed record QueryToken(int Start, int Length, QueryTokenKind Kind)
 ///   Contains              →  artist contains miles       (or  artist ~ miles)
 ///   Greater / less        →  bitrate > 320
 ///   Greater-or-equal      →  year >= 1970
+///   Rating comparison     →  rating >= 4.5
 ///   Between (chained)     →  year > 1960 &lt; 1990       (same field, merged to Between)
 ///   Implicit AND          →  bitrate > 200 genre = jazz  (adjacent clauses)
 ///   Explicit OR           →  genre = jazz OR genre = blues
@@ -175,7 +176,7 @@ public static class QueryParser
 
         // Fast exit: if there are no clause-like patterns, treat as plain text
         MatchCollection clauseMatches = ClauseRegex.Matches(input);
-        MatchCollection orMatches     = OrTokenRegex.Matches(input);
+        MatchCollection orMatches = OrTokenRegex.Matches(input);
 
         if (clauseMatches.Count == 0 && orMatches.Count == 0)
         {
@@ -189,7 +190,7 @@ public static class QueryParser
         foreach (Match m in clauseMatches)
         {
             Group fieldGroup = m.Groups["field"];
-            Group opGroup    = m.Groups["op"];
+            Group opGroup = m.Groups["op"];
             Group valueGroup = m.Groups["value"];
 
             string fieldText = fieldGroup.Value;
@@ -198,7 +199,7 @@ public static class QueryParser
                 : QueryTokenKind.UnknownField;
 
             spans.Add((fieldGroup.Index, fieldGroup.Index + fieldGroup.Length, fieldKind));
-            spans.Add((opGroup.Index,    opGroup.Index    + opGroup.Length,    QueryTokenKind.Operator));
+            spans.Add((opGroup.Index, opGroup.Index + opGroup.Length, QueryTokenKind.Operator));
             spans.Add((valueGroup.Index, valueGroup.Index + valueGroup.Length, QueryTokenKind.Value));
         }
 
@@ -301,18 +302,20 @@ public static class QueryParser
     {
         return field.ToLowerInvariant() switch
         {
-            "title"                         => FilterType.Title,
-            "artist"                        => FilterType.Artist,
-            "album"                         => FilterType.Album,
-            "genre" or "genres"             => FilterType.Genre,
-            "year" or "date"                => FilterType.Year,
-            "bitrate" or "kbps"             => FilterType.Bitrate,
+            "title" => FilterType.Title,
+            "artist" => FilterType.Artist,
+            "album" => FilterType.Album,
+            "genre" or "genres" => FilterType.Genre,
+            "year" or "date" => FilterType.Year,
+            "bitrate" or "kbps" => FilterType.Bitrate,
             "codec" or "format"
-                or "filetype" or "ext"      => FilterType.FileType,
-            "performer" or "performers"     => FilterType.Performer,
-            "composer" or "composers"       => FilterType.Composer,
-            "replaygain" or "rg"             => FilterType.ReplayGain,
-            _                               => null
+                or "filetype" or "ext" => FilterType.FileType,
+            "performer" or "performers" => FilterType.Performer,
+            "composer" or "composers" => FilterType.Composer,
+            "replaygain" or "rg" => FilterType.ReplayGain,
+            "rating" or "stars" => FilterType.Rating,
+            "mbid" or "musicbrainzid" => FilterType.MusicBrainzId,
+            _ => null
         };
     }
 
@@ -320,20 +323,20 @@ public static class QueryParser
     {
         return op.ToLowerInvariant() switch
         {
-            "="  or "==" => FilterOperator.Equals,
-            "!="         => FilterOperator.NotEquals,
+            "=" or "==" => FilterOperator.Equals,
+            "!=" => FilterOperator.NotEquals,
             "contains"
-                or "~"   => FilterOperator.Contains,
-            ">"          => FilterOperator.GreaterThan,
-            ">="         => FilterOperator.GreaterThanOrEqual,
-            "<"          => FilterOperator.LessThan,
-            "<="         => FilterOperator.LessThanOrEqual,
-            _            => null
+                or "~" => FilterOperator.Contains,
+            ">" => FilterOperator.GreaterThan,
+            ">=" => FilterOperator.GreaterThanOrEqual,
+            "<" => FilterOperator.LessThan,
+            "<=" => FilterOperator.LessThanOrEqual,
+            _ => null
         };
     }
 
     private static bool IsNumericField(FilterType type)
-        => type == FilterType.Year || type == FilterType.Bitrate;
+        => type == FilterType.Year || type == FilterType.Bitrate || type == FilterType.Rating;
 
     private static bool IsLowerBound(FilterOperator op)
         => op == FilterOperator.GreaterThan || op == FilterOperator.GreaterThanOrEqual;

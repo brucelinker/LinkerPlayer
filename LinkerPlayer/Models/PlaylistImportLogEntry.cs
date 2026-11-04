@@ -17,9 +17,9 @@ public class PlaylistImportLogEntry
     public string ActionLabel => Action switch
     {
         PlaylistImportAction.Recovered => "Recovered",
-        PlaylistImportAction.Missing   => "Missing",
-        PlaylistImportAction.Skipped   => "Skipped",
-        _                              => "Info"
+        PlaylistImportAction.Missing => "Missing",
+        PlaylistImportAction.Skipped => "Skipped",
+        _ => "Info"
     };
 
     public string Detail => Action == PlaylistImportAction.Recovered && RecoveredPath != null

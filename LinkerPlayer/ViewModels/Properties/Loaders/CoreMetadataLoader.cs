@@ -254,7 +254,7 @@ public class CoreMetadataLoader : IAtlMetadataLoader
         AddMetadataItemMultiple(targetCollection, audioFiles, "Beats Per Minute", f => ""); // ATL doesn't have BPM
         AddMetadataItemMultiple(targetCollection, audioFiles, "Publisher", f => f.Publisher ?? "");
         AddMetadataItemMultiple(targetCollection, audioFiles, "Rating",
-            f => (f.Popularity ?? 0f) > 0 ? Math.Round((double)f.Popularity! * 5.0 / 255.0, 1).ToString("0.0") : "");
+            f => (f.Popularity ?? 0f) > 0 ? Models.MediaFileHelper.PopularityToStars(f.Popularity!.Value, f.Path).ToString("0.0") : "");
 
         _logger.LogDebug("Loaded core metadata for {Count} files", audioFiles.Count);
     }

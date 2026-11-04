@@ -1,11 +1,10 @@
-using System;
-using System.Collections.ObjectModel;
-using System.Windows;
-using System.Windows.Threading;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
 using LinkerPlayer.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Threading;
 
 namespace LinkerPlayer.Services;
 
@@ -70,8 +69,8 @@ public class RescanLogger : IRescanLogger
         }, DispatcherPriority.Background);
     }
 
-    public void LogInfo(string detail)    => Append(RescanAction.Info,    detail);
-    public void LogAdded(string detail)   => Append(RescanAction.Added,   detail);
+    public void LogInfo(string detail) => Append(RescanAction.Info, detail);
+    public void LogAdded(string detail) => Append(RescanAction.Added, detail);
     public void LogRemoved(string detail) => Append(RescanAction.Removed, detail);
     public void LogUpdated(string detail) => Append(RescanAction.Updated, detail);
     public void LogWarning(string detail) => Append(RescanAction.Warning, detail);
@@ -100,7 +99,8 @@ public class RescanLogger : IRescanLogger
         try
         {
             RescanLogWindow? wnd = App.AppHost?.Services?.GetService<RescanLogWindow>();
-            if (wnd == null) return;
+            if (wnd == null)
+                return;
 
             // Re-evaluate owner every session: prefer SettingsWindow when visible
             SettingsWindow? settingsWindow = App.AppHost?.Services?.GetService<SettingsWindow>();
@@ -115,8 +115,8 @@ public class RescanLogger : IRescanLogger
                 // Center over the owner manually (WindowStartupLocation=Manual)
                 if (preferredOwner != null)
                 {
-                    wnd.Left = preferredOwner.Left + (preferredOwner.ActualWidth  - wnd.Width)  / 2;
-                    wnd.Top  = preferredOwner.Top  + (preferredOwner.ActualHeight - wnd.Height) / 2;
+                    wnd.Left = preferredOwner.Left + (preferredOwner.ActualWidth - wnd.Width) / 2;
+                    wnd.Top = preferredOwner.Top + (preferredOwner.ActualHeight - wnd.Height) / 2;
                 }
                 wnd.Show();
             }

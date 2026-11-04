@@ -1,7 +1,6 @@
-using System;
-using System.Windows;
 using LinkerPlayer.Core;
 using LinkerPlayer.Models;
+using System.Windows;
 
 namespace LinkerPlayer.Interop;
 

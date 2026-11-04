@@ -265,14 +265,9 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
         List<MediaFile> modified = existing
             .Where(t =>
             {
-                // Always refresh tracks missing ReplayGain status so the library can backfill
-                // from on-disk metadata even when write-time baselines were never captured.
-                if (string.IsNullOrWhiteSpace(t.ReplayGain))
-                    return true;
-
-                // For already-classified tracks, use write-time drift as the modification signal.
+                // No baseline yet: refresh once so UpdateFromFileMetadata stamps it.
                 if (!t.FileLastWriteTimeUtc.HasValue)
-                    return false;
+                    return true;
 
                 try
                 {
@@ -298,7 +293,8 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
             int updated = 0;
             foreach (MediaFile track in modified)
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                if (cancellationToken.IsCancellationRequested)
+                    break;
                 if (!File.Exists(track.Path))
                 {
                     track.HealthStatus = TrackHealthStatus.Missing;
@@ -398,7 +394,8 @@ public class WatchedFolderService : IWatchedFolderService, IDisposable
 
             foreach (string folder in folders)
             {
-                if (cancellationToken.IsCancellationRequested) break;
+                if (cancellationToken.IsCancellationRequested)
+                    break;
                 await FullScanFolderAsync(folder, progress, cancellationToken).ConfigureAwait(false);
             }
 

@@ -377,6 +377,12 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     [ObservableProperty]
     private string _replayGain = string.Empty;
 
+    /// <summary>
+    /// MusicBrainz recording ID read from file tags. Empty when the file has no MBID.
+    /// </summary>
+    [ObservableProperty]
+    private string _musicBrainzId = string.Empty;
+
     [ObservableProperty]
     private int? _leadingSilenceMs;
 
@@ -446,8 +452,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                     // SaveToDatabaseAsync here raced concurrent rating edits and blew up the
                     // PlaylistTracks rebuild (UNIQUE constraint), so this task died before the
                     // file write — which is why ratings silently didn't persist.
-                    await library.UpdateRatingAsync(Id, newValue);
+                    // File first: it stamps FileLastWriteTimeUtc, which UpdateRatingAsync stores,
+                    // so the next rescan doesn't see our own write as an external change.
                     await PersistRatingToFileAsync(newValue);
+                    await library.UpdateRatingAsync(Id, newValue);
                 }
                 catch (Exception ex)
                 {
@@ -461,7 +469,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
     private const int FileOpenMaxAttempts = 5;
     private static readonly TimeSpan FileOpenRetryDelay = TimeSpan.FromMilliseconds(500);
 
-    private async Task PersistRatingToFileAsync(double rating)
+    internal async Task PersistRatingToFileAsync(double rating)
     {
         if (string.IsNullOrWhiteSpace(Path) || !File.Exists(Path))
             return;
@@ -493,13 +501,19 @@ public partial class MediaFile : ObservableValidator, IMediaFile
                 double clamped = Math.Round(Math.Clamp(rating, 0.0, 5.0), 1);
 
                 // ATL's AdditionalFields are read-only for Vorbis (Save/SaveAsync don't persist them).
-                // Use Popularity field instead, which works reliably for all formats (0-1 for Vorbis, 0-255 for ID3v2).
+                // Use Popularity field instead, which works reliably for all formats (normalized 0-1).
                 // MediaFileHelper.StarsToPopularity handles the format-specific scaling.
+                // ATL's Vorbis Popularity is quantized to 0.1 (4.2★ would read back as 4★), so the
+                // exact value is also stored in FMPS_RATING, which the reader prefers.
                 atlTrack.Popularity = MediaFileHelper.StarsToPopularity(clamped, Path);
+                atlTrack.AdditionalFields["FMPS_RATING"] = MediaFileHelper.StarsToPopularity(clamped, Path)
+                    .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
                 bool saved = await atlTrack.SaveAsync(writeProgress: null);
                 if (!saved)
                     Logger?.LogWarning("ATL failed to persist rating tag for {Path}", Path);
+                else
+                    FileLastWriteTimeUtc = File.GetLastWriteTimeUtc(Path);
                 return;
             }
             catch (IOException ex) when (attempt < FileOpenMaxAttempts)
@@ -617,6 +631,26 @@ public partial class MediaFile : ObservableValidator, IMediaFile
 
         int roError = Marshal.GetLastWin32Error();
         return IsShareLockError(roError);
+    }
+
+    public static string? ExtractMusicBrainzId(IDictionary<string, string> additionalFields)
+    {
+        foreach (string tagName in new[] { "MUSICBRAINZ_TRACKID", "MUSICBRAINZ_TRACK_ID", "MusicBrainz Track Id", "UFID" })
+        {
+            KeyValuePair<string, string> match = additionalFields.FirstOrDefault(kv =>
+                string.Equals(kv.Key, tagName, StringComparison.OrdinalIgnoreCase));
+
+            if (string.IsNullOrWhiteSpace(match.Value))
+                continue;
+
+            // UFID values carry the owner prefix, e.g. "http://musicbrainz.org<uuid>" or "http://musicbrainz.org|<uuid>".
+            string trimmed = match.Value.Trim();
+            string candidate = trimmed.Length > 36 ? trimmed[^36..] : trimmed;
+            if (Guid.TryParse(candidate, out Guid id))
+                return id.ToString();
+        }
+
+        return null;
     }
 
     public void UpdateFromFileMetadata(bool raisePropertyChanged = true)
@@ -796,8 +830,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if (scale <= 1.0 && track.AdditionalFields != null)
         {
             string? ratingField = null;
-            if (track.AdditionalFields.TryGetValue("RATING", out string? r1)) ratingField = r1;
-            else if (track.AdditionalFields.TryGetValue("FMPS_RATING", out string? r2)) ratingField = r2;
+            if (track.AdditionalFields.TryGetValue("RATING", out string? r1))
+                ratingField = r1;
+            else if (track.AdditionalFields.TryGetValue("FMPS_RATING", out string? r2))
+                ratingField = r2;
 
             if (double.TryParse(ratingField, System.Globalization.NumberStyles.Any,
                     System.Globalization.CultureInfo.InvariantCulture, out double raw) && raw > 0)
@@ -814,8 +850,10 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         if ((!rawRating.HasValue || rawRating.Value <= 0) && scale > 1.0 && track.AdditionalFields != null)
         {
             string? ratingField = null;
-            if (track.AdditionalFields.TryGetValue("RATING", out string? r1)) ratingField = r1;
-            else if (track.AdditionalFields.TryGetValue("FMPS_RATING", out string? r2)) ratingField = r2;
+            if (track.AdditionalFields.TryGetValue("RATING", out string? r1))
+                ratingField = r1;
+            else if (track.AdditionalFields.TryGetValue("FMPS_RATING", out string? r2))
+                ratingField = r2;
 
             if (double.TryParse(ratingField, System.Globalization.NumberStyles.Any,
                     System.Globalization.CultureInfo.InvariantCulture, out double raw) && raw > 0)
@@ -868,6 +906,7 @@ public partial class MediaFile : ObservableValidator, IMediaFile
         bool hasAlbumReplayGain = HasReplayGainGainField(track, "ALBUM");
 
         ReplayGain = hasAlbumReplayGain ? "Album" : hasTrackReplayGain ? "Track" : string.Empty;
+        MusicBrainzId = ExtractMusicBrainzId(track.AdditionalFields) ?? string.Empty;
 
         // EmbeddedPictures re-opens the file. A rating write or playback lock can
         // appear after the Track was constructed; do not fail the refresh for that.

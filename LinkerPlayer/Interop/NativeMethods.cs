@@ -15,10 +15,10 @@ internal static class NativeMethods
     [StructLayout(LayoutKind.Sequential)]
     internal struct MONITORINFO
     {
-        public int    cbSize;
-        public RECT   rcMonitor;
-        public RECT   rcWork;
-        public uint   dwFlags;
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
     }
 
     [DllImport("user32.dll")]

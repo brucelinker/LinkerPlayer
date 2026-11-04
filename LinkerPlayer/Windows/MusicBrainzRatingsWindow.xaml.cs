@@ -1,6 +1,6 @@
+using LinkerPlayer.ViewModels;
 using System.ComponentModel;
 using System.Windows;
-using LinkerPlayer.ViewModels;
 
 namespace LinkerPlayer.Windows;
 
